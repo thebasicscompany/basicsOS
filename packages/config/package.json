@@ -1,0 +1,15 @@
+{
+  "name": "@basicsos/config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared configuration for Basics OS packages",
+  "exports": {
+    "./typescript": "./tsconfig.json",
+    "./prettier": "./prettier.js",
+    "./tailwind": "./tailwind.config.ts"
+  },
+  "files": ["tsconfig.json", "prettier.js", "tailwind.config.ts"],
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

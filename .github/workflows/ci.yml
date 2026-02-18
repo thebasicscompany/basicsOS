@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: |
+          pnpm --filter @basicos/shared build
+          pnpm --filter @basicos/db build
+          pnpm --filter @basicos/auth build
+          pnpm --filter @basicos/ui build
+          pnpm --filter @basicos/api build
+
+      - name: Typecheck
+        run: |
+          pnpm --filter @basicos/shared typecheck
+          pnpm --filter @basicos/db typecheck
+          pnpm --filter @basicos/auth typecheck
+          pnpm --filter @basicos/api typecheck
+          pnpm --filter @basicos/web typecheck
+
+      - name: Test (package unit tests)
+        run: pnpm --filter @basicos/shared test && pnpm --filter @basicos/api test
+
+      - name: Test (E2E + security integration tests)
+        # Run root-level security audits: RBAC, input validation, secrets scan, multi-tenant isolation
+        run: pnpm vitest run
+
+      - name: Security audit
+        run: pnpm audit --audit-level moderate

@@ -1,0 +1,43 @@
+# BasicOS Caddyfile — automatic HTTPS, reverse proxy
+# Replace yourdomain.com with your actual domain
+
+yourdomain.com {
+  # Web portal
+  reverse_proxy /api/* web:3000
+  reverse_proxy web:3000
+
+  # Enable compression
+  encode gzip zstd
+
+  # Security headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
+
+api.yourdomain.com {
+  reverse_proxy api:3001
+  encode gzip zstd
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
+
+mcp.yourdomain.com {
+  reverse_proxy mcp-company:4000
+  encode gzip zstd
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}

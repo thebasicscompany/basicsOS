@@ -1,0 +1,8 @@
+import { z } from "zod";
+
+export const insert{{pascalCase name}}Schema = z.object({
+  tenantId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+});
+
+export type Insert{{pascalCase name}} = z.infer<typeof insert{{pascalCase name}}Schema>;

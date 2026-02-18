@@ -1,0 +1,44 @@
+{
+  "name": "@basicsos/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BasicOS tRPC API server",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@basicsos/auth": "workspace:*",
+    "@basicsos/db": "workspace:*",
+    "@basicsos/shared": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "@hono/trpc-server": "^0.3.0",
+    "@trpc/server": "^11.0.0",
+    "better-auth": "^1.0.0",
+    "bullmq": "^5.0.0",
+    "drizzle-orm": "^0.44.0",
+    "hono": "^4.6.0",
+    "ioredis": "^5.4.0",
+    "resend": "^6.9.2",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@basicsos/config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

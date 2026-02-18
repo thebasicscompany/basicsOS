@@ -1,0 +1,45 @@
+{
+  "name": "@basicsos/web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BasicOS web portal (Next.js 15)",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "vitest run",
+    "clean": "rm -rf .next out"
+  },
+  "dependencies": {
+    "@basicsos/api": "workspace:*",
+    "@basicsos/shared": "workspace:*",
+    "@basicsos/ui": "workspace:*",
+    "@hocuspocus/provider": "^3.4.4",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/react-query": "^5.59.0",
+    "@tiptap/extension-character-count": "^3.19.0",
+    "@tiptap/extension-collaboration": "3.19.0",
+    "@tiptap/extension-collaboration-cursor": "3.0.0",
+    "@tiptap/extension-placeholder": "^3.19.0",
+    "@tiptap/pm": "^3.19.0",
+    "@tiptap/react": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "yjs": "^13.6.0"
+  },
+  "devDependencies": {
+    "@basicsos/config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

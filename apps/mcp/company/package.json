@@ -1,0 +1,32 @@
+{
+  "name": "@basicsos/mcp-company",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BasicOS Company MCP server",
+  "main": "./dist/index.js",
+  "bin": {
+    "basicos-mcp-company": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@basicsos/api": "workspace:*",
+    "@basicsos/db": "workspace:*",
+    "@basicsos/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@basicsos/config": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  }
+}

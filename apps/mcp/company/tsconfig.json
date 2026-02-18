@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "paths": {
+      "@basicsos/api": ["../../../packages/api/src/index.ts"],
+      "@basicsos/db": ["../../../packages/db/src/index.ts"],
+      "@basicsos/shared": ["../../../packages/shared/src/index.ts"],
+      "@basicsos/auth": ["../../../packages/auth/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

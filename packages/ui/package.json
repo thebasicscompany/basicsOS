@@ -1,0 +1,35 @@
+{
+  "name": "@basicsos/ui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BasicOS shared UI component library",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.0"
+  },
+  "devDependencies": {
+    "@basicsos/config": "workspace:*",
+    "typescript": "^5.6.0",
+    "tailwindcss": "^4.0.0",
+    "@types/react": "^18.3.0",
+    "react": "^18.3.0",
+    "vitest": "^2.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  }
+}

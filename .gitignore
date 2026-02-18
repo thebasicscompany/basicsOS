@@ -1,0 +1,38 @@
+# Dependencies — both root and nested package directories
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+.expo/
+
+# Turbo
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+
+# macOS
+.DS_Store
+*.pem
+
+# Logs
+*.log
+
+# Local IDE
+.vscode/
+.idea/
+
+# Electron builds
+apps/desktop/release/
+
+# Coverage
+coverage/
+.playwright-mcp/

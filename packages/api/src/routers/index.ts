@@ -10,6 +10,9 @@ import { modulesRouter } from "./modules.js";
 import { automationsRouter } from "./automations.js";
 import { hubRouter } from "./hub.js";
 import { aiEmployeesRouter } from "./ai-employees.js";
+import { adminRouter } from "./admin.js";
+import { billingRouter } from "./billing.js";
+import { llmKeysRouter } from "./llm-keys.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,6 +26,9 @@ export const appRouter = router({
   automations: automationsRouter,
   hub: hubRouter,
   aiEmployees: aiEmployeesRouter,
+  admin: adminRouter,
+  billing: billingRouter,
+  llmKeys: llmKeysRouter,
 });
 
 export type AppRouter = typeof appRouter;

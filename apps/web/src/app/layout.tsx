@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { TRPCProvider } from "@/providers/TRPCProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
+import { Toaster } from "@basicsos/ui";
 
 export const metadata: Metadata = {
   title: "Basics OS",
@@ -16,7 +18,12 @@ const RootLayout = ({
 }>): JSX.Element => (
   <html lang="en">
     <body>
-      <TRPCProvider>{children}</TRPCProvider>
+      <TRPCProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
+      </TRPCProvider>
     </body>
   </html>
 );

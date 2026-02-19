@@ -1,0 +1,62 @@
+# Railway deployment configuration for Basics OS
+# One-click deploy: https://railway.app/template/basicsos
+# Docs: https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "NIXPACKS"
+
+# ---------------------------------------------------------------------------
+# Web app (Next.js 15)
+# ---------------------------------------------------------------------------
+
+[[services]]
+name = "web"
+source = "apps/web"
+
+[services.build]
+buildCommand = "pnpm --filter @basicsos/web build"
+startCommand = "pnpm --filter @basicsos/web start"
+
+[services.deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[services.variables]
+PORT = "3000"
+# These are set in the Railway dashboard — see README.md#environment-variables
+# NEXT_PUBLIC_API_URL = "https://<api-service>.railway.app"
+# NEXT_PUBLIC_APP_URL = "https://<web-service>.railway.app"
+# BETTER_AUTH_SECRET = "<generate: openssl rand -base64 32>"
+# BETTER_AUTH_URL = "https://<web-service>.railway.app"
+
+# ---------------------------------------------------------------------------
+# API server (Hono + tRPC)
+# ---------------------------------------------------------------------------
+
+[[services]]
+name = "api"
+source = "packages/api"
+
+[services.build]
+buildCommand = "pnpm --filter @basicsos/api build"
+startCommand = "node dist/dev.js"
+
+[services.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[services.variables]
+PORT = "3001"
+# DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+# REDIS_URL = "${{Redis.REDIS_URL}}"
+# AI_API_KEY = "<your Anthropic API key>"
+# BETTER_AUTH_SECRET = "<same as web service>"
+# BETTER_AUTH_URL = "https://<web-service>.railway.app"
+# DEEPGRAM_API_KEY = "<optional: for audio transcription>"
+# STRIPE_SECRET_KEY = "<optional: for billing>"
+# STRIPE_WEBHOOK_SECRET = "<optional: for billing webhooks>"
+# OAUTH_ENCRYPTION_KEY = "<generate: openssl rand -hex 32>"

@@ -1,66 +1,170 @@
-import { db } from "@basicsos/db";
-import { deals, contacts, companies } from "@basicsos/db";
+"use client";
 
-const CRMPage = async (): Promise<JSX.Element> => {
-  let dealList: Array<{ id: string; title: string; stage: string; value: string; probability: number }> = [];
-  let contactList: Array<{ id: string; name: string; email: string | null }> = [];
-  try {
-    dealList = await db.select({ id: deals.id, title: deals.title, stage: deals.stage, value: deals.value, probability: deals.probability }).from(deals);
-    contactList = await db.select({ id: contacts.id, name: contacts.name, email: contacts.email }).from(contacts);
-  } catch { /* DB not connected */ }
+import { useSearchParams, useRouter } from "next/navigation";
+import { trpc } from "@/lib/trpc";
+import { Button, Plus, Users, EmptyState } from "@basicsos/ui";
+import { DealCard } from "./DealCard";
+import { CreateContactDialog } from "./CreateContactDialog";
+import { CreateDealDialog } from "./CreateDealDialog";
 
-  const stages = ["lead", "qualified", "proposal", "negotiation", "won", "lost"];
-  const stageColors: Record<string, string> = {
-    lead: "bg-gray-100 text-gray-700",
-    qualified: "bg-blue-100 text-blue-700",
-    proposal: "bg-yellow-100 text-yellow-700",
-    negotiation: "bg-orange-100 text-orange-700",
-    won: "bg-green-100 text-green-700",
-    lost: "bg-red-100 text-red-700",
+import type { DealStage } from "./types";
+
+const STAGES = ["lead", "qualified", "proposal", "negotiation", "won", "lost"] as const;
+
+const STAGE_COLORS: Record<string, string> = {
+  lead: "bg-stone-400",
+  qualified: "bg-blue-500",
+  proposal: "bg-amber-500",
+  negotiation: "bg-purple-500",
+  won: "bg-emerald-500",
+  lost: "bg-red-500",
+};
+
+const nameToColor = (name: string): string => {
+  const colors = ["bg-blue-100 text-blue-700", "bg-emerald-100 text-emerald-700", "bg-violet-100 text-violet-700", "bg-amber-100 text-amber-700", "bg-rose-100 text-rose-700"];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length] ?? colors[0] ?? "";
+};
+
+// Next.js App Router requires default export — framework exception.
+const CRMPage = (): JSX.Element => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const view = (searchParams.get("view") ?? "pipeline") as "pipeline" | "contacts";
+
+  const { data: contactsData, refetch: refetchContacts } = trpc.crm.contacts.list.useQuery({});
+  const { data: dealsData, refetch: refetchDeals } = trpc.crm.deals.listByStage.useQuery();
+
+  const setView = (v: "pipeline" | "contacts"): void => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", v);
+    router.push(`?${params.toString()}`);
   };
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">CRM</h1>
-      <div className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold text-gray-700">Pipeline</h2>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-stone-900">CRM</h1>
+        <div className="flex items-center gap-2">
+          {view === "contacts" ? (
+            <CreateContactDialog onCreated={() => void refetchContacts()}>
+              <Button><Plus size={14} className="mr-1" /> New Contact</Button>
+            </CreateContactDialog>
+          ) : (
+            <CreateDealDialog onCreated={() => void refetchDeals()}>
+              <Button><Plus size={14} className="mr-1" /> New Deal</Button>
+            </CreateDealDialog>
+          )}
+        </div>
+      </div>
+
+      {/* View tabs */}
+      <div className="mb-6 flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
+        <button
+          onClick={() => setView("pipeline")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            view === "pipeline"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          Pipeline
+        </button>
+        <button
+          onClick={() => setView("contacts")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            view === "contacts"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          Contacts
+        </button>
+      </div>
+
+      {view === "pipeline" && (
         <div className="overflow-x-auto">
           <div className="flex gap-4 min-w-max pb-4">
-            {stages.map((stage) => (
-              <div key={stage} className="w-56 flex-shrink-0">
-                <div className="mb-2 text-xs font-semibold uppercase text-gray-500">{stage} ({dealList.filter(d => d.stage === stage).length})</div>
-                <div className="space-y-2">
-                  {dealList.filter(d => d.stage === stage).map(deal => (
-                    <div key={deal.id} className="rounded-lg border bg-white p-3 shadow-sm">
-                      <div className="font-medium text-sm text-gray-900">{deal.title}</div>
-                      <div className="mt-1 flex items-center justify-between">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${stageColors[deal.stage] ?? "bg-gray-100"}`}>{deal.stage}</span>
-                        <span className="text-xs font-medium text-gray-600">${Number(deal.value).toLocaleString()}</span>
+            {STAGES.map((stage) => {
+              const stageGroup = (dealsData ?? []).find((g) => g.stage === stage);
+              const stageDeals = stageGroup?.deals ?? [];
+              return (
+                <div key={stage} className="w-56 flex-shrink-0">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`} />
+                    <span className="text-xs font-semibold uppercase text-stone-500">{stage}</span>
+                    <span className="ml-auto rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">{stageDeals.length}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {stageDeals.length === 0 ? (
+                      <div className="rounded-xl border-2 border-dashed border-stone-200 p-4 text-center text-xs text-stone-400">
+                        No deals
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      stageDeals.map((deal) => (
+                        <DealCard
+                          key={deal.id}
+                          deal={{
+                            id: deal.id,
+                            title: deal.title,
+                            stage: deal.stage as DealStage,
+                            value: String(deal.value ?? 0),
+                            probability: deal.probability,
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-      </div>
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-gray-700">Contacts ({contactList.length})</h2>
-        <div className="rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50"><tr><th className="p-3 text-left font-medium text-gray-600">Name</th><th className="p-3 text-left font-medium text-gray-600">Email</th></tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {contactList.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="p-3 font-medium text-gray-900">{c.name}</td>
-                  <td className="p-3 text-gray-600">{c.email ?? "—"}</td>
+      )}
+
+      {view === "contacts" && (
+        (contactsData ?? []).length === 0 ? (
+          <EmptyState
+            Icon={Users}
+            heading="No contacts yet"
+            description="Add your first contact to get started."
+            action={
+              <CreateContactDialog onCreated={() => void refetchContacts()}>
+                <Button><Plus size={14} className="mr-1" /> Add Contact</Button>
+              </CreateContactDialog>
+            }
+          />
+        ) : (
+          <div className="rounded-xl border border-stone-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="p-3 text-left font-medium text-stone-600">Name</th>
+                  <th className="p-3 text-left font-medium text-stone-600">Email</th>
+                  <th className="p-3 text-left font-medium text-stone-600">Phone</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {(contactsData ?? []).map((c) => (
+                  <tr key={c.id} className="hover:bg-stone-50 cursor-pointer transition-colors" onClick={() => router.push(`/crm/${c.id}`)}>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${nameToColor(c.name)}`}>
+                          {c.name[0]?.toUpperCase() ?? "?"}
+                        </div>
+                        <span className="font-medium text-stone-900">{c.name}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-stone-600">{c.email ?? "\u2014"}</td>
+                    <td className="p-3 text-stone-600">{c.phone ?? "\u2014"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
     </div>
   );
 };

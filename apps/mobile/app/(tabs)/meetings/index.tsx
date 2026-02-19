@@ -1,121 +1,83 @@
-import { useEffect, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
+import { useRouter } from "expo-router";
+import { Video, ChevronRight } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
-
-type Meeting = {
-  id: string;
-  title: string;
-  date: string;
-  attendees?: string[];
-  location?: string | null;
-};
-
-const DEMO_MEETINGS: Meeting[] = [
-  {
-    id: "1",
-    title: "Q2 Planning Session",
-    date: "2026-02-18T10:00:00Z",
-    attendees: ["Mehmet", "Priya", "James"],
-    location: "Conference Room A",
-  },
-  {
-    id: "2",
-    title: "Product Review",
-    date: "2026-02-19T14:00:00Z",
-    attendees: ["Sofia", "Carlos"],
-    location: "Zoom",
-  },
-  {
-    id: "3",
-    title: "Investor Call",
-    date: "2026-02-20T09:00:00Z",
-    attendees: ["James", "Priya"],
-    location: null,
-  },
-  {
-    id: "4",
-    title: "Design Sync",
-    date: "2026-02-21T11:30:00Z",
-    attendees: ["Mehmet"],
-    location: "Design Studio",
-  },
-];
-
-const formatDate = (iso: string): string => {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-type MeetingItemProps = { item: Meeting };
-
-const MeetingItem = ({ item }: MeetingItemProps): JSX.Element => (
-  <View style={styles.meeting}>
-    <View style={styles.dateBlock}>
-      <Text style={styles.dateDay}>
-        {new Date(item.date).getDate()}
-      </Text>
-      <Text style={styles.dateMonth}>
-        {new Date(item.date).toLocaleDateString("en-US", { month: "short" })}
-      </Text>
-    </View>
-    <View style={styles.meetingInfo}>
-      <Text style={styles.meetingTitle}>{item.title}</Text>
-      <Text style={styles.meetingTime}>{formatDate(item.date)}</Text>
-      {item.location != null && (
-        <Text style={styles.location}>{item.location}</Text>
-      )}
-      {item.attendees != null && item.attendees.length > 0 && (
-        <Text style={styles.attendees}>
-          {item.attendees.join(", ")}
-        </Text>
-      )}
-    </View>
-  </View>
-);
+import { trpc } from "../../../lib/trpc";
+import { colors, radius, shadows } from "../../../lib/tokens";
 
 const MeetingsScreen = (): JSX.Element => {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { data: meetings, isLoading } = trpc.meetings.list.useQuery({ limit: 20 });
 
-  useEffect(() => {
-    const apiUrl =
-      process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:3001";
-    fetch(`${apiUrl}/trpc/meetings.list?input={}`)
-      .then((r) => r.json())
-      .then((d: { result?: { data?: Meeting[] } }) =>
-        setMeetings(d.result?.data ?? DEMO_MEETINGS),
-      )
-      .catch(() => setMeetings(DEMO_MEETINGS))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Screen title="Meetings">
-        <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
+        <ActivityIndicator size="large" color={colors.brand} style={styles.loader} />
+      </Screen>
+    );
+  }
+
+  const meetingList = meetings ?? [];
+
+  if (meetingList.length === 0) {
+    return (
+      <Screen title="Meetings">
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Video size={28} color={colors.textPlaceholder} />
+          </View>
+          <Text style={styles.emptyTitle}>No meetings yet</Text>
+          <Text style={styles.emptySubtitle}>Create your first meeting from the web app.</Text>
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen title="Meetings">
-      <Text style={styles.count}>{meetings.length} upcoming meetings</Text>
+      <Text style={styles.count}>{meetingList.length} meetings</Text>
       <FlatList
-        data={meetings}
+        data={meetingList}
         keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <MeetingItem item={item} />}
+        renderItem={({ item }) => (
+          <Pressable
+            style={({ pressed }) => [styles.meeting, pressed && styles.meetingPressed]}
+            onPress={() => router.push(`/meetings/${item.id}` as never)}
+          >
+            <View style={styles.dateBlock}>
+              <Text style={styles.dateDay}>
+                {item.startedAt !== null && item.startedAt !== undefined
+                  ? new Date(item.startedAt).getDate()
+                  : "\u2014"}
+              </Text>
+              <Text style={styles.dateMonth}>
+                {item.startedAt !== null && item.startedAt !== undefined
+                  ? new Date(item.startedAt).toLocaleDateString("en-US", { month: "short" })
+                  : ""}
+              </Text>
+            </View>
+            <View style={styles.meetingInfo}>
+              <Text style={styles.meetingTitle}>{item.title}</Text>
+              {item.startedAt !== null && item.startedAt !== undefined && (
+                <Text style={styles.meetingTime}>
+                  {new Date(item.startedAt).toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </Text>
+              )}
+            </View>
+            <ChevronRight size={18} color={colors.textPlaceholder} />
+          </Pressable>
+        )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         scrollEnabled={false}
       />
@@ -125,30 +87,44 @@ const MeetingsScreen = (): JSX.Element => {
 
 const styles = StyleSheet.create({
   loader: { marginTop: 40 },
-  count: { fontSize: 13, color: "#6b7280", marginBottom: 12 },
+  count: { fontSize: 13, color: colors.textSecondary, marginBottom: 12 },
   meeting: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    backgroundColor: colors.surfaceCard,
+    borderRadius: radius.md,
     padding: 14,
     gap: 14,
-    alignItems: "flex-start",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
+  meetingPressed: { opacity: 0.7 },
   dateBlock: {
     width: 48,
     alignItems: "center",
-    backgroundColor: "#ede9fe",
-    borderRadius: 8,
+    backgroundColor: colors.brandSubtle,
+    borderRadius: radius.sm,
     paddingVertical: 8,
   },
-  dateDay: { fontSize: 20, fontWeight: "700", color: "#6366f1" },
-  dateMonth: { fontSize: 11, color: "#6366f1", fontWeight: "600" },
+  dateDay: { fontSize: 20, fontWeight: "700", color: colors.brand },
+  dateMonth: { fontSize: 11, color: colors.brand, fontWeight: "600" },
   meetingInfo: { flex: 1 },
-  meetingTitle: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  meetingTime: { fontSize: 12, color: "#6b7280", marginTop: 3 },
-  location: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
-  attendees: { fontSize: 12, color: "#6b7280", marginTop: 4, fontStyle: "italic" },
+  meetingTitle: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+  meetingTime: { fontSize: 12, color: colors.textSecondary, marginTop: 3 },
   separator: { height: 8 },
+  empty: { alignItems: "center", paddingTop: 60 },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
 });
 
 export default MeetingsScreen;

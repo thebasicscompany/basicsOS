@@ -1,5 +1,7 @@
 import type { Context, Next } from "hono";
-import { auth, USER_ROLES, type UserRole } from "@basicsos/auth";
+import { auth } from "@basicsos/auth";
+import type { UserRole } from "@basicsos/auth";
+import { parseRole } from "../lib/parse-role.js";
 
 export type AuthContext = {
   userId: string;
@@ -13,11 +15,6 @@ declare module "hono" {
     auth: AuthContext;
   }
 }
-
-const parseRole = (role: unknown): UserRole => {
-  const found = USER_ROLES.find((r) => r === role);
-  return found ?? "member";
-};
 
 /**
  * Hono middleware that validates the session token and injects auth context.

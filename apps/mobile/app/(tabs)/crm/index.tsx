@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,66 +5,63 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { Users } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
-
-type Contact = { id: string; name: string; email: string | null; company?: string | null };
-
-const DEMO_CONTACTS: Contact[] = [
-  { id: "1", name: "Mehmet Yilmaz", email: "mehmet@globaltech.io", company: "GlobalTech" },
-  { id: "2", name: "Priya Sharma", email: "priya@startupxyz.com", company: "StartupXYZ" },
-  { id: "3", name: "James Walker", email: "james@example.com", company: "Example Inc" },
-  { id: "4", name: "Sofia Andersen", email: "sofia@nordic.dk", company: "Nordic Solutions" },
-  { id: "5", name: "Carlos Rivera", email: "carlos@latam.co", company: "LATAM Corp" },
-];
-
-type ContactItemProps = { item: Contact };
-
-const ContactItem = ({ item }: ContactItemProps): JSX.Element => (
-  <View style={styles.contact}>
-    <View style={styles.avatar}>
-      <Text style={styles.avatarText}>{item.name[0] ?? "?"}</Text>
-    </View>
-    <View style={styles.info}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.email}>{item.email ?? "—"}</Text>
-      {item.company != null && (
-        <Text style={styles.company}>{item.company}</Text>
-      )}
-    </View>
-  </View>
-);
+import { trpc } from "../../../lib/trpc";
+import { colors, radius, shadows, nameToColor } from "../../../lib/tokens";
 
 const CRMScreen = (): JSX.Element => {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: contacts, isLoading } = trpc.crm.contacts.list.useQuery({});
 
-  useEffect(() => {
-    const apiUrl =
-      process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:3001";
-    fetch(`${apiUrl}/trpc/crm.contacts.list?input={}`)
-      .then((r) => r.json())
-      .then((d: { result?: { data?: Contact[] } }) =>
-        setContacts(d.result?.data ?? DEMO_CONTACTS),
-      )
-      .catch(() => setContacts(DEMO_CONTACTS))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Screen title="CRM">
-        <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
+        <ActivityIndicator size="large" color={colors.brand} style={styles.loader} />
+      </Screen>
+    );
+  }
+
+  const contactList = contacts ?? [];
+
+  if (contactList.length === 0) {
+    return (
+      <Screen title="CRM">
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Users size={28} color={colors.textPlaceholder} />
+          </View>
+          <Text style={styles.emptyTitle}>No contacts yet</Text>
+          <Text style={styles.emptySubtitle}>Add your first contact from the web app.</Text>
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen title="CRM">
-      <Text style={styles.count}>{contacts.length} contacts</Text>
+      <Text style={styles.count}>{contactList.length} contacts</Text>
       <FlatList
-        data={contacts}
+        data={contactList}
         keyExtractor={(c) => c.id}
-        renderItem={({ item }) => <ContactItem item={item} />}
+        renderItem={({ item }) => {
+          const avatarColor = nameToColor(item.name);
+          return (
+            <View style={styles.contact}>
+              <View style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
+                <Text style={[styles.avatarText, { color: avatarColor.text }]}>
+                  {item.name[0] ?? "?"}
+                </Text>
+              </View>
+              <View style={styles.info}>
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.email}>{item.email ?? "\u2014"}</Text>
+                {item.phone != null && (
+                  <Text style={styles.phone}>{item.phone}</Text>
+                )}
+              </View>
+            </View>
+          );
+        }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         scrollEnabled={false}
       />
@@ -75,29 +71,43 @@ const CRMScreen = (): JSX.Element => {
 
 const styles = StyleSheet.create({
   loader: { marginTop: 40 },
-  count: { fontSize: 13, color: "#6b7280", marginBottom: 12 },
+  count: { fontSize: 13, color: colors.textSecondary, marginBottom: 12 },
   contact: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceCard,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: radius.md,
     gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#6366f1",
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  avatarText: { fontSize: 18, fontWeight: "700" },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  email: { fontSize: 13, color: "#6b7280", marginTop: 1 },
-  company: { fontSize: 12, color: "#9ca3af", marginTop: 1 },
+  name: { fontSize: 15, fontWeight: "600", color: colors.textPrimary },
+  email: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
+  phone: { fontSize: 12, color: colors.textPlaceholder, marginTop: 1 },
   separator: { height: 8 },
+  empty: { alignItems: "center", paddingTop: 60 },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
 });
 
 export default CRMScreen;

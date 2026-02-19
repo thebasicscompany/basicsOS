@@ -1,12 +1,40 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { TRPCContext } from "../context.js";
 import { modulesRouter } from "./modules.js";
+
+vi.mock("@basicsos/db", () => ({ db: {}, moduleConfig: { tenantId: "tenantId", moduleName: "moduleName" } }));
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const USER_ID = "00000000-0000-0000-0000-000000000002";
 
+// Minimal Drizzle-style chain: resolves to [] for select queries.
+const makeEmptyChain = () => {
+  const chain: Record<string, unknown> = {
+    then: (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve),
+  };
+  for (const m of ["from", "where", "orderBy", "limit"]) {
+    chain[m] = vi.fn().mockReturnValue(chain);
+  }
+  return chain;
+};
+
+const makeInsertChain = () => {
+  const chain: Record<string, unknown> = {
+    then: (resolve: (v: void) => unknown) => Promise.resolve(undefined).then(resolve),
+  };
+  for (const m of ["values", "onConflictDoUpdate", "returning"]) {
+    chain[m] = vi.fn().mockReturnValue(chain);
+  }
+  return chain;
+};
+
+const mockDb = {
+  select: vi.fn().mockReturnValue(makeEmptyChain()),
+  insert: vi.fn().mockReturnValue(makeInsertChain()),
+} as unknown as TRPCContext["db"];
+
 const buildCtx = (overrides: Partial<TRPCContext> = {}): TRPCContext => ({
-  db: {} as TRPCContext["db"],
+  db: mockDb,
   userId: USER_ID,
   tenantId: TENANT_ID,
   role: "admin",

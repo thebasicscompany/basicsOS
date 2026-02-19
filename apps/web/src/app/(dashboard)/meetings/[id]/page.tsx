@@ -1,17 +1,44 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { trpc } from "@/lib/trpc";
+import { addToast, Button } from "@basicsos/ui";
+import { TranscriptDisplay } from "./TranscriptDisplay";
+import { SummaryCard } from "./SummaryCard";
 
-type TranscriptLine = { speaker: string; text: string; timestamp: number };
+interface MeetingDetailPageProps {
+  params: { id: string };
+}
 
 // Next.js page requires default export
-const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element => {
+const MeetingDetailPage = ({ params }: MeetingDetailPageProps): JSX.Element => {
   const [isRecording, setIsRecording] = useState(false);
-  const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
   const [status, setStatus] = useState<string>("Ready to record");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { data: meeting, refetch } = trpc.meetings.get.useQuery({ id: params.id });
+
+  const uploadTranscript = trpc.meetings.uploadTranscript.useMutation({
+    onSuccess: () => {
+      addToast({ title: "Transcript saved", variant: "success" });
+      void refetch();
+    },
+    onError: (err) => {
+      addToast({ title: "Failed to save transcript", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const processMeeting = trpc.meetings.process.useMutation({
+    onSuccess: () => {
+      addToast({ title: "Processing started", description: "AI summary will be ready shortly." });
+      void refetch();
+    },
+    onError: (err) => {
+      addToast({ title: "Failed to process", description: err.message, variant: "destructive" });
+    },
+  });
 
   const sendChunk = async (): Promise<void> => {
     if (chunksRef.current.length === 0) return;
@@ -19,26 +46,19 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
     chunksRef.current = [];
 
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = async (): Promise<void> => {
       const base64 = (reader.result as string).split(",")[1] ?? "";
       if (!base64) return;
-
       try {
         const res = await fetch("/api/trpc/meetings.transcribeAudio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ json: { meetingId: params.id, audioChunk: base64, format: "webm" } }),
         });
-        const data = await res.json() as { result?: { data?: { transcript: string | null; message: string | null; configured: boolean } } };
-        const result = data.result?.data;
-        if (result?.transcript) {
-          setTranscriptLines(prev => [...prev, {
-            speaker: "You",
-            text: result.transcript ?? "",
-            timestamp: Date.now(),
-          }]);
-        }
-        if (!result?.configured) {
+        const data = await res.json() as {
+          result?: { data?: { transcript: string | null; configured: boolean } };
+        };
+        if (!data.result?.data?.configured) {
           setStatus("Add DEEPGRAM_API_KEY to .env to enable AI transcription");
         }
       } catch {
@@ -50,27 +70,24 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
 
   const startRecording = async (): Promise<void> => {
     try {
-      // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
 
-      recorder.ondataavailable = (e: BlobEvent) => {
+      recorder.ondataavailable = (e: BlobEvent): void => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       recorder.start();
       setIsRecording(true);
-      setStatus("Recording...");
+      setStatus("Recording…");
 
-      // Send audio chunks every 5 seconds for real-time transcription
       chunkIntervalRef.current = setInterval(() => {
         void sendChunk();
       }, 5000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setStatus(`Error: ${msg}`);
+      setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -81,57 +98,97 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
     }
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
       mediaRecorderRef.current = null;
     }
     setIsRecording(false);
     setStatus("Recording stopped");
-    // Send final chunk
     void sendChunk();
   };
+
+  const handleSaveTranscript = (): void => {
+    if (!meeting?.transcripts || meeting.transcripts.length === 0) return;
+    const text = meeting.transcripts
+      .map((t) => `${t.speaker}: ${t.text}`)
+      .join("\n");
+    uploadTranscript.mutate({ meetingId: params.id, transcriptText: text });
+  };
+
+  const handleProcess = (): void => {
+    processMeeting.mutate({ meetingId: params.id });
+  };
+
+  const transcripts = meeting?.transcripts ?? [];
+  const summaries = meeting?.summaries ?? [];
+  const latestSummary = summaries[0];
+  const summaryJson = latestSummary?.summaryJson as {
+    decisions?: string[];
+    actionItems?: string[];
+    followUps?: string[];
+    note?: string;
+  } | null ?? null;
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <a href="/meetings" className="text-sm text-gray-500 hover:text-gray-700">← Meetings</a>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">Meeting Recording</h1>
+          <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">← Meetings</a>
+          <h1 className="mt-1 text-2xl font-bold text-stone-900">
+            {meeting?.title ?? "Meeting Recording"}
+          </h1>
         </div>
-        <button
-          onClick={isRecording ? stopRecording : () => void startRecording()}
-          className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition ${
-            isRecording
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-indigo-600 hover:bg-indigo-700"
-          }`}
-        >
-          <span>{isRecording ? "⏹ Stop" : "⏺ Record"}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {transcripts.length > 0 && summaries.length === 0 && (
+            <Button variant="outline" onClick={handleProcess} disabled={processMeeting.isPending}>
+              {processMeeting.isPending ? "Processing…" : "Generate Summary"}
+            </Button>
+          )}
+          <Button
+            onClick={isRecording ? stopRecording : () => void startRecording()}
+            variant={isRecording ? "destructive" : "default"}
+          >
+            {isRecording ? "⏹ Stop" : "⏺ Record"}
+          </Button>
+        </div>
       </div>
 
-      {/* Status */}
-      <div className="mb-4 text-sm text-gray-500">{status}</div>
+      <p className="mb-4 text-sm text-stone-500">{status}</p>
 
-      {/* Live transcript */}
-      {transcriptLines.length > 0 ? (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-700">Transcript</h2>
-          {transcriptLines.map((line, i) => (
-            <div key={i} className="rounded-xl bg-white border p-4">
-              <div className="text-xs text-gray-400 mb-1">{line.speaker}</div>
-              <p className="text-gray-900">{line.text}</p>
-            </div>
-          ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Transcript */}
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-stone-700">Transcript</h2>
+            {transcripts.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveTranscript}
+                disabled={uploadTranscript.isPending}
+              >
+                Save
+              </Button>
+            )}
+          </div>
+          <TranscriptDisplay
+            chunks={transcripts.map((t) => ({
+              id: t.id,
+              speaker: t.speaker,
+              text: t.text,
+              timestampMs: t.timestampMs,
+            }))}
+          />
         </div>
-      ) : (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">🎙️</div>
-          <p className="text-gray-500 font-medium">Click "Record" to start capturing</p>
-          <p className="text-sm text-gray-400 mt-1">
-            {isRecording ? "Listening... transcript will appear here" : "Microphone access required"}
-          </p>
+
+        {/* Summary */}
+        <div>
+          <h2 className="mb-3 text-lg font-semibold text-stone-700">Summary</h2>
+          <SummaryCard
+            summaryJson={summaryJson}
+            isPending={processMeeting.isPending}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 };

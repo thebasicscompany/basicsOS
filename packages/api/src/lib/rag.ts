@@ -41,6 +41,7 @@ export const ragChat = async (
   query: string,
   tenantId: string,
   history: ConversationMessage[] = [],
+  userId?: string,
 ): Promise<RagResult> => {
   const { searchQuery } = analyzeQuery(query);
 
@@ -60,7 +61,7 @@ export const ragChat = async (
   // Call LLM — fail with a user-visible error message
   let response: { content: string; finishReason: string };
   try {
-    response = await chatCompletion({ messages });
+    response = await chatCompletion({ messages }, { tenantId, ...(userId ? { userId } : {}), featureName: "assistant.chat" });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {

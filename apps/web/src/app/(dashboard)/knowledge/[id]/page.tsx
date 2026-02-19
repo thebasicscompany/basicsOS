@@ -63,7 +63,7 @@ const DocumentDetailPage = (): JSX.Element => {
     editorProps: {
       attributes: {
         class:
-          "prose prose-gray max-w-none min-h-[400px] focus:outline-none p-4",
+          "prose prose-stone max-w-none min-h-[400px] focus:outline-none p-4",
       },
     },
   });
@@ -107,7 +107,7 @@ const DocumentDetailPage = (): JSX.Element => {
   }
 
   if (isLoading || !doc) {
-    return <div className="p-8 text-center text-gray-400">Loading...</div>;
+    return <div className="p-8 text-center text-stone-400">Loading...</div>;
   }
 
   const saving = updateMutation.isPending;
@@ -119,7 +119,7 @@ const DocumentDetailPage = (): JSX.Element => {
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => router.push("/knowledge")}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-stone-500 hover:text-stone-700"
         >
           &larr; Knowledge Base
         </button>
@@ -130,13 +130,13 @@ const DocumentDetailPage = (): JSX.Element => {
               Live
             </span>
           )}
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-stone-400">
             {saving ? "Saving..." : saved ? "Saved" : "Cmd+S to save"}
           </span>
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save"}
           </button>
@@ -148,7 +148,7 @@ const DocumentDetailPage = (): JSX.Element => {
         value={localTitle}
         onChange={(e) => setLocalTitle(e.target.value)}
         onBlur={save}
-        className="w-full text-4xl font-bold text-gray-900 border-none outline-none bg-transparent mb-4 placeholder-gray-300"
+        className="w-full text-4xl font-bold text-stone-900 border-none outline-none bg-transparent mb-4 placeholder-stone-300"
         placeholder="Untitled Document"
       />
 
@@ -208,8 +208,8 @@ const DocumentDetailPage = (): JSX.Element => {
               key={btn.label}
               title={btn.title}
               onClick={btn.action}
-              className={`px-2 py-1 text-sm rounded font-mono hover:bg-gray-100 ${
-                btn.active() ? "bg-gray-200 font-bold" : ""
+              className={`px-2 py-1 text-sm rounded font-mono hover:bg-stone-100 ${
+                btn.active() ? "bg-stone-200 font-bold" : ""
               }`}
             >
               {btn.label}

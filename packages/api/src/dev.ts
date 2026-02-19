@@ -1,7 +1,22 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./server.js";
+import { registerAuditLogger } from "./events/subscribers/audit-logger.js";
+import {
+  startMeetingProcessorWorker,
+  registerMeetingProcessorListener,
+} from "./workers/meeting-processor.worker.js";
+import { startNotificationWorker } from "./workers/notification.worker.js";
+import { registerAiEmployeeWorker } from "./workers/ai-employee.worker.js";
 
 const port = Number(process.env["PORT"] ?? "3001");
+
+// Register event subscribers before starting the server
+registerAuditLogger();
+registerMeetingProcessorListener();
+startMeetingProcessorWorker();
+startNotificationWorker();
+registerAiEmployeeWorker();
+
 const app = createApp();
 
 serve({ fetch: app.fetch, port }, (info) => {

@@ -16,7 +16,7 @@ export const assistantRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-      const result = await ragChat(input.message, ctx.tenantId, input.history);
+      const result = await ragChat(input.message, ctx.tenantId, input.history, ctx.userId);
       return result;
     }),
 });

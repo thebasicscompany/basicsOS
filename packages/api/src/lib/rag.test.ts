@@ -39,6 +39,8 @@ describe("ragChat", () => {
           expect.objectContaining({ role: "user", content: "hello" }),
         ]),
       }),
+      // Second argument is the telemetry context — we don't assert its shape here
+      expect.anything(),
     );
   });
 

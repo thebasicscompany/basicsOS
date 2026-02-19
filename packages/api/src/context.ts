@@ -1,11 +1,8 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import { auth, USER_ROLES, type UserRole } from "@basicsos/auth";
+import { auth } from "@basicsos/auth";
+import type { UserRole } from "@basicsos/auth";
 import { db, type DbConnection } from "@basicsos/db";
-
-const parseRole = (role: unknown): UserRole => {
-  const found = USER_ROLES.find((r) => r === role);
-  return found ?? "member";
-};
+import { parseRole } from "./lib/parse-role.js";
 
 export type TRPCContext = {
   db: DbConnection;

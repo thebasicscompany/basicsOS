@@ -1,7 +1,17 @@
 import { z } from "zod";
+import { and, eq } from "drizzle-orm";
 import { router, protectedProcedure, adminProcedure } from "../trpc.js";
+import { moduleConfig } from "@basicsos/db";
 
-const BUILT_IN_MODULES = [
+type ModuleDefinition = {
+  name: string;
+  displayName: string;
+  description: string;
+  icon: string;
+  activeByDefault: boolean;
+};
+
+const BUILT_IN_MODULES: ModuleDefinition[] = [
   {
     name: "knowledge",
     displayName: "Knowledge Base",
@@ -51,22 +61,67 @@ const BUILT_IN_MODULES = [
     icon: "⚡",
     activeByDefault: false,
   },
-] as const;
+];
 
 export const modulesRouter = router({
-  list: protectedProcedure.query(() => BUILT_IN_MODULES),
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) return BUILT_IN_MODULES.map((m) => ({ ...m, enabled: m.activeByDefault }));
+
+    // Fetch persisted overrides for this tenant.
+    const overrides = await ctx.db
+      .select()
+      .from(moduleConfig)
+      .where(eq(moduleConfig.tenantId, ctx.tenantId));
+
+    const overrideMap = new Map(overrides.map((o) => [o.moduleName, o.enabled]));
+
+    return BUILT_IN_MODULES.map((m) => ({
+      ...m,
+      enabled: overrideMap.has(m.name) ? (overrideMap.get(m.name) ?? m.activeByDefault) : m.activeByDefault,
+    }));
+  }),
 
   getStatus: protectedProcedure
     .input(z.object({ moduleName: z.string() }))
-    .query(({ input }) => {
+    .query(async ({ ctx, input }) => {
       const module = BUILT_IN_MODULES.find((m) => m.name === input.moduleName);
       if (!module) return null;
-      return { ...module, enabled: module.activeByDefault };
+
+      if (!ctx.tenantId) return { ...module, enabled: module.activeByDefault };
+
+      const [override] = await ctx.db
+        .select()
+        .from(moduleConfig)
+        .where(
+          and(
+            eq(moduleConfig.tenantId, ctx.tenantId),
+            eq(moduleConfig.moduleName, input.moduleName),
+          ),
+        );
+
+      return { ...module, enabled: override ? override.enabled : module.activeByDefault };
     }),
 
   setEnabled: adminProcedure
     .input(z.object({ moduleName: z.string(), enabled: z.boolean() }))
-    .mutation(({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const module = BUILT_IN_MODULES.find((m) => m.name === input.moduleName);
+      if (!module) return { moduleName: input.moduleName, enabled: input.enabled };
+
+      // Upsert: insert or update the override row.
+      await ctx.db
+        .insert(moduleConfig)
+        .values({
+          tenantId: ctx.tenantId,
+          moduleName: input.moduleName,
+          enabled: input.enabled,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [moduleConfig.tenantId, moduleConfig.moduleName],
+          set: { enabled: input.enabled, updatedAt: new Date() },
+        });
+
       return { moduleName: input.moduleName, enabled: input.enabled };
     }),
 });

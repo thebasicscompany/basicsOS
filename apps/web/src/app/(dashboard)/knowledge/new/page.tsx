@@ -23,14 +23,14 @@ const NewDocumentPage = (): JSX.Element => {
 
   return (
     <div className="max-w-2xl mx-auto py-12">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Document</h1>
+      <h1 className="text-2xl font-bold text-stone-900 mb-6">New Document</h1>
       <form onSubmit={handleCreate} className="space-y-4">
         <input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Document title..."
-          className="w-full text-2xl font-medium border-b-2 border-gray-200 focus:border-indigo-500 outline-none py-2 bg-transparent"
+          className="w-full text-2xl font-medium border-b-2 border-stone-200 focus:border-primary outline-none py-2 bg-transparent"
         />
         {createMutation.error && (
           <p className="text-sm text-red-500">{createMutation.error.message}</p>
@@ -39,14 +39,14 @@ const NewDocumentPage = (): JSX.Element => {
           <button
             type="submit"
             disabled={!title.trim() || createMutation.isPending}
-            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {createMutation.isPending ? "Creating..." : "Create Document"}
           </button>
           <button
             type="button"
             onClick={() => router.push("/knowledge")}
-            className="rounded-lg border px-6 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            className="rounded-lg border px-6 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50"
           >
             Cancel
           </button>

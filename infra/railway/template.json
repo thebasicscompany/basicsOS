@@ -1,0 +1,96 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "name": "Basics OS",
+  "description": "Open-source company operating system — knowledge base, CRM, tasks, meetings, AI assistant, and more.",
+  "tags": ["saas", "productivity", "ai", "nextjs", "trpc"],
+  "icon": "https://raw.githubusercontent.com/basicsos/basicsos/main/apps/web/public/icon.png",
+  "readme": "https://raw.githubusercontent.com/basicsos/basicsos/main/README.md",
+  "services": [
+    {
+      "template": "NIXPACKS",
+      "name": "web",
+      "startCommand": "pnpm --filter @basicsos/web start",
+      "buildCommand": "pnpm install && pnpm --filter @basicsos/web build",
+      "variables": {
+        "NODE_ENV": { "default": "production" },
+        "PORT": { "default": "3000" },
+        "NEXT_PUBLIC_API_URL": {
+          "description": "URL of the deployed API service (set after both services are deployed)",
+          "required": true
+        },
+        "NEXT_PUBLIC_APP_URL": {
+          "description": "Public URL of this web service",
+          "required": true
+        },
+        "BETTER_AUTH_SECRET": {
+          "description": "Random 32-byte secret for session signing. Generate: openssl rand -base64 32",
+          "required": true,
+          "generator": "secret"
+        },
+        "BETTER_AUTH_URL": {
+          "description": "Same as NEXT_PUBLIC_APP_URL",
+          "required": true
+        }
+      }
+    },
+    {
+      "template": "NIXPACKS",
+      "name": "api",
+      "startCommand": "node dist/dev.js",
+      "buildCommand": "pnpm install && pnpm --filter @basicsos/db build && pnpm --filter @basicsos/shared build && pnpm --filter @basicsos/api build",
+      "variables": {
+        "NODE_ENV": { "default": "production" },
+        "PORT": { "default": "3001" },
+        "DATABASE_URL": {
+          "description": "PostgreSQL connection string (auto-set if using Railway Postgres plugin)",
+          "required": true
+        },
+        "REDIS_URL": {
+          "description": "Redis connection string for BullMQ job queues (auto-set if using Railway Redis plugin)",
+          "required": true
+        },
+        "BETTER_AUTH_SECRET": {
+          "description": "Must match the web service BETTER_AUTH_SECRET",
+          "required": true
+        },
+        "BETTER_AUTH_URL": {
+          "description": "Public URL of the web service",
+          "required": true
+        },
+        "AI_API_KEY": {
+          "description": "Anthropic API key (sk-ant-...) — enables AI assistant, meeting summaries, embeddings",
+          "required": false
+        },
+        "OAUTH_ENCRYPTION_KEY": {
+          "description": "64 hex chars for encrypting OAuth tokens at rest. Generate: openssl rand -hex 32",
+          "required": false,
+          "generator": "secret"
+        },
+        "DEEPGRAM_API_KEY": {
+          "description": "Optional: Deepgram API key for audio transcription in meetings",
+          "required": false
+        },
+        "STRIPE_SECRET_KEY": {
+          "description": "Optional: Stripe secret key for billing integration",
+          "required": false
+        },
+        "STRIPE_WEBHOOK_SECRET": {
+          "description": "Optional: Stripe webhook signing secret",
+          "required": false
+        }
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "id": "postgres",
+      "name": "Postgres",
+      "description": "PostgreSQL 16 with pgvector extension for embeddings"
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Redis for BullMQ job queues and rate limiting"
+    }
+  ]
+}

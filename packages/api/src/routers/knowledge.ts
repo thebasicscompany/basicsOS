@@ -9,6 +9,7 @@ import {
   reorderKnowledgeDocumentsSchema,
 } from "@basicsos/shared";
 import { EventBus, createEvent } from "../events/bus.js";
+import { analyzeImage } from "../lib/llm-client.js";
 
 export const knowledgeRouter = router({
   list: protectedProcedure
@@ -191,6 +192,57 @@ export const knowledgeRouter = router({
       }
 
       return { updated: input.updates.length };
+    }),
+
+  /**
+   * Workflow Capture — analyze a base64 PNG screenshot with Claude vision,
+   * then create a knowledge document containing the AI-generated description.
+   */
+  createFromCapture: memberProcedure
+    .input(z.object({
+      imageBase64: z.string().min(1),
+      title: z.string().min(1).max(255).default("Captured Workflow"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const analysis = await analyzeImage(
+        input.imageBase64,
+        "You are analyzing a workflow screenshot. Describe what the user is doing step by step. " +
+        "Be concise and structured. Output as numbered steps.",
+        { tenantId: ctx.tenantId, userId: ctx.userId, featureName: "workflow_capture" },
+      );
+
+      // Store as a simple paragraph content_json (Tiptap-compatible)
+      const contentJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: analysis }],
+          },
+        ],
+      };
+
+      const [doc] = await ctx.db
+        .insert(documents)
+        .values({
+          tenantId: ctx.tenantId,
+          title: input.title,
+          contentJson,
+          position: 0,
+          createdBy: ctx.userId,
+        })
+        .returning();
+
+      if (!doc) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      EventBus.emit(createEvent({
+        type: "document.created",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        payload: { documentId: doc.id },
+      }));
+
+      return { id: doc.id, title: doc.title, analysis };
     }),
 
   search: protectedProcedure

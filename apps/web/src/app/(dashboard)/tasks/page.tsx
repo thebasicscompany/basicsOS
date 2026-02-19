@@ -1,43 +1,86 @@
-import { db } from "@basicsos/db";
-import { tasks } from "@basicsos/db";
+"use client";
 
-const TasksPage = async (): Promise<JSX.Element> => {
-  let taskList: Array<{ id: string; title: string; status: string; priority: string; dueDate: Date | null }> = [];
-  try {
-    taskList = await db.select({ id: tasks.id, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate }).from(tasks);
-  } catch { /* DB not connected */ }
+import { useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { Button, Plus, CheckSquare, EmptyState, addToast } from "@basicsos/ui";
+import { KanbanColumn } from "./KanbanColumn";
+import { CreateTaskDialog } from "./CreateTaskDialog";
+import type { TaskStatus, Task } from "./types";
 
-  const columns = ["todo", "in-progress", "done"] as const;
-  const colLabels = { "todo": "To Do", "in-progress": "In Progress", "done": "Done" };
-  const colColors = { "todo": "border-gray-300", "in-progress": "border-blue-400", "done": "border-green-400" };
-  const priorityColors: Record<string, string> = { urgent: "text-red-600 bg-red-50", high: "text-orange-600 bg-orange-50", medium: "text-yellow-600 bg-yellow-50", low: "text-gray-600 bg-gray-50" };
+const COLUMNS: { status: TaskStatus; label: string }[] = [
+  { status: "todo", label: "To Do" },
+  { status: "in-progress", label: "In Progress" },
+  { status: "done", label: "Done" },
+];
+
+// Next.js App Router requires default export — framework exception.
+const TasksPage = (): JSX.Element => {
+  const { data, refetch, isLoading } = trpc.tasks.list.useQuery({});
+  const updateTask = trpc.tasks.update.useMutation({
+    onSuccess: () => { void refetch(); },
+    onError: (err) => {
+      addToast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const taskList = (data ?? []) as Task[];
+
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const { taskId, status } = (e as CustomEvent<{ taskId: string; status: TaskStatus }>).detail;
+      updateTask.mutate({ id: taskId, status });
+    };
+    document.addEventListener("task:move", handler);
+    return () => document.removeEventListener("task:move", handler);
+  }, [updateTask]);
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">+ New Task</button>
+        <h1 className="text-2xl font-bold text-stone-900">Tasks</h1>
+        <CreateTaskDialog onCreated={() => void refetch()}>
+          <Button><Plus size={14} className="mr-1" /> New Task</Button>
+        </CreateTaskDialog>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {columns.map(col => (
-          <div key={col}>
-            <div className={`mb-3 border-t-2 pt-3 ${colColors[col]}`}>
-              <h2 className="font-semibold text-gray-700">{colLabels[col]} <span className="ml-1 text-sm text-gray-400">({taskList.filter(t => t.status === col).length})</span></h2>
+
+      {isLoading ? (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {COLUMNS.map(({ status }) => (
+            <div key={status} className="w-72 flex-shrink-0">
+              <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
+                <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 rounded-xl bg-white border border-stone-200 animate-pulse" />
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              {taskList.filter(t => t.status === col).map(task => (
-                <div key={task.id} className="rounded-lg border bg-white p-3 shadow-sm">
-                  <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[task.priority] ?? ""}`}>{task.priority}</span>
-                    {task.dueDate && <span className="text-xs text-gray-500">Due {new Date(task.dueDate).toLocaleDateString()}</span>}
-                  </div>
-                </div>
-              ))}
+          ))}
+        </div>
+      ) : taskList.length === 0 ? (
+        <EmptyState
+          Icon={CheckSquare}
+          heading="No tasks yet"
+          description="Create your first task to get started."
+          action={
+            <CreateTaskDialog onCreated={() => void refetch()}>
+              <Button><Plus size={14} className="mr-1" /> Create Task</Button>
+            </CreateTaskDialog>
+          }
+        />
+      ) : (
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {COLUMNS.map(({ status, label }) => (
+            <div key={status} className="w-72 flex-shrink-0">
+              <KanbanColumn
+                status={status}
+                label={label}
+                tasks={taskList.filter((t) => t.status === status)}
+                onStatusChanged={() => void refetch()}
+              />
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

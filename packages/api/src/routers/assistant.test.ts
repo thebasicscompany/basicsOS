@@ -40,7 +40,8 @@ describe("assistant.chat", () => {
     const caller = assistantRouter.createCaller(buildCtx());
     const history = [{ role: "user" as const, content: "prior" }];
     await caller.chat({ message: "follow-up", history });
-    expect(ragChat).toHaveBeenCalledWith("follow-up", TENANT_ID, history);
+    // ragChat(message, tenantId, history, userId) — userId is 4th arg
+    expect(ragChat).toHaveBeenCalledWith("follow-up", TENANT_ID, history, USER_ID);
   });
 
   it("throws UNAUTHORIZED when tenantId is null", async () => {

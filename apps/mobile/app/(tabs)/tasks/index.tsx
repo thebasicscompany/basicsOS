@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,79 +5,71 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { CheckSquare } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
-
-type Task = { id: string; title: string; status: string; priority: string };
+import { trpc } from "../../../lib/trpc";
+import { colors, radius, shadows } from "../../../lib/tokens";
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: "#ef4444",
+  urgent: colors.destructive,
   high: "#f97316",
-  medium: "#eab308",
-  low: "#6b7280",
+  medium: colors.warning,
+  low: colors.textSecondary,
 };
 
-const DEMO_TASKS: Task[] = [
-  { id: "1", title: "Follow up with GlobalTech", status: "todo", priority: "urgent" },
-  { id: "2", title: "Write Q2 product specs", status: "in-progress", priority: "high" },
-  { id: "3", title: "Set up CI/CD pipeline", status: "done", priority: "high" },
-  { id: "4", title: "Review design mockups", status: "todo", priority: "medium" },
-  { id: "5", title: "Update API documentation", status: "in-progress", priority: "medium" },
-  { id: "6", title: "Fix login bug on mobile", status: "done", priority: "urgent" },
-  { id: "7", title: "Onboard new team member", status: "todo", priority: "low" },
-];
-
-type TaskItemProps = { item: Task };
-
-const TaskItem = ({ item }: TaskItemProps): JSX.Element => (
-  <View style={styles.task}>
-    <View style={styles.taskInfo}>
-      <Text style={[styles.taskTitle, item.status === "done" && styles.done]}>
-        {item.title}
-      </Text>
-      <Text style={styles.statusText}>{item.status.replace("-", " ")}</Text>
-    </View>
-    <View
-      style={[
-        styles.badge,
-        { backgroundColor: PRIORITY_COLORS[item.priority] ?? "#6b7280" },
-      ]}
-    >
-      <Text style={styles.badgeText}>{item.priority}</Text>
-    </View>
-  </View>
-);
-
 const TasksScreen = (): JSX.Element => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tasks, isLoading } = trpc.tasks.list.useQuery({});
 
-  useEffect(() => {
-    const apiUrl =
-      process.env["EXPO_PUBLIC_API_URL"] ?? "http://localhost:3001";
-    fetch(`${apiUrl}/trpc/tasks.list?input={}`)
-      .then((r) => r.json())
-      .then((d: { result?: { data?: Task[] } }) =>
-        setTasks(d.result?.data ?? DEMO_TASKS),
-      )
-      .catch(() => setTasks(DEMO_TASKS))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <Screen title="Tasks">
-        <ActivityIndicator size="large" color="#6366f1" style={styles.loader} />
+        <ActivityIndicator size="large" color={colors.brand} style={styles.loader} />
+      </Screen>
+    );
+  }
+
+  const taskList = tasks ?? [];
+
+  if (taskList.length === 0) {
+    return (
+      <Screen title="Tasks">
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <CheckSquare size={28} color={colors.textPlaceholder} />
+          </View>
+          <Text style={styles.emptyTitle}>No tasks yet</Text>
+          <Text style={styles.emptySubtitle}>Create your first task from the web app.</Text>
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen title="Tasks">
-      <Text style={styles.count}>{tasks.length} tasks</Text>
+      <Text style={styles.count}>{taskList.length} tasks</Text>
       <FlatList
-        data={tasks}
+        data={taskList}
         keyExtractor={(t) => t.id}
-        renderItem={({ item }) => <TaskItem item={item} />}
+        renderItem={({ item }) => (
+          <View style={styles.task}>
+            <View style={styles.taskInfo}>
+              <Text
+                style={[styles.taskTitle, item.status === "done" && styles.done]}
+              >
+                {item.title}
+              </Text>
+              <Text style={styles.statusText}>{item.status.replace("-", " ")}</Text>
+            </View>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: PRIORITY_COLORS[item.priority] ?? colors.textSecondary },
+              ]}
+            >
+              <Text style={styles.badgeText}>{item.priority}</Text>
+            </View>
+          </View>
+        )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         scrollEnabled={false}
       />
@@ -88,21 +79,36 @@ const TasksScreen = (): JSX.Element => {
 
 const styles = StyleSheet.create({
   loader: { marginTop: 40 },
-  count: { fontSize: 13, color: "#6b7280", marginBottom: 12 },
+  count: { fontSize: 13, color: colors.textSecondary, marginBottom: 12 },
   task: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surfaceCard,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   taskInfo: { flex: 1 },
-  taskTitle: { fontSize: 15, fontWeight: "500", color: "#111827" },
-  done: { textDecorationLine: "line-through", color: "#9ca3af" },
-  statusText: { fontSize: 12, color: "#6b7280", marginTop: 2, textTransform: "capitalize" },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  taskTitle: { fontSize: 15, fontWeight: "500", color: colors.textPrimary },
+  done: { textDecorationLine: "line-through", color: colors.textPlaceholder },
+  statusText: { fontSize: 12, color: colors.textSecondary, marginTop: 2, textTransform: "capitalize" },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
   badgeText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   separator: { height: 8 },
+  empty: { alignItems: "center", paddingTop: 60 },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSubtle,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
+  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
 });
 
 export default TasksScreen;

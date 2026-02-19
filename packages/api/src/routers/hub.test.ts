@@ -242,9 +242,9 @@ describe("hub.listIntegrations", () => {
 });
 
 // ---------------------------------------------------------------------------
-// hub.connectIntegration
+// hub.storeOAuthToken (replaces connectIntegration — now stores real tokens)
 // ---------------------------------------------------------------------------
-describe("hub.connectIntegration", () => {
+describe("hub.storeOAuthToken", () => {
   it("inserts a new integration when not already connected", async () => {
     const integration = makeIntegration();
     const db = makeMockDb({
@@ -252,7 +252,7 @@ describe("hub.connectIntegration", () => {
       insertRows: [integration],
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    const result = await caller(ctx).connectIntegration({ service: "slack" });
+    const result = await caller(ctx).storeOAuthToken({ service: "slack", accessToken: "xoxb-test" });
     expect(result).toMatchObject({ service: "slack", tenantId: TENANT_ID });
     expect(db.insert).toHaveBeenCalledOnce();
   });
@@ -265,7 +265,7 @@ describe("hub.connectIntegration", () => {
       updateRows: [updated],
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    const result = await caller(ctx).connectIntegration({ service: "slack" });
+    const result = await caller(ctx).storeOAuthToken({ service: "slack", accessToken: "xoxb-test" });
     expect(result).toMatchObject({ service: "slack" });
     expect(db.update).toHaveBeenCalledOnce();
     expect(db.insert).not.toHaveBeenCalled();

@@ -1,34 +1,125 @@
-import { db } from "@basicsos/db";
-import { meetings, meetingSummaries } from "@basicsos/db";
-import { eq } from "drizzle-orm";
+"use client";
 
-const MeetingsPage = async (): Promise<JSX.Element> => {
-  let meetingList: Array<{ id: string; title: string; startedAt: Date | null; endedAt: Date | null }> = [];
-  try {
-    meetingList = await db.select({ id: meetings.id, title: meetings.title, startedAt: meetings.startedAt, endedAt: meetings.endedAt }).from(meetings);
-  } catch { /* DB not connected */ }
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { trpc } from "@/lib/trpc";
+import { addToast } from "@basicsos/ui";
+import {
+  Button,
+  Badge,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  Input,
+  Label,
+  Plus,
+  Video,
+  EmptyState,
+} from "@basicsos/ui";
+
+const CreateMeetingDialog = ({ onCreated }: { onCreated?: (id: string) => void }): JSX.Element => {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+
+  const createMeeting = trpc.meetings.create.useMutation({
+    onSuccess: (meeting) => {
+      setOpen(false);
+      setTitle("");
+      onCreated?.(meeting.id);
+    },
+    onError: (err) => {
+      addToast({ title: "Failed to create meeting", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    createMeeting.mutate({ title: title.trim() });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button><Plus size={14} className="mr-1" /> New Meeting</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Meeting</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="meeting-title">Title</Label>
+            <Input
+              id="meeting-title"
+              placeholder="Meeting title..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={createMeeting.isPending}>
+              {createMeeting.isPending ? "Creating..." : "Create Meeting"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Next.js App Router requires default export — framework exception.
+const MeetingsPage = (): JSX.Element => {
+  const router = useRouter();
+  const { data: meetingList } = trpc.meetings.list.useQuery({ limit: 50 });
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
-        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">+ New Meeting</button>
+      <div className="mb-6 flex items-center gap-3 justify-between">
+        <h1 className="text-2xl font-bold text-stone-900">Meetings</h1>
+        <CreateMeetingDialog onCreated={(id) => router.push(`/meetings/${id}`)} />
       </div>
-      {meetingList.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">🎯</div>
-          <p className="text-gray-500">No meetings recorded yet.</p>
-        </div>
+      {(meetingList ?? []).length === 0 ? (
+        <EmptyState
+          Icon={Video}
+          heading="No meetings recorded yet"
+          description="Create a meeting to start capturing notes and summaries."
+          action={<CreateMeetingDialog onCreated={(id) => router.push(`/meetings/${id}`)} />}
+        />
       ) : (
         <div className="space-y-3">
-          {meetingList.map(m => (
-            <a key={m.id} href={`/meetings/${m.id}`} className="rounded-xl border bg-white p-5 hover:shadow-sm transition block">
+          {(meetingList ?? []).map((m) => (
+            <a
+              key={m.id}
+              href={`/meetings/${m.id}`}
+              className="block rounded-xl border border-stone-200 bg-white p-5 hover:shadow-sm hover:border-stone-300 transition-all"
+            >
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{m.title}</h3>
-                  {m.startedAt && <p className="mt-1 text-sm text-gray-500">{new Date(m.startedAt).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>}
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 mt-0.5">
+                    <Video size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-stone-900">{m.title}</h3>
+                    {m.startedAt !== null && (
+                      <p className="mt-1 text-sm text-stone-500">
+                        {new Date(m.startedAt).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">Completed</span>
+                <Badge variant="success">Completed</Badge>
               </div>
             </a>
           ))}

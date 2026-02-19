@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@basicsos/api": "workspace:*",
+    "@basicsos/auth": "workspace:*",
     "@basicsos/shared": "workspace:*",
     "@basicsos/ui": "workspace:*",
     "@hocuspocus/provider": "^3.4.4",
@@ -28,7 +29,9 @@
     "@tiptap/starter-kit": "^3.19.0",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
+    "better-auth": "^1.0.0",
     "next": "^15.0.0",
+    "stripe": "^17.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "yjs": "^13.6.0"

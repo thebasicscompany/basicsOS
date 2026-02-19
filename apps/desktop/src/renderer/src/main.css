@@ -1,1 +1,18 @@
 @import "tailwindcss";
+@import "@basicsos/ui/tokens.css";
+
+/* Overlay font smoothing */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions by default */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Primary color for overlay */
+:root {
+  --primary: #6366f1;
+}

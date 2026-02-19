@@ -1,12 +1,61 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
 :root {
-  --background: 0 0% 100%;
-  --foreground: 224 71.4% 4.1%;
-  --accent: 220.9 39.3% 11%;
-  --accent-foreground: 210 20% 98%;
-  --muted: 220 14.3% 95.9%;
-  --muted-foreground: 220 8.9% 46.1%;
-  --border: 220 13% 91%;
-  --radius: 0.5rem;
+  /* Warm stone palette — Notion/Arc inspired */
+  --background: 30 14% 98%;
+  --foreground: 24 10% 10%;
+  --accent: 30 6% 90%;
+  --accent-foreground: 24 10% 10%;
+  --muted: 30 6% 96%;
+  --muted-foreground: 25 5% 45%;
+  --border: 30 6% 90%;
+  --radius: 0.75rem;
+  /* Primary = indigo-600 */
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+}
+
+.dark {
+  --background: 24 10% 6%;
+  --foreground: 30 14% 98%;
+  --accent: 24 6% 15%;
+  --accent-foreground: 30 14% 98%;
+  --muted: 24 6% 15%;
+  --muted-foreground: 25 5% 64%;
+  --border: 24 6% 20%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
 }

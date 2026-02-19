@@ -76,7 +76,7 @@ const STUB_SUMMARY: SummaryJson = {
   decisions: [],
   actionItems: [],
   followUps: [],
-  note: "Processing stub - LLM integration in Task 21",
+  note: "Meeting summary pending processing. Configure AI_API_KEY to enable LLM summarization.",
 };
 
 // ---------------------------------------------------------------------------
@@ -234,8 +234,8 @@ export const meetingsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
       }
 
-      // Insert stub summary immediately (Phase 1 — no LLM yet).
-      // The worker will UPDATE this record with real LLM output in Task 21.
+      // Insert stub summary immediately.
+      // The worker will UPDATE this record with real LLM output when AI_API_KEY is configured.
       const [summary] = await ctx.db
         .insert(meetingSummaries)
         .values({
@@ -249,7 +249,7 @@ export const meetingsRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       }
 
-      // Enqueue worker to update the summary with real LLM output (Task 21).
+      // Enqueue worker to update the summary with real LLM output.
       // Worker reads the summaryId and UPDATEs the existing row.
       await meetingProcessorQueue.add("process-meeting", {
         tenantId: ctx.tenantId,
@@ -270,7 +270,7 @@ export const meetingsRouter = router({
         }),
       );
 
-      // Action items are extracted by the LLM worker (Task 21).
+      // Action items are extracted by the LLM worker.
       // When the worker runs, it will create tasks linked to this meeting via
       // sourceType='meeting', sourceId=meetingId using the tasks router.
 
@@ -350,5 +350,34 @@ export const meetingsRouter = router({
         const message = err instanceof Error ? err.message : String(err);
         return { transcript: null, message, configured: true };
       }
+    }),
+
+  /**
+   * Returns the most recent transcript chunks for a meeting.
+   * Used by the overlay's live Meeting Notes view (polled every 3–5s).
+   */
+  getTranscript: protectedProcedure
+    .input(z.object({
+      meetingId: z.string().uuid(),
+      limit: z.number().int().min(1).max(200).default(50),
+    }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      // Verify the meeting belongs to this tenant
+      const [meeting] = await ctx.db
+        .select({ id: meetings.id })
+        .from(meetings)
+        .where(and(eq(meetings.id, input.meetingId), eq(meetings.tenantId, ctx.tenantId)));
+      if (!meeting) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const chunks = await ctx.db
+        .select({ speaker: transcripts.speaker, text: transcripts.text, timestampMs: transcripts.timestampMs })
+        .from(transcripts)
+        .where(eq(transcripts.meetingId, input.meetingId))
+        .orderBy(transcripts.timestampMs)
+        .limit(input.limit);
+
+      return chunks;
     }),
 });

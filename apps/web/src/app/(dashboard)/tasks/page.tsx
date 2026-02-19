@@ -1,16 +1,21 @@
-import { db } from "@basicsos/db";
-import { tasks } from "@basicsos/db";
+"use client";
 
-const TasksPage = async (): Promise<JSX.Element> => {
-  let taskList: Array<{ id: string; title: string; status: string; priority: string; dueDate: Date | null }> = [];
-  try {
-    taskList = await db.select({ id: tasks.id, title: tasks.title, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate }).from(tasks);
-  } catch { /* DB not connected */ }
+import { trpc } from "@/lib/trpc";
 
-  const columns = ["todo", "in-progress", "done"] as const;
-  const colLabels = { "todo": "To Do", "in-progress": "In Progress", "done": "Done" };
-  const colColors = { "todo": "border-gray-300", "in-progress": "border-blue-400", "done": "border-green-400" };
-  const priorityColors: Record<string, string> = { urgent: "text-red-600 bg-red-50", high: "text-orange-600 bg-orange-50", medium: "text-yellow-600 bg-yellow-50", low: "text-gray-600 bg-gray-50" };
+const columns = ["todo", "in-progress", "done"] as const;
+const colLabels: Record<string, string> = { "todo": "To Do", "in-progress": "In Progress", "done": "Done" };
+const colColors: Record<string, string> = { "todo": "border-gray-300", "in-progress": "border-blue-400", "done": "border-green-400" };
+const priorityColors: Record<string, string> = { urgent: "text-red-600 bg-red-50", high: "text-orange-600 bg-orange-50", medium: "text-yellow-600 bg-yellow-50", low: "text-gray-600 bg-gray-50" };
+
+// Next.js App Router requires default exports for page segments.
+const TasksPage = (): JSX.Element => {
+  const { data: taskList, isLoading } = trpc.tasks.list.useQuery({});
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-gray-400">Loading Tasks...</div>;
+  }
+
+  const tasks = taskList ?? [];
 
   return (
     <div>
@@ -22,10 +27,12 @@ const TasksPage = async (): Promise<JSX.Element> => {
         {columns.map(col => (
           <div key={col}>
             <div className={`mb-3 border-t-2 pt-3 ${colColors[col]}`}>
-              <h2 className="font-semibold text-gray-700">{colLabels[col]} <span className="ml-1 text-sm text-gray-400">({taskList.filter(t => t.status === col).length})</span></h2>
+              <h2 className="font-semibold text-gray-700">
+                {colLabels[col]} <span className="ml-1 text-sm text-gray-400">({tasks.filter(t => t.status === col).length})</span>
+              </h2>
             </div>
             <div className="space-y-2">
-              {taskList.filter(t => t.status === col).map(task => (
+              {tasks.filter(t => t.status === col).map(task => (
                 <div key={task.id} className="rounded-lg border bg-white p-3 shadow-sm">
                   <div className="text-sm font-medium text-gray-900">{task.title}</div>
                   <div className="mt-2 flex items-center gap-2">

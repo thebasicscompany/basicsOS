@@ -5,12 +5,12 @@ import { useState } from "react";
 // Detect whether we're running inside Electron with the preload bridge exposed.
 const isElectron =
   typeof window !== "undefined" &&
-  typeof (window as Record<string, unknown>).electronIPC !== "undefined";
+  typeof (window as unknown as Record<string, unknown>).electronIPC !== "undefined";
 
 const sendIPC = (channel: string, ...args: unknown[]): void => {
   if (!isElectron) return;
   (
-    window as Record<string, { send?: (ch: string, ...a: unknown[]) => void }>
+    window as unknown as Record<string, { send?: (ch: string, ...a: unknown[]) => void }>
   ).electronIPC?.send?.(channel, ...args);
 };
 

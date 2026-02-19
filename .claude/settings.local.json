@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(pnpm --filter @basicos/shared test:*)",
+      "Bash(pnpm --filter @basicsos/shared test:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm --filter @basicsos/api test:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(node --version:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(docker --version:*)",
+      "Bash(pnpm build)"
+    ]
+  }
+}

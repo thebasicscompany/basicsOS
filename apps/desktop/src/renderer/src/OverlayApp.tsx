@@ -1,27 +1,14 @@
-"use client";
-
 import { useState, useEffect, useRef, useCallback } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpcCall } from "./api";
 
-// Next.js App Router requires default export — framework exception.
-// Detect whether we're running inside Electron with the preload bridge exposed.
-const isElectron =
-  typeof window !== "undefined" &&
-  typeof (window as unknown as Record<string, unknown>).electronAPI !== "undefined";
+// ---------------------------------------------------------------------------
+// IPC helpers
+// ---------------------------------------------------------------------------
 
-type ElectronIPC = {
-  send: (channel: string, ...args: unknown[]) => void;
-  injectText?: (text: string) => Promise<void>;
-  captureScreen?: () => Promise<string>;
-};
-
-const getIPC = (): ElectronIPC | null => {
-  if (!isElectron) return null;
-  return (window as unknown as { electronAPI: ElectronIPC }).electronAPI;
-};
+const getIPC = (): Window["electronAPI"] | undefined => window.electronAPI;
 
 const sendIPC = (channel: string, ...args: unknown[]): void => {
-  getIPC()?.send(channel, ...args);
+  window.electronAPI?.send(channel, ...args);
 };
 
 // ---------------------------------------------------------------------------
@@ -82,33 +69,50 @@ const detectCommand = (text: string): VoiceCommand => {
 
 const AskTab = (): JSX.Element => {
   const [query, setQuery] = useState("");
-  const chatMutation = trpc.assistant.chat.useMutation();
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
-  const handleAsk = (e: React.FormEvent): void => {
+  const handleAsk = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!query.trim() || chatMutation.isPending) return;
-    chatMutation.mutate({ message: query.trim(), history: [] });
+    if (!query.trim() || loading) return;
+    setLoading(true);
+    setAnswer(null);
+    try {
+      const result = await trpcCall<{ answer: string }>("assistant.chat", {
+        message: query.trim(),
+        history: [],
+      });
+      setAnswer(result.answer);
+    } catch (err: unknown) {
+      setAnswer(err instanceof Error ? `Error: ${err.message}` : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loading = chatMutation.isPending;
-  const answer = chatMutation.data?.answer ?? null;
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
-
   const quickActions = [
-    { label: "New Task", icon: "✅", href: `${appUrl}/tasks` },
-    { label: "CRM", icon: "🤝", href: `${appUrl}/crm` },
-    { label: "Meetings", icon: "🎯", href: `${appUrl}/meetings` },
-    { label: "Knowledge", icon: "📚", href: `${appUrl}/knowledge` },
+    { label: "New Task", icon: "✅", path: "/tasks" },
+    { label: "CRM", icon: "🤝", path: "/crm" },
+    { label: "Meetings", icon: "🎯", path: "/meetings" },
+    { label: "Knowledge", icon: "📚", path: "/knowledge" },
   ];
+
+  const openInMain = (path: string): void => {
+    sendIPC("navigate-main", path);
+  };
 
   return (
     <>
-      <form onSubmit={handleAsk} className="px-4 pb-3">
+      <form onSubmit={(e) => void handleAsk(e)} className="px-4 pb-3">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+            🔍
+          </span>
           <input
             ref={inputRef}
             value={query}
@@ -135,30 +139,28 @@ const AskTab = (): JSX.Element => {
         <div className="text-xs font-medium text-white/40 uppercase mb-2">Quick Actions</div>
         <div className="grid grid-cols-2 gap-2">
           {quickActions.map((action) => (
-            <a
+            <button
               key={action.label}
-              href={action.href}
-              target="_blank"
-              rel="noreferrer"
+              type="button"
+              onClick={() => openInMain(action.path)}
               className="flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2.5 text-sm font-medium transition"
             >
               <span>{action.icon}</span>
               <span>{action.label}</span>
-            </a>
+            </button>
           ))}
         </div>
       </div>
 
       <div className="px-4 pb-4">
-        <a
-          href={appUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-between rounded-xl bg-indigo-600/40 hover:bg-indigo-600/60 px-4 py-3 text-sm font-medium transition"
+        <button
+          type="button"
+          onClick={() => openInMain("/")}
+          className="w-full flex items-center justify-between rounded-xl bg-indigo-600/40 hover:bg-indigo-600/60 px-4 py-3 text-sm font-medium transition"
         >
           <span>Open Basics OS Dashboard</span>
           <span className="text-white/60">→</span>
-        </a>
+        </button>
       </div>
     </>
   );
@@ -171,19 +173,43 @@ const AskTab = (): JSX.Element => {
 type Meeting = {
   id: string;
   title: string;
-  startedAt: Date | null;
-  endedAt: Date | null;
+  startedAt: Date | string | null;
+  endedAt: Date | string | null;
 };
 
 type TranscriptChunk = { speaker: string; text: string; timestampMs: number };
 
-const LiveTranscriptPanel = ({ meetingId, title }: { meetingId: string; title: string }): JSX.Element => {
+const LiveTranscriptPanel = ({
+  meetingId,
+  title,
+}: {
+  meetingId: string;
+  title: string;
+}): JSX.Element => {
   const transcriptRef = useRef<HTMLDivElement>(null);
-  const { data: chunks = [] } = trpc.meetings.getTranscript.useQuery(
-    { meetingId, limit: 50 },
-    { refetchInterval: 3000 },
-  );
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
+  const [chunks, setChunks] = useState<TranscriptChunk[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async (): Promise<void> => {
+      try {
+        const data = await trpcCall<TranscriptChunk[]>(
+          "meetings.getTranscript",
+          { meetingId, limit: 50 },
+          "query",
+        );
+        if (!cancelled) setChunks(data);
+      } catch {
+        // ignore polling errors
+      }
+    };
+    void poll();
+    const interval = setInterval(() => void poll(), 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [meetingId]);
 
   // Auto-scroll to bottom as new chunks arrive
   useEffect(() => {
@@ -196,23 +222,24 @@ const LiveTranscriptPanel = ({ meetingId, title }: { meetingId: string; title: s
       <div className="flex items-center justify-between px-3 py-2 border-b border-red-500/20">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-xs font-semibold text-red-300 truncate max-w-[160px]">{title}</span>
+          <span className="text-xs font-semibold text-red-300 truncate max-w-[160px]">
+            {title}
+          </span>
         </div>
-        <a
-          href={`${appUrl}/meetings/${meetingId}`}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={() => sendIPC("navigate-main", `/meetings/${meetingId}`)}
           className="text-xs text-indigo-400 hover:underline shrink-0"
         >
           Open →
-        </a>
+        </button>
       </div>
 
       <div ref={transcriptRef} className="px-3 py-2 max-h-36 overflow-y-auto space-y-1">
-        {(chunks as TranscriptChunk[]).length === 0 ? (
+        {chunks.length === 0 ? (
           <p className="text-xs text-white/30 italic">Waiting for transcript…</p>
         ) : (
-          (chunks as TranscriptChunk[]).map((chunk, i) => (
+          chunks.map((chunk, i) => (
             <div key={i} className="text-xs leading-relaxed">
               <span className="font-semibold text-indigo-300">{chunk.speaker}: </span>
               <span className="text-white/70">{chunk.text}</span>
@@ -225,11 +252,29 @@ const LiveTranscriptPanel = ({ meetingId, title }: { meetingId: string; title: s
 };
 
 const MeetingsTab = (): JSX.Element => {
-  const { data, isLoading } = trpc.meetings.list.useQuery(
-    { limit: 5 },
-    { refetchInterval: 5000 },
-  );
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async (): Promise<void> => {
+      try {
+        const data = await trpcCall<Meeting[]>("meetings.list", { limit: 5 }, "query");
+        if (!cancelled) {
+          setMeetings(data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    void poll();
+    const interval = setInterval(() => void poll(), 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -239,29 +284,26 @@ const MeetingsTab = (): JSX.Element => {
     );
   }
 
-  const meetingList = (data ?? []) as Meeting[];
-  const liveMeeting = meetingList.find((m) => m.startedAt !== null && m.endedAt === null);
+  const liveMeeting = meetings.find((m) => m.startedAt !== null && m.endedAt === null);
 
-  if (meetingList.length === 0) {
+  if (meetings.length === 0) {
     return (
       <div className="px-4 py-6 text-center text-white/40 text-sm">
         No recent meetings.
         <br />
-        <a
-          href={`${appUrl}/meetings/new`}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={() => sendIPC("navigate-main", "/meetings/new")}
           className="text-indigo-400 hover:underline mt-2 inline-block"
         >
           Start one →
-        </a>
+        </button>
       </div>
     );
   }
 
   return (
     <div className="pb-4 space-y-2">
-      {/* Live transcript panel — shown when a meeting is in progress */}
       {liveMeeting && (
         <LiveTranscriptPanel meetingId={liveMeeting.id} title={liveMeeting.title} />
       )}
@@ -270,16 +312,15 @@ const MeetingsTab = (): JSX.Element => {
         <div className="text-xs font-medium text-white/40 uppercase mb-2">
           {liveMeeting ? "Other Meetings" : "Recent Meetings"}
         </div>
-        {meetingList.map((m) => {
+        {meetings.map((m) => {
           const when = m.startedAt ? new Date(m.startedAt).toLocaleDateString() : "No date";
           const isLive = m.startedAt !== null && m.endedAt === null;
           return (
-            <a
+            <button
               key={m.id}
-              href={`${appUrl}/meetings/${m.id}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-start gap-3 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-3 transition"
+              type="button"
+              onClick={() => sendIPC("navigate-main", `/meetings/${m.id}`)}
+              className="w-full flex items-start gap-3 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-3 transition text-left"
             >
               <span className="text-lg mt-0.5">{isLive ? "🔴" : "🎯"}</span>
               <div className="min-w-0 flex-1">
@@ -296,33 +337,34 @@ const MeetingsTab = (): JSX.Element => {
                 </div>
               </div>
               <span className="ml-auto text-white/30 text-sm self-center">→</span>
-            </a>
+            </button>
           );
         })}
-        <a
-          href={`${appUrl}/meetings`}
-          target="_blank"
-          rel="noreferrer"
-          className="block text-center text-xs text-indigo-400 hover:underline pt-1"
+        <button
+          type="button"
+          onClick={() => sendIPC("navigate-main", "/meetings")}
+          className="block w-full text-center text-xs text-indigo-400 hover:underline pt-1"
         >
           View all meetings →
-        </a>
+        </button>
       </div>
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// CaptureTab — Workflow Capture (Electron only)
+// CaptureTab — Workflow Capture
 // ---------------------------------------------------------------------------
 
 const CaptureTab = (): JSX.Element => {
-  const [status, setStatus] = useState<"idle" | "capturing" | "analyzing" | "done" | "error">("idle");
-  const [result, setResult] = useState<{ id: string; title: string; analysis: string } | null>(null);
+  const [status, setStatus] = useState<"idle" | "capturing" | "analyzing" | "done" | "error">(
+    "idle",
+  );
+  const [result, setResult] = useState<{ id: string; title: string; analysis: string } | null>(
+    null,
+  );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [customTitle, setCustomTitle] = useState("Captured Workflow");
-  const createFromCapture = trpc.knowledge.createFromCapture.useMutation();
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
 
   const handleCapture = async (): Promise<void> => {
     const ipc = getIPC();
@@ -339,10 +381,10 @@ const CaptureTab = (): JSX.Element => {
     try {
       const base64 = await ipc.captureScreen();
       setStatus("analyzing");
-      const doc = await createFromCapture.mutateAsync({
-        imageBase64: base64,
-        title: customTitle.trim() || "Captured Workflow",
-      });
+      const doc = await trpcCall<{ id: string; title: string; analysis: string }>(
+        "knowledge.createFromCapture",
+        { imageBase64: base64, title: customTitle.trim() || "Captured Workflow" },
+      );
       setResult(doc);
       setStatus("done");
     } catch (err: unknown) {
@@ -355,8 +397,8 @@ const CaptureTab = (): JSX.Element => {
     <div className="px-4 pb-4 space-y-3">
       <div className="text-xs font-medium text-white/40 uppercase">Workflow Capture</div>
       <p className="text-xs text-white/30 leading-relaxed">
-        Take a screenshot of your current workflow. Claude will describe what&apos;s happening
-        and save it to your Knowledge Base.
+        Take a screenshot of your current workflow. Claude will describe what&apos;s happening and
+        save it to your Knowledge Base.
       </p>
 
       <div className="flex flex-col gap-1.5">
@@ -380,22 +422,21 @@ const CaptureTab = (): JSX.Element => {
         {status === "idle" || status === "done" || status === "error"
           ? "📸 Capture Screen Now"
           : status === "capturing"
-          ? "Capturing…"
-          : "Analyzing with Claude…"}
+            ? "Capturing…"
+            : "Analyzing with Claude…"}
       </button>
 
       {status === "done" && result && (
         <div className="rounded-xl bg-white/10 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-green-400">✅ Saved to Knowledge Base</span>
-            <a
-              href={`${appUrl}/knowledge`}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => sendIPC("navigate-main", "/knowledge")}
               className="text-xs text-indigo-400 hover:underline"
             >
               View →
-            </a>
+            </button>
           </div>
           <p className="text-xs text-white/60 line-clamp-4">{result.analysis}</p>
         </div>
@@ -405,12 +446,6 @@ const CaptureTab = (): JSX.Element => {
         <div className="rounded-xl bg-red-500/20 border border-red-500/30 px-3 py-2 text-xs text-red-300">
           {errorMsg}
         </div>
-      )}
-
-      {!isElectron && (
-        <p className="text-xs text-white/20 text-center italic">
-          Screen capture is only available in the Electron desktop app.
-        </p>
       )}
     </div>
   );
@@ -453,11 +488,10 @@ const VoiceTab = (): JSX.Element => {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  // Keep mode ref so callbacks always see current mode without stale closure
   const modeRef = useRef<WisprMode>(mode);
-  useEffect(() => { modeRef.current = mode; }, [mode]);
-
-  const createTask = trpc.tasks.create.useMutation();
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const isSpeechSupported =
     typeof window !== "undefined" &&
@@ -470,7 +504,6 @@ const VoiceTab = (): JSX.Element => {
     setInterimText("");
   }, []);
 
-  // Handle a final transcript segment
   const handleFinalSegment = useCallback(
     async (text: string): Promise<void> => {
       const trimmed = text.trim();
@@ -496,26 +529,24 @@ const VoiceTab = (): JSX.Element => {
         if (cmd.type === "create_task") {
           setStatus(`Creating task: "${cmd.title}"…`);
           try {
-            await createTask.mutateAsync({ title: cmd.title, description: "" });
+            await trpcCall("tasks.create", { title: cmd.title, description: "" });
             setStatus(`✅ Task created: "${cmd.title}"`);
           } catch {
             setStatus("❌ Failed to create task");
           }
           setTimeout(() => setStatus(null), 3000);
         } else if (cmd.type === "navigate") {
-          const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
-          sendIPC("navigate-main", `${appUrl}${cmd.url}`);
+          sendIPC("navigate-main", cmd.url);
           setStatus(`→ Opened ${cmd.module}`);
           setTimeout(() => setStatus(null), 1500);
         } else if (cmd.type === "search") {
-          const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
-          sendIPC("navigate-main", `${appUrl}/knowledge?q=${encodeURIComponent(cmd.query)}`);
+          sendIPC("navigate-main", `/knowledge?q=${encodeURIComponent(cmd.query)}`);
           setStatus(`🔍 Searching "${cmd.query}"…`);
           setTimeout(() => setStatus(null), 1500);
         }
       }
     },
-    [createTask],
+    [],
   );
 
   const startListening = useCallback((): void => {
@@ -550,10 +581,13 @@ const VoiceTab = (): JSX.Element => {
 
     recognition.onend = () => {
       setInterimText("");
-      // In command mode, auto-restart so we keep listening for the next command
       if (modeRef.current === "command" && recognitionRef.current !== null) {
         setTimeout(() => {
-          try { recognition.start(); } catch { /* already started */ }
+          try {
+            recognition.start();
+          } catch {
+            /* already started */
+          }
         }, 300);
       } else {
         setIsListening(false);
@@ -565,7 +599,9 @@ const VoiceTab = (): JSX.Element => {
     setIsListening(true);
   }, [stopListening, handleFinalSegment]);
 
-  useEffect(() => () => { recognitionRef.current?.stop(); }, []);
+  useEffect(() => () => {
+    recognitionRef.current?.stop();
+  }, []);
 
   if (!isSpeechSupported) {
     return (
@@ -605,9 +641,7 @@ const VoiceTab = (): JSX.Element => {
       {/* Mode hint */}
       <p className="text-xs text-white/30 text-center leading-relaxed">
         {mode === "dictate"
-          ? isElectron
-            ? "Speech is injected into the active text field"
-            : "Speak, then copy the text below"
+          ? "Speech is injected into the active text field"
           : 'Say: "create task …", "open meetings", "search …"'}
       </p>
 
@@ -647,8 +681,8 @@ const VoiceTab = (): JSX.Element => {
         </div>
       )}
 
-      {/* Transcript (dictate + non-Electron fallback) */}
-      {displayText && mode === "dictate" && !isElectron && (
+      {/* Transcript (dictate fallback — only shown when injectText is unavailable) */}
+      {displayText && mode === "dictate" && !getIPC()?.injectText && (
         <div className="rounded-xl bg-white/10 p-3 text-sm text-white/80 min-h-[60px] max-h-28 overflow-y-auto">
           {transcript}
           {interimText && <span className="text-white/40">{interimText}</span>}
@@ -660,18 +694,6 @@ const VoiceTab = (): JSX.Element => {
           {error}
         </div>
       )}
-
-      {/* Copy to clipboard — non-Electron fallback */}
-      {mode === "dictate" && !isElectron && (
-        <button
-          onClick={() => { navigator.clipboard.writeText(displayText).catch(() => undefined); }}
-          disabled={!displayText}
-          className="w-full rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-sm font-medium transition"
-          type="button"
-        >
-          📋 Copy to Clipboard
-        </button>
-      )}
     </div>
   );
 };
@@ -680,20 +702,15 @@ const VoiceTab = (): JSX.Element => {
 // Root overlay
 // ---------------------------------------------------------------------------
 
-const OverlayPage = (): JSX.Element => {
+export const OverlayApp = (): JSX.Element => {
   const [tab, setTab] = useState<Tab>("ask");
 
-  // Defense-in-depth: prevent client-side navigation away from /overlay
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent): void => {
-      e.preventDefault();
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, []);
-
-  const handleMouseEnter = (): void => { sendIPC("set-ignore-mouse", false); };
-  const handleMouseLeave = (): void => { sendIPC("set-ignore-mouse", true); };
+  const handleMouseEnter = (): void => {
+    sendIPC("set-ignore-mouse", false);
+  };
+  const handleMouseLeave = (): void => {
+    sendIPC("set-ignore-mouse", true);
+  };
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "ask", label: "Ask", icon: "🔍" },
@@ -748,5 +765,3 @@ const OverlayPage = (): JSX.Element => {
     </div>
   );
 };
-
-export default OverlayPage;

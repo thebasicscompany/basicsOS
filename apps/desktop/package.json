@@ -3,19 +3,32 @@
   "version": "0.0.1",
   "private": true,
   "description": "BasicOS desktop app (Electron v33)",
-  "main": "dist/main/index.js",
+  "main": "out/main/index.js",
   "scripts": {
-    "dev": "tsc && electron dist/main/index.js",
-    "build": "tsc --noEmit && echo 'build ok'",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "rm -rf dist out"
+    "clean": "rm -rf out dist"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^4.0.0",
+    "electron-updater": "^6.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@basicsos/config": "workspace:*",
+    "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "electron": "^40.4.1",
     "electron-builder": "^26.7.0",
+    "electron-vite": "^3.0.0",
+    "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

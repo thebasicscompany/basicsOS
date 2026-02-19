@@ -14,14 +14,14 @@
 - Types and interfaces in `packages/shared/src/types/`
 
 ## API Patterns
-- All tRPC procedures use `protectedProcedure` (requires auth) or `adminProcedure`
+- tRPC procedure tiers: `protectedProcedure` (auth required), `memberProcedure` (auth + tenantId), `adminProcedure` (auth + tenantId + admin role)
 - Input validated with Zod schemas from `packages/shared/validators/`
 - Procedures emit events to Event Bus on mutations
 - Never manually filter by tenant_id — RLS handles it at DB level
 
 ## Event Pattern
 ```ts
-EventBus.emit({ type: "crm.deal.stage_changed", tenant_id, user_id, payload: { dealId, from, to } });
+EventBus.emit(createEvent({ type: "crm.deal.stage_changed", tenantId: ctx.tenantId, userId: ctx.userId, payload: { dealId, from, to } }));
 ```
 
 ## Naming

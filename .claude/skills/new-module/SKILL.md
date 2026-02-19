@@ -58,7 +58,7 @@ export const appRouter = router({ ..., myItems: myItemsRouter });
 Create `apps/web/src/app/(dashboard)/[name]/page.tsx`.
 See [@.claude/skills/new-view](../new-view/SKILL.md) for patterns.
 
-Add to sidebar in `apps/web/src/app/(dashboard)/layout.tsx`.
+Add to sidebar in `apps/web/src/app/(dashboard)/NavClient.tsx` — add entry to `NAV_ITEMS` array.
 
 ### Layer 5: Context File
 Create `context/modules/[name].context.md` explaining:
@@ -72,7 +72,7 @@ Create `context/modules/[name].context.md` explaining:
 
 Add to `BUILT_IN_MODULES` in `packages/api/src/routers/modules.ts`:
 ```ts
-{ name: "my-items", displayName: "My Items", description: "...", icon: "📦", activeByDefault: true }
+{ name: "my-items", displayName: "My Items", description: "...", icon: "Package", activeByDefault: true }
 ```
 
 ## Adding an MCP Tool

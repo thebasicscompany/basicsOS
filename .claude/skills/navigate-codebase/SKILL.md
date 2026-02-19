@@ -155,7 +155,7 @@ MCP     → system caller (no user auth, uses MCP_TENANT_ID)
 | Router | `packages/api/src/routers/index.ts` (add to `appRouter`) |
 | Schema table | `packages/db/src/schema/index.ts` (re-export) |
 | Worker listener | `packages/api/src/dev.ts` (call `registerXxxListener()`) |
-| Sidebar link | `packages/ui/src/components/Sidebar.tsx` |
+| Sidebar link | `apps/web/src/app/(dashboard)/NavClient.tsx` (add to `NAV_ITEMS` array) |
 | MCP tool | `apps/mcp/company/src/server.ts` |
 | Built-in module | `BUILT_IN_MODULES` in `packages/api/src/routers/modules.ts` |
 | Env var | `.env.example` + `context/infrastructure/deployment.context.md` |
@@ -187,7 +187,6 @@ Before writing any code, confirm you're following these:
 | **Platforms** | `context/platforms/web.context.md` | 171 | Next.js 15, route protection, tRPC hooks, admin panel |
 | **Platforms** | `context/platforms/desktop.context.md` | 139 | Electron, electron-vite, overlay, IPC, auto-updates |
 | **Platforms** | `context/platforms/mobile.context.md` | 152 | Expo SDK 54, auth flow, push notifications, EAS |
-| **Platforms** | `context/platforms/mcp.context.md` | 34 | MCP servers, tool registration, transports |
 | **Platforms** | `context/platforms/mcp.context.md` | 34 | MCP servers, tool registration, transports |
 | **Modules** | `context/modules/knowledge-base.context.md` | 40 | Documents, embeddings, RAG, real-time sync |
 | **Modules** | `context/modules/crm.context.md` | 30 | Contacts, companies, deals, pipeline |

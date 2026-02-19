@@ -22,15 +22,11 @@ const MyModulePage = async (): Promise<JSX.Element> => {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Module</h1>
-        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-          + New
-        </button>
+        <h1 className="text-2xl font-bold text-stone-900">My Module</h1>
+        <Button><Plus size={14} className="mr-1" /> New Item</Button>
       </div>
       {rows.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <p className="text-gray-500">No items yet.</p>
-        </div>
+        <EmptyState Icon={Package} heading="No items yet" description="Create your first item." />
       ) : (
         <div className="space-y-2">
           {rows.map((row) => (
@@ -50,12 +46,12 @@ export default MyModulePage;
 
 ## Add to Sidebar Navigation
 
-Edit `apps/web/src/app/(dashboard)/layout.tsx`:
+Edit `apps/web/src/app/(dashboard)/NavClient.tsx` — add an entry to the `NAV_ITEMS` array:
 ```ts
-const NAV = [
-  ...,
-  { label: "My Module", href: "/my-module", icon: "🔧" },
-];
+import { Wrench } from "lucide-react";
+
+// In NAV_ITEMS: SidebarItem[]
+{ label: "My Module", href: "/my-module", icon: Wrench },
 ```
 
 ## Client Component (needs interactivity)
@@ -93,9 +89,9 @@ const MyClientComponent = (): JSX.Element => {
   const createMutation = trpc.myModule.create.useMutation();
 
   return (
-    <button onClick={() => createMutation.mutate({ name: "New Item" })}>
+    <Button onClick={() => createMutation.mutate({ name: "New Item" })}>
       {isLoading ? "Loading..." : "Add"}
-    </button>
+    </Button>
   );
 };
 ```

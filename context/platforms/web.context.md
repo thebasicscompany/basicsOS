@@ -48,7 +48,7 @@ apps/web/src/
 ```tsx
 // layout.tsx (server) — renders NavClient + main
 const DashboardLayout = ({ children }) => (
-  <div className="flex h-screen bg-gray-50">
+  <div className="flex h-screen bg-stone-50">
     <NavClient />
     <main className="flex-1 overflow-y-auto p-8">{children}</main>
   </div>

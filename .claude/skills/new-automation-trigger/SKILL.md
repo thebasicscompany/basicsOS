@@ -17,7 +17,7 @@ export const myModuleActionEvent = baseEventSchema.extend({
 });
 
 // Add to the discriminated union at the bottom of the file:
-export const Basics OSEventSchema = z.discriminatedUnion("type", [
+export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   ...,
   myModuleActionEvent,   // add here
 ]);
@@ -48,7 +48,7 @@ match automations where `triggerConfig.eventType === "my_module.action_taken"`.
 ## Step 4: Update UI (Optional)
 
 If you want the event to appear in the automation builder dropdown, add it to the list
-in `packages/shared/src/types/events.ts` (the `Basics OSEventSchema.options` drives the UI).
+in `packages/shared/src/types/events.ts` (the `BasicsOSEventSchema.options` drives the UI).
 
 ## Step 5: Test
 
@@ -77,7 +77,7 @@ it("emits my_module.action_taken when action is taken", async () => {
 
 ## Checklist
 - [ ] Event schema added to `events.ts` with correct payload shape
-- [ ] Event schema added to `Basics OSEventSchema` discriminated union
+- [ ] Event schema added to `BasicsOSEventSchema` discriminated union
 - [ ] `EventBus.emit()` call added to the router mutation
 - [ ] Test verifies event is emitted with correct payload
 - [ ] Event name follows `module.action_past_tense` convention

@@ -88,10 +88,10 @@ The system caller uses `role: "admin"` by default. For viewer-safe tools:
 
 ```bash
 # Start the MCP server in stdio mode
-MCP_TENANT_ID=<your-tenant-id> pnpm --filter @basicos/mcp-company dev
+MCP_TENANT_ID=<your-tenant-id> pnpm --filter @basicsos/mcp-company dev
 
 # Or HTTP mode for testing with curl
-MCP_TRANSPORT=http MCP_TENANT_ID=<id> pnpm --filter @basicos/mcp-company dev
+MCP_TRANSPORT=http MCP_TENANT_ID=<id> pnpm --filter @basicsos/mcp-company dev
 ```
 
 ## Checklist

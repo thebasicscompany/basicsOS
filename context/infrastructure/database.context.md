@@ -3,7 +3,6 @@
 ## Stack
 - **ORM**: Drizzle v0.44+ with `drizzle-orm/pg-core`
 - **Database**: PostgreSQL 16 with pgvector extension (local: docker-compose, cloud: Neon)
-- **Local replica**: Turso SQLite for offline-capable desktop/mobile features
 - **Config**: `packages/db/drizzle.config.ts` → `packages/db/dist/schema/index.js`
 
 ## Schema Location
@@ -53,7 +52,7 @@ export const myTable = pgTable("my_table", {
 Then export from `packages/db/src/schema/index.ts` and run:
 ```bash
 # Build TypeScript first (drizzle.config.ts reads from dist/), then push schema
-DATABASE_URL="..." pnpm --filter @basicos/db migrate
+DATABASE_URL="..." pnpm --filter @basicsos/db migrate
 ```
 
 ## Adding a Field
@@ -66,10 +65,10 @@ myTable = pgTable("my_table", {
 });
 
 // 2. Build + push schema to database (for local dev — fast, no SQL files)
-DATABASE_URL="..." pnpm --filter @basicos/db migrate
+DATABASE_URL="..." pnpm --filter @basicsos/db migrate
 
 // 3. (Optional) Generate SQL migration file for version-controlled history
-DATABASE_URL="..." pnpm --filter @basicos/db generate
+DATABASE_URL="..." pnpm --filter @basicsos/db generate
 
 // 4. Update Zod validator in packages/shared/src/validators/
 export const insertMySchema = z.object({
@@ -126,9 +125,9 @@ pnpm db:seed        # populate demo data (runs packages/db/src/seed.ts)
 pnpm db:studio      # open Drizzle Studio visual DB browser
 
 # Package-level scripts (equivalent, require DATABASE_URL in env)
-DATABASE_URL="..." pnpm --filter @basicos/db migrate      # tsc && drizzle-kit push
-DATABASE_URL="..." pnpm --filter @basicos/db generate     # tsc && drizzle-kit generate
-DATABASE_URL="..." pnpm --filter @basicos/db migrate:sql  # tsc && generate && migrate
+DATABASE_URL="..." pnpm --filter @basicsos/db migrate      # tsc && drizzle-kit push
+DATABASE_URL="..." pnpm --filter @basicsos/db generate     # tsc && drizzle-kit generate
+DATABASE_URL="..." pnpm --filter @basicsos/db migrate:sql  # tsc && generate && migrate
 ```
 
 Migration SQL files are stored in `packages/db/migrations/` and should be

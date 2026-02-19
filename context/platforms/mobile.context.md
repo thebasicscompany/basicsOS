@@ -12,9 +12,9 @@
 ## Running Locally
 
 ```bash
-pnpm --filter @basicos/mobile dev   # starts Expo dev server
+pnpm --filter @basicsos/mobile dev   # starts Expo dev server
 # Scan QR code with Expo Go on your phone, or:
-pnpm --filter @basicos/mobile ios   # open in iOS simulator
+pnpm --filter @basicsos/mobile ios   # open in iOS simulator
 ```
 
 ## App Structure
@@ -42,13 +42,15 @@ apps/mobile/
 
 ## Tab Navigation
 
-6 tabs in the bottom bar:
-1. 🏠 Dashboard
-2. 🤖 Assistant (AI chat)
-3. 🤝 CRM
-4. ✅ Tasks
-5. 🎯 Meetings
-6. 🔗 Hub
+8 tabs in the bottom bar (icons via `lucide-react-native`):
+1. `LayoutDashboard` — Dashboard
+2. `Sparkles` — Assistant (AI chat)
+3. `BookOpen` — Knowledge base
+4. `Users` — CRM
+5. `CheckSquare` — Tasks
+6. `Video` — Meetings
+7. `Link2` — Hub
+8. `Bot` — AI Employees
 
 ## Auth Flow
 
@@ -130,10 +132,10 @@ import * as Notifications from "expo-notifications";
 
 // On login — register token
 const token = await Notifications.getExpoPushTokenAsync();
-// Send token to API: trpc.notifications.registerDevice({ token })
+// Send token to API: trpc.auth.registerPushToken({ token, platform })
 ```
 
-The API stores tokens in the `users` table. Workers send push notifications via Expo Push API.
+The API stores tokens in the `pushTokens` table. Workers send push notifications via Expo Push API.
 
 ## EAS Build
 
@@ -148,4 +150,4 @@ eas build --platform ios --profile preview
 eas build --platform android --profile preview
 ```
 
-Config in `apps/mobile/eas.json`.
+Configure EAS Build by running `eas build:configure` in the mobile app directory.

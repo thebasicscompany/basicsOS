@@ -29,7 +29,7 @@ basicos/
 |-------|--------|--------|
 | Monorepo | Turborepo + pnpm 9 | 3x faster than Nx, proven at Cal.com/Supabase |
 | Backend | tRPC v11 + Hono v4 | End-to-end type safety, 3x faster than Express |
-| Database | PostgreSQL (Neon) + Turso SQLite | Cloud + offline-first local replica |
+| Database | PostgreSQL (Neon) + pgvector | Cloud-hosted with vector search |
 | ORM | Drizzle v0.44 | Code-first TypeScript, 7.4KB bundle |
 | Auth | Better Auth v1 | Open-source, multi-platform, Drizzle adapter |
 | Real-time | Yjs v13 CRDTs | Used by Notion, conflict-free collaboration |

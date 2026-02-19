@@ -8,8 +8,8 @@ pnpm dev:setup    # generates .env, starts Docker, migrates, seeds
 
 Then:
 ```bash
-pnpm --filter @basicos/api dev    # API on :3001
-pnpm --filter @basicos/web dev    # Web on :3000
+pnpm --filter @basicsos/api dev    # API on :3001
+pnpm --filter @basicsos/web dev    # Web on :3000
 ```
 
 ## Self-Hosted Production
@@ -46,7 +46,7 @@ docker-compose -f docker-compose.prod.yml up -d
 1. Install dependencies (frozen lockfile)
 2. Build all packages in dependency order
 3. Typecheck: shared → db → auth → api → web
-4. Unit tests: `pnpm --filter @basicos/shared test && pnpm --filter @basicos/api test`
+4. Unit tests: `pnpm --filter @basicsos/shared test && pnpm --filter @basicsos/api test`
 5. Integration tests: `npx vitest run` (RBAC audit, input validation, secrets scan)
 6. Security audit: `pnpm audit --audit-level moderate`
 

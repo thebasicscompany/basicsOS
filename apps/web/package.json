@@ -4,7 +4,7 @@
   "private": true,
   "description": "BasicOS web portal (Next.js 15)",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --turbopack --port 3000",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",

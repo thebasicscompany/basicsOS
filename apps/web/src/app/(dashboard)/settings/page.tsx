@@ -1,40 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, Download, addToast } from "@basicsos/ui";
+import { Button, Input, Label, Download, addToast, Copy, Check } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
+import { trpc } from "@/lib/trpc";
 
-const mcpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
-
-const CLAUDE_DESKTOP_CONFIG = `{
-  "mcpServers": {
-    "basicsos": {
-      "command": "npx",
-      "args": ["-y", "@basicsos/mcp-company"],
-      "env": {
-        "MCP_URL": "${mcpUrl}",
-        "MCP_TENANT_ID": "<your-tenant-id>"
-      }
-    }
-  }
-}`;
-
-const CURSOR_CONFIG = `{
-  "mcp": {
-    "servers": {
-      "basicsos": {
-        "url": "${mcpUrl}/mcp",
-        "type": "http"
-      }
-    }
-  }
-}`;
-
-const HTTP_CONFIG = `curl -X POST ${mcpUrl}/mcp \\
-  -H "Content-Type: application/json" \\
-  -H "X-Tenant-ID: <your-tenant-id>" \\
-  -d '{"method":"tools/list"}'`;
+const mcpHttpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
 
 const CopyBlock = ({ label, code }: { label: string; code: string }): JSX.Element => {
   const [copied, setCopied] = useState(false);
@@ -54,7 +26,7 @@ const CopyBlock = ({ label, code }: { label: string; code: string }): JSX.Elemen
           {copied ? "Copied!" : "Copy"}
         </Button>
       </div>
-      <pre className="overflow-x-auto rounded-lg bg-stone-900 p-4 text-xs text-stone-100">
+      <pre className="overflow-x-auto rounded-lg bg-stone-900 p-4 text-xs text-stone-100 whitespace-pre-wrap break-all">
         {code}
       </pre>
     </div>
@@ -68,6 +40,42 @@ const SettingsPage = (): JSX.Element => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [copiedTenantId, setCopiedTenantId] = useState(false);
+
+  const { data: me } = trpc.auth.me.useQuery();
+  const tenantId = me?.tenantId ?? "…";
+
+  const localStdioConfig = JSON.stringify(
+    {
+      mcpServers: {
+        basicsos: {
+          command: "bun",
+          args: ["run", "/path/to/basicsOS/apps/mcp/company/src/index.ts"],
+          env: {
+            MCP_TENANT_ID: tenantId,
+            DATABASE_URL: "postgresql://basicos:basicos_dev@localhost:5432/basicos",
+            REDIS_URL: "redis://localhost:6379",
+          },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const remoteHttpConfig = JSON.stringify(
+    {
+      mcpServers: {
+        basicsos: {
+          type: "streamable-http",
+          url: `${mcpHttpUrl}`,
+          headers: { "X-Tenant-ID": tenantId },
+        },
+      },
+    },
+    null,
+    2,
+  );
 
   const handlePasswordChange = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -84,6 +92,13 @@ const SettingsPage = (): JSX.Element => {
     } finally {
       setSavingPassword(false);
     }
+  };
+
+  const handleCopyTenantId = (): void => {
+    void navigator.clipboard.writeText(tenantId).then(() => {
+      setCopiedTenantId(true);
+      setTimeout(() => setCopiedTenantId(false), 2000);
+    });
   };
 
   const TABS = [
@@ -166,22 +181,44 @@ const SettingsPage = (): JSX.Element => {
       {/* MCP Connection tab */}
       {tab === "mcp" && (
         <div className="space-y-6">
+          {/* Tenant ID */}
           <div className="rounded-xl border border-stone-200 bg-white p-6">
-            <h2 className="mb-1 text-base font-semibold text-stone-900">Company MCP Server</h2>
+            <h2 className="mb-1 text-base font-semibold text-stone-900">Your Tenant ID</h2>
             <p className="mb-4 text-sm text-stone-500">
-              Connect your AI tools (Claude Desktop, Cursor, etc.) to your company data.
+              Copy this into your MCP config to scope queries to your company data.
             </p>
-
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2">
-              <span className="text-xs font-medium text-stone-500">MCP URL:</span>
-              <code className="flex-1 text-xs text-stone-800">{mcpUrl}</code>
+            <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+              <code className="flex-1 text-xs font-mono text-stone-800 select-all">{tenantId}</code>
+              <button
+                type="button"
+                onClick={handleCopyTenantId}
+                className="text-stone-400 hover:text-stone-600 transition-colors"
+                title="Copy tenant ID"
+              >
+                {copiedTenantId ? <Check size={14} /> : <Copy size={14} />}
+              </button>
             </div>
+          </div>
 
-            <div className="space-y-6">
-              <CopyBlock label="Claude Desktop (claude_desktop_config.json)" code={CLAUDE_DESKTOP_CONFIG} />
-              <CopyBlock label="Cursor (.cursorrules / settings)" code={CURSOR_CONFIG} />
-              <CopyBlock label="HTTP / Generic Client" code={HTTP_CONFIG} />
-            </div>
+          {/* Local / stdio config */}
+          <div className="rounded-xl border border-stone-200 bg-white p-6">
+            <h2 className="mb-1 text-base font-semibold text-stone-900">Local Setup (stdio)</h2>
+            <p className="mb-4 text-sm text-stone-500">
+              Use this when Basics OS is running on the same machine as Claude Desktop.
+              Replace the <code className="text-xs bg-stone-100 px-1 rounded">args</code> path
+              with the actual path to your cloned repo, and update <code className="text-xs bg-stone-100 px-1 rounded">DATABASE_URL</code> from your <code className="text-xs bg-stone-100 px-1 rounded">.env</code> file.
+            </p>
+            <CopyBlock label="claude_desktop_config.json" code={localStdioConfig} />
+          </div>
+
+          {/* Remote / HTTP config */}
+          <div className="rounded-xl border border-stone-200 bg-white p-6">
+            <h2 className="mb-1 text-base font-semibold text-stone-900">Remote Setup (HTTP)</h2>
+            <p className="mb-4 text-sm text-stone-500">
+              Use this when the MCP server is deployed separately. The server must be
+              started with <code className="text-xs bg-stone-100 px-1 rounded">MCP_TRANSPORT=http</code>.
+            </p>
+            <CopyBlock label="claude_desktop_config.json" code={remoteHttpConfig} />
           </div>
         </div>
       )}

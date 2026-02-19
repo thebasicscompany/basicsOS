@@ -11,17 +11,20 @@ type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | stri
 
 const ONBOARDING_KEY = "basicos_onboarding_done";
 
-const mcpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
-
 const CLAUDE_CONFIG = `{
   "mcpServers": {
     "basicsos": {
-      "command": "npx",
-      "args": ["-y", "@basicsos/mcp-company"],
-      "env": { "MCP_URL": "${mcpUrl}" }
+      "command": "bun",
+      "args": ["run", "/path/to/basicsOS/apps/mcp/company/src/index.ts"],
+      "env": {
+        "MCP_TENANT_ID": "<your-tenant-id>",
+        "DATABASE_URL": "<from your .env>",
+        "REDIS_URL": "<from your .env>"
+      }
     }
   }
-}`;
+}
+// Tip: find your Tenant ID in Settings → MCP Connection`;
 
 const STEPS: { id: number; title: string; Icon: LucideIcon; color: string }[] = [
   { id: 0, title: "Welcome", Icon: Sparkles, color: "bg-primary/10 text-primary" },

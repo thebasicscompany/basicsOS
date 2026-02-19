@@ -107,4 +107,5 @@ export {
   Activity,
   Lock,
   Inbox,
+  Copy,
 } from "lucide-react";

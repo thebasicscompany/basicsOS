@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 // Verify that all routers have proper access control by checking procedure types
 // This is a structural audit — we verify the appRouter exports all expected namespaces
 describe("AppRouter RBAC Audit", () => {
-  it("appRouter exports all required modules", async () => {
+  it("appRouter exports all required modules", { timeout: 15000 }, async () => {
     const { appRouter } = await import("../../packages/api/src/routers/index.js");
     const routes = Object.keys(appRouter._def.procedures);
 

@@ -10,7 +10,8 @@
       "Bash(node --version:*)",
       "Bash(pnpm --version:*)",
       "Bash(docker --version:*)",
-      "Bash(pnpm build)"
+      "Bash(pnpm build)",
+      "Bash(pnpm test)"
     ]
   }
 }

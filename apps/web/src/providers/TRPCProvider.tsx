@@ -10,7 +10,12 @@ interface TRPCProviderProps {
 }
 
 export const TRPCProvider = ({ children }: TRPCProviderProps): JSX.Element => {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { staleTime: 60_000 } },
+      }),
+  );
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [

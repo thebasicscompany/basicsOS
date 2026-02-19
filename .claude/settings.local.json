@@ -17,7 +17,10 @@
       "Bash(xargs:*)",
       "Bash(pnpm install:*)",
       "Bash(grep:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:www.better-auth.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

@@ -10,9 +10,14 @@ const secret = process.env["BETTER_AUTH_SECRET"] ?? "";
 const baseUrl =
   process.env["BETTER_AUTH_URL"] ?? process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
 
+// API server URL — sessions created at baseURL must be readable from the API.
+const apiUrl =
+  process.env["NEXT_PUBLIC_API_URL"] ?? process.env["API_URL"] ?? "http://localhost:3001";
+
 export const auth = betterAuth({
   secret,
   baseURL: baseUrl,
+  trustedOrigins: [baseUrl, apiUrl],
   advanced: {
     database: {
       // Our schema uses uuid columns — use UUID format for all generated IDs.

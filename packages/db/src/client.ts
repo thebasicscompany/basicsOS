@@ -1,14 +1,13 @@
 import { config } from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema/index.js";
 
 // Load root .env when running directly (seed, workers, tests).
+// This file compiles to CommonJS so __dirname is available as a global.
 // Two attempts: repo root relative to this file, and cwd (for drizzle-kit / tsx).
 // dotenv.config is a no-op if the file doesn't exist, so this is always safe.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 config({ path: path.resolve(__dirname, "../../../.env") });
 config({ path: path.resolve(process.cwd(), ".env") });
 

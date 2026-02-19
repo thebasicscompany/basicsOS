@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, use } from "react";
+import { Record, Stop, Microphone } from "@phosphor-icons/react";
 
 type TranscriptLine = { speaker: string; text: string; timestamp: number };
 
 // Next.js page requires default export
-const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element => {
+const MeetingDetailPage = ({ params }: { params: Promise<{ id: string }> }): JSX.Element => {
+  const { id } = use(params);
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
   const [status, setStatus] = useState<string>("Ready to record");
@@ -27,7 +29,7 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
         const res = await fetch("/api/trpc/meetings.transcribeAudio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ json: { meetingId: params.id, audioChunk: base64, format: "webm" } }),
+          body: JSON.stringify({ json: { meetingId: id, audioChunk: base64, format: "webm" } }),
         });
         const data = await res.json() as { result?: { data?: { transcript: string | null; message: string | null; configured: boolean } } };
         const result = data.result?.data;
@@ -105,7 +107,8 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
               : "bg-indigo-600 hover:bg-indigo-700"
           }`}
         >
-          <span>{isRecording ? "⏹ Stop" : "⏺ Record"}</span>
+          {isRecording ? <Stop size={18} /> : <Record size={18} />}
+          <span>{isRecording ? "Stop" : "Record"}</span>
         </button>
       </div>
 
@@ -125,7 +128,9 @@ const MeetingDetailPage = ({ params }: { params: { id: string } }): JSX.Element 
         </div>
       ) : (
         <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">🎙️</div>
+          <div className="mb-3 flex justify-center">
+            <Microphone size={48} className="text-gray-400" />
+          </div>
           <p className="text-gray-500 font-medium">Click "Record" to start capturing</p>
           <p className="text-sm text-gray-400 mt-1">
             {isRecording ? "Listening... transcript will appear here" : "Microphone access required"}

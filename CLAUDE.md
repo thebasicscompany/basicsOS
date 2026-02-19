@@ -174,8 +174,8 @@ Register it in `apps/mcp/company/src/server.ts`. See: [@.claude/skills/new-mcp-t
 
 ```bash
 pnpm dev:setup          # first-time: generates .env, starts Docker, seeds demo data
-pnpm --filter @basicos/api dev    # API server on :3001
-pnpm --filter @basicos/web dev    # Web portal on :3000
+pnpm --filter @basicsos/api dev    # API server on :3001
+pnpm --filter @basicsos/web dev    # Web portal on :3000
 pnpm test               # run all tests (166 passing)
 npx vitest run          # integration + security tests
 ```

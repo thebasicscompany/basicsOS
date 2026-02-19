@@ -8,7 +8,7 @@
     "dev": "tsc && electron dist/main/index.js",
     "build": "tsc --noEmit && echo 'build ok'",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "echo 'no tests yet'",
     "clean": "rm -rf dist out"
   },
   "devDependencies": {

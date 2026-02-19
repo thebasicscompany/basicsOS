@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { use } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
 
 interface InvitePageProps {
-  params: { token: string };
+  params: Promise<{ token: string }>;
 }
 
 // Next.js App Router requires default exports for page segments.
 // This is a framework-mandated exception to the project's named-export rule.
 const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
+  const { token } = use(params);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
 
   const { data, isLoading, error } = trpc.auth.validateInvite.useQuery({
-    token: params.token,
+    token,
   });
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {

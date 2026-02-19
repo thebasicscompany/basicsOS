@@ -1,17 +1,17 @@
-import { db } from "@basicsos/db";
-import { documents } from "@basicsos/db";
-import { isNull } from "drizzle-orm";
+"use client";
 
-const KnowledgePage = async (): Promise<JSX.Element> => {
-  let docs: Array<{ id: string; title: string; position: number; parentId: string | null }> = [];
-  try {
-    docs = await db.select({ id: documents.id, title: documents.title, position: documents.position, parentId: documents.parentId })
-      .from(documents)
-      .where(isNull(documents.parentId))
-      .orderBy(documents.position);
-  } catch {
-    // DB not connected — show empty state
+import { trpc } from "@/lib/trpc";
+import { Books, FileText, ArrowRight } from "@phosphor-icons/react";
+
+// Next.js App Router requires default exports for page segments.
+const KnowledgePage = (): JSX.Element => {
+  const { data: docs, isLoading } = trpc.knowledge.list.useQuery({ parentId: null });
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-gray-400">Loading Knowledge Base...</div>;
   }
+
+  const documents = docs ?? [];
 
   return (
     <div>
@@ -24,22 +24,26 @@ const KnowledgePage = async (): Promise<JSX.Element> => {
           + New Document
         </a>
       </div>
-      {docs.length === 0 ? (
+      {documents.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">📚</div>
+          <div className="mb-3 flex justify-center">
+            <Books size={48} className="text-gray-400" />
+          </div>
           <p className="text-gray-500">No documents yet. Create your first one!</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {docs.map((doc) => (
+          {documents.map((doc) => (
             <a
               key={doc.id}
               href={`/knowledge/${doc.id}`}
               className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 hover:bg-indigo-50 hover:border-indigo-200 transition"
             >
-              <span className="text-xl">📄</span>
+              <FileText size={24} className="text-gray-400" />
               <span className="font-medium text-gray-900">{doc.title}</span>
-              <span className="ml-auto text-xs text-gray-400">Edit &rarr;</span>
+              <span className="ml-auto flex items-center gap-1 text-xs text-gray-400">
+                Edit <ArrowRight size={14} />
+              </span>
             </a>
           ))}
         </div>

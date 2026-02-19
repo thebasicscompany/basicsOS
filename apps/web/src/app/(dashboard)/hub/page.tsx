@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { LinkSimple } from "@phosphor-icons/react";
 
 // Next.js App Router requires default exports for page segments.
 const HubPage = (): JSX.Element => {
@@ -28,7 +29,7 @@ const HubPage = (): JSX.Element => {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {(catLinks ?? []).map(link => (
               <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border bg-white p-4 hover:shadow-md transition">
-                <span className="text-2xl">{link.icon ?? "\uD83D\uDD17"}</span>
+                <LinkSimple size={28} className="text-gray-400 flex-shrink-0" />
                 <span className="font-medium text-gray-900">{link.title}</span>
               </a>
             ))}

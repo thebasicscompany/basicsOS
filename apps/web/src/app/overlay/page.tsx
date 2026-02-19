@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { CheckSquare, Handshake, Target, Books, MagnifyingGlass, SpinnerGap, ArrowRight } from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
 
 // Detect whether we're running inside Electron with the preload bridge exposed.
 const isElectron =
@@ -34,11 +36,11 @@ const OverlayPage = (): JSX.Element => {
     setLoading(false);
   };
 
-  const quickActions = [
-    { label: "New Task", icon: "✅", href: "http://localhost:3000/tasks" },
-    { label: "CRM", icon: "🤝", href: "http://localhost:3000/crm" },
-    { label: "Meetings", icon: "🎯", href: "http://localhost:3000/meetings" },
-    { label: "Knowledge", icon: "📚", href: "http://localhost:3000/knowledge" },
+  const quickActions: { label: string; icon: Icon; href: string }[] = [
+    { label: "New Task", icon: CheckSquare, href: "http://localhost:3000/tasks" },
+    { label: "CRM", icon: Handshake, href: "http://localhost:3000/crm" },
+    { label: "Meetings", icon: Target, href: "http://localhost:3000/meetings" },
+    { label: "Knowledge", icon: Books, href: "http://localhost:3000/knowledge" },
   ];
 
   // Mouse enters the interactive panel → capture events (don't pass through)
@@ -74,8 +76,8 @@ const OverlayPage = (): JSX.Element => {
         {/* Search / Ask */}
         <form onSubmit={handleAsk} className="px-4 pb-3">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
-              🔍
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
+              <MagnifyingGlass size={16} />
             </span>
             <input
               autoFocus
@@ -92,7 +94,7 @@ const OverlayPage = (): JSX.Element => {
           <div className="mx-4 mb-3 rounded-xl bg-white/10 p-3 text-sm text-white/80">
             {loading ? (
               <div className="flex items-center gap-2">
-                <span className="animate-spin">⏳</span> Thinking...
+                <SpinnerGap size={16} className="animate-spin" /> Thinking...
               </div>
             ) : (
               answer
@@ -114,7 +116,7 @@ const OverlayPage = (): JSX.Element => {
                 rel="noreferrer"
                 className="flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2.5 text-sm font-medium transition"
               >
-                <span>{action.icon}</span>
+                <action.icon size={18} />
                 <span>{action.label}</span>
               </a>
             ))}
@@ -133,7 +135,7 @@ const OverlayPage = (): JSX.Element => {
             className="flex items-center justify-between rounded-xl bg-indigo-600/40 hover:bg-indigo-600/60 px-4 py-3 text-sm font-medium transition"
           >
             <span>Open Basics OS Dashboard</span>
-            <span className="text-white/60">→</span>
+            <ArrowRight size={16} className="text-white/60" />
           </a>
         </div>
       </div>

@@ -40,10 +40,10 @@ Then open two terminals:
 
 ```bash
 # Terminal 1 — API server (port 3001)
-pnpm --filter @basicos/api dev
+pnpm --filter @basicsos/api dev
 
 # Terminal 2 — Web portal (port 3000)
-pnpm --filter @basicos/web dev
+pnpm --filter @basicsos/web dev
 ```
 
 Open **http://localhost:3000**. Demo login: `admin@acme.example.com`.
@@ -109,19 +109,19 @@ packages/
 
 ```bash
 # Web portal
-pnpm --filter @basicos/web dev
+pnpm --filter @basicsos/web dev
 
 # Electron desktop app (overlay, requires web on :3000)
 cd apps/desktop && npx electron dist/main/index.js
 
 # Mobile (Expo)
-pnpm --filter @basicos/mobile dev
+pnpm --filter @basicsos/mobile dev
 
 # Company MCP server (for Claude, ChatGPT, Copilot)
-MCP_TENANT_ID=<tenant-id> pnpm --filter @basicos/mcp-company dev
+MCP_TENANT_ID=<tenant-id> pnpm --filter @basicsos/mcp-company dev
 
 # Engineer MCP server (for Claude Code)
-REPO_ROOT=$PWD pnpm --filter @basicos/mcp-engineer dev
+REPO_ROOT=$PWD pnpm --filter @basicsos/mcp-engineer dev
 ```
 
 ---

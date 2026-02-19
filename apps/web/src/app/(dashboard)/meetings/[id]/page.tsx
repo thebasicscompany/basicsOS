@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, use } from "react";
+import { useState, useRef, use } from "react";
+import { Record, Stop, Microphone } from "@phosphor-icons/react";
 
 type TranscriptLine = { speaker: string; text: string; timestamp: number };
 
@@ -106,7 +107,8 @@ const MeetingDetailPage = ({ params }: { params: Promise<{ id: string }> }): JSX
               : "bg-indigo-600 hover:bg-indigo-700"
           }`}
         >
-          <span>{isRecording ? "⏹ Stop" : "⏺ Record"}</span>
+          {isRecording ? <Stop size={18} /> : <Record size={18} />}
+          <span>{isRecording ? "Stop" : "Record"}</span>
         </button>
       </div>
 
@@ -126,7 +128,9 @@ const MeetingDetailPage = ({ params }: { params: Promise<{ id: string }> }): JSX
         </div>
       ) : (
         <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">🎙️</div>
+          <div className="mb-3 flex justify-center">
+            <Microphone size={48} className="text-gray-400" />
+          </div>
           <p className="text-gray-500 font-medium">Click "Record" to start capturing</p>
           <p className="text-sm text-gray-400 mt-1">
             {isRecording ? "Listening... transcript will appear here" : "Microphone access required"}

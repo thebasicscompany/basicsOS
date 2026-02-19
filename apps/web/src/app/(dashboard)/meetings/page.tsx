@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { Target } from "@phosphor-icons/react";
 
 // Next.js App Router requires default exports for page segments.
 const MeetingsPage = (): JSX.Element => {
@@ -20,7 +21,9 @@ const MeetingsPage = (): JSX.Element => {
       </div>
       {meetings.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">{"\uD83C\uDFAF"}</div>
+          <div className="mb-3 flex justify-center">
+            <Target size={48} className="text-gray-400" />
+          </div>
           <p className="text-gray-500">No meetings recorded yet.</p>
         </div>
       ) : (

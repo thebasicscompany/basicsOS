@@ -1,7 +1,9 @@
+import type { Icon } from "@phosphor-icons/react";
+
 interface SidebarItem {
   label: string;
   href: string;
-  icon?: string;
+  icon?: Icon;
 }
 
 interface SidebarProps {
@@ -20,9 +22,7 @@ export const Sidebar = ({ items }: SidebarProps): JSX.Element => (
             href={item.href}
             className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
           >
-            {item.icon !== undefined && item.icon !== "" && (
-              <span className="text-base">{item.icon}</span>
-            )}
+            {item.icon !== undefined && <item.icon size={20} />}
             {item.label}
           </a>
         </li>

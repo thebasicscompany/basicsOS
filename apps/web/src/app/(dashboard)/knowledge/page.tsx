@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { Books, FileText, ArrowRight } from "@phosphor-icons/react";
 
 // Next.js App Router requires default exports for page segments.
 const KnowledgePage = (): JSX.Element => {
@@ -25,7 +26,9 @@ const KnowledgePage = (): JSX.Element => {
       </div>
       {documents.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
-          <div className="text-4xl mb-3">{"\uD83D\uDCDA"}</div>
+          <div className="mb-3 flex justify-center">
+            <Books size={48} className="text-gray-400" />
+          </div>
           <p className="text-gray-500">No documents yet. Create your first one!</p>
         </div>
       ) : (
@@ -36,9 +39,11 @@ const KnowledgePage = (): JSX.Element => {
               href={`/knowledge/${doc.id}`}
               className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 hover:bg-indigo-50 hover:border-indigo-200 transition"
             >
-              <span className="text-xl">{"\uD83D\uDCC4"}</span>
+              <FileText size={24} className="text-gray-400" />
               <span className="font-medium text-gray-900">{doc.title}</span>
-              <span className="ml-auto text-xs text-gray-400">{"Edit \u2192"}</span>
+              <span className="ml-auto flex items-center gap-1 text-xs text-gray-400">
+                Edit <ArrowRight size={14} />
+              </span>
             </a>
           ))}
         </div>

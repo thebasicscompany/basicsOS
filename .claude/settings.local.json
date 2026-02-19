@@ -13,7 +13,11 @@
       "Bash(pnpm build)",
       "Bash(pnpm test)",
       "Bash(node -e:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(xargs:*)",
+      "Bash(pnpm install:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)"
     ]
   }
 }

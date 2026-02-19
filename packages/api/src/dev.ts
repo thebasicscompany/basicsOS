@@ -7,6 +7,7 @@ import {
 } from "./workers/meeting-processor.worker.js";
 import { startNotificationWorker } from "./workers/notification.worker.js";
 import { registerAiEmployeeWorker } from "./workers/ai-employee.worker.js";
+import { startAutomationExecutorWorker } from "./workers/automation-executor.worker.js";
 
 const port = Number(process.env["PORT"] ?? "3001");
 
@@ -16,6 +17,7 @@ registerMeetingProcessorListener();
 startMeetingProcessorWorker();
 startNotificationWorker();
 registerAiEmployeeWorker();
+startAutomationExecutorWorker();
 
 const app = createApp();
 

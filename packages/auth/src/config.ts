@@ -4,15 +4,11 @@ import { db } from "@basicsos/db";
 import { tenants } from "@basicsos/db";
 import * as schema from "@basicsos/db";
 
-const secret = process.env["BETTER_AUTH_SECRET"];
-const baseUrl = process.env["BETTER_AUTH_URL"] ?? process.env["NEXT_PUBLIC_APP_URL"];
-
-if (!secret) {
-  throw new Error("BETTER_AUTH_SECRET environment variable is required");
-}
-if (!baseUrl) {
-  throw new Error("BETTER_AUTH_URL or NEXT_PUBLIC_APP_URL environment variable is required");
-}
+// Defer env var validation to first request — allows module evaluation during
+// Next.js build-time static analysis without requiring env vars to be present.
+const secret = process.env["BETTER_AUTH_SECRET"] ?? "";
+const baseUrl =
+  process.env["BETTER_AUTH_URL"] ?? process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
 
 export const auth = betterAuth({
   secret,

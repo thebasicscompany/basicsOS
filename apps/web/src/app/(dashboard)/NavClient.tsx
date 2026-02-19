@@ -35,8 +35,12 @@ export const NavClient = (): JSX.Element => {
   const { user } = useAuth();
   const router = useRouter();
 
+  const visibleItems = NAV_ITEMS.filter((item) =>
+    item.href.startsWith("/admin") ? user?.role === "admin" : true,
+  );
+
   const activeHref =
-    NAV_ITEMS.find((item) =>
+    visibleItems.find((item) =>
       item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
     )?.href ?? "/";
 
@@ -68,7 +72,7 @@ export const NavClient = (): JSX.Element => {
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto">
-        <Sidebar items={NAV_ITEMS} activeHref={activeHref} />
+        <Sidebar items={visibleItems} activeHref={activeHref} />
       </div>
 
       {/* User widget */}

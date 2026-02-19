@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast } from "@basicsos/ui";
 import { AddLinkDialog } from "./AddLinkDialog";
 
-const SERVICE_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const SERVICE_ICONS: Record<string, React.ElementType> = {
   slack: MessageSquare,
   "google-drive": HardDrive,
   github: Github,
@@ -169,4 +169,10 @@ const HubPage = (): JSX.Element => {
   );
 };
 
-export default HubPage;
+const HubPageWrapper = (): JSX.Element => (
+  <Suspense>
+    <HubPage />
+  </Suspense>
+);
+
+export default HubPageWrapper;

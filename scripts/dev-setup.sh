@@ -22,6 +22,7 @@ if [ ! -f .env ]; then
 DATABASE_URL=postgresql://basicos:basicos_dev@localhost:5432/basicos
 REDIS_URL=redis://localhost:6379
 BETTER_AUTH_SECRET=${AUTH_SECRET}
+BETTER_AUTH_URL=http://localhost:3000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3001
 
@@ -58,11 +59,11 @@ done
 
 # ─── Build packages ──────────────────────────────────────────────────────────
 step "Building packages..."
-pnpm --filter @basicos/shared build
-pnpm --filter @basicos/db build
-pnpm --filter @basicos/auth build
-pnpm --filter @basicos/ui build
-pnpm --filter @basicos/api build
+pnpm --filter @basicsos/shared build
+pnpm --filter @basicsos/db build
+pnpm --filter @basicsos/auth build
+pnpm --filter @basicsos/ui build
+pnpm --filter @basicsos/api build
 
 # ─── Database ────────────────────────────────────────────────────────────────
 step "Running migrations..."
@@ -82,14 +83,14 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo "  Start the servers:"
 echo ""
-echo "    Terminal 1:  pnpm --filter @basicos/api dev"
-echo "    Terminal 2:  pnpm --filter @basicos/web dev"
+echo "    Terminal 1:  pnpm --filter @basicsos/api dev"
+echo "    Terminal 2:  pnpm --filter @basicsos/web dev"
 echo ""
 echo "  Then open:  http://localhost:3000"
 echo ""
 echo "  Login with:"
 echo "    Email:    admin@acme.example.com"
-echo "    Password: (any password — auth uses Better Auth)"
+echo "    Password: password"
 echo ""
 echo "  To enable AI:  add ANTHROPIC_API_KEY to .env"
 echo ""

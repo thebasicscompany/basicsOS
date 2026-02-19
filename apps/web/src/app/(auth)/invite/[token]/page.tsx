@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { use } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
 import { authClient } from "@/lib/auth-client";
@@ -16,15 +15,20 @@ interface InvitePageProps {
 // This is a framework-mandated exception to the project's named-export rule.
 const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
   const router = useRouter();
-  const { token } = use(params);
+  const [token, setToken] = useState<string>("");
+
+  useEffect(() => {
+    void params.then(({ token: t }) => setToken(t));
+  }, [params]);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { data, isLoading, error: queryError } = trpc.auth.validateInvite.useQuery({
-    token,
-  });
+  const { data, isLoading, error: queryError } = trpc.auth.validateInvite.useQuery(
+    { token },
+    { enabled: token !== "" }
+  );
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();

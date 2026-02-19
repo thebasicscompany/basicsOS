@@ -53,7 +53,7 @@ const UsagePage = (): JSX.Element => {
           <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
         ) : (stats?.recentCalls.length ?? 0) === 0 ? (
           <div className="p-8 text-center text-sm text-stone-400">
-            {stats?.note ?? "No data yet."}
+            No data yet.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -68,7 +68,7 @@ const UsagePage = (): JSX.Element => {
             <tbody className="divide-y divide-stone-100">
               {stats?.recentCalls.map((call, i) => (
                 <tr key={i}>
-                  <td className="px-4 py-3 text-stone-900">{call.user}</td>
+                  <td className="px-4 py-3 text-stone-900">{call.userId ?? "—"}</td>
                   <td className="px-4 py-3 text-stone-500">{call.model}</td>
                   <td className="px-4 py-3 text-right text-stone-900">{call.tokens}</td>
                   <td className="px-4 py-3 text-right text-stone-500">

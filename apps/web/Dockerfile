@@ -23,12 +23,12 @@ COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
-RUN pnpm --filter @basicos/shared build && \
-    pnpm --filter @basicos/db build && \
-    pnpm --filter @basicos/auth build && \
-    pnpm --filter @basicos/ui build && \
-    pnpm --filter @basicos/api build && \
-    pnpm --filter @basicos/web build
+RUN pnpm --filter @basicsos/shared build && \
+    pnpm --filter @basicsos/db build && \
+    pnpm --filter @basicsos/auth build && \
+    pnpm --filter @basicsos/ui build && \
+    pnpm --filter @basicsos/api build && \
+    pnpm --filter @basicsos/web build
 
 FROM base AS runner
 ENV NODE_ENV=production
@@ -37,5 +37,9 @@ COPY --from=builder /app/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
+COPY --from=builder /app/packages/auth/dist ./packages/auth/dist
+COPY --from=builder /app/packages/ui/dist ./packages/ui/dist
 EXPOSE 3000
 CMD ["node_modules/.bin/next", "start"]

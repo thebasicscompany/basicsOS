@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Button, Plus, Users, EmptyState } from "@basicsos/ui";
@@ -169,4 +170,10 @@ const CRMPage = (): JSX.Element => {
   );
 };
 
-export default CRMPage;
+const CRMPageWrapper = (): JSX.Element => (
+  <Suspense>
+    <CRMPage />
+  </Suspense>
+);
+
+export default CRMPageWrapper;

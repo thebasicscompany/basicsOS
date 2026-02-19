@@ -8,15 +8,45 @@ The last piece of software your company will ever need. An open-source company o
 
 ## Quick Start
 
-```bash
-# Prerequisites: Docker Desktop, Node.js 20+, pnpm 9+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Node.js 20+](https://nodejs.org/), [pnpm 9+](https://pnpm.io/) (`npm install -g pnpm@9`)
 
+### macOS / Linux
+
+```bash
 git clone https://github.com/basicos/basicos
 cd basicos
 pnpm dev:setup    # generates .env, starts Postgres + Redis, builds packages, runs migrations, seeds demo data
 ```
 
-Then open two terminals:
+### Windows (manual steps)
+
+```bash
+git clone https://github.com/basicos/basicos
+cd basicos
+pnpm install
+```
+
+Create a `.env` file in the repo root:
+
+```env
+DATABASE_URL=postgresql://basicos:basicos_dev@localhost:5432/basicos
+REDIS_URL=redis://localhost:6379
+BETTER_AUTH_SECRET=any-random-string-at-least-32-chars-long-here
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+Then:
+
+```bash
+docker-compose up -d      # start Postgres + Redis
+pnpm build                # build all packages in dependency order (Turbo)
+pnpm db:migrate           # push schema to the Docker Postgres instance
+pnpm db:seed              # seed demo data
+```
+
+### Start the servers (all platforms)
 
 ```bash
 # Terminal 1 — API server (port 3001)
@@ -26,7 +56,12 @@ pnpm --filter @basicsos/api dev
 pnpm --filter @basicsos/web dev
 ```
 
-Open **http://localhost:3000**. Demo login: `admin@acme.example.com`.
+Open **http://localhost:3000**
+
+```
+Email:    admin@acme.example.com
+Password: password
+```
 
 ```bash
 # Optional — other platforms
@@ -68,15 +103,16 @@ AI_API_URL=https://api.basicsos.com
 ### Commands
 
 ```bash
-pnpm dev:setup              # first-time setup (Docker, env, migrations, seed)
+pnpm dev:setup              # first-time setup — macOS/Linux only (Docker, env, build, migrate, seed)
+pnpm build                  # build all packages in correct dependency order (Turbo)
 pnpm --filter @basicsos/api dev    # API server on :3001
 pnpm --filter @basicsos/web dev    # Web portal on :3000
-pnpm test                   # all unit tests (197 passing)
+pnpm test                   # all unit tests
 npx vitest run              # integration + security tests
-pnpm db:generate            # generate migration from schema changes
-pnpm db:migrate             # apply pending migrations
-node run-migration.cjs      # alternative migration runner
-pnpm db:studio              # open Drizzle Studio
+pnpm db:migrate             # push schema to database
+pnpm db:seed                # seed demo data
+pnpm db:generate            # generate migration SQL from schema changes
+pnpm db:studio              # open Drizzle Studio (DB browser)
 pnpm gen:module             # scaffold a new module (interactive)
 ```
 

@@ -19,10 +19,10 @@ COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY . .
-RUN pnpm --filter @basicos/shared build && \
-    pnpm --filter @basicos/db build && \
-    pnpm --filter @basicos/auth build && \
-    pnpm --filter @basicos/api build
+RUN pnpm --filter @basicsos/shared build && \
+    pnpm --filter @basicsos/db build && \
+    pnpm --filter @basicsos/auth build && \
+    pnpm --filter @basicsos/api build
 
 FROM base AS runner
 ENV NODE_ENV=production

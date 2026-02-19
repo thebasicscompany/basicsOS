@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { db } from "@basicsos/db";
@@ -120,7 +122,7 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
     const stripe = new Stripe(process.env["STRIPE_SECRET_KEY"] ?? "", {
       apiVersion: "2025-02-24.acacia",
     });
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret) as StripeEvent;
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret) as unknown as StripeEvent;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[stripe-webhook] Signature verification failed:", message);

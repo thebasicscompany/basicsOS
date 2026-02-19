@@ -15,6 +15,7 @@
   "dependencies": {
     "@basicsos/api": "workspace:*",
     "@basicsos/auth": "workspace:*",
+    "@basicsos/db": "workspace:*",
     "@basicsos/shared": "workspace:*",
     "@basicsos/ui": "workspace:*",
     "@hocuspocus/provider": "^3.4.4",
@@ -31,8 +32,9 @@
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "better-auth": "^1.0.0",
+    "drizzle-orm": "^0.44.0",
     "next": "^15.0.0",
-    "stripe": "^17.0.0",
+    "pg": "^8.13.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "yjs": "^13.6.0"

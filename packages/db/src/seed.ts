@@ -1,10 +1,30 @@
+import { scrypt, randomBytes } from "crypto";
 import { db } from "./client.js";
 import {
-  tenants, users, invites,
+  tenants, users, accounts, invites,
   documents, contacts, companies, deals, dealActivities,
   tasks, meetings, transcripts, meetingSummaries,
   hubLinks, automations,
 } from "./schema/index.js";
+
+// Produces hashes compatible with Better Auth's credential provider.
+// Same algorithm: scrypt(NFKC(password), hexSalt, 64) → "hexSalt:hexKey"
+const hashPassword = async (password: string): Promise<string> => {
+  const salt = randomBytes(16).toString("hex");
+  const key = await new Promise<Buffer>((resolve, reject) => {
+    scrypt(
+      password.normalize("NFKC"),
+      salt,
+      64,
+      { N: 16384, r: 16, p: 1, maxmem: 128 * 16384 * 16 * 2 },
+      (err, derivedKey) => {
+        if (err) reject(err);
+        else resolve(derivedKey as Buffer);
+      }
+    );
+  });
+  return `${salt}:${key.toString("hex")}`;
+};
 
 const seed = async (): Promise<void> => {
   console.warn("Seeding database with demo data...");
@@ -16,6 +36,8 @@ const seed = async (): Promise<void> => {
   }).returning();
   if (!tenant) throw new Error("Failed to create tenant");
 
+  const passwordHash = await hashPassword("password");
+
   const [admin] = await db.insert(users).values({
     tenantId: tenant.id,
     email: "admin@acme.example.com",
@@ -25,6 +47,13 @@ const seed = async (): Promise<void> => {
   }).returning();
   if (!admin) throw new Error("Failed to create admin");
 
+  await db.insert(accounts).values({
+    accountId: admin.id,
+    providerId: "credential",
+    userId: admin.id,
+    password: passwordHash,
+  });
+
   const [member] = await db.insert(users).values({
     tenantId: tenant.id,
     email: "sarah@acme.example.com",
@@ -33,6 +62,13 @@ const seed = async (): Promise<void> => {
     emailVerified: true,
   }).returning();
   if (!member) throw new Error("Failed to create member");
+
+  await db.insert(accounts).values({
+    accountId: member.id,
+    providerId: "credential",
+    userId: member.id,
+    password: passwordHash,
+  });
 
   await db.insert(invites).values({
     tenantId: tenant.id,

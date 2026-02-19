@@ -24,7 +24,7 @@ const SecurityPage = (): JSX.Element => {
           <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
         ) : (log?.events.length ?? 0) === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-stone-400">{log?.note ?? "No audit events yet."}</p>
+            <p className="text-sm text-stone-400">No audit events yet.</p>
           </div>
         ) : (
           <table className="w-full text-sm">

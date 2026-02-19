@@ -1,5 +1,5 @@
 import { NavClient } from "./NavClient";
-import { AssistantPanel } from "./AssistantPanel";
+import { LazyAssistantPanel } from "./LazyAssistantPanel";
 
 // Next.js App Router requires default export for layouts.
 // This is a framework-mandated exception to the project's named-export rule.
@@ -11,7 +11,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }): JSX.Eleme
         {children}
       </div>
     </main>
-    <AssistantPanel />
+    <LazyAssistantPanel />
   </div>
 );
 

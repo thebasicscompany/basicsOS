@@ -1,24 +1,23 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { addToast, Button } from "@basicsos/ui";
 import { TranscriptDisplay } from "./TranscriptDisplay";
 import { SummaryCard } from "./SummaryCard";
 
-interface MeetingDetailPageProps {
-  params: { id: string };
-}
-
 // Next.js page requires default export
-const MeetingDetailPage = ({ params }: MeetingDetailPageProps): JSX.Element => {
+const MeetingDetailPage = (): JSX.Element => {
+  const params = useParams();
+  const id = params["id"] as string;
   const [isRecording, setIsRecording] = useState(false);
   const [status, setStatus] = useState<string>("Ready to record");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: meeting, refetch } = trpc.meetings.get.useQuery({ id: params.id });
+  const { data: meeting, refetch } = trpc.meetings.get.useQuery({ id });
 
   const uploadTranscript = trpc.meetings.uploadTranscript.useMutation({
     onSuccess: () => {
@@ -53,7 +52,7 @@ const MeetingDetailPage = ({ params }: MeetingDetailPageProps): JSX.Element => {
         const res = await fetch("/api/trpc/meetings.transcribeAudio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ json: { meetingId: params.id, audioChunk: base64, format: "webm" } }),
+          body: JSON.stringify({ json: { meetingId: id, audioChunk: base64, format: "webm" } }),
         });
         const data = await res.json() as {
           result?: { data?: { transcript: string | null; configured: boolean } };
@@ -111,11 +110,11 @@ const MeetingDetailPage = ({ params }: MeetingDetailPageProps): JSX.Element => {
     const text = meeting.transcripts
       .map((t) => `${t.speaker}: ${t.text}`)
       .join("\n");
-    uploadTranscript.mutate({ meetingId: params.id, transcriptText: text });
+    uploadTranscript.mutate({ meetingId: id, transcriptText: text });
   };
 
   const handleProcess = (): void => {
-    processMeeting.mutate({ meetingId: params.id });
+    processMeeting.mutate({ meetingId: id });
   };
 
   const transcripts = meeting?.transcripts ?? [];

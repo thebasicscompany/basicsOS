@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SECRET_PATTERNS = [
   /ANTHROPIC_API_KEY\s*=\s*sk-ant-/,
@@ -30,7 +31,7 @@ const getAllTsFiles = async (dir: string): Promise<string[]> => {
 
 describe("Secrets Audit", () => {
   it("no hardcoded API keys or secrets in TypeScript source files", async () => {
-    const repoRoot = new URL("../..", import.meta.url).pathname;
+    const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
     const files = await getAllTsFiles(join(repoRoot, "packages"));
     const violations: string[] = [];
 

@@ -56,7 +56,7 @@ The Company MCP server imports `appRouter` directly — no HTTP hop. When an AI 
 The fastest path is the code generator:
 
 ```bash
-pnpm gen:module
+bun gen:module
 ```
 
 Prompts you for name, description, fields → scaffolds all 5 layers:
@@ -121,7 +121,7 @@ const docs = await ctx.db.select().from(documents).where(eq(documents.tenantId, 
 
 To add a field to an existing table:
 1. Add column to `packages/db/src/schema/[table].ts`
-2. Run `pnpm db:generate` then `pnpm db:migrate`
+2. Run `bun db:generate` then `bun db:migrate`
 3. Add field to Zod validator in `packages/shared/src/validators/[module].ts`
 4. Update tRPC router input schemas
 
@@ -237,17 +237,16 @@ Register it in `apps/mcp/company/src/server.ts`. See: [@.claude/skills/new-mcp-t
 ## Running Locally
 
 ```bash
-pnpm dev:setup                        # first-time: generates .env, starts Docker, seeds demo data
-pnpm --filter @basicsos/api dev       # API server on :3001
-pnpm --filter @basicsos/web dev       # Web portal on :3000
-pnpm --filter @basicsos/desktop dev   # Desktop app (requires web on :3000)
-pnpm test                             # run all tests (197 passing)
-npx vitest run                        # integration + security tests
-node run-migration.cjs                # run pending DB migrations
+bun dev:setup                              # first-time: generates .env, starts Docker, seeds demo data
+bun --filter @basicsos/api dev             # API server on :3001
+bun --filter @basicsos/web dev             # Web portal on :3000
+bun --filter @basicsos/desktop dev         # Desktop app (requires web on :3000)
+bun test                                   # run all tests
+bunx vitest run                            # integration + security tests
 ```
 
 **Required env vars** (see `.env.example`):
-- `DATABASE_URL`, `REDIS_URL` — Postgres + Redis (Docker via `pnpm dev:setup`)
+- `DATABASE_URL`, `REDIS_URL` — Postgres + Redis (Docker via `bun dev:setup`)
 - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` — auth system
 
 **Optional env vars for features:**
@@ -401,7 +400,7 @@ const MyDialog = (): JSX.Element => {
 1. Install Radix dep in `packages/ui/package.json`
 2. Create `packages/ui/src/components/MyComponent.tsx` (add `"use client"` if interactive)
 3. Export from `packages/ui/src/index.ts`
-4. Run `pnpm --filter @basicsos/ui build`
+4. Run `bun --filter @basicsos/ui build`
 
 See: [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md)
 
@@ -460,9 +459,9 @@ Electron v33 desktop app at `apps/desktop/`, built with **electron-vite**.
 
 ```bash
 # Requires web app on :3000
-pnpm --filter @basicsos/desktop dev     # electron-vite dev (HMR for overlay)
-pnpm --filter @basicsos/desktop build   # electron-vite build
-pnpm --filter @basicsos/desktop package # electron-builder → .dmg/.exe
+bun --filter @basicsos/desktop dev      # electron-vite dev (HMR for overlay)
+bun --filter @basicsos/desktop build    # electron-vite build
+bun --filter @basicsos/desktop package  # electron-builder → .dmg/.exe
 ```
 
 ### Branding & Auto-Updates

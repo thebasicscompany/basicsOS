@@ -18,6 +18,7 @@
     "@basicsos/db": "workspace:*",
     "@basicsos/shared": "workspace:*",
     "@basicsos/ui": "workspace:*",
+    "dotenv": "^16.4.0",
     "@hocuspocus/provider": "^3.4.4",
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/postcss": "^4.1.18",

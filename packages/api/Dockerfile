@@ -1,37 +1,30 @@
-FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+FROM oven/bun:1.2-alpine AS base
 WORKDIR /app
 
+# Install dependencies using lockfile for reproducible builds
 FROM base AS deps
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY package.json bun.lock ./
 COPY packages/config/package.json ./packages/config/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/db/package.json ./packages/db/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/api/package.json ./packages/api/
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
-COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
-COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
-COPY . .
-RUN pnpm --filter @basicsos/shared build && \
-    pnpm --filter @basicsos/db build && \
-    pnpm --filter @basicsos/auth build && \
-    pnpm --filter @basicsos/api build
-
+# Production runner — Bun reads TypeScript source directly, no dist/ needed
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=builder /app/packages/api/dist ./packages/api/dist
-COPY --from=builder /app/packages/api/package.json ./packages/api/package.json
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/packages/db/dist ./packages/db/dist
-COPY --from=builder /app/packages/auth/dist ./packages/auth/dist
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
+COPY packages/config ./packages/config
+COPY packages/shared/src ./packages/shared/src
+COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/db/src ./packages/db/src
+COPY packages/db/package.json ./packages/db/package.json
+COPY packages/auth/src ./packages/auth/src
+COPY packages/auth/package.json ./packages/auth/package.json
+COPY packages/api/src ./packages/api/src
+COPY packages/api/package.json ./packages/api/package.json
+COPY package.json ./
 EXPOSE 3001
-CMD ["node", "packages/api/dist/dev.js"]
+CMD ["bun", "packages/api/src/dev.ts"]

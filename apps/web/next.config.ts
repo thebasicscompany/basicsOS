@@ -23,7 +23,7 @@ for (const key of requiredClientEnvVars) {
 const nextConfig: NextConfig = {
   // Compile workspace packages from source so Next.js handles source maps
   // correctly and UI changes don't require a separate dist rebuild.
-  transpilePackages: ["@basicsos/ui", "@basicsos/shared"],
+  transpilePackages: ["@basicsos/ui", "@basicsos/shared", "@basicsos/auth", "@basicsos/db"],
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react", "lucide-react"],
   },

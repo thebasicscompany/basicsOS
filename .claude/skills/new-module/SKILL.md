@@ -6,7 +6,7 @@ Building a complete new business tool that integrates across all layers of Basic
 ## Fastest Path: Code Generator
 
 ```bash
-pnpm gen:module
+bun gen:module
 ```
 
 Prompts for name, description, fields → scaffolds all 5 layers automatically.
@@ -28,7 +28,7 @@ export const myItems = pgTable("my_items", {
 });
 ```
 
-Export from `packages/db/src/schema/index.ts`. Run `pnpm db:generate && pnpm db:migrate`.
+Export from `packages/db/src/schema/index.ts`. Run `bun db:generate && bun db:migrate`.
 
 ### Layer 2: Validators
 Create `packages/shared/src/validators/[name].ts`:

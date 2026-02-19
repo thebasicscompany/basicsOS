@@ -7,7 +7,7 @@ Add a new component to `packages/ui` using the Radix + CVA pattern.
 ### 1. Install Radix dep (if needed)
 
 ```bash
-pnpm --filter @basicsos/ui add @radix-ui/react-[name]
+bun --filter @basicsos/ui add @radix-ui/react-[name]
 ```
 
 ### 2. Create the component file
@@ -63,7 +63,7 @@ export { MyComponent } from "./components/MyComponent.js";
 ### 4. Build
 
 ```bash
-pnpm --filter @basicsos/ui build
+bun --filter @basicsos/ui build
 ```
 
 ### 5. Import in consuming app

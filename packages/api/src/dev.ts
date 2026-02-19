@@ -1,4 +1,3 @@
-import { serve } from "@hono/node-server";
 import { createApp } from "./server.js";
 import { registerAuditLogger } from "./events/subscribers/audit-logger.js";
 import {
@@ -21,6 +20,6 @@ startAutomationExecutorWorker();
 
 const app = createApp();
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.warn(`Basics OS API server running on http://localhost:${info.port}`);
-});
+// Bun's native HTTP server — accepts the standard Web Fetch handler directly.
+Bun.serve({ fetch: app.fetch, port });
+console.warn(`Basics OS API server running on http://localhost:${port}`);

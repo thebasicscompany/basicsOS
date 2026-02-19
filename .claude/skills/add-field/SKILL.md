@@ -18,8 +18,8 @@ myTable = pgTable("my_table", {
 
 ### 2. Run Migration
 ```bash
-pnpm db:generate   # creates SQL file in packages/db/migrations/
-pnpm db:migrate    # applies to database
+bun db:generate   # creates SQL file in packages/db/migrations/
+bun db:migrate    # applies to database
 ```
 
 ### 3. Update Zod Validator (`packages/shared/src/validators/[module].ts`)

@@ -9,7 +9,7 @@ config({ path: path.resolve(process.cwd(), ".env") });
 
 // Drizzle config requires default export — framework exception to named-export rule.
 export default defineConfig({
-  schema: "./dist/schema/index.js",
+  schema: "./src/schema/index.ts",
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {

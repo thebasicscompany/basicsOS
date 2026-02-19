@@ -51,5 +51,5 @@ type(scope): short description
 ## Pull Request Process
 1. Create a feature branch from main
 2. Implement changes with tests
-3. Run full test suite: `pnpm test`
+3. Run full test suite: `bun test`
 4. Submit PR with description of changes and testing steps

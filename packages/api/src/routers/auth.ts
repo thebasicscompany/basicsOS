@@ -46,7 +46,7 @@ export const authRouter = router({
       if (!invite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
-      const inviteUrl = `${appUrl}/auth/invite/${token}`;
+      const inviteUrl = `${appUrl}/invite/${token}`;
 
       await sendInviteEmail({
         to: input.email,

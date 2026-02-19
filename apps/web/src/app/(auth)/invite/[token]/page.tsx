@@ -35,18 +35,18 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
     if (!data) return;
     setError(null);
     setLoading(true);
-    try {
-      await authClient.signUp.email({
-        name,
-        email: data.email,
-        password,
-      });
-      router.push("/");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setLoading(false);
+    const { error: authError } = await authClient.signUp.email({
+      name,
+      email: data.email,
+      password,
+    });
+    setLoading(false);
+    if (authError) {
+      setError(authError.message ?? "Registration failed");
+      return;
     }
+    // Invited users join an existing company — go straight to the dashboard
+    router.push("/");
   };
 
   if (isLoading) {

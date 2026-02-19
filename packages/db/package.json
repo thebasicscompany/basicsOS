@@ -25,10 +25,10 @@
   },
   "dependencies": {
     "dotenv": "^16.4.0",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.7.0",
-    "zod": "^3.23.0",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@basicsos/config": "workspace:*",

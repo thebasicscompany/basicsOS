@@ -3,13 +3,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@basicsos/ui";
 
 // Next.js App Router requires default exports for page segments.
 // This is a framework-mandated exception to the project's named-export rule.
 const LoginPage = (): JSX.Element => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,14 +20,14 @@ const LoginPage = (): JSX.Element => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    try {
-      await authClient.signIn.email({ email, password });
-      router.push("/");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
-    } finally {
-      setLoading(false);
+    const { error: authError } = await authClient.signIn.email({ email, password });
+    setLoading(false);
+    if (authError) {
+      setError(authError.message ?? "Sign in failed");
+      return;
     }
+    const next = searchParams.get("next") ?? "/";
+    router.push(next);
   };
 
   return (

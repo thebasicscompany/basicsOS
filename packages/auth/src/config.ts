@@ -1,8 +1,9 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@basicsos/db";
-import { tenants } from "@basicsos/db";
+import { tenants, invites } from "@basicsos/db";
 import * as schema from "@basicsos/db";
+import { and, eq, isNull, gt } from "drizzle-orm";
 
 // Defer env var validation to first request — allows module evaluation during
 // Next.js build-time static analysis without requiring env vars to be present.
@@ -53,11 +54,40 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // Create a new tenant for each signup (one company per account).
         before: async (user) => {
-          const [tenant] = await db.insert(tenants).values({
-            name: user.name ?? "My Company",
-          }).returning();
+          // If there's a valid pending invite for this email, join that tenant
+          // instead of creating a new one. Mark the invite as accepted.
+          const [invite] = await db
+            .select()
+            .from(invites)
+            .where(
+              and(
+                eq(invites.email, user.email),
+                isNull(invites.acceptedAt),
+                gt(invites.expiresAt, new Date()),
+              ),
+            )
+            .limit(1);
+
+          if (invite) {
+            await db
+              .update(invites)
+              .set({ acceptedAt: new Date() })
+              .where(eq(invites.id, invite.id));
+            return {
+              data: {
+                ...user,
+                tenantId: invite.tenantId,
+                role: invite.role,
+              },
+            };
+          }
+
+          // Fresh signup — create a new tenant, make the user admin.
+          const [tenant] = await db
+            .insert(tenants)
+            .values({ name: user.name ?? "My Company" })
+            .returning();
           return {
             data: {
               ...user,

@@ -20,14 +20,14 @@ const RegisterPage = (): JSX.Element => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    try {
-      await authClient.signUp.email({ name, email, password });
-      router.push("/");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setLoading(false);
+    const { error: authError } = await authClient.signUp.email({ name, email, password });
+    setLoading(false);
+    if (authError) {
+      setError(authError.message ?? "Registration failed");
+      return;
     }
+    // New users go through onboarding before reaching the dashboard
+    router.push("/onboarding");
   };
 
   return (

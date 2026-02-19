@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(pnpm --filter @basicos/shared test:*)",
+      "Bash(pnpm --filter @basicsos/shared test:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm --filter @basicsos/api test:*)",
+      "Bash(pnpm --filter:*)",
+      "Bash(node --version:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(docker --version:*)",
+      "Bash(pnpm build)",
+      "Bash(pnpm test)",
+      "Bash(node -e:*)",
+      "Bash(# Check paths claimed in navigate-codebase skill echo \"\"=== ai-employees.ts router ===\"\" && ls /Users/akeilsmith/basicOS/packages/api/src/routers/ai-employees.ts || echo \"\"NOT FOUND\"\" echo \"\"=== ai-employees schema ===\"\" && ls /Users/akeilsmith/basicOS/packages/db/src/schema/ai-employees.ts || echo \"\"NOT FOUND\"\" echo \"\"=== automations schema ===\"\" && ls /Users/akeilsmith/basicOS/packages/db/src/schema/automations.ts || echo \"\"NOT FOUND\"\" echo \"\"=== automations router ===\"\" && ls /Users/akeilsmith/basicOS/packages/api/src/routers/automations.ts || echo \"\"NOT FOUND\"\" echo \"\"=== search router ===\"\" && ls /Users/akeilsmith/basicOS/packages/api/src/routers/search.ts || echo \"\"NOT FOUND\"\" echo \"\"=== packages/auth/src/config.ts ===\"\" && ls /Users/akeilsmith/basicOS/packages/auth/src/config.ts || echo \"\"NOT FOUND\"\" echo \"\"=== packages/db migrations ===\"\" && ls /Users/akeilsmith/basicOS/packages/db/migrations/)",
+      "Bash(git rm:*)",
+      "Bash(# Check new-automation-trigger - subscriber path is packages/api/src/events/subscribers/automation-listener.ts ls /Users/akeilsmith/basicOS/packages/api/src/events/subscribers/automation-listener.ts || echo \"\"NOT FOUND\"\" # Check what the actual EventSchema name is grep -n \"\"EventSchema\\\\|discriminatedUnion\"\" /Users/akeilsmith/basicOS/packages/shared/src/types/events.ts)",
+      "Bash(# Check new-view skill - it says to add nav to layout.tsx but navigate-codebase skill says Sidebar.tsx # Check what the actual layout pattern is grep -n \"\"NAV\\\\|navItems\\\\|sidebar\\\\|Sidebar\"\" /Users/akeilsmith/basicOS/apps/web/src/app/\\\\\\(dashboard\\\\\\)/layout.tsx)",
+      "Bash(# Check if Turso actually exists anywhere in the codebase grep -rn \"\"turso\\\\|libsql\\\\|@libsql\"\" /Users/akeilsmith/basicOS/packages/ --include=\"\"*.ts\"\" --include=\"\"*.json\"\")",
+      "Bash(# Check the new-view skill''s suggestion to edit layout.tsx for nav vs. the actual pattern # The layout.tsx doesn''t have a NAV array - check NavClient grep -n \"\"NAV\\\\|navItems\\\\|href\\\\|knowledge\\\\|crm\\\\|tasks\"\" /Users/akeilsmith/basicOS/apps/web/src/app/\\\\\\(dashboard\\\\\\)/NavClient.tsx)"
+    ]
+  }
+}

@@ -7,6 +7,8 @@ import { Button, Plus, BookOpen, FileText, EmptyState } from "@basicsos/ui";
 const KnowledgePage = (): JSX.Element => {
   const { data: docs, isLoading } = trpc.knowledge.list.useQuery({ parentId: null });
 
+  const documents = docs ?? [];
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -24,7 +26,7 @@ const KnowledgePage = (): JSX.Element => {
             </div>
           ))}
         </div>
-      ) : (docs ?? []).length === 0 ? (
+      ) : documents.length === 0 ? (
         <EmptyState
           Icon={BookOpen}
           heading="No documents yet"
@@ -37,7 +39,7 @@ const KnowledgePage = (): JSX.Element => {
         />
       ) : (
         <div className="space-y-2">
-          {(docs ?? []).map((doc) => (
+          {documents.map((doc) => (
             <a
               key={doc.id}
               href={`/knowledge/${doc.id}`}

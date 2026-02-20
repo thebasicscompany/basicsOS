@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Button, Badge } from "@basicsos/ui";
+import { Button, Badge, PageHeader } from "@basicsos/ui";
 import { InviteMemberDialog } from "./InviteMemberDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import type { UserRole } from "@basicsos/shared";
@@ -22,17 +22,18 @@ const TeamPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">Team Management</h1>
-          <p className="mt-1 text-sm text-stone-500">Manage team members, roles, and invitations.</p>
-        </div>
-        {me?.role === "admin" && (
-          <InviteMemberDialog>
-            <Button>Invite Member</Button>
-          </InviteMemberDialog>
-        )}
-      </div>
+      <PageHeader
+        title="Team Management"
+        description="Manage team members, roles, and invitations."
+        className="mb-6"
+        action={
+          me?.role === "admin" ? (
+            <InviteMemberDialog>
+              <Button>Invite Member</Button>
+            </InviteMemberDialog>
+          ) : undefined
+        }
+      />
 
       {/* Current user card */}
       <div className="rounded-xl border border-stone-200 bg-white p-6">

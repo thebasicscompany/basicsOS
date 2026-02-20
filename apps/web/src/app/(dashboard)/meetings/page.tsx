@@ -19,6 +19,7 @@ import {
   Plus,
   Video,
   EmptyState,
+  PageHeader,
 } from "@basicsos/ui";
 
 const CreateMeetingDialog = ({ onCreated }: { onCreated?: (id: string) => void }): JSX.Element => {
@@ -82,10 +83,11 @@ const MeetingsPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3 justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">Meetings</h1>
-        <CreateMeetingDialog onCreated={(id) => router.push(`/meetings/${id}`)} />
-      </div>
+      <PageHeader
+        title="Meetings"
+        className="mb-6"
+        action={<CreateMeetingDialog onCreated={(id) => router.push(`/meetings/${id}`)} />}
+      />
       {(meetingList ?? []).length === 0 ? (
         <EmptyState
           Icon={Video}

@@ -25,8 +25,8 @@ packages/
 
 context/        AI context files — architecture, modules, platforms, infra
 .claude/
-  skills/       9 Claude Code skills (add-field, new-module, etc.)
-  agents/       7 Claude Code agents (feature-builder, security-auditor, etc.)
+  skills/       10 Claude Code skills (add-field, new-module, standardize-ui, etc.)
+  agents/       8 Claude Code agents (feature-builder, ui-standardizer, etc.)
 ```
 
 ## Architecture in 30 Seconds
@@ -233,6 +233,7 @@ Register it in `apps/mcp/company/src/server.ts`. See: [@.claude/skills/new-mcp-t
 | Write tests | [@.claude/skills/testing-patterns](/.claude/skills/testing-patterns/SKILL.md) |
 | Architecture decision | [@.claude/skills/architecture](/.claude/skills/architecture/SKILL.md) |
 | UI component patterns | [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md) |
+| Standardize UI across apps | [@.claude/skills/standardize-ui](/.claude/skills/standardize-ui/SKILL.md) |
 
 ## Running Locally
 

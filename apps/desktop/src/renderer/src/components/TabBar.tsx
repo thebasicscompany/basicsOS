@@ -1,4 +1,4 @@
-import { Search, Video, Mic, Camera } from "lucide-react";
+import { Search, Video, Mic, Camera } from "@basicsos/ui";
 import type { ComponentType, SVGProps } from "react";
 
 type Tab = "ask" | "meetings" | "voice" | "capture";

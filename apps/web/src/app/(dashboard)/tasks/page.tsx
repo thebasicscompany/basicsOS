@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, CheckSquare, EmptyState, addToast } from "@basicsos/ui";
+import { Button, Plus, CheckSquare, EmptyState, addToast, PageHeader } from "@basicsos/ui";
 import { KanbanColumn } from "./KanbanColumn";
 import { CreateTaskDialog } from "./CreateTaskDialog";
 import type { TaskStatus, Task } from "./types";
@@ -36,12 +36,15 @@ const TasksPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">Tasks</h1>
-        <CreateTaskDialog onCreated={() => void refetch()}>
-          <Button><Plus size={14} className="mr-1" /> New Task</Button>
-        </CreateTaskDialog>
-      </div>
+      <PageHeader
+        title="Tasks"
+        className="mb-6"
+        action={
+          <CreateTaskDialog onCreated={() => void refetch()}>
+            <Button><Plus size={14} className="mr-1" /> New Task</Button>
+          </CreateTaskDialog>
+        }
+      />
 
       {isLoading ? (
         <div className="flex gap-4 overflow-x-auto pb-4">

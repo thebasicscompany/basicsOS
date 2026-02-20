@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, ArrowUp, Loader2, Button } from "@basicsos/ui";
+import { Sparkles, ArrowUp, Loader2, Button, Textarea, PageHeader } from "@basicsos/ui";
 
 type Message = {
   id: string;
@@ -129,12 +129,11 @@ const AssistantPage = (): JSX.Element => {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">AI Assistant</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Ask questions about your company knowledge, tasks, meetings, and more.
-        </p>
-      </div>
+      <PageHeader
+        title="AI Assistant"
+        description="Ask questions about your company knowledge, tasks, meetings, and more."
+        className="mb-6"
+      />
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
@@ -197,7 +196,7 @@ const AssistantPage = (): JSX.Element => {
         </div>
 
         <form onSubmit={handleSubmit} className="flex items-end gap-3 border-t border-stone-200 p-4">
-          <textarea
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -209,7 +208,7 @@ const AssistantPage = (): JSX.Element => {
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             rows={2}
             disabled={isStreaming}
-            className="flex-1 resize-none rounded-xl border border-stone-200 bg-muted px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+            className="flex-1 resize-none rounded-xl bg-muted min-h-0"
           />
           {isStreaming ? (
             <Button type="button" variant="destructive" onClick={handleStop}>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, Loader2, Sparkles, CheckCircle, ArrowRight } from "lucide-react";
+import { Camera, Loader2, Sparkles, CheckCircle, ArrowRight, Input, Button, Label } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { getIPC, sendIPC } from "../lib/ipc";
 
@@ -54,20 +54,19 @@ export const CaptureTab = (): JSX.Element => {
       </p>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs text-stone-500 font-medium">Document title</label>
-        <input
+        <Label className="text-xs text-stone-500">Document title</Label>
+        <Input
           value={customTitle}
           onChange={(e) => setCustomTitle(e.target.value)}
-          className="w-full bg-white border border-stone-200 text-stone-900 placeholder-stone-400 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary shadow-sm"
+          className="rounded-xl shadow-sm"
           placeholder="Captured Workflow"
         />
       </div>
 
-      <button
-        type="button"
+      <Button
         onClick={() => void handleCapture()}
         disabled={status === "capturing" || status === "analyzing"}
-        className="w-full rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold transition hover:opacity-90 shadow-sm flex items-center justify-center gap-2"
+        className="w-full rounded-xl py-3 h-auto shadow-sm gap-2"
       >
         <StatusIcon size={16} className={status === "capturing" ? "animate-spin" : status === "analyzing" ? "animate-pulse" : ""} />
         {status === "idle" || status === "done" || status === "error"
@@ -75,7 +74,7 @@ export const CaptureTab = (): JSX.Element => {
           : status === "capturing"
             ? "Capturing..."
             : "Analyzing with Claude..."}
-      </button>
+      </Button>
 
       {status === "done" && result && (
         <div className="rounded-xl bg-white border border-stone-200 p-3 space-y-2 shadow-sm">
@@ -83,13 +82,14 @@ export const CaptureTab = (): JSX.Element => {
             <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
               <CheckCircle size={12} /> Saved to Knowledge Base
             </span>
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs gap-1"
               onClick={() => sendIPC("navigate-main", "/knowledge")}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
               View <ArrowRight size={10} />
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-stone-500 line-clamp-4">{result.analysis}</p>
         </div>

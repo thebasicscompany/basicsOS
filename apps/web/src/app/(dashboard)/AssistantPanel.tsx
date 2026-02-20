@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, ArrowUp, Loader2, Button } from "@basicsos/ui";
+import { Sparkles, X, ArrowUp, Loader2, Button, Textarea } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 
 type Message = {
@@ -106,7 +106,7 @@ export const AssistantPanel = (): JSX.Element => {
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-stone-200 p-3">
-            <textarea
+            <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -117,7 +117,7 @@ export const AssistantPanel = (): JSX.Element => {
               }}
               placeholder="Ask anything... (Enter to send)"
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-stone-200 bg-muted px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="flex-1 resize-none rounded-xl bg-muted min-h-0"
             />
             <Button
               type="submit"

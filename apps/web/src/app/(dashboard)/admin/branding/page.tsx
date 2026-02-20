@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Input, Label, addToast } from "@basicsos/ui";
+import { Button, Input, Label, addToast, PageHeader } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const BrandingPage = (): JSX.Element => {
@@ -36,7 +36,7 @@ const BrandingPage = (): JSX.Element => {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-stone-900 mb-6">Branding</h1>
+        <PageHeader title="Branding" className="mb-6" />
         <div className="text-sm text-stone-400">Loading…</div>
       </div>
     );
@@ -44,10 +44,11 @@ const BrandingPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">Branding</h1>
-        <p className="mt-1 text-sm text-stone-500">Customize your company name, logo, and colors.</p>
-      </div>
+      <PageHeader
+        title="Branding"
+        description="Customize your company name, logo, and colors."
+        className="mb-6"
+      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Form */}

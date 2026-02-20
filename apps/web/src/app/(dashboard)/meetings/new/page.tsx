@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Input, Label, Card, addToast } from "@basicsos/ui";
+import { Button, Input, Label, Card, addToast, Textarea, Tabs, TabsList, TabsTrigger, TabsContent } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const NewMeetingPage = (): JSX.Element => {
   const router = useRouter();
-  const [tab, setTab] = useState<"transcript" | "audio">("transcript");
+  const [activeTab, setActiveTab] = useState<"transcript" | "audio">("transcript");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [attendees, setAttendees] = useState("");
@@ -41,7 +41,7 @@ const NewMeetingPage = (): JSX.Element => {
         participantEmails,
       });
 
-      if (tab === "transcript" && transcript.trim()) {
+      if (activeTab === "transcript" && transcript.trim()) {
         await uploadTranscript.mutateAsync({
           meetingId: meeting.id,
           transcriptText: transcript.trim(),
@@ -103,50 +103,36 @@ const NewMeetingPage = (): JSX.Element => {
 
         {/* Transcript / Audio tabs */}
         <Card className="overflow-hidden">
-          <div className="flex border-b">
-            <button
-              type="button"
-              onClick={() => setTab("transcript")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                tab === "transcript"
-                  ? "bg-primary/5 text-primary border-b-2 border-primary"
-                  : "text-stone-500 hover:text-stone-700"
-              }`}
-            >
-              Paste Transcript
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("audio")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                tab === "audio"
-                  ? "bg-primary/5 text-primary border-b-2 border-primary"
-                  : "text-stone-500 hover:text-stone-700"
-              }`}
-            >
-              Upload Audio
-            </button>
-          </div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "transcript" | "audio")}>
+            <TabsList className="w-full rounded-none border-b bg-transparent p-0">
+              <TabsTrigger value="transcript" className="flex-1 rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-none">
+                Paste Transcript
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="flex-1 rounded-none border-b-2 border-transparent py-3 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-none">
+                Upload Audio
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="p-6">
-            {tab === "transcript" ? (
+            <TabsContent value="transcript" className="mt-0 p-6">
               <div className="space-y-2">
                 <Label htmlFor="transcript">
                   Transcript text (format: <code className="text-xs">Speaker: text</code> per line)
                 </Label>
-                <textarea
+                <Textarea
                   id="transcript"
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
                   rows={10}
                   placeholder={"Alice: Welcome everyone to the meeting.\nBob: Thanks for having us..."}
-                  className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono"
+                  className="bg-stone-50 font-mono"
                 />
                 <p className="text-xs text-stone-400">
                   Optional. Pasting a transcript will trigger AI summarization.
                 </p>
               </div>
-            ) : (
+            </TabsContent>
+
+            <TabsContent value="audio" className="mt-0 p-6">
               <div className="space-y-2">
                 <Label htmlFor="audio">Audio File</Label>
                 <input
@@ -165,8 +151,8 @@ const NewMeetingPage = (): JSX.Element => {
                   Requires DEEPGRAM_API_KEY for transcription. Supports .mp4, .mp3, .wav, .webm, .m4a.
                 </p>
               </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
         </Card>
 
         <div className="flex gap-3">

@@ -1,8 +1,13 @@
+import { PageHeader } from "@basicsos/ui";
+
 // Next.js App Router requires default export — framework exception.
 const BillingPage = (): JSX.Element => (
   <div className="max-w-2xl">
-    <h1 className="text-2xl font-bold text-stone-900">Hosting</h1>
-    <p className="mt-2 text-stone-500">Choose how to run Basics OS for your team.</p>
+    <PageHeader
+      title="Hosting"
+      description="Choose how to run Basics OS for your team."
+      className="mb-6"
+    />
 
     <div className="mt-6 space-y-4">
       {/* Managed */}

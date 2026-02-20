@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, Download, addToast, Copy, Check } from "@basicsos/ui";
+import { Button, Input, Label, Download, addToast, Copy, Check, Tabs, TabsList, TabsTrigger, TabsContent, PageHeader, Kbd } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/lib/trpc";
@@ -36,7 +36,7 @@ const CopyBlock = ({ label, code }: { label: string; code: string }): JSX.Elemen
 // Next.js App Router requires default export — framework exception
 const SettingsPage = (): JSX.Element => {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"account" | "mcp" | "desktop">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "mcp" | "desktop">("account");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
@@ -101,38 +101,23 @@ const SettingsPage = (): JSX.Element => {
     });
   };
 
-  const TABS = [
-    { id: "account" as const, label: "Account" },
-    { id: "mcp" as const, label: "MCP Connection" },
-    { id: "desktop" as const, label: "Desktop App" },
-  ];
-
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">Settings</h1>
-        <p className="mt-1 text-sm text-stone-500">Manage your account and connections.</p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Manage your account and connections."
+        className="mb-6"
+      />
 
-      {/* Tab bar */}
-      <div className="mb-6 flex border-b border-stone-200">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "border-b-2 border-primary text-primary"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="mcp">MCP Connection</TabsTrigger>
+          <TabsTrigger value="desktop">Desktop App</TabsTrigger>
+        </TabsList>
 
       {/* Account tab */}
-      {tab === "account" && (
+      <TabsContent value="account">
         <div className="space-y-6">
           <div className="rounded-xl border border-stone-200 bg-white p-6">
             <h2 className="mb-4 text-base font-semibold text-stone-900">Profile</h2>
@@ -176,10 +161,10 @@ const SettingsPage = (): JSX.Element => {
             </form>
           </div>
         </div>
-      )}
+      </TabsContent>
 
       {/* MCP Connection tab */}
-      {tab === "mcp" && (
+      <TabsContent value="mcp">
         <div className="space-y-6">
           {/* Tenant ID */}
           <div className="rounded-xl border border-stone-200 bg-white p-6">
@@ -221,10 +206,10 @@ const SettingsPage = (): JSX.Element => {
             <CopyBlock label="claude_desktop_config.json" code={remoteHttpConfig} />
           </div>
         </div>
-      )}
+      </TabsContent>
 
       {/* Desktop tab */}
-      {tab === "desktop" && (
+      <TabsContent value="desktop">
         <div className="space-y-6">
           <div className="rounded-xl border border-stone-200 bg-white p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Desktop App</h2>
@@ -242,7 +227,7 @@ const SettingsPage = (): JSX.Element => {
               <div className="rounded-lg border border-stone-100 bg-stone-50 p-4 space-y-2">
                 <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcut</h3>
                 <p className="text-sm text-stone-500">
-                  Press <kbd className="rounded border border-stone-300 bg-white px-1.5 py-0.5 text-xs font-mono">⌘ Shift Space</kbd> anywhere to toggle the AI overlay.
+                  Press <Kbd>⌘ Shift Space</Kbd> anywhere to toggle the AI overlay.
                 </p>
               </div>
 
@@ -252,13 +237,14 @@ const SettingsPage = (): JSX.Element => {
                   <li>Download and install the app above</li>
                   <li>Set <code className="text-xs">BASICOS_URL=http://localhost:3000</code> in your environment</li>
                   <li>Launch the app — it runs in your system tray</li>
-                  <li>Press <kbd className="rounded border border-stone-300 bg-white px-1 py-0.5 text-xs font-mono">⌘⇧Space</kbd> to open the overlay</li>
+                  <li>Press <Kbd>⌘⇧Space</Kbd> to open the overlay</li>
                 </ol>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </TabsContent>
+      </Tabs>
     </div>
   );
 };

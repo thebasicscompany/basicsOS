@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
+import { PageHeader } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const SecurityPage = (): JSX.Element => {
@@ -8,12 +9,11 @@ const SecurityPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">Security & Audit Log</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Review recent activity across your workspace.
-        </p>
-      </div>
+      <PageHeader
+        title="Security & Audit Log"
+        description="Review recent activity across your workspace."
+        className="mb-6"
+      />
 
       <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
         <div className="border-b px-4 py-3 flex items-center justify-between">

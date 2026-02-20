@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, Users, EmptyState } from "@basicsos/ui";
+import { Button, Plus, Users, EmptyState, PageHeader } from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
@@ -45,10 +45,11 @@ const CRMPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">CRM</h1>
-        <div className="flex items-center gap-2">
-          {view === "contacts" ? (
+      <PageHeader
+        title="CRM"
+        className="mb-6"
+        action={
+          view === "contacts" ? (
             <CreateContactDialog onCreated={() => void refetchContacts()}>
               <Button><Plus size={14} className="mr-1" /> New Contact</Button>
             </CreateContactDialog>
@@ -56,9 +57,9 @@ const CRMPage = (): JSX.Element => {
             <CreateDealDialog onCreated={() => void refetchDeals()}>
               <Button><Plus size={14} className="mr-1" /> New Deal</Button>
             </CreateDealDialog>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {/* View tabs */}
       <div className="mb-6 flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit">

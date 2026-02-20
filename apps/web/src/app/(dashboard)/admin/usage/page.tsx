@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@basicsos/ui";
+import { Card, CardContent, CardHeader, CardTitle, PageHeader } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const UsagePage = (): JSX.Element => {
@@ -9,10 +9,11 @@ const UsagePage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">AI Usage</h1>
-        <p className="mt-1 text-sm text-stone-500">Monitor AI usage and costs across your team.</p>
-      </div>
+      <PageHeader
+        title="AI Usage"
+        description="Monitor AI usage and costs across your team."
+        className="mb-6"
+      />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>

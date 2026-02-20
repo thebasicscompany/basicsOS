@@ -52,6 +52,27 @@ export { Toaster } from "./components/Toaster.js";
 export { useToast, addToast, dismissToast } from "./hooks/useToast.js";
 export type { Toast as ToastType, ToastVariant } from "./hooks/useToast.js";
 export { EmptyState } from "./components/EmptyState.js";
+export { Textarea } from "./components/Textarea.js";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/Tabs.js";
+export { Switch } from "./components/Switch.js";
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+} from "./components/DropdownMenu.js";
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./components/Tooltip.js";
+export { PageHeader } from "./components/PageHeader.js";
+export { Kbd } from "./components/Kbd.js";
 
 // Curated Lucide icon re-exports
 export {

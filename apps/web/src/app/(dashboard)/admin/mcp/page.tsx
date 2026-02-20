@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@basicsos/ui";
+import { Button, PageHeader } from "@basicsos/ui";
 
 const mcpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
 
@@ -44,12 +44,11 @@ const AdminMCPPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">MCP Server</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Connect AI tools to your company data via the Model Context Protocol.
-        </p>
-      </div>
+      <PageHeader
+        title="MCP Server"
+        description="Connect AI tools to your company data via the Model Context Protocol."
+        className="mb-6"
+      />
 
       {/* Status card */}
       <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6">

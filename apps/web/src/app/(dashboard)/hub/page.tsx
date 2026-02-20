@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast } from "@basicsos/ui";
+import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast, PageHeader } from "@basicsos/ui";
 import { AddLinkDialog } from "./AddLinkDialog";
 
 const SERVICE_ICONS: Record<string, React.ElementType> = {
@@ -61,12 +61,15 @@ const HubPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">Hub</h1>
-        <AddLinkDialog onCreated={() => void refetchLinks()}>
-          <Button><Plus size={14} className="mr-1" /> Add Link</Button>
-        </AddLinkDialog>
-      </div>
+      <PageHeader
+        title="Hub"
+        className="mb-6"
+        action={
+          <AddLinkDialog onCreated={() => void refetchLinks()}>
+            <Button><Plus size={14} className="mr-1" /> Add Link</Button>
+          </AddLinkDialog>
+        }
+      />
 
       {Object.entries(byCategory).length === 0 && (
         <EmptyState

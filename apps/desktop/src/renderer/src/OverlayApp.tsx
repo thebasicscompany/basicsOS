@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Kbd } from "@basicsos/ui";
 import { TabBar } from "./components/TabBar";
 import type { Tab } from "./components/TabBar";
 import { AskTab } from "./tabs/AskTab";
@@ -32,9 +32,9 @@ export const OverlayApp = (): JSX.Element => {
             <Sparkles size={14} />
           </div>
           <span className="text-sm font-semibold text-stone-900">Basics OS</span>
-          <kbd className="ml-auto text-[10px] text-stone-400 bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded font-mono">
+          <Kbd className="ml-auto">
             {navigator.platform.includes("Mac") ? "\u2318\u21e7Space" : "Ctrl+Shift+Space"}
-          </kbd>
+          </Kbd>
         </div>
 
         {/* Tab bar */}

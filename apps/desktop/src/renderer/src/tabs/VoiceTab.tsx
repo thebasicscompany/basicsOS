@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, Pencil, Zap } from "lucide-react";
+import { Mic, Pencil, Zap, Button } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { getIPC, sendIPC } from "../lib/ipc";
 import { detectCommand } from "../lib/voice-commands";
@@ -196,14 +196,14 @@ export const VoiceTab = (): JSX.Element => {
       </p>
 
       {/* Mic button */}
-      <button
+      <Button
+        variant="outline"
         onClick={isListening ? stopListening : startListening}
-        className={`w-full rounded-xl py-5 flex flex-col items-center gap-2 transition-all font-medium text-sm border ${
+        className={`w-full rounded-xl py-5 h-auto flex flex-col items-center gap-2 font-medium text-sm ${
           isListening
             ? "bg-red-50 border-red-200 text-red-600 ring-4 ring-red-100"
-            : "bg-white border-stone-200 hover:border-stone-300 hover:shadow-sm text-stone-700"
+            : ""
         }`}
-        type="button"
       >
         <Mic size={28} className={isListening ? "animate-pulse" : ""} />
         <span>
@@ -213,7 +213,7 @@ export const VoiceTab = (): JSX.Element => {
               : "Dictating... (click to stop)"
             : `Click to start ${mode === "command" ? "voice commands" : "dictation"}`}
         </span>
-      </button>
+      </Button>
 
       {/* Status / command feedback */}
       {status && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, BookOpen, FileText, EmptyState } from "@basicsos/ui";
+import { Button, Plus, BookOpen, FileText, EmptyState, PageHeader } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception.
 const KnowledgePage = (): JSX.Element => {
@@ -11,12 +11,15 @@ const KnowledgePage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-stone-900">Knowledge Base</h1>
-        <Button asChild>
-          <a href="/knowledge/new"><Plus size={14} className="mr-1" /> New Document</a>
-        </Button>
-      </div>
+      <PageHeader
+        title="Knowledge Base"
+        className="mb-6"
+        action={
+          <Button asChild>
+            <a href="/knowledge/new"><Plus size={14} className="mr-1" /> New Document</a>
+          </Button>
+        }
+      />
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (

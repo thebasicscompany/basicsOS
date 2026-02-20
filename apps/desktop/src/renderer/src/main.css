@@ -1,6 +1,48 @@
 @import "tailwindcss";
 @import "@basicsos/ui/tokens.css";
 
+@theme {
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+:root {
+  /* Warm stone palette — matches web app globals.css */
+  --background: 30 14% 98%;
+  --foreground: 24 10% 10%;
+  --accent: 30 6% 90%;
+  --accent-foreground: 24 10% 10%;
+  --muted: 30 6% 96%;
+  --muted-foreground: 25 5% 45%;
+  --border: 30 6% 90%;
+  --radius: 0.75rem;
+  /* Primary = indigo-600 */
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+}
+
 /* Overlay font smoothing */
 body {
   -webkit-font-smoothing: antialiased;
@@ -10,9 +52,4 @@ body {
 /* Smooth transitions by default */
 * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Primary color for overlay */
-:root {
-  --primary: #6366f1;
 }

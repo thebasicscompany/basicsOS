@@ -1,8 +1,13 @@
+import { PageHeader } from "@basicsos/ui";
+
 // Next.js App Router requires default export — framework exception.
 const ApiKeysPage = (): JSX.Element => (
   <div className="max-w-2xl">
-    <h1 className="text-2xl font-bold text-stone-900">AI Configuration</h1>
-    <p className="mt-2 text-stone-500">Choose how to power AI features in Basics OS.</p>
+    <PageHeader
+      title="AI Configuration"
+      description="Choose how to power AI features in Basics OS."
+      className="mb-6"
+    />
 
     <div className="mt-6 space-y-4">
       {/* Option A */}

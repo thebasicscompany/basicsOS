@@ -174,4 +174,5 @@ export {
   Bookmark,
   Flag,
   ExternalLink,
+  PenLine,
 } from "lucide-react";

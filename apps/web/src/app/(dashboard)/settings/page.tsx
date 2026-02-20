@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Button, Input, Label, Download, addToast, Copy, Check,
+  Button, Input, Label, Download, addToast, Copy, Check, Switch,
   Tabs, TabsList, TabsTrigger, TabsContent, PageHeader, Kbd,
   Card, CodeBlock, Avatar, AvatarFallback, InlineCode,
+  Sparkles, PenLine,
 } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
@@ -12,10 +13,325 @@ import { trpc } from "@/lib/trpc";
 
 const mcpHttpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
 
+// ---------------------------------------------------------------------------
+// Overlay settings types + defaults (mirrors desktop electron-store)
+// ---------------------------------------------------------------------------
+
+type OverlaySettings = {
+  shortcuts: { assistantToggle: string; dictationToggle: string };
+  voice: { language: string; silenceTimeoutMs: number; ttsEnabled: boolean; ttsRate: number };
+  behavior: { doubleTapWindowMs: number; autoDismissMs: number; showDictationPreview: boolean };
+};
+
+const OVERLAY_DEFAULTS: OverlaySettings = {
+  shortcuts: { assistantToggle: "Control+Space", dictationToggle: "Control+Shift+Space" },
+  voice: { language: "en-US", silenceTimeoutMs: 2000, ttsEnabled: true, ttsRate: 1.05 },
+  behavior: { doubleTapWindowMs: 400, autoDismissMs: 5000, showDictationPreview: true },
+};
+
+const STORAGE_KEY = "basicos:overlay-settings";
+
+const loadOverlaySettings = (): OverlaySettings => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return OVERLAY_DEFAULTS;
+    return JSON.parse(raw) as OverlaySettings;
+  } catch {
+    return OVERLAY_DEFAULTS;
+  }
+};
+
+const saveOverlaySettings = (settings: OverlaySettings): void => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+};
+
+// ---------------------------------------------------------------------------
+// Shortcut display helper
+// ---------------------------------------------------------------------------
+
+const formatShortcut = (shortcut: string): string => {
+  const isMac = typeof navigator !== "undefined" && navigator.platform.includes("Mac");
+  if (isMac) {
+    return shortcut
+      .replace("Control", "\u2303")
+      .replace("Shift", "\u21e7")
+      .replace("Alt", "\u2325")
+      .replace("Command", "\u2318")
+      .replace("CommandOrControl", "\u2318")
+      .replace(/\+/g, "");
+  }
+  return shortcut;
+};
+
+// ---------------------------------------------------------------------------
+// Key capture hook
+// ---------------------------------------------------------------------------
+
+const useKeyCapture = (
+  active: boolean,
+  onCapture: (combo: string) => void,
+): void => {
+  useEffect(() => {
+    if (!active) return;
+
+    const handler = (e: KeyboardEvent): void => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const parts: string[] = [];
+      if (e.ctrlKey) parts.push("Control");
+      if (e.shiftKey) parts.push("Shift");
+      if (e.altKey) parts.push("Alt");
+      if (e.metaKey) parts.push("Command");
+
+      // Ignore modifier-only presses
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+
+      parts.push(e.key === " " ? "Space" : e.key.charAt(0).toUpperCase() + e.key.slice(1));
+      onCapture(parts.join("+"));
+    };
+
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [active, onCapture]);
+};
+
+// ---------------------------------------------------------------------------
+// Overlay Settings Tab
+// ---------------------------------------------------------------------------
+
+const OverlaySettingsTab = (): JSX.Element => {
+  const [settings, setSettings] = useState<OverlaySettings>(OVERLAY_DEFAULTS);
+  const [capturingAssistant, setCapturingAssistant] = useState(false);
+  const [capturingDictation, setCapturingDictation] = useState(false);
+
+  useEffect(() => {
+    setSettings(loadOverlaySettings());
+  }, []);
+
+  const save = useCallback((updated: OverlaySettings) => {
+    setSettings(updated);
+    saveOverlaySettings(updated);
+  }, []);
+
+  const pushToDesktop = useCallback((updated: OverlaySettings) => {
+    try {
+      const json = encodeURIComponent(JSON.stringify(updated));
+      window.location.href = `basicos://update-settings?json=${json}`;
+    } catch {
+      // Protocol not registered — desktop app not installed
+    }
+    addToast({ title: "Settings saved", variant: "success" });
+  }, []);
+
+  useKeyCapture(capturingAssistant, (combo) => {
+    const updated = { ...settings, shortcuts: { ...settings.shortcuts, assistantToggle: combo } };
+    save(updated);
+    setCapturingAssistant(false);
+  });
+
+  useKeyCapture(capturingDictation, (combo) => {
+    const updated = { ...settings, shortcuts: { ...settings.shortcuts, dictationToggle: combo } };
+    save(updated);
+    setCapturingDictation(false);
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Keyboard Shortcuts */}
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-stone-900">Keyboard Shortcuts</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-stone-500" />
+              <span className="text-sm text-stone-700">AI Assistant</span>
+              <span className="text-xs text-stone-400">(tap / double-tap for continuous)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {capturingAssistant ? (
+                <Kbd className="animate-pulse bg-primary/10 text-primary">Press keys...</Kbd>
+              ) : (
+                <Kbd>{formatShortcut(settings.shortcuts.assistantToggle)}</Kbd>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCapturingDictation(false);
+                  setCapturingAssistant(!capturingAssistant);
+                }}
+              >
+                {capturingAssistant ? "Cancel" : "Change"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PenLine size={14} className="text-stone-500" />
+              <span className="text-sm text-stone-700">Dictation to Paste</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {capturingDictation ? (
+                <Kbd className="animate-pulse bg-primary/10 text-primary">Press keys...</Kbd>
+              ) : (
+                <Kbd>{formatShortcut(settings.shortcuts.dictationToggle)}</Kbd>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCapturingAssistant(false);
+                  setCapturingDictation(!capturingDictation);
+                }}
+              >
+                {capturingDictation ? "Cancel" : "Change"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="double-tap-speed" className="text-sm text-stone-700">Double-tap speed</Label>
+            <select
+              id="double-tap-speed"
+              value={settings.behavior.doubleTapWindowMs}
+              onChange={(e) => {
+                const updated = { ...settings, behavior: { ...settings.behavior, doubleTapWindowMs: Number(e.target.value) } };
+                save(updated);
+              }}
+              className="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700"
+            >
+              <option value={200}>Fast (200ms)</option>
+              <option value={400}>Normal (400ms)</option>
+              <option value={800}>Slow (800ms)</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Voice */}
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-stone-900">Voice</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm text-stone-700">Silence timeout</Label>
+              <p className="text-xs text-stone-400">Auto-stop listening after this silence</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={1000}
+                max={5000}
+                step={500}
+                value={settings.voice.silenceTimeoutMs}
+                onChange={(e) => {
+                  const updated = { ...settings, voice: { ...settings.voice, silenceTimeoutMs: Number(e.target.value) } };
+                  save(updated);
+                }}
+                className="w-24"
+              />
+              <span className="w-10 text-right text-xs text-stone-500">{settings.voice.silenceTimeoutMs / 1000}s</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm text-stone-700">Text-to-speech</Label>
+              <p className="text-xs text-stone-400">Read AI responses aloud</p>
+            </div>
+            <Switch
+              checked={settings.voice.ttsEnabled}
+              onCheckedChange={(checked) => {
+                const updated = { ...settings, voice: { ...settings.voice, ttsEnabled: checked } };
+                save(updated);
+              }}
+            />
+          </div>
+
+          {settings.voice.ttsEnabled && (
+            <div className="flex items-center justify-between">
+              <Label className="text-sm text-stone-700">Speech rate</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0.5}
+                  max={2.0}
+                  step={0.05}
+                  value={settings.voice.ttsRate}
+                  onChange={(e) => {
+                    const updated = { ...settings, voice: { ...settings.voice, ttsRate: Number(e.target.value) } };
+                    save(updated);
+                  }}
+                  className="w-24"
+                />
+                <span className="w-10 text-right text-xs text-stone-500">{settings.voice.ttsRate.toFixed(1)}x</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Behavior */}
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-stone-900">Behavior</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm text-stone-700">Auto-dismiss delay</Label>
+              <p className="text-xs text-stone-400">How long to show AI responses</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={2000}
+                max={30000}
+                step={1000}
+                value={settings.behavior.autoDismissMs}
+                onChange={(e) => {
+                  const updated = { ...settings, behavior: { ...settings.behavior, autoDismissMs: Number(e.target.value) } };
+                  save(updated);
+                }}
+                className="w-24"
+              />
+              <span className="w-10 text-right text-xs text-stone-500">{settings.behavior.autoDismissMs / 1000}s</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm text-stone-700">Show dictation preview</Label>
+              <p className="text-xs text-stone-400">Display live transcript while dictating</p>
+            </div>
+            <Switch
+              checked={settings.behavior.showDictationPreview}
+              onCheckedChange={(checked) => {
+                const updated = { ...settings, behavior: { ...settings.behavior, showDictationPreview: checked } };
+                save(updated);
+              }}
+            />
+          </div>
+        </div>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={() => pushToDesktop(settings)}>
+          Save & Push to Desktop
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main Settings Page
+// ---------------------------------------------------------------------------
+
 // Next.js App Router requires default export — framework exception
 const SettingsPage = (): JSX.Element => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"account" | "mcp" | "desktop">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "mcp" | "desktop" | "overlay">("account");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
@@ -103,6 +419,7 @@ const SettingsPage = (): JSX.Element => {
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="mcp">MCP Connection</TabsTrigger>
           <TabsTrigger value="desktop">Desktop App</TabsTrigger>
+          <TabsTrigger value="overlay">Overlay</TabsTrigger>
         </TabsList>
 
       {/* Account tab */}
@@ -215,9 +532,15 @@ const SettingsPage = (): JSX.Element => {
               </Button>
 
               <div className="rounded-lg bg-white shadow-card p-4 space-y-2">
-                <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcut</h3>
+                <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcuts</h3>
                 <p className="text-sm text-stone-500">
-                  Press <Kbd>⌘ Shift Space</Kbd> anywhere to toggle the AI overlay.
+                  <Kbd>Ctrl Space</Kbd> — AI assistant (double-tap for continuous listening)
+                </p>
+                <p className="text-sm text-stone-500">
+                  <Kbd>Ctrl Shift Space</Kbd> — Dictation to paste
+                </p>
+                <p className="mt-1 text-xs text-stone-400">
+                  Customize shortcuts in the Overlay tab.
                 </p>
               </div>
 
@@ -227,12 +550,17 @@ const SettingsPage = (): JSX.Element => {
                   <li>Download and install the app above</li>
                   <li>Set <InlineCode>BASICOS_URL=http://localhost:3000</InlineCode> in your environment</li>
                   <li>Launch the app — it runs in your system tray</li>
-                  <li>Press <Kbd>⌘⇧Space</Kbd> to open the overlay</li>
+                  <li>Press <Kbd>Ctrl Space</Kbd> to open the overlay</li>
                 </ol>
               </div>
             </div>
           </Card>
         </div>
+      </TabsContent>
+
+      {/* Overlay tab */}
+      <TabsContent value="overlay">
+        <OverlaySettingsTab />
       </TabsContent>
       </Tabs>
     </div>

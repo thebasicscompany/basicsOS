@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "start": "turbo run start",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",

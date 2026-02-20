@@ -101,7 +101,7 @@ const LoginScreen = (): JSX.Element => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={s.buttonText}>Sign in</Text>
             )}

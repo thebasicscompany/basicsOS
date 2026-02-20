@@ -10,6 +10,7 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { useParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { Button, Input, PageHeader, Bold, Italic, Heading1, Heading2, List, ListOrdered, Code2 } from "@basicsos/ui";
 
 // Next.js page — requires default export
 const DocumentDetailPage = (): JSX.Element => {
@@ -101,11 +102,11 @@ const DocumentDetailPage = (): JSX.Element => {
   }, [save]);
 
   if (error) {
-    return <div className="p-8 text-center text-red-500">{error.message}</div>;
+    return <div className="p-8 text-center text-destructive">{error.message}</div>;
   }
 
   if (isLoading || !doc) {
-    return <div className="p-8 text-center text-stone-400">Loading...</div>;
+    return <div className="p-8 text-center text-stone-500">Loading...</div>;
   }
 
   const saving = updateMutation.isPending;
@@ -114,100 +115,96 @@ const DocumentDetailPage = (): JSX.Element => {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Title bar */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.push("/knowledge")}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
-          &larr; Knowledge Base
-        </button>
-        <div className="flex items-center gap-3">
-          {collaborating && (
-            <span className="flex items-center gap-1.5 text-xs text-green-600">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              Live
+      <PageHeader
+        title=""
+        backHref="/knowledge"
+        backLabel="Knowledge Base"
+        className="mb-6"
+        action={
+          <div className="flex items-center gap-3">
+            {collaborating && (
+              <span className="flex items-center gap-1.5 text-xs text-success">
+                <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+                Live
+              </span>
+            )}
+            <span className="text-xs text-stone-500">
+              {saving ? "Saving..." : saved ? "Saved" : "Cmd+S to save"}
             </span>
-          )}
-          <span className="text-xs text-stone-400">
-            {saving ? "Saving..." : saved ? "Saved" : "Cmd+S to save"}
-          </span>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Document title */}
-      <input
+      <Input
         value={localTitle}
         onChange={(e) => setLocalTitle(e.target.value)}
         onBlur={save}
-        className="w-full text-4xl font-bold text-stone-900 border-none outline-none bg-transparent mb-4 placeholder-stone-300"
+        className="w-full text-4xl font-bold text-stone-900 border-none bg-transparent mb-4 placeholder-stone-300 shadow-none h-auto p-0"
         placeholder="Untitled Document"
       />
 
       {/* TipTap editor */}
-      <div className="rounded-xl border bg-white shadow-sm">
+      <div className="rounded-lg bg-white shadow-card">
         {/* Toolbar */}
-        <div className="flex gap-1 border-b px-3 py-2">
+        <div className="flex gap-0.5 border-b border-stone-100 px-2 py-1.5">
           {[
             {
-              label: "B",
+              Icon: Bold,
               title: "Bold",
               action: () => editor?.chain().focus().toggleBold().run(),
               active: () => editor?.isActive("bold") ?? false,
             },
             {
-              label: "I",
+              Icon: Italic,
               title: "Italic",
               action: () => editor?.chain().focus().toggleItalic().run(),
               active: () => editor?.isActive("italic") ?? false,
             },
             {
-              label: "H1",
+              Icon: Heading1,
               title: "Heading 1",
               action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
               active: () => editor?.isActive("heading", { level: 1 }) ?? false,
             },
             {
-              label: "H2",
+              Icon: Heading2,
               title: "Heading 2",
               action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
               active: () => editor?.isActive("heading", { level: 2 }) ?? false,
             },
             {
-              label: "•",
+              Icon: List,
               title: "Bullet list",
               action: () => editor?.chain().focus().toggleBulletList().run(),
               active: () => editor?.isActive("bulletList") ?? false,
             },
             {
-              label: "1.",
+              Icon: ListOrdered,
               title: "Ordered list",
               action: () => editor?.chain().focus().toggleOrderedList().run(),
               active: () => editor?.isActive("orderedList") ?? false,
             },
             {
-              label: "</>",
+              Icon: Code2,
               title: "Code block",
               action: () => editor?.chain().focus().toggleCodeBlock().run(),
               active: () => editor?.isActive("codeBlock") ?? false,
             },
           ].map((btn) => (
-            <button
-              key={btn.label}
+            <Button
+              key={btn.title}
+              variant="ghost"
+              size="icon"
               title={btn.title}
               onClick={btn.action}
-              className={`px-2 py-1 text-sm rounded font-mono hover:bg-stone-100 ${
-                btn.active() ? "bg-stone-200 font-bold" : ""
-              }`}
+              className={btn.active() ? "bg-stone-200" : ""}
             >
-              {btn.label}
-            </button>
+              <btn.Icon size={16} />
+            </Button>
           ))}
         </div>
         {/* Editor content */}

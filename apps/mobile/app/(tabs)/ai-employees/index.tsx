@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { Briefcase } from "lucide-react-native";
+import { Briefcase, X } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
+import { MobileEmptyState } from "../../../components/MobileEmptyState";
 import { trpc } from "../../../lib/trpc";
 import { colors, radius, shadows } from "../../../lib/tokens";
 
@@ -93,7 +94,7 @@ const JobDetailPanel = ({
           {jobData.title}
         </Text>
         <TouchableOpacity onPress={onDismiss}>
-          <Text style={styles.closeBtn}>{"\u2715"}</Text>
+          <X size={16} color={colors.textPlaceholder} />
         </TouchableOpacity>
       </View>
 
@@ -177,15 +178,11 @@ const AiEmployeesScreen = (): JSX.Element => {
       {!selectedJobId && (
         <>
           {jobList.length === 0 ? (
-            <View style={styles.empty}>
-              <View style={styles.emptyIcon}>
-                <Briefcase size={28} color={colors.textPlaceholder} />
-              </View>
-              <Text style={styles.emptyTitle}>No AI Employee Jobs</Text>
-              <Text style={styles.emptySubtitle}>
-                Create a job from the web app to delegate tasks to an AI employee.
-              </Text>
-            </View>
+            <MobileEmptyState
+              Icon={Briefcase}
+              heading="No AI Employee Jobs"
+              description="Create a job from the web app to delegate tasks to an AI employee."
+            />
           ) : (
             <FlatList
               data={jobList}
@@ -240,9 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
     padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   jobCardRow: {
     flexDirection: "row",
@@ -258,10 +253,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.card,
     marginBottom: 16,
-    ...shadows.md,
   },
   panelHeader: {
     flexDirection: "row",
@@ -293,8 +286,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 12,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.card,
   },
   outputContent: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 8 },
   approveBtn: {
@@ -303,11 +295,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: "center",
   },
-  approveBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  approveBtnText: { color: colors.white, fontSize: 13, fontWeight: "600" },
   approvedText: { fontSize: 12, color: colors.success, fontWeight: "600" },
   killBtn: {
     borderWidth: 1,
-    borderColor: "#fca5a5",
+    borderColor: colors.destructiveBorder,
     borderRadius: radius.sm,
     paddingVertical: 8,
     alignItems: "center",

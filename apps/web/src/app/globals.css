@@ -1,6 +1,9 @@
 @import "tailwindcss";
+@source "../../../../packages/ui/src";
 
 @theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif), Georgia, "Times New Roman", serif;
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-destructive: hsl(var(--destructive));
@@ -19,6 +22,13 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  --shadow-card: 0 1px 3px rgba(28,25,23,0.08), 0 1px 2px rgba(28,25,23,0.06);
+  --shadow-overlay: 0 12px 28px rgba(28,25,23,0.14), 0 4px 10px rgba(28,25,23,0.08);
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 :root {

@@ -25,8 +25,8 @@ packages/
 
 context/        AI context files — architecture, modules, platforms, infra
 .claude/
-  skills/       9 Claude Code skills (add-field, new-module, etc.)
-  agents/       7 Claude Code agents (feature-builder, security-auditor, etc.)
+  skills/       10 Claude Code skills (add-field, new-module, standardize-ui, etc.)
+  agents/       8 Claude Code agents (feature-builder, ui-standardizer, etc.)
 ```
 
 ## Architecture in 30 Seconds
@@ -228,18 +228,19 @@ Register it in `apps/mcp/company/src/server.ts`. See: [@.claude/skills/new-mcp-t
 
 ## Common Tasks
 
-| Task                           | Where to look                                                                             |
-| ------------------------------ | ----------------------------------------------------------------------------------------- |
-| Orient yourself / find context | [@.claude/skills/navigate-codebase](/.claude/skills/navigate-codebase/SKILL.md)           |
-| Add a field to a table         | [@.claude/skills/add-field](/.claude/skills/add-field/SKILL.md)                           |
-| Add a tRPC endpoint            | [@.claude/skills/new-api-endpoint](/.claude/skills/new-api-endpoint/SKILL.md)             |
-| Create a UI view               | [@.claude/skills/new-view](/.claude/skills/new-view/SKILL.md)                             |
-| Expose a tool to AI            | [@.claude/skills/new-mcp-tool](/.claude/skills/new-mcp-tool/SKILL.md)                     |
-| Build a full module            | [@.claude/skills/new-module](/.claude/skills/new-module/SKILL.md)                         |
-| Add an automation              | [@.claude/skills/new-automation-trigger](/.claude/skills/new-automation-trigger/SKILL.md) |
-| Write tests                    | [@.claude/skills/testing-patterns](/.claude/skills/testing-patterns/SKILL.md)             |
-| Architecture decision          | [@.claude/skills/architecture](/.claude/skills/architecture/SKILL.md)                     |
-| UI component patterns          | [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md)                   |
+| Task | Where to look |
+|------|--------------|
+| Orient yourself / find context | [@.claude/skills/navigate-codebase](/.claude/skills/navigate-codebase/SKILL.md) |
+| Add a field to a table | [@.claude/skills/add-field](/.claude/skills/add-field/SKILL.md) |
+| Add a tRPC endpoint | [@.claude/skills/new-api-endpoint](/.claude/skills/new-api-endpoint/SKILL.md) |
+| Create a UI view | [@.claude/skills/new-view](/.claude/skills/new-view/SKILL.md) |
+| Expose a tool to AI | [@.claude/skills/new-mcp-tool](/.claude/skills/new-mcp-tool/SKILL.md) |
+| Build a full module | [@.claude/skills/new-module](/.claude/skills/new-module/SKILL.md) |
+| Add an automation | [@.claude/skills/new-automation-trigger](/.claude/skills/new-automation-trigger/SKILL.md) |
+| Write tests | [@.claude/skills/testing-patterns](/.claude/skills/testing-patterns/SKILL.md) |
+| Architecture decision | [@.claude/skills/architecture](/.claude/skills/architecture/SKILL.md) |
+| UI component patterns | [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md) |
+| Standardize UI across apps | [@.claude/skills/standardize-ui](/.claude/skills/standardize-ui/SKILL.md) |
 
 ## Running Locally
 
@@ -288,13 +289,38 @@ Color tokens are defined in two places:
 
 The palette uses **warm stone** (not cold gray). Brand color: `#6366f1` (indigo).
 
-| Token                  | Tailwind class               | Use                            |
-| ---------------------- | ---------------------------- | ------------------------------ |
-| `--primary`            | `bg-primary`, `text-primary` | Main action color (indigo-600) |
-| `--primary-foreground` | `text-primary-foreground`    | Text on primary background     |
-| `--destructive`        | `bg-destructive`             | Delete / error actions         |
-| `--success`            | `bg-success`                 | Success states                 |
-| `--warning`            | `bg-warning`                 | Warning states                 |
+### Typography
+
+**Font pairing: Plus Jakarta Sans (body) + Lora (serif accents)**
+
+- Body text uses Plus Jakarta Sans via `--font-sans` CSS variable (loaded in `apps/web/src/app/layout.tsx` via `next/font/google`)
+- Serif (Lora) is applied to only 3 places:
+  1. `PageHeader` H1 — `font-serif tracking-tight`
+  2. Dashboard greeting H1 — `font-serif tracking-tight`
+  3. `EmptyState` heading — `font-serif`
+- Desktop overlay loads Plus Jakarta Sans via `@import url(...)` in `main.css` (no serif needed)
+- **Never apply `font-serif` to body text, card titles, or labels** — it's reserved for hero headings only
+
+### Radius System
+
+| Role | Class | px |
+|------|-------|----|
+| Buttons, inputs, badges, dropdowns | `rounded-md` | 8px |
+| Cards, dialogs, toasts, code blocks | `rounded-lg` | 12px |
+| AppShell panels, SidebarPanel | `rounded-xl` | 16px |
+| Pills (only when explicitly pill-shaped) | `rounded-full` | 999px |
+
+### Shadow System
+
+Warm-tinted shadows using `rgba(28,25,23,...)` (stone-900 base) instead of pure black. Defined in both `globals.css` and `desktop/main.css` `@theme` blocks.
+
+| Token | Tailwind class | Use |
+|---|---|---|
+| `--primary` | `bg-primary`, `text-primary` | Main action color (indigo-600) |
+| `--primary-foreground` | `text-primary-foreground` | Text on primary background |
+| `--destructive` | `bg-destructive` | Delete / error actions |
+| `--success` | `bg-success` | Success states |
+| `--warning` | `bg-warning` | Warning states |
 
 **Rules:**
 
@@ -353,10 +379,58 @@ import { cn } from "@basicsos/ui";
 4. Use <Badge> for status indicators — never inline pill divs
 5. Use <EmptyState> for empty lists — never inline empty messages
 6. Use <Dialog> for modals — never custom modal divs
-7. Colors: stone-900 (primary text), stone-500 (secondary), stone-400 (placeholder)
-8. Borders: stone-200 (default), stone-300 (strong)
-9. Surfaces: white (cards), stone-50 (app bg), stone-100 (subtle bg)
+7. Use <Table> / <TableHeader> / <TableBody> / <TableRow> / <TableHead> / <TableCell> for data tables
+8. Use <Tabs> / <TabsList> / <TabsTrigger> / <TabsContent> for tab switchers — never raw pill-button tabs
+9. Use <Avatar> / <AvatarFallback> for user initials — never raw div circles
+10. Use <PageHeader> for page titles (supports backHref/backLabel for detail pages)
+11. Use <AppShell> for the inset panel layout (sidebar + main + floating)
+12. Use <SidebarPanel> for the sidebar container (header + nav + footer)
+13. Use <CodeBlock> for copyable code snippets — never inline <pre> + copy button
+14. Use <SectionLabel> for eyebrow labels — never raw `text-xs uppercase tracking-wider`
+15. Use <IconBadge> for icon-in-circle containers — never raw `h-10 w-10 rounded-xl bg-*-50`
+16. Use <InlineCode> for inline code references — never raw `<code className="...">`
+17. Colors: stone-900 (primary text), stone-500 (secondary), stone-400 (placeholder)
+18. Borders: stone-200 (default), stone-300 (strong)
+19. Surfaces: white (cards), stone-50 (app bg), stone-100 (subtle bg)
 ```
+
+### Component-First Rules (MANDATORY)
+
+These rules are **non-negotiable** and must be followed for every UI change:
+
+1. **Always check `@basicsos/ui` first.** Before writing any HTML element (`<div>`, `<button>`, `<table>`, `<input>`), check if a component exists in `packages/ui/src/index.ts`. If it does, use it.
+
+2. **Never duplicate markup across pages.** If the same div structure / class combo appears in 2+ files, extract it into `packages/ui/src/components/` and export from `index.ts`.
+
+3. **Promote local components at 3 uses.** If a page-local component (like a `CopyBlock` or `StatusDot`) is used in 3+ places, promote it to `@basicsos/ui`.
+
+4. **New pages must use only components.** When creating a new page, every visual element must come from `@basicsos/ui`. The only raw HTML allowed is semantic wrappers (`<div>`, `<form>`, `<section>`) for layout — never styled containers.
+
+5. **After adding a new component**, always:
+   - Export it from `packages/ui/src/index.ts`
+   - Run `npx tsc` in `packages/ui` to build
+   - Update this section in CLAUDE.md if it's a new pattern
+
+**Component inventory** (always use these, never reinvent):
+| Pattern | Component | Import from |
+|---------|-----------|-------------|
+| White bordered container | `Card` | `@basicsos/ui` |
+| Clickable action | `Button` | `@basicsos/ui` |
+| Data table | `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` | `@basicsos/ui` |
+| Tab switcher | `Tabs, TabsList, TabsTrigger, TabsContent` | `@basicsos/ui` |
+| User avatar/initials | `Avatar, AvatarFallback` | `@basicsos/ui` |
+| Page title + back link | `PageHeader` (with `backHref`/`backLabel`) | `@basicsos/ui` |
+| App layout shell | `AppShell` | `@basicsos/ui` |
+| Sidebar container | `SidebarPanel` | `@basicsos/ui` |
+| Copyable code block | `CodeBlock` | `@basicsos/ui` |
+| Section eyebrow label | `SectionLabel` (with `as` prop) | `@basicsos/ui` |
+| Icon in colored circle | `IconBadge` (with `size`, `color` props) | `@basicsos/ui` |
+| Inline code snippet | `InlineCode` | `@basicsos/ui` |
+| Status badge | `Badge` | `@basicsos/ui` |
+| Empty state | `EmptyState` | `@basicsos/ui` |
+| Modal dialog | `Dialog` + subcomponents | `@basicsos/ui` |
+| Form fields | `Input, Label, Textarea, Select` | `@basicsos/ui` |
+| Toggle switch | `Switch` | `@basicsos/ui` |
 
 ### Mobile Tokens
 
@@ -364,22 +438,18 @@ import { cn } from "@basicsos/ui";
 - `apps/mobile/lib/auth-styles.ts` — shared auth screen StyleSheet
 - `apps/mobile/components/Screen.tsx` — accepts `scrollable` prop
 
+**Mobile color rule: NEVER use hardcoded hex values (`"#fff"`, `"#f97316"`, etc.) in mobile code.** Always reference `colors.*` from `apps/mobile/lib/tokens.ts`. If a color doesn't exist in the tokens file, add it there first, then reference it. Same applies to `borderRadius` — always use `radius.*` tokens.
+
+Available color tokens: `surfaceApp`, `surfaceCard`, `surfaceSubtle`, `border`, `borderStrong`, `textPrimary`, `textSecondary`, `textPlaceholder`, `brand`, `brandSubtle`, `success`, `destructive`, `destructiveBorder`, `warning`, `emerald`, `blue`, `violet`, `amber`, `rose`, `orange`, `pink`, `white`, `black` (and `*Subtle` variants for backgrounds).
+
 ## UI Components
 
 All reusable components live in `packages/ui/src/`. Import from `@basicsos/ui`.
 
 ```ts
-import {
-  Button,
-  Input,
-  Card,
-  Dialog,
-  Select,
-  Badge,
-  EmptyState,
-  useToast,
-  addToast,
-} from "@basicsos/ui";
+import { Button, Input, Card, Dialog, Select, Badge, EmptyState, useToast, addToast } from "@basicsos/ui";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@basicsos/ui";
+import { AppShell, SidebarPanel, PageHeader, CodeBlock, Avatar, AvatarFallback, SectionLabel, IconBadge, InlineCode } from "@basicsos/ui";
 ```
 
 - **Button** — CVA variants: `default | destructive | outline | ghost | link`; sizes: `default | sm | lg | icon`
@@ -390,6 +460,15 @@ import {
 - **Select** — `Select + SelectTrigger + SelectValue + SelectContent + SelectItem`
 - **EmptyState** — `Icon` + `heading` + `description` + optional `action` slot
 - **Toaster** — render `<Toaster />` once in root layout; call `addToast({ title, variant })` anywhere
+- **Table** — `Table + TableHeader + TableBody + TableRow + TableHead + TableCell` — use for all data tables
+- **AppShell** — Inset panel layout: `sidebar` + `floating` + `children` slots, `contentPadding`, `contentMaxWidth` props
+- **SidebarPanel** — Rounded white panel: `header` + `footer` + `children` slots, `width` prop
+- **PageHeader** — Page title with optional `description`, `action`, `backHref`/`backLabel` for detail pages
+- **CodeBlock** — Copyable code block with `label` and `code` props — use instead of inline `<pre>` + copy button
+- **Avatar** — `Avatar + AvatarImage + AvatarFallback` — use for all user initials/profile images
+- **SectionLabel** — Eyebrow label (`text-xs uppercase tracking-widest text-stone-400`). `as` prop: `"p" | "h2" | "h3" | "span"`. Replaces all inline section labels.
+- **IconBadge** — Icon in colored circle. `Icon`, `size` (`"sm" | "md" | "lg"`), `color` (Tailwind class pair). Replaces all `h-10 w-10 rounded-xl bg-*-50` patterns.
+- **InlineCode** — Styled `<code>` element with stone-100 background and border. Replaces all inline `<code className="...">` patterns.
 
 ### Form + Mutation + Toast pattern
 
@@ -687,3 +766,16 @@ All context files live in `context/`. Read these for deep dives into specific ar
 - Don't hardcode secrets — use `process.env["VAR"]` with fail-fast guard
 - Don't add third-party billing or hosting provider integrations — this repo focuses on the product itself
 - Don't modify `main` branch directly — always use feature branches (or worktrees for autonomous agents)
+- **Don't use raw HTML when a `@basicsos/ui` component exists** — no raw `<button>`, `<table>`, `<input>`, or styled `<div>` containers
+- **Don't use `gray-*` Tailwind classes** — always use `stone-*` (warm palette)
+- **Don't duplicate UI patterns across files** — extract to `packages/ui/src/components/` instead
+- **Don't write inline avatar/initials circles** — use `<Avatar>/<AvatarFallback>`
+- **Don't write inline tab switchers** — use `<Tabs>/<TabsList>/<TabsTrigger>`
+- **Don't write inline code blocks with copy buttons** — use `<CodeBlock>`
+- **Don't write inline `<code>` elements** — use `<InlineCode>` from `@basicsos/ui`
+- **Don't write eyebrow/section labels manually** — use `<SectionLabel>` (never `text-xs uppercase tracking-wider`)
+- **Don't write icon-in-circle containers manually** — use `<IconBadge>`
+- **Don't apply `font-serif` to body text or card titles** — only `PageHeader` H1, dashboard greeting, `EmptyState` heading
+- **Don't hardcode hex colors in mobile code** — always use `colors.*` from `apps/mobile/lib/tokens.ts`. Add new tokens if needed.
+- **Don't hardcode `borderRadius` numbers in mobile code** — always use `radius.*` from tokens
+- **Desktop overlay must use `@basicsos/ui` components** — `Button`, `Card`, `Badge`, `EmptyState`, etc. No raw `<button>` or hand-rolled card divs.

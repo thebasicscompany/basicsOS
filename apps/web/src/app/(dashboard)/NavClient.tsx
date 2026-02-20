@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Sidebar } from "@basicsos/ui";
+import { Sidebar, SidebarPanel, Avatar, AvatarFallback, Button } from "@basicsos/ui";
 import type { SidebarItem } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
@@ -57,45 +57,44 @@ export const NavClient = (): JSX.Element => {
       .toUpperCase()
       .slice(0, 2) ?? "A";
 
-  return (
-    <div className="flex h-full w-60 flex-col border-r border-stone-200 bg-stone-50/80">
-      {/* Brand header */}
-      <div className="flex items-center gap-2 border-b border-stone-200 px-4 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-          B
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-stone-900">Basics OS</div>
-          <div className="text-xs text-stone-500">Company OS</div>
-        </div>
+  const brandHeader = (
+    <div className="flex items-center gap-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+        B
       </div>
-
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto">
-        <Sidebar items={visibleItems} activeHref={activeHref} />
-      </div>
-
-      {/* User widget */}
-      <div className="border-t border-stone-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-              {initials}
-            </div>
-            <div className="text-xs">
-              <div className="font-medium text-stone-900">{user?.name ?? "Account"}</div>
-              <div className="text-stone-500">{user?.email ?? ""}</div>
-            </div>
-          </div>
-          <button
-            onClick={() => void handleSignOut()}
-            className="text-stone-400 hover:text-stone-600 transition-colors"
-            title="Sign out"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
+      <div>
+        <div className="text-sm font-semibold text-stone-900">Basics OS</div>
+        <div className="text-xs text-stone-600">Company OS</div>
       </div>
     </div>
+  );
+
+  const userWidget = (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Avatar className="h-7 w-7">
+          <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="text-xs">
+          <div className="font-medium text-stone-900">{user?.name ?? "Account"}</div>
+          <div className="text-stone-600">{user?.email ?? ""}</div>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => void handleSignOut()}
+        title="Sign out"
+        className="h-7 w-7 text-stone-600 hover:text-stone-800"
+      >
+        <LogOut size={16} />
+      </Button>
+    </div>
+  );
+
+  return (
+    <SidebarPanel header={brandHeader} footer={userWidget}>
+      <Sidebar items={visibleItems} activeHref={activeHref} />
+    </SidebarPanel>
   );
 };

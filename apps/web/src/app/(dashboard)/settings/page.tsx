@@ -1,50 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, Download, addToast, Copy, Check } from "@basicsos/ui";
+import {
+  Button, Input, Label, Download, addToast, Copy, Check,
+  Tabs, TabsList, TabsTrigger, TabsContent, PageHeader, Kbd,
+  Card, CodeBlock, Avatar, AvatarFallback, InlineCode,
+} from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/lib/trpc";
 
 const mcpHttpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
 
-const CopyBlock = ({ label, code }: { label: string; code: string }): JSX.Element => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = (): void => {
-    void navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-stone-500 uppercase tracking-wide">{label}</span>
-        <Button size="sm" variant="outline" onClick={handleCopy}>
-          {copied ? "Copied!" : "Copy"}
-        </Button>
-      </div>
-      <pre className="overflow-x-auto rounded-lg bg-stone-900 p-4 text-xs text-stone-100 whitespace-pre-wrap break-all">
-        {code}
-      </pre>
-    </div>
-  );
-};
-
 // Next.js App Router requires default export — framework exception
 const SettingsPage = (): JSX.Element => {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"account" | "mcp" | "desktop">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "mcp" | "desktop">("account");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [copiedTenantId, setCopiedTenantId] = useState(false);
 
   const { data: me } = trpc.auth.me.useQuery();
-  const tenantId = me?.tenantId ?? "…";
-  const userId = me?.userId ?? "…";
+  const tenantId = me?.tenantId ?? "\u2026";
+  const userId = me?.userId ?? "\u2026";
 
   const localStdioConfig = JSON.stringify(
     {
@@ -103,58 +82,46 @@ const SettingsPage = (): JSX.Element => {
     });
   };
 
-  const TABS = [
-    { id: "account" as const, label: "Account" },
-    { id: "mcp" as const, label: "MCP Connection" },
-    { id: "desktop" as const, label: "Desktop App" },
-  ];
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((n: string) => n[0] ?? "")
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) ?? "A";
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">Settings</h1>
-        <p className="mt-1 text-sm text-stone-500">Manage your account and connections.</p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Manage your account and connections."
+        className="mb-6"
+      />
 
-      {/* Tab bar */}
-      <div className="mb-6 flex border-b border-stone-200">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "border-b-2 border-primary text-primary"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="mcp">MCP Connection</TabsTrigger>
+          <TabsTrigger value="desktop">Desktop App</TabsTrigger>
+        </TabsList>
 
       {/* Account tab */}
-      {tab === "account" && (
+      <TabsContent value="account">
         <div className="space-y-6">
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-4 text-base font-semibold text-stone-900">Profile</h2>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {user?.name
-                  ?.split(" ")
-                  .map((n: string) => n[0] ?? "")
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2) ?? "A"}
-              </div>
+              <Avatar>
+                <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
+              </Avatar>
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-stone-700">{user?.name ?? "\u2014"}</p>
                 <p className="text-sm text-stone-500">{user?.email ?? "\u2014"}</p>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-4 text-base font-semibold text-stone-900">Change Password</h2>
             <form onSubmit={(e) => void handlePasswordChange(e)} className="space-y-4">
               <div className="space-y-1.5">
@@ -181,61 +148,60 @@ const SettingsPage = (): JSX.Element => {
                 {savingPassword ? "Saving..." : "Update Password"}
               </Button>
             </form>
-          </div>
+          </Card>
         </div>
-      )}
+      </TabsContent>
 
       {/* MCP Connection tab */}
-      {tab === "mcp" && (
+      <TabsContent value="mcp">
         <div className="space-y-6">
           {/* Tenant ID */}
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Your Tenant ID</h2>
             <p className="mb-4 text-sm text-stone-500">
               Copy this into your MCP config to scope queries to your company data.
             </p>
-            <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-lg bg-white shadow-card px-3 py-2">
               <code className="flex-1 text-xs font-mono text-stone-800 select-all">{tenantId}</code>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleCopyTenantId}
-                className="text-stone-400 hover:text-stone-600 transition-colors"
                 title="Copy tenant ID"
+                className="h-7 w-7"
               >
                 {copiedTenantId ? <Check size={14} /> : <Copy size={14} />}
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
 
           {/* Local / stdio config */}
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Local Setup (stdio)</h2>
             <p className="mb-4 text-sm text-stone-500">
-              Use this when Basics OS is running on the same machine as Claude Desktop. Replace the{" "}
-              <code className="text-xs bg-stone-100 px-1 rounded">args</code> path with the actual
-              path to your cloned repo, and update{" "}
-              <code className="text-xs bg-stone-100 px-1 rounded">DATABASE_URL</code> from your{" "}
-              <code className="text-xs bg-stone-100 px-1 rounded">.env</code> file.
+              Use this when Basics OS is running on the same machine as Claude Desktop.
+              Replace the <InlineCode>args</InlineCode> path
+              with the actual path to your cloned repo, and update <InlineCode>DATABASE_URL</InlineCode> from your <InlineCode>.env</InlineCode> file.
             </p>
-            <CopyBlock label="claude_desktop_config.json" code={localStdioConfig} />
-          </div>
+            <CodeBlock label="claude_desktop_config.json" code={localStdioConfig} />
+          </Card>
 
           {/* Remote / HTTP config */}
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Remote Setup (HTTP)</h2>
             <p className="mb-4 text-sm text-stone-500">
-              Use this when the MCP server is deployed separately. The server must be started with{" "}
-              <code className="text-xs bg-stone-100 px-1 rounded">MCP_TRANSPORT=http</code>.
+              Use this when the MCP server is deployed separately. The server must be
+              started with <InlineCode>MCP_TRANSPORT=http</InlineCode>.
             </p>
-            <CopyBlock label="claude_desktop_config.json" code={remoteHttpConfig} />
-          </div>
+            <CodeBlock label="claude_desktop_config.json" code={remoteHttpConfig} />
+          </Card>
         </div>
-      )}
+      </TabsContent>
 
       {/* Desktop tab */}
-      {tab === "desktop" && (
+      <TabsContent value="desktop">
         <div className="space-y-6">
-          <div className="rounded-xl border border-stone-200 bg-white p-6">
+          <Card className="p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Desktop App</h2>
             <p className="mb-4 text-sm text-stone-500">
               The Basics OS desktop app gives you an always-on overlay accessible anywhere.
@@ -248,39 +214,27 @@ const SettingsPage = (): JSX.Element => {
                 </a>
               </Button>
 
-              <div className="rounded-lg border border-stone-100 bg-stone-50 p-4 space-y-2">
+              <div className="rounded-lg bg-white shadow-card p-4 space-y-2">
                 <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcut</h3>
                 <p className="text-sm text-stone-500">
-                  Press{" "}
-                  <kbd className="rounded border border-stone-300 bg-white px-1.5 py-0.5 text-xs font-mono">
-                    ⌘ Shift Space
-                  </kbd>{" "}
-                  anywhere to toggle the AI overlay.
+                  Press <Kbd>⌘ Shift Space</Kbd> anywhere to toggle the AI overlay.
                 </p>
               </div>
 
-              <div className="rounded-lg border border-stone-100 bg-stone-50 p-4 space-y-2">
+              <div className="rounded-lg bg-white shadow-card p-4 space-y-2">
                 <h3 className="text-sm font-medium text-stone-700">Setup</h3>
                 <ol className="text-sm text-stone-500 space-y-1 list-decimal list-inside">
                   <li>Download and install the app above</li>
-                  <li>
-                    Set <code className="text-xs">BASICOS_URL=http://localhost:3000</code> in your
-                    environment
-                  </li>
+                  <li>Set <InlineCode>BASICOS_URL=http://localhost:3000</InlineCode> in your environment</li>
                   <li>Launch the app — it runs in your system tray</li>
-                  <li>
-                    Press{" "}
-                    <kbd className="rounded border border-stone-300 bg-white px-1 py-0.5 text-xs font-mono">
-                      ⌘⇧Space
-                    </kbd>{" "}
-                    to open the overlay
-                  </li>
+                  <li>Press <Kbd>⌘⇧Space</Kbd> to open the overlay</li>
                 </ol>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
-      )}
+      </TabsContent>
+      </Tabs>
     </div>
   );
 };

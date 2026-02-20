@@ -340,6 +340,80 @@ This loads exactly the right context files for what you're building — no manua
 
 ---
 
+## Customizing the UI
+
+Basics OS uses a component-first architecture. Every UI element comes from a shared component library — change it once, it updates across web, desktop, and mobile.
+
+### How It Works
+
+```
+packages/ui/src/
+├── tokens.css              ← CSS variables (colors, radius, shadows)
+├── components/             ← 20+ shared React components
+│   ├── Button.tsx          ← change button style here → all platforms update
+│   ├── Card.tsx
+│   ├── Table.tsx
+│   ├── AppShell.tsx        ← dashboard layout shell
+│   ├── SidebarPanel.tsx    ← sidebar container
+│   └── ...
+└── index.ts                ← single export barrel
+
+apps/web/globals.css        ← imports tokens, defines Tailwind theme
+apps/desktop/main.css       ← imports same tokens + @source for Tailwind
+apps/mobile/lib/tokens.ts   ← mirrored tokens for React Native
+```
+
+### Changing Brand Colors
+
+**Web + Desktop** — edit CSS variables in `apps/web/src/app/globals.css`:
+
+```css
+:root {
+  --primary: 239 84% 67%;        /* brand color (HSL) */
+  --primary-foreground: 0 0% 100%;
+}
+```
+
+Both the web app and desktop overlay read the same CSS variables. The desktop main window loads the web app directly, so it inherits automatically.
+
+**Mobile** — edit `apps/mobile/lib/tokens.ts`:
+
+```ts
+export const colors = {
+  brand: "#6366f1",       // change this to your brand hex
+  brandSubtle: "#eef2ff", // lighter variant for backgrounds
+  // ...
+};
+```
+
+Every mobile screen references `colors.*` from this file — no hardcoded hex values anywhere.
+
+### Adding or Modifying Components
+
+All reusable components live in `packages/ui/src/components/`. To modify:
+
+1. Edit the component in `packages/ui/src/components/MyComponent.tsx`
+2. Run `npx tsc` in `packages/ui` to rebuild
+3. Every app that imports from `@basicsos/ui` gets the update
+
+To add a new component:
+
+1. Create `packages/ui/src/components/NewComponent.tsx`
+2. Export from `packages/ui/src/index.ts`
+3. Run `npx tsc` in `packages/ui`
+4. Import in any app: `import { NewComponent } from "@basicsos/ui"`
+
+### Rules for Contributors
+
+- **Always use `@basicsos/ui` components** — never write raw `<button>`, `<table>`, `<input>`, or styled `<div>` containers when a component exists
+- **Never use `gray-*` Tailwind classes** — always `stone-*` (warm palette)
+- **Never hardcode hex colors in mobile code** — always reference `colors.*` from `tokens.ts`
+- **Never write inline UI patterns** that duplicate existing components (tabs, avatars, code blocks, etc.)
+
+See `CLAUDE.md` for the full component inventory, design tokens reference, and mandatory component-first rules.
+
+---
+
 ## Tech Stack
 
 | Layer                         | Technology                                                      |

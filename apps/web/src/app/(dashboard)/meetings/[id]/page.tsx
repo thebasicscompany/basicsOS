@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { addToast, Button } from "@basicsos/ui";
+import { addToast, Button, PageHeader, Square, Circle } from "@basicsos/ui";
 import { TranscriptDisplay } from "./TranscriptDisplay";
 import { SummaryCard } from "./SummaryCard";
 
@@ -85,7 +85,7 @@ const MeetingDetailPage = (): JSX.Element => {
 
       recorder.start();
       setIsRecording(true);
-      setStatus("Recording…");
+      setStatus("Recording\u2026");
 
       chunkIntervalRef.current = setInterval(() => {
         void sendChunk();
@@ -133,29 +133,27 @@ const MeetingDetailPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">
-            ← Meetings
-          </a>
-          <h1 className="mt-1 text-2xl font-bold text-stone-900">
-            {meeting?.title ?? "Meeting Recording"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {transcripts.length > 0 && summaries.length === 0 && (
-            <Button variant="outline" onClick={handleProcess} disabled={processMeeting.isPending}>
-              {processMeeting.isPending ? "Processing…" : "Generate Summary"}
+      <PageHeader
+        title={meeting?.title ?? "Meeting Recording"}
+        backHref="/meetings"
+        backLabel="Meetings"
+        className="mb-6"
+        action={
+          <div className="flex items-center gap-2">
+            {transcripts.length > 0 && summaries.length === 0 && (
+              <Button variant="outline" onClick={handleProcess} disabled={processMeeting.isPending}>
+                {processMeeting.isPending ? "Processing\u2026" : "Generate Summary"}
+              </Button>
+            )}
+            <Button
+              onClick={isRecording ? stopRecording : () => void startRecording()}
+              variant={isRecording ? "destructive" : "default"}
+            >
+              {isRecording ? <><Square size={14} className="mr-1" /> Stop</> : <><Circle size={14} className="mr-1" /> Record</>}
             </Button>
-          )}
-          <Button
-            onClick={isRecording ? stopRecording : () => void startRecording()}
-            variant={isRecording ? "destructive" : "default"}
-          >
-            {isRecording ? "⏹ Stop" : "⏺ Record"}
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       <p className="mb-4 text-sm text-stone-500">{status}</p>
 

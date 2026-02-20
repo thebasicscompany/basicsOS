@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, ArrowUp, Loader2, Button } from "@basicsos/ui";
+import { ArrowUp, Loader2, Button, Textarea, PageHeader, Card } from "@basicsos/ui";
 
 type Message = {
   id: string;
@@ -139,22 +139,18 @@ const AssistantPage = (): JSX.Element => {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">AI Assistant</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Ask questions about your company knowledge, tasks, meetings, and more.
-        </p>
-      </div>
+      <PageHeader
+        title="AI Assistant"
+        description="Ask questions about your company knowledge, tasks, meetings, and more."
+        className="mb-6"
+      />
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+      <Card className="flex flex-1 flex-col overflow-hidden">
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-16 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Sparkles size={28} />
-              </div>
-              <h2 className="text-xl font-semibold text-stone-700">How can I help?</h2>
-              <p className="max-w-sm text-sm text-stone-400">
+              <h2 className="text-lg font-semibold font-serif text-stone-700">How can I help?</h2>
+              <p className="max-w-sm text-sm text-stone-500">
                 Ask about your company data, find documents, check tasks, review meeting notes, or
                 get answers from your knowledge base.
               </p>
@@ -165,14 +161,16 @@ const AssistantPage = (): JSX.Element => {
                   "Find knowledge docs about onboarding",
                   "Who are our top CRM contacts?",
                 ].map((suggestion) => (
-                  <button
+                  <Button
                     key={suggestion}
+                    variant="outline"
+                    size="sm"
                     onClick={() => void sendMessage(suggestion)}
-                    className="rounded-full border border-border px-3 py-1.5 text-xs text-stone-600 hover:border-primary hover:text-primary transition-colors"
+                    className="rounded-full text-xs"
                     type="button"
                   >
                     {suggestion}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -184,7 +182,7 @@ const AssistantPage = (): JSX.Element => {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[75%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-stone-900 border-l-2 border-primary/20"
@@ -195,7 +193,7 @@ const AssistantPage = (): JSX.Element => {
                   <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground" />
                 )}
                 {msg.streaming && !msg.content && (
-                  <span className="flex items-center gap-1.5 text-stone-400">
+                  <span className="flex items-center gap-1.5 text-stone-500">
                     <Loader2 size={12} className="animate-spin" /> Thinking...
                   </span>
                 )}
@@ -206,11 +204,8 @@ const AssistantPage = (): JSX.Element => {
           <div ref={bottomRef} />
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-end gap-3 border-t border-stone-200 p-4"
-        >
-          <textarea
+        <form onSubmit={handleSubmit} className="flex items-end gap-3 pt-4 p-4">
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -222,7 +217,7 @@ const AssistantPage = (): JSX.Element => {
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             rows={2}
             disabled={isStreaming}
-            className="flex-1 resize-none rounded-xl border border-stone-200 bg-muted px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+            className="flex-1 resize-none rounded-xl bg-muted min-h-0"
           />
           {isStreaming ? (
             <Button type="button" variant="destructive" onClick={handleStop}>
@@ -234,7 +229,7 @@ const AssistantPage = (): JSX.Element => {
             </Button>
           )}
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

@@ -1,14 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Search,
-  Loader2,
-  CheckSquare,
-  Users,
-  Video,
-  BookOpen,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
+import { Search, Loader2, CheckSquare, Users, Video, BookOpen, ArrowRight, Sparkles, Input, Button, SectionLabel } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { sendIPC } from "../lib/ipc";
 
@@ -55,19 +46,19 @@ export const AskTab = (): JSX.Element => {
     <>
       <form onSubmit={(e) => void handleAsk(e)} className="px-4 pb-3">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
+          <Input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ask about company data..."
-            className="w-full bg-white border border-stone-200 text-stone-900 placeholder-stone-400 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary shadow-sm"
+            className="pl-9 rounded-xl py-2.5"
           />
         </div>
       </form>
 
       {(loading || answer) && (
-        <div className="mx-4 mb-3 rounded-xl bg-stone-50 border border-stone-200 p-3 text-sm text-stone-700 max-h-32 overflow-y-auto">
+        <div className="mx-4 mb-3 rounded-xl bg-stone-200 p-3 text-sm text-stone-700 max-h-32 overflow-y-auto">
           {loading ? (
             <div className="flex items-center gap-2 text-stone-500">
               <Loader2 size={14} className="animate-spin" /> Thinking...
@@ -79,36 +70,33 @@ export const AskTab = (): JSX.Element => {
       )}
 
       <div className="px-4 pb-2">
-        <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">
-          Quick Actions
-        </div>
+        <SectionLabel className="mb-2">Quick Actions</SectionLabel>
         <div className="grid grid-cols-2 gap-2">
           {quickActions.map((action) => (
-            <button
+            <Button
               key={action.label}
-              type="button"
+              variant="outline"
+              className="justify-start gap-2 rounded-xl px-3 py-2.5 h-auto"
               onClick={() => openInMain(action.path)}
-              className="flex items-center gap-2 rounded-xl bg-white border border-stone-200 hover:border-stone-300 hover:shadow-sm px-3 py-2.5 text-sm font-medium text-stone-700 transition-all"
             >
               <action.Icon size={15} className="text-stone-500" />
               <span>{action.label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <div className="px-4 pb-4">
-        <button
-          type="button"
+        <Button
+          className="w-full justify-between rounded-xl py-3 h-auto"
           onClick={() => openInMain("/")}
-          className="w-full flex items-center justify-between rounded-xl bg-primary text-white px-4 py-3 text-sm font-medium transition hover:opacity-90 shadow-sm"
         >
           <span className="flex items-center gap-2">
             <Sparkles size={14} />
             Open Basics OS Dashboard
           </span>
           <ArrowRight size={14} className="opacity-60" />
-        </button>
+        </Button>
       </div>
     </>
   );

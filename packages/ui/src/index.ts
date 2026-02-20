@@ -47,11 +47,46 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
-} from "./components/Toast";
-export { Toaster } from "./components/Toaster";
-export { useToast, addToast, dismissToast } from "./hooks/useToast";
-export type { Toast as ToastType, ToastVariant } from "./hooks/useToast";
-export { EmptyState } from "./components/EmptyState";
+} from "./components/Toast.js";
+export { Toaster } from "./components/Toaster.js";
+export { useToast, addToast, dismissToast } from "./hooks/useToast.js";
+export type { Toast as ToastType, ToastVariant } from "./hooks/useToast.js";
+export { EmptyState } from "./components/EmptyState.js";
+export { Textarea } from "./components/Textarea.js";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/Tabs.js";
+export { Switch } from "./components/Switch.js";
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+} from "./components/DropdownMenu.js";
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./components/Tooltip.js";
+export { PageHeader } from "./components/PageHeader.js";
+export { Kbd } from "./components/Kbd.js";
+export { AppShell } from "./components/AppShell.js";
+export { SidebarPanel } from "./components/SidebarPanel.js";
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "./components/Table.js";
+export { CodeBlock } from "./components/CodeBlock.js";
+export { SectionLabel } from "./components/SectionLabel.js";
+export { IconBadge } from "./components/IconBadge.js";
+export { InlineCode } from "./components/InlineCode.js";
 
 // Curated Lucide icon re-exports
 export {
@@ -108,4 +143,15 @@ export {
   Lock,
   Inbox,
   Copy,
+  ChevronDown,
+  ChevronUp,
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Code2,
+  Square,
+  Circle,
 } from "lucide-react";

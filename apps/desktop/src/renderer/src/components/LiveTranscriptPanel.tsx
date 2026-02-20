@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Radio, ArrowRight } from "lucide-react";
+import { Radio, ArrowRight, Button } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { sendIPC } from "../lib/ipc";
 
@@ -45,24 +45,27 @@ export const LiveTranscriptPanel = ({
   }, [chunks]);
 
   return (
-    <div className="mx-4 mb-3 rounded-xl bg-red-50 border border-red-200 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-red-200">
+    <div className="mx-4 mb-3 rounded-xl bg-destructive/5 border border-destructive/20 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-destructive/20">
         <div className="flex items-center gap-2">
-          <Radio size={12} className="text-red-500 animate-pulse" />
-          <span className="text-xs font-semibold text-red-600 truncate max-w-[160px]">{title}</span>
+          <Radio size={12} className="text-destructive animate-pulse" />
+          <span className="text-xs font-semibold text-destructive truncate max-w-[160px]">
+            {title}
+          </span>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-xs gap-1"
           onClick={() => sendIPC("navigate-main", `/meetings/${meetingId}`)}
-          className="flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
         >
           Open <ArrowRight size={10} />
-        </button>
+        </Button>
       </div>
 
       <div ref={transcriptRef} className="px-3 py-2 max-h-36 overflow-y-auto space-y-1">
         {chunks.length === 0 ? (
-          <p className="text-xs text-stone-400 italic">Waiting for transcript...</p>
+          <p className="text-xs text-stone-500 italic">Waiting for transcript...</p>
         ) : (
           chunks.map((chunk, i) => (
             <div key={i} className="text-xs leading-relaxed">

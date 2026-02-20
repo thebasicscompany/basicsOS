@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, CheckSquare, EmptyState, addToast } from "@basicsos/ui";
+import { Button, Plus, CheckSquare, EmptyState, addToast, PageHeader } from "@basicsos/ui";
 import { KanbanColumn } from "./KanbanColumn";
 import { CreateTaskDialog } from "./CreateTaskDialog";
 import type { TaskStatus, Task } from "./types";
@@ -39,26 +39,24 @@ const TasksPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">Tasks</h1>
-        <CreateTaskDialog onCreated={() => void utils.tasks.list.invalidate()}>
-          <Button>
-            <Plus size={14} className="mr-1" /> New Task
-          </Button>
-        </CreateTaskDialog>
-      </div>
+      <PageHeader
+        title="Tasks"
+        className="mb-6"
+        action={
+          <CreateTaskDialog onCreated={() => void utils.tasks.list.invalidate()}>
+            <Button><Plus size={14} className="mr-1" /> New Task</Button>
+          </CreateTaskDialog>
+        }
+      />
 
       {isLoading ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {COLUMNS.map(({ status }) => (
             <div key={status} className="w-72 flex-shrink-0">
-              <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
+              <div className="rounded-lg bg-muted/40 p-3 space-y-3">
                 <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-20 rounded-xl bg-white border border-stone-200 animate-pulse"
-                  />
+                  <div key={i} className="h-20 rounded-lg bg-white shadow-card animate-pulse" />
                 ))}
               </div>
             </div>

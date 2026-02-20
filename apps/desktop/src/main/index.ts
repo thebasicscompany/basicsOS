@@ -88,7 +88,8 @@ const createOverlayWindow = (): void => {
       sandbox: false,
       preload: path.join(__dirname, "../preload/index.js"),
     },
-    vibrancy: "under-window",
+    hasShadow: false,
+    backgroundColor: "#00000000",
   });
 
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });

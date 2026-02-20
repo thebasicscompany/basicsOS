@@ -6,7 +6,7 @@ import { colors, radius, shadows } from "../../../lib/tokens";
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: colors.destructive,
-  high: "#f97316",
+  high: colors.orange,
   medium: colors.warning,
   low: colors.textSecondary,
 };
@@ -78,9 +78,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     padding: 14,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   taskInfo: { flex: 1 },
   taskTitle: { fontSize: 15, fontWeight: "500", color: colors.textPrimary },
@@ -92,7 +90,7 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
-  badgeText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+  badgeText: { color: colors.white, fontSize: 11, fontWeight: "600" },
   separator: { height: 8 },
   empty: { alignItems: "center", paddingTop: 60 },
   emptyIcon: {

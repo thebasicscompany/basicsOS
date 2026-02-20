@@ -71,9 +71,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: radius.md,
     gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   avatar: {
     width: 44,

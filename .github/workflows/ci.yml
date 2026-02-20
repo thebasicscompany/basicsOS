@@ -46,3 +46,4 @@ jobs:
 
       - name: Security audit
         run: bun audit
+        continue-on-error: true

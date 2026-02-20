@@ -107,9 +107,9 @@ Issues identified by codebase audit. Ordered by priority.
   New users who clear storage or switch browsers will see onboarding again.
   File: `packages/api/src/routers/auth.ts`
 
-- [ ] **Invite email inviter name is hardcoded**
+- [x] **Invite email inviter name is hardcoded**
   Invite emails always say "A team member invited you". The inviter's name is available in context.
-  File: `packages/api/src/routers/auth.ts` (search for "A team member")
+  Fixed: `packages/api/src/routers/auth.ts`
 
 - [ ] **`import.worker.ts` is a complete stub**
   The bulk import worker only logs a warning — no file reading, parsing, or DB insertion.

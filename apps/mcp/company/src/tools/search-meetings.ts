@@ -7,6 +7,7 @@ export const registerSearchMeetingsTool = (server: McpServer): void => {
     "search_meetings",
     "Search meeting transcripts and summaries",
     { query: z.string().describe("Search query") },
+    { readOnlyHint: true },
     async ({ query }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../trpc.js";
-import { invites, pushTokens } from "@basicsos/db";
+import { invites, pushTokens, users } from "@basicsos/db";
 import { insertInviteSchema } from "@basicsos/shared";
 import { sendInviteEmail } from "../lib/email.js";
 
@@ -48,9 +48,14 @@ export const authRouter = router({
       const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "http://localhost:3000";
       const inviteUrl = `${appUrl}/invite/${token}`;
 
+      const [inviter] = await ctx.db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, ctx.userId));
+
       await sendInviteEmail({
         to: input.email,
-        inviterName: ctx.userId ? "A team member" : "Admin", // TODO: look up inviter name
+        inviterName: inviter?.name ?? "A team member",
         companyName: process.env["BASICOS_COMPANY_NAME"] ?? "Your company",
         role: input.role ?? "member",
         inviteUrl,

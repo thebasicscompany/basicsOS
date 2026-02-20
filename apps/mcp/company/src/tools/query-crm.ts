@@ -12,6 +12,7 @@ export const registerQueryCrmTool = (server: McpServer): void => {
         .enum(["contacts", "companies", "deals", "all"])
         .describe("Type of CRM data to search"),
     },
+    { readOnlyHint: true },
     async ({ query, type }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {

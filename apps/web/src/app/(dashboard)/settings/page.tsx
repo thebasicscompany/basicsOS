@@ -44,6 +44,7 @@ const SettingsPage = (): JSX.Element => {
 
   const { data: me } = trpc.auth.me.useQuery();
   const tenantId = me?.tenantId ?? "…";
+  const userId = me?.userId ?? "…";
 
   const localStdioConfig = JSON.stringify(
     {
@@ -53,6 +54,7 @@ const SettingsPage = (): JSX.Element => {
           args: ["run", "/path/to/basicsOS/apps/mcp/company/src/index.ts"],
           env: {
             MCP_TENANT_ID: tenantId,
+            MCP_USER_ID: userId,
             DATABASE_URL: "postgresql://basicos:basicos_dev@localhost:5432/basicos",
             REDIS_URL: "redis://localhost:6379",
           },
@@ -69,7 +71,7 @@ const SettingsPage = (): JSX.Element => {
         basicsos: {
           type: "streamable-http",
           url: `${mcpHttpUrl}`,
-          headers: { "X-Tenant-ID": tenantId },
+          headers: { "X-Tenant-ID": tenantId, "X-User-ID": userId },
         },
       },
     },

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Input, Label, addToast, PageHeader } from "@basicsos/ui";
+import { Button, Input, Label, addToast, PageHeader, Card, SectionLabel } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const BrandingPage = (): JSX.Element => {
@@ -38,15 +38,15 @@ const BrandingPage = (): JSX.Element => {
       <div>
         <PageHeader title="Branding" className="mb-6" />
         <div className="space-y-6">
-          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-4">
+          <Card className="p-6 space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="space-y-1.5">
                 <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
-                <div className="h-9 w-full rounded-md bg-stone-100 animate-pulse" />
+                <div className="h-9 w-full rounded-md bg-stone-200 animate-pulse" />
               </div>
             ))}
             <div className="h-9 w-28 rounded-md bg-stone-200 animate-pulse" />
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ const BrandingPage = (): JSX.Element => {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Form */}
         <form onSubmit={handleSave} className="space-y-6">
-          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-4">
+          <Card className="p-6 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="company-name">Company Name</Label>
               <Input
@@ -102,22 +102,22 @@ const BrandingPage = (): JSX.Element => {
                   className="h-9 w-14 cursor-pointer rounded-lg border border-stone-200"
                 />
               </div>
-              <p className="text-xs text-stone-400">Hex format: #rrggbb. Applied to sidebar and primary buttons.</p>
+              <p className="text-xs text-stone-500">Hex format: #rrggbb. Applied to sidebar and primary buttons.</p>
             </div>
 
             <Button type="submit" disabled={updateBranding.isPending}>
               {updateBranding.isPending ? "Saving…" : "Save Changes"}
             </Button>
-          </div>
+          </Card>
         </form>
 
         {/* Live preview */}
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-stone-500 uppercase tracking-wide">Preview</h2>
-          <div className="rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+          <SectionLabel as="h2" className="mb-3">Preview</SectionLabel>
+          <div className="rounded-lg border border-stone-200 overflow-hidden">
             {/* Mini sidebar preview */}
             <div
-              className="flex h-64 flex-col border-r bg-white"
+              className="flex h-64 flex-col border-r bg-stone-200"
               style={{ width: "180px" }}
             >
               <div
@@ -136,7 +136,7 @@ const BrandingPage = (): JSX.Element => {
                 )}
                 <div>
                   <div className="text-xs font-semibold text-stone-900">{name || "Company Name"}</div>
-                  <div className="text-xs text-stone-400">Company OS</div>
+                  <div className="text-xs text-stone-500">Company OS</div>
                 </div>
               </div>
               {["Dashboard", "Knowledge", "CRM", "Tasks"].map((item) => (

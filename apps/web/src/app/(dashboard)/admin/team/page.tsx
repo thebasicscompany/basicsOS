@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, PageHeader } from "@basicsos/ui";
+import { Button, Badge, PageHeader, Card, Avatar, AvatarFallback, EmptyState, Users } from "@basicsos/ui";
 import { InviteMemberDialog } from "./InviteMemberDialog";
 import { useAuth } from "@/providers/AuthProvider";
 import type { UserRole } from "@basicsos/shared";
@@ -20,6 +20,13 @@ const TeamPage = (): JSX.Element => {
   // Use the auth.me procedure to show current user info
   const { data: me } = trpc.auth.me.useQuery();
 
+  const initials = (user?.name ?? "A")
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <div>
       <PageHeader
@@ -36,21 +43,16 @@ const TeamPage = (): JSX.Element => {
       />
 
       {/* Current user card */}
-      <div className="rounded-xl border border-stone-200 bg-white p-6">
+      <Card className="p-6">
         <h2 className="mb-4 text-base font-semibold text-stone-900">Your Account</h2>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-              {(user?.name ?? "A")
-                .split(" ")
-                .map((n: string) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)}
-            </div>
+            <Avatar>
+              <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
+            </Avatar>
             <div>
-              <p className="font-medium text-stone-900">{user?.name ?? "—"}</p>
-              <p className="text-sm text-stone-500">{user?.email ?? "—"}</p>
+              <p className="font-medium text-stone-900">{user?.name ?? "\u2014"}</p>
+              <p className="text-sm text-stone-500">{user?.email ?? "\u2014"}</p>
             </div>
           </div>
           {me?.role !== undefined && (
@@ -59,14 +61,14 @@ const TeamPage = (): JSX.Element => {
             </Badge>
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className="mt-6 rounded-xl border-2 border-dashed border-stone-200 p-8 text-center">
-        <p className="text-sm font-medium text-stone-500">No other team members yet</p>
-        <p className="mt-1 text-xs text-stone-400">
-          Invite team members using the button above to start collaborating.
-        </p>
-      </div>
+      <EmptyState
+        Icon={Users}
+        heading="No other team members yet"
+        description="Invite team members using the button above to start collaborating."
+        className="mt-6"
+      />
     </div>
   );
 };

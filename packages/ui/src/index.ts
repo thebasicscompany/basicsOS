@@ -73,6 +73,20 @@ export {
 } from "./components/Tooltip.js";
 export { PageHeader } from "./components/PageHeader.js";
 export { Kbd } from "./components/Kbd.js";
+export { AppShell } from "./components/AppShell.js";
+export { SidebarPanel } from "./components/SidebarPanel.js";
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "./components/Table.js";
+export { CodeBlock } from "./components/CodeBlock.js";
+export { SectionLabel } from "./components/SectionLabel.js";
+export { IconBadge } from "./components/IconBadge.js";
+export { InlineCode } from "./components/InlineCode.js";
 
 // Curated Lucide icon re-exports
 export {
@@ -129,4 +143,15 @@ export {
   Lock,
   Inbox,
   Copy,
+  ChevronDown,
+  ChevronUp,
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Code2,
+  Square,
+  Circle,
 } from "lucide-react";

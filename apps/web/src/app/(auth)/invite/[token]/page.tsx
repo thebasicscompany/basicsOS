@@ -51,7 +51,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50">
+      <div className="flex min-h-screen items-center justify-center bg-stone-200">
         <p className="text-stone-500">Validating invite…</p>
       </div>
     );
@@ -59,8 +59,8 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
 
   if (queryError !== null || data === undefined) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-red-500">
+      <div className="flex min-h-screen items-center justify-center bg-stone-200">
+        <p className="text-destructive">
           {queryError?.message ?? "Invalid or expired invite link."}
         </p>
       </div>
@@ -68,7 +68,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50">
+    <div className="flex min-h-screen items-center justify-center bg-stone-200">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Accept Invite</CardTitle>
@@ -79,7 +79,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
         </CardHeader>
         <CardContent>
           {error !== null && (
-            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            <p className="mb-4 rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
           <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
             <div className="space-y-1.5">

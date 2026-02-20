@@ -84,10 +84,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.md,
     padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.card,
     gap: 12,
-    ...shadows.sm,
   },
   docIcon: {
     width: 40,

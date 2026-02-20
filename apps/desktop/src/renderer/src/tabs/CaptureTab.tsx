@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, Loader2, Sparkles, CheckCircle, ArrowRight, Input, Button, Label } from "@basicsos/ui";
+import { Camera, Loader2, Sparkles, CheckCircle, ArrowRight, Input, Button, Label, SectionLabel } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { getIPC, sendIPC } from "../lib/ipc";
 
@@ -47,8 +47,8 @@ export const CaptureTab = (): JSX.Element => {
 
   return (
     <div className="px-4 pb-4 space-y-3">
-      <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">Workflow Capture</div>
-      <p className="text-xs text-stone-400 leading-relaxed">
+      <SectionLabel>Workflow Capture</SectionLabel>
+      <p className="text-xs text-stone-500 leading-relaxed">
         Take a screenshot of your current workflow. Claude will describe what&apos;s happening and
         save it to your Knowledge Base.
       </p>
@@ -58,7 +58,7 @@ export const CaptureTab = (): JSX.Element => {
         <Input
           value={customTitle}
           onChange={(e) => setCustomTitle(e.target.value)}
-          className="rounded-xl shadow-sm"
+          className="rounded-xl"
           placeholder="Captured Workflow"
         />
       </div>
@@ -66,7 +66,7 @@ export const CaptureTab = (): JSX.Element => {
       <Button
         onClick={() => void handleCapture()}
         disabled={status === "capturing" || status === "analyzing"}
-        className="w-full rounded-xl py-3 h-auto shadow-sm gap-2"
+        className="w-full rounded-xl py-3 h-auto gap-2"
       >
         <StatusIcon size={16} className={status === "capturing" ? "animate-spin" : status === "analyzing" ? "animate-pulse" : ""} />
         {status === "idle" || status === "done" || status === "error"
@@ -77,9 +77,9 @@ export const CaptureTab = (): JSX.Element => {
       </Button>
 
       {status === "done" && result && (
-        <div className="rounded-xl bg-white border border-stone-200 p-3 space-y-2 shadow-sm">
+        <div className="rounded-xl bg-stone-200 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
               <CheckCircle size={12} /> Saved to Knowledge Base
             </span>
             <Button
@@ -96,7 +96,7 @@ export const CaptureTab = (): JSX.Element => {
       )}
 
       {status === "error" && errorMsg && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs text-destructive">
           {errorMsg}
         </div>
       )}

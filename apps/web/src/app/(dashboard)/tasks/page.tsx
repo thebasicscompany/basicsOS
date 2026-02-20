@@ -50,10 +50,10 @@ const TasksPage = (): JSX.Element => {
         <div className="flex gap-4 overflow-x-auto pb-4">
           {COLUMNS.map(({ status }) => (
             <div key={status} className="w-72 flex-shrink-0">
-              <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
+              <div className="rounded-lg bg-muted/40 p-3 space-y-3">
                 <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 rounded-xl bg-white border border-stone-200 animate-pulse" />
+                  <div key={i} className="h-20 rounded-lg bg-white shadow-card animate-pulse" />
                 ))}
               </div>
             </div>

@@ -1,20 +1,21 @@
 /** Shared design tokens — mirrors packages/ui/src/tokens.css for React Native */
 
 export const colors = {
-  // Surfaces
-  surfaceApp: "#fafaf9",
-  surfaceCard: "#ffffff",
-  surfaceSubtle: "#f5f5f4",
+  // Surfaces — 3-level ladder: app chrome → panel → card
+  surfaceApp: "#e7e5e4",       // stone-200 — outer chrome
+  surfacePanel: "#f5f5f4",     // stone-100 — panels
+  surfaceCard: "#ffffff",      // white — cards
+  surfaceSubtle: "#f5f5f4",    // stone-100
 
-  // Borders
-  border: "#e7e5e4",
-  borderStrong: "#d6d3d1",
+  // Borders — visible on all surfaces
+  border: "#d6d3d1",           // stone-300
+  borderStrong: "#a8a29e",     // stone-400
 
-  // Text
-  textPrimary: "#1c1917",
-  textSecondary: "#78716c",
-  textPlaceholder: "#a8a29e",
-  textTertiary: "#d6d3d1",
+  // Text — WCAG 4.5:1 minimum
+  textPrimary: "#1c1917",      // stone-900
+  textSecondary: "#57534e",    // stone-600
+  textPlaceholder: "#78716c",  // stone-500
+  textTertiary: "#a8a29e",     // stone-400 (decorative only)
 
   // Brand
   brand: "#6366f1",
@@ -40,6 +41,15 @@ export const colors = {
   amberSubtle: "#fffbeb",
   rose: "#e11d48",
   roseSubtle: "#fff1f2",
+  orange: "#f97316",
+  orangeSubtle: "#fff7ed",
+  pink: "#ec4899",
+  pinkSubtle: "#fdf2f8",
+
+  // Contrast
+  white: "#ffffff",
+  black: "#000000",
+  destructiveBorder: "#fca5a5",
 } as const;
 
 export const radius = {
@@ -51,26 +61,19 @@ export const radius = {
 } as const;
 
 export const shadows = {
-  sm: {
+  card: {
     shadowColor: "#1c1917",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: "#1c1917",
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  lg: {
+  overlay: {
     shadowColor: "#1c1917",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 6,
   },
 } as const;
 

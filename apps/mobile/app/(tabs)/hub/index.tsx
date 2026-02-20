@@ -14,8 +14,8 @@ import { colors, radius, shadows } from "../../../lib/tokens";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Docs: colors.brand,
-  Planning: "#f97316",
-  Design: "#ec4899",
+  Planning: colors.orange,
+  Design: colors.pink,
   Analytics: colors.emerald,
   Engineering: colors.blue,
 };
@@ -97,9 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
     padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   cardHeader: { marginBottom: 8 },
   categoryBadge: {
@@ -108,7 +106,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.sm,
   },
-  categoryText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  categoryText: { color: colors.white, fontSize: 10, fontWeight: "700" },
   cardTitle: { fontSize: 14, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
   cardUrl: { fontSize: 11, color: colors.textPlaceholder },
   empty: { alignItems: "center", paddingTop: 60 },

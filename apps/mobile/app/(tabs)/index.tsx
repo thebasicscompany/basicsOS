@@ -15,13 +15,13 @@ import type { ComponentType } from "react";
 
 type IconProps = { size?: number; color?: string };
 
-const MODULES: { name: string; Icon: ComponentType<IconProps>; route: string; bg: string; fg: string }[] = [
-  { name: "Knowledge", Icon: BookOpen, route: "/knowledge", bg: colors.emeraldSubtle, fg: colors.emerald },
-  { name: "CRM", Icon: Users, route: "/crm", bg: colors.blueSubtle, fg: colors.blue },
-  { name: "Tasks", Icon: CheckSquare, route: "/tasks", bg: colors.violetSubtle, fg: colors.violet },
-  { name: "Meetings", Icon: Video, route: "/meetings", bg: colors.amberSubtle, fg: colors.amber },
-  { name: "Assistant", Icon: Sparkles, route: "/assistant", bg: colors.brandSubtle, fg: colors.brand },
-  { name: "Hub", Icon: Link2, route: "/hub", bg: colors.roseSubtle, fg: colors.rose },
+const MODULES: { name: string; Icon: ComponentType<IconProps>; route: string }[] = [
+  { name: "Knowledge", Icon: BookOpen, route: "/knowledge" },
+  { name: "CRM", Icon: Users, route: "/crm" },
+  { name: "Tasks", Icon: CheckSquare, route: "/tasks" },
+  { name: "Meetings", Icon: Video, route: "/meetings" },
+  { name: "Assistant", Icon: Sparkles, route: "/assistant" },
+  { name: "Hub", Icon: Link2, route: "/hub" },
 ];
 
 const getGreeting = (): string => {
@@ -44,16 +44,10 @@ const DashboardScreen = (): JSX.Element => {
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: colors.violetSubtle }]}>
-            <CheckSquare size={18} color={colors.violet} />
-          </View>
           <Text style={styles.statValue}>{taskCount}</Text>
           <Text style={styles.statLabel}>Tasks</Text>
         </View>
         <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: colors.amberSubtle }]}>
-            <Video size={18} color={colors.amber} />
-          </View>
           <Text style={styles.statValue}>{meetingCount}</Text>
           <Text style={styles.statLabel}>Meetings</Text>
         </View>
@@ -68,8 +62,8 @@ const DashboardScreen = (): JSX.Element => {
             onPress={() => router.push(m.route as never)}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, { backgroundColor: m.bg }]}>
-              <m.Icon size={22} color={m.fg} />
+            <View style={styles.iconContainer}>
+              <m.Icon size={22} color={colors.textSecondary} />
             </View>
             <Text style={styles.cardTitle}>{m.name}</Text>
           </TouchableOpacity>
@@ -96,20 +90,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.lg,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.card,
     alignItems: "center",
-    ...shadows.sm,
   },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statValue: { fontSize: 28, fontWeight: "700", color: colors.brand },
+  statValue: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
   statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   sectionTitle: {
     fontSize: 16,
@@ -124,14 +108,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: 20,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSubtle,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,

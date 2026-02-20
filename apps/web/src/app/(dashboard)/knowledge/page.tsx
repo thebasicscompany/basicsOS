@@ -23,9 +23,9 @@ const KnowledgePage = (): JSX.Element => {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 animate-pulse">
-              <div className="h-8 w-8 rounded-lg bg-stone-100" />
-              <div className="h-4 w-48 rounded bg-stone-100" />
+            <div key={i} className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-card animate-pulse">
+              <div className="h-8 w-8 rounded-lg bg-stone-200" />
+              <div className="h-4 w-48 rounded bg-stone-200" />
             </div>
           ))}
         </div>
@@ -46,13 +46,10 @@ const KnowledgePage = (): JSX.Element => {
             <a
               key={doc.id}
               href={`/knowledge/${doc.id}`}
-              className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+              className="flex items-center justify-between rounded-lg bg-white p-4 shadow-card transition-colors hover:bg-stone-50"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                <FileText size={16} />
-              </div>
-              <span className="font-medium text-stone-900">{doc.title}</span>
-              <span className="ml-auto text-xs text-stone-400">Edit</span>
+              <span className="text-sm font-medium text-stone-900 line-clamp-1">{doc.title}</span>
+              <span className="shrink-0 text-xs text-stone-500">Edit</span>
             </a>
           ))}
         </div>

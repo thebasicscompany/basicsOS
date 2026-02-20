@@ -131,7 +131,7 @@ const RegisterScreen = (): JSX.Element => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={s.buttonText}>Create account</Text>
             )}

@@ -95,9 +95,7 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 14,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+    ...shadows.card,
   },
   meetingPressed: { opacity: 0.7 },
   dateBlock: {

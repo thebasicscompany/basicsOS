@@ -1,4 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@source "../../../../../packages/ui/src";
 @import "@basicsos/ui/tokens.css";
 
 @theme {
@@ -20,6 +22,8 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+  --shadow-card: 0 1px 3px rgba(28,25,23,0.08), 0 1px 2px rgba(28,25,23,0.06);
+  --shadow-overlay: 0 12px 28px rgba(28,25,23,0.14), 0 4px 10px rgba(28,25,23,0.08);
 }
 
 :root {
@@ -43,8 +47,16 @@
   --warning-foreground: 0 0% 100%;
 }
 
-/* Overlay font smoothing */
+/* Transparent overlay background — only the pill panel is visible */
+html, body, #root {
+  background: transparent !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 body {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

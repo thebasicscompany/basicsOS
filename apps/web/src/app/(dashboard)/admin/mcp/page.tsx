@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, PageHeader } from "@basicsos/ui";
+import { PageHeader, Card, CodeBlock, InlineCode } from "@basicsos/ui";
 
 const mcpUrl = process.env["NEXT_PUBLIC_MCP_URL"] ?? "http://localhost:4000";
 
@@ -21,7 +21,6 @@ const SETUP_INSTRUCTIONS = `{
 // Next.js App Router requires default export — framework exception
 const AdminMCPPage = (): JSX.Element => {
   const [status, setStatus] = useState<"checking" | "healthy" | "unreachable">("checking");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const check = async (): Promise<void> => {
@@ -35,13 +34,6 @@ const AdminMCPPage = (): JSX.Element => {
     void check();
   }, []);
 
-  const handleCopy = (): void => {
-    void navigator.clipboard.writeText(SETUP_INSTRUCTIONS).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
   return (
     <div>
       <PageHeader
@@ -51,7 +43,7 @@ const AdminMCPPage = (): JSX.Element => {
       />
 
       {/* Status card */}
-      <div className="mb-6 rounded-xl border border-stone-200 bg-white p-6">
+      <Card className="mb-6 p-6">
         <h2 className="mb-4 text-base font-semibold text-stone-900">Server Status</h2>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -60,46 +52,35 @@ const AdminMCPPage = (): JSX.Element => {
                 status === "checking"
                   ? "bg-stone-300 animate-pulse"
                   : status === "healthy"
-                  ? "bg-green-500"
-                  : "bg-red-400"
+                  ? "bg-success"
+                  : "bg-destructive"
               }`}
             />
             <span className="text-sm font-medium text-stone-700">
-              {status === "checking" ? "Checking…" : status === "healthy" ? "Healthy" : "Unreachable"}
+              {status === "checking" ? "Checking\u2026" : status === "healthy" ? "Healthy" : "Unreachable"}
             </span>
           </div>
-          <code className="rounded bg-stone-50 px-2 py-1 text-xs text-stone-700 border border-stone-200">
-            {mcpUrl}
-          </code>
+          <InlineCode>{mcpUrl}</InlineCode>
         </div>
         {status === "unreachable" && (
-          <p className="mt-2 text-xs text-stone-400">
+          <p className="mt-2 text-xs text-stone-500">
             Start the MCP server with:{" "}
-            <code className="rounded bg-stone-50 px-1 text-xs">
-              pnpm --filter @basicsos/mcp-company dev
-            </code>
+            <InlineCode>pnpm --filter @basicsos/mcp-company dev</InlineCode>
           </p>
         )}
-      </div>
+      </Card>
 
       {/* Config */}
-      <div className="rounded-xl border border-stone-200 bg-white p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-stone-900">Claude Desktop Config</h2>
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? "Copied!" : "Copy"}
-          </Button>
-        </div>
-        <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-stone-100">
-          {SETUP_INSTRUCTIONS}
-        </pre>
+      <Card className="p-6">
+        <h2 className="mb-4 text-base font-semibold text-stone-900">Claude Desktop Config</h2>
+        <CodeBlock label="claude_desktop_config.json" code={SETUP_INSTRUCTIONS} />
         <ol className="mt-4 space-y-1 text-sm text-stone-500 list-decimal list-inside">
           <li>Open Claude Desktop → Settings → Developer → Edit Config</li>
           <li>Paste the JSON above</li>
           <li>Restart Claude Desktop</li>
           <li>Open a new conversation — Basics OS tools appear in the toolbar</li>
         </ol>
-      </div>
+      </Card>
     </div>
   );
 };

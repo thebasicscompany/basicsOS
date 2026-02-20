@@ -8,6 +8,7 @@ import { addToast } from "@basicsos/ui";
 import {
   Button,
   Badge,
+  Card,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -98,31 +99,24 @@ const MeetingsPage = (): JSX.Element => {
       ) : (
         <div className="space-y-3">
           {(meetingList ?? []).map((m) => (
-            <a
-              key={m.id}
-              href={`/meetings/${m.id}`}
-              className="block rounded-xl border border-stone-200 bg-white p-5 hover:shadow-sm hover:border-stone-300 transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 mt-0.5">
-                    <Video size={18} />
-                  </div>
+            <a key={m.id} href={`/meetings/${m.id}`} className="block">
+              <Card className="p-5 transition-colors hover:bg-stone-50">
+                <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-stone-900">{m.title}</h3>
-                    {m.startedAt !== null && (
-                      <p className="mt-1 text-sm text-stone-500">
-                        {new Date(m.startedAt).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </p>
-                    )}
+                    <h3 className="text-sm font-semibold text-stone-900 line-clamp-1">{m.title}</h3>
+                      {m.startedAt !== null && (
+                        <p className="mt-1 text-sm text-stone-500">
+                          {new Date(m.startedAt).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                      )}
                   </div>
+                  <Badge variant="success">Completed</Badge>
                 </div>
-                <Badge variant="success">Completed</Badge>
-              </div>
+              </Card>
             </a>
           ))}
         </div>

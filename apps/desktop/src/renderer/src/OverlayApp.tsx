@@ -19,20 +19,19 @@ export const OverlayApp = (): JSX.Element => {
   };
 
   return (
-    <div className="h-screen bg-transparent">
+    <div className="p-3">
       <div
-        className="bg-white/92 backdrop-blur-xl rounded-2xl overflow-hidden flex flex-col text-stone-900 select-none border border-stone-200/60"
-        style={{ boxShadow: "0 20px 40px rgba(28,25,23,0.12), 0 8px 16px rgba(28,25,23,0.06)" }}
+        className="flex flex-col text-stone-900 select-none rounded-[20px] overflow-hidden bg-white/92 backdrop-blur-2xl backdrop-saturate-150 shadow-overlay"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Header */}
-        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+        {/* Drag handle + Header */}
+        <div className="flex items-center gap-2.5 px-4 pt-4 pb-2.5" style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
           <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-white flex-shrink-0">
             <Sparkles size={14} />
           </div>
-          <span className="text-sm font-semibold text-stone-900">Basics OS</span>
-          <Kbd className="ml-auto">
+          <span className="text-[13px] font-semibold text-stone-800 tracking-tight">Basics OS</span>
+          <Kbd className="ml-auto" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
             {navigator.platform.includes("Mac") ? "\u2318\u21e7Space" : "Ctrl+Shift+Space"}
           </Kbd>
         </div>
@@ -41,7 +40,7 @@ export const OverlayApp = (): JSX.Element => {
         <TabBar active={tab} onChange={setTab} />
 
         {/* Tab content */}
-        <div className="overflow-y-auto" style={{ maxHeight: "380px" }}>
+        <div className="overflow-y-auto flex-1" style={{ maxHeight: "340px" }}>
           {tab === "ask" && <AskTab />}
           {tab === "meetings" && <MeetingsTab />}
           {tab === "voice" && <VoiceTab />}

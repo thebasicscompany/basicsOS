@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast, PageHeader } from "@basicsos/ui";
+import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast, PageHeader, Card, SectionLabel } from "@basicsos/ui";
 import { AddLinkDialog } from "./AddLinkDialog";
 
 const SERVICE_ICONS: Record<string, React.ElementType> = {
@@ -86,22 +86,15 @@ const HubPage = (): JSX.Element => {
 
       {Object.entries(byCategory).map(([cat, catLinks]) => (
         <div key={cat} className="mb-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <SectionLabel as="h2" className="mb-3">
             {cat}
-          </h2>
+          </SectionLabel>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {(catLinks ?? []).map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 hover:shadow-md hover:border-stone-300 transition-all"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
-                  <Link2 size={16} />
-                </div>
-                <span className="truncate font-medium text-stone-900">{link.title}</span>
+              <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="block">
+                <Card className="p-4 transition-colors hover:bg-stone-50">
+                  <span className="text-sm font-medium text-stone-900 line-clamp-1">{link.title}</span>
+                </Card>
               </a>
             ))}
           </div>
@@ -110,19 +103,19 @@ const HubPage = (): JSX.Element => {
 
       {/* Integrations section */}
       <div className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold text-stone-900">Integrations</h2>
+        <SectionLabel as="h2" className="mb-4">Integrations</SectionLabel>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(integrations ?? []).map((svc) => {
             const IconComp = SERVICE_ICONS[svc.service] ?? Link2;
             return (
-              <div
+              <Card
                 key={svc.service}
-                className={`flex items-center justify-between rounded-xl border bg-white p-4 transition-all ${
-                  svc.connected ? "border-l-4 border-l-emerald-500 border-stone-200" : "border-stone-200"
+                className={`flex items-center justify-between p-4 transition-colors ${
+                  svc.connected ? "border-l-4 border-l-success" : ""
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-200 text-stone-600">
                     <IconComp size={18} />
                   </div>
                   <div>
@@ -163,7 +156,7 @@ const HubPage = (): JSX.Element => {
                     </Button>
                   )}
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>

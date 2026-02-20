@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { Button, Input, PageHeader } from "@basicsos/ui";
 
 // Next.js page — requires default export
 const NewDocumentPage = (): JSX.Element => {
@@ -23,33 +24,37 @@ const NewDocumentPage = (): JSX.Element => {
 
   return (
     <div className="max-w-2xl mx-auto py-12">
-      <h1 className="text-2xl font-bold text-stone-900 mb-6">New Document</h1>
+      <PageHeader
+        title="New Document"
+        backHref="/knowledge"
+        backLabel="Knowledge Base"
+        className="mb-6"
+      />
       <form onSubmit={handleCreate} className="space-y-4">
-        <input
+        <Input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Document title..."
-          className="w-full text-2xl font-medium border-b-2 border-stone-200 focus:border-primary outline-none py-2 bg-transparent"
+          className="w-full text-2xl font-medium border-0 border-b-2 border-stone-100 focus:border-primary rounded-none py-2 bg-transparent shadow-none"
         />
         {createMutation.error && (
-          <p className="text-sm text-red-500">{createMutation.error.message}</p>
+          <p className="text-sm text-destructive">{createMutation.error.message}</p>
         )}
         <div className="flex gap-3">
-          <button
+          <Button
             type="submit"
             disabled={!title.trim() || createMutation.isPending}
-            className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {createMutation.isPending ? "Creating..." : "Create Document"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => router.push("/knowledge")}
-            className="rounded-lg border px-6 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

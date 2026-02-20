@@ -1,4 +1,4 @@
-import { PageHeader } from "@basicsos/ui";
+import { PageHeader, Card, Button, CodeBlock, InlineCode } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception.
 const ApiKeysPage = (): JSX.Element => (
@@ -11,7 +11,7 @@ const ApiKeysPage = (): JSX.Element => (
 
     <div className="mt-6 space-y-4">
       {/* Option A */}
-      <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-5">
+      <Card className="border border-primary/20 ring-1 ring-primary/10 bg-primary/5 p-5">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="font-semibold text-stone-900">Managed API Key</h3>
@@ -20,37 +20,27 @@ const ApiKeysPage = (): JSX.Element => (
               No provider accounts needed.
             </p>
           </div>
-          <a
-            href="https://basicsos.com/keys"
-            target="_blank"
-            rel="noreferrer"
-            className="ml-4 flex-shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            Get a key →
-          </a>
+          <Button asChild className="ml-4 flex-shrink-0">
+            <a href="https://basicsos.com/keys" target="_blank" rel="noreferrer">
+              Get a key &rarr;
+            </a>
+          </Button>
         </div>
-        <div className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-stone-700">
-          AI_API_KEY=bsk_live_...<br />
-          AI_API_URL=https://api.basicsos.com
-        </div>
-      </div>
+        <CodeBlock code={"AI_API_KEY=bsk_live_...\nAI_API_URL=https://api.basicsos.com"} className="mt-3" />
+      </Card>
 
       {/* Option B */}
-      <div className="rounded-xl border bg-white p-5">
+      <Card className="p-5">
         <h3 className="font-semibold text-stone-900">Bring Your Own Keys</h3>
         <p className="mt-1 text-sm text-stone-600">
           Use your own Anthropic or OpenAI account.
         </p>
-        <div className="mt-3 rounded-lg bg-stone-50 p-3 font-mono text-xs text-stone-700">
-          ANTHROPIC_API_KEY=sk-ant-...<br />
-          <span className="text-stone-400"># or</span><br />
-          OPENAI_API_KEY=sk-...
-        </div>
-      </div>
+        <CodeBlock code={"ANTHROPIC_API_KEY=sk-ant-...\n# or\nOPENAI_API_KEY=sk-..."} className="mt-3" />
+      </Card>
     </div>
 
-    <p className="mt-4 text-sm text-stone-400">
-      Edit your <code className="rounded bg-stone-100 px-1">.env</code> file and restart
+    <p className="mt-4 text-sm text-stone-500">
+      Edit your <InlineCode>.env</InlineCode> file and restart
       the API server to apply changes.
     </p>
   </div>

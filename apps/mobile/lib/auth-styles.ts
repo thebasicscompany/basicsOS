@@ -16,7 +16,7 @@ export const authStyles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,
     padding: 24,
-    ...({ shadowColor: "#1c1917", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 6 }),
+    ...({ shadowColor: colors.textPrimary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 6 }),
   },
   logoRow: {
     flexDirection: "row",
@@ -33,7 +33,7 @@ export const authStyles = StyleSheet.create({
     alignItems: "center",
   },
   logoText: {
-    color: "#fff",
+    color: colors.white,
     fontWeight: "700",
     fontSize: 20,
   },
@@ -54,7 +54,7 @@ export const authStyles = StyleSheet.create({
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#fca5a5",
+    borderColor: colors.destructiveBorder,
   },
   errorText: {
     color: colors.destructive,
@@ -98,7 +98,7 @@ export const authStyles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
-    color: "#fff",
+    color: colors.white,
     fontWeight: "600",
     fontSize: 16,
   },

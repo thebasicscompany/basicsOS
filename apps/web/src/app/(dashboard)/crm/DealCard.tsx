@@ -25,7 +25,7 @@ interface DealCardProps {
 }
 
 export const DealCard = ({ deal }: DealCardProps): JSX.Element => (
-  <Card className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+  <Card className="p-3 cursor-pointer transition-colors hover:bg-stone-50">
     <p className="text-sm font-medium text-stone-900 truncate">{deal.title}</p>
     <div className="mt-2 flex items-center justify-between gap-1">
       <Badge variant={STAGE_VARIANT[deal.stage]}>{deal.stage}</Badge>

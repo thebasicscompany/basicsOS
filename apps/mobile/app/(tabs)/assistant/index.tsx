@@ -13,7 +13,7 @@ import {
 import { Sparkles } from "lucide-react-native";
 import { Screen } from "../../../../components/Screen";
 import { trpc } from "../../../../lib/trpc";
-import { colors, radius } from "../../../../lib/tokens";
+import { colors, radius, shadows } from "../../../../lib/tokens";
 
 type Message = { id: string; role: "user" | "assistant"; content: string };
 
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   bubble: {
     maxWidth: "80%",
     padding: 12,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     marginBottom: 4,
   },
   userBubble: {
@@ -211,11 +211,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...shadows.card,
   },
   bubbleText: { fontSize: 15, lineHeight: 22 },
-  userText: { color: "#fff" },
+  userText: { color: colors.white },
   assistantText: { color: colors.textPrimary },
   thinking: {
     flexDirection: "row",
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: 20,
+    borderRadius: radius.pill,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
@@ -246,12 +245,12 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     backgroundColor: colors.brand,
-    borderRadius: 20,
+    borderRadius: radius.pill,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
   sendBtnDisabled: { opacity: 0.5 },
-  sendBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  sendBtnText: { color: colors.white, fontWeight: "600", fontSize: 15 },
 });
 
 export default AssistantScreen;

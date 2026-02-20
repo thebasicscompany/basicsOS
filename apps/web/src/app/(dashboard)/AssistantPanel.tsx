@@ -48,13 +48,14 @@ export const AssistantPanel = (): JSX.Element => {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
+            <Button
               onClick={() => setOpen((o) => !o)}
-              className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-all hover:shadow-xl"
+              size="icon"
+              className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-overlay"
               aria-label="Toggle AI Assistant"
             >
               {open ? <X size={20} /> : <Sparkles size={20} />}
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="left">AI Assistant</TooltipContent>
         </Tooltip>
@@ -62,36 +63,32 @@ export const AssistantPanel = (): JSX.Element => {
 
       {/* Slide-in panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-2xl border border-stone-200 bg-white shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-lg bg-white shadow-overlay overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
           {/* Header */}
-          <div className="flex items-center gap-2 border-b border-stone-200 bg-white px-4 py-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles size={14} />
-            </div>
+          <div className="flex items-center gap-2 bg-white px-4 pb-3 pt-3">
             <span className="font-semibold text-stone-900">AI Assistant</span>
-            <span className="ml-auto text-xs text-stone-400">Powered by Claude</span>
-            <button
+            <span className="ml-auto text-xs text-stone-500">Powered by Claude</span>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setOpen(false)}
-              className="ml-2 text-stone-400 hover:text-stone-600 transition-colors"
+              className="ml-2 h-7 w-7 text-stone-500 hover:text-stone-700"
             >
               <X size={16} />
-            </button>
+            </Button>
           </div>
 
           {/* Messages */}
           <div className="flex h-80 flex-col gap-3 overflow-y-auto p-4">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center gap-2 pt-8 text-center text-sm text-stone-400">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sparkles size={20} />
-                </div>
+              <div className="flex flex-col items-center gap-2 pt-8 text-center text-sm text-stone-500">
                 <p>Ask about your company data, tasks, meetings, and more.</p>
               </div>
             )}
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "self-end bg-primary text-primary-foreground"
                     : "self-start bg-muted text-stone-900"
@@ -101,7 +98,7 @@ export const AssistantPanel = (): JSX.Element => {
               </div>
             ))}
             {chatMutation.isPending && (
-              <div className="self-start rounded-2xl bg-muted px-3 py-2 text-sm text-stone-500">
+              <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-stone-500">
                 <span className="flex items-center gap-1.5">
                   <Loader2 size={12} className="animate-spin" /> Thinking...
                 </span>
@@ -111,7 +108,7 @@ export const AssistantPanel = (): JSX.Element => {
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-stone-200 p-3">
+          <form onSubmit={handleSubmit} className="flex items-end gap-2 pt-3 p-3">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

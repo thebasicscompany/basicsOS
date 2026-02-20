@@ -58,7 +58,7 @@ export const Sidebar = ({
         {sections.map((section, si) => (
           <li key={si}>
             {section.label && (
-              <div className="px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-stone-400">
+              <div className="px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-stone-600">
                 {section.label}
               </div>
             )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, Pencil, Zap, Button } from "@basicsos/ui";
+import { Mic, Pencil, Zap, Button, Tabs, TabsList, TabsTrigger } from "@basicsos/ui";
 import { trpcCall } from "../api";
 import { getIPC, sendIPC } from "../lib/ipc";
 import { detectCommand } from "../lib/voice-commands";
@@ -154,7 +154,7 @@ export const VoiceTab = (): JSX.Element => {
 
   if (!isSpeechSupported) {
     return (
-      <div className="px-4 py-6 text-center text-stone-400 text-sm">
+      <div className="px-4 py-6 text-center text-stone-500 text-sm">
         Voice requires Chrome or a Chromium-based browser.
       </div>
     );
@@ -165,31 +165,27 @@ export const VoiceTab = (): JSX.Element => {
   return (
     <div className="px-4 pb-4 space-y-3">
       {/* Mode toggle — pill segmented control */}
-      <div className="flex rounded-full bg-stone-100 p-0.5">
-        {(["dictate", "command"] as WisprMode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => {
-              stopListening();
-              setMode(m);
-              setTranscript("");
-              setStatus(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-full transition-all ${
-              mode === m
-                ? "bg-white text-stone-900 shadow-xs"
-                : "text-stone-500 hover:text-stone-700"
-            }`}
-          >
-            {m === "dictate" ? <Pencil size={12} /> : <Zap size={12} />}
-            {m === "dictate" ? "Dictate" : "Command"}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={mode}
+        onValueChange={(v) => {
+          stopListening();
+          setMode(v as WisprMode);
+          setTranscript("");
+          setStatus(null);
+        }}
+      >
+        <TabsList className="w-full">
+          <TabsTrigger value="dictate" className="flex-1 gap-1.5 text-xs">
+            <Pencil size={12} /> Dictate
+          </TabsTrigger>
+          <TabsTrigger value="command" className="flex-1 gap-1.5 text-xs">
+            <Zap size={12} /> Command
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Mode hint */}
-      <p className="text-xs text-stone-400 text-center leading-relaxed">
+      <p className="text-xs text-stone-500 text-center leading-relaxed">
         {mode === "dictate"
           ? "Speech is injected into the active text field"
           : 'Say: "create task ...", "open meetings", "search ..."'}
@@ -201,7 +197,7 @@ export const VoiceTab = (): JSX.Element => {
         onClick={isListening ? stopListening : startListening}
         className={`w-full rounded-xl py-5 h-auto flex flex-col items-center gap-2 font-medium text-sm ${
           isListening
-            ? "bg-red-50 border-red-200 text-red-600 ring-4 ring-red-100"
+            ? "bg-destructive/5 border-destructive/20 text-destructive ring-4 ring-destructive/10"
             : ""
         }`}
       >
@@ -224,21 +220,21 @@ export const VoiceTab = (): JSX.Element => {
 
       {/* Interim text (command mode preview) */}
       {interimText && mode === "command" && (
-        <div className="rounded-xl bg-stone-50 border border-stone-200 px-3 py-2 text-xs text-stone-400 italic text-center">
+        <div className="rounded-xl bg-stone-200 px-3 py-2 text-xs text-stone-500 italic text-center">
           {interimText}
         </div>
       )}
 
       {/* Transcript (dictate fallback) */}
       {displayText && mode === "dictate" && !getIPC()?.injectText && (
-        <div className="rounded-xl bg-white border border-stone-200 p-3 text-sm text-stone-700 min-h-[60px] max-h-28 overflow-y-auto">
+        <div className="rounded-xl bg-stone-200 p-3 text-sm text-stone-700 min-h-[60px] max-h-28 overflow-y-auto">
           {transcript}
-          {interimText && <span className="text-stone-400">{interimText}</span>}
+          {interimText && <span className="text-stone-500">{interimText}</span>}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+        <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs text-destructive">
           {error}
         </div>
       )}

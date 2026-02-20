@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Input, Label, Card, CardFooter, addToast, Textarea, Tabs, TabsList, TabsTrigger, TabsContent } from "@basicsos/ui";
+import { Button, Input, Label, Card, CardFooter, addToast, Textarea, Tabs, TabsList, TabsTrigger, TabsContent, PageHeader, InlineCode } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const NewMeetingPage = (): JSX.Element => {
@@ -61,10 +61,12 @@ const NewMeetingPage = (): JSX.Element => {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">← Meetings</a>
-        <h1 className="mt-1 text-2xl font-bold text-stone-900">New Meeting</h1>
-      </div>
+      <PageHeader
+        title="New Meeting"
+        backHref="/meetings"
+        backLabel="Meetings"
+        className="mb-6"
+      />
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
         {/* Core fields */}
@@ -116,7 +118,7 @@ const NewMeetingPage = (): JSX.Element => {
             <TabsContent value="transcript" className="mt-0 p-6">
               <div className="space-y-2">
                 <Label htmlFor="transcript">
-                  Transcript text (format: <code className="text-xs">Speaker: text</code> per line)
+                  Transcript text (format: <InlineCode>Speaker: text</InlineCode> per line)
                 </Label>
                 <Textarea
                   id="transcript"
@@ -126,7 +128,7 @@ const NewMeetingPage = (): JSX.Element => {
                   placeholder={"Alice: Welcome everyone to the meeting.\nBob: Thanks for having us..."}
                   className="bg-stone-50 font-mono"
                 />
-                <p className="text-xs text-stone-400">
+                <p className="text-xs text-stone-500">
                   Optional. Pasting a transcript will trigger AI summarization.
                 </p>
               </div>
@@ -147,7 +149,7 @@ const NewMeetingPage = (): JSX.Element => {
                     Selected: {audioFile.name} ({Math.round(audioFile.size / 1024)} KB)
                   </p>
                 )}
-                <p className="text-xs text-stone-400">
+                <p className="text-xs text-stone-500">
                   Requires DEEPGRAM_API_KEY for transcription. Supports .mp4, .mp3, .wav, .webm, .m4a.
                 </p>
               </div>

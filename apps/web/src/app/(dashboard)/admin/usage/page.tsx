@@ -1,7 +1,11 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, PageHeader } from "@basicsos/ui";
+import {
+  Card, CardContent, CardHeader, CardTitle, PageHeader,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  EmptyState, BarChart3,
+} from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const UsagePage = (): JSX.Element => {
@@ -46,54 +50,56 @@ const UsagePage = (): JSX.Element => {
         </Card>
       </div>
 
-      <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
-        <div className="border-b px-4 py-3">
-          <h2 className="text-sm font-semibold text-stone-700">Recent AI Calls</h2>
-        </div>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <CardTitle>Recent AI Calls</CardTitle>
+        </CardHeader>
         {isLoading ? (
           <div className="divide-y divide-stone-100">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-4">
                   <div className="h-4 w-20 rounded bg-stone-200 animate-pulse" />
-                  <div className="h-3 w-28 rounded bg-stone-100 animate-pulse" />
+                  <div className="h-3 w-28 rounded bg-stone-200 animate-pulse" />
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="h-4 w-16 rounded bg-stone-100 animate-pulse" />
-                  <div className="h-3 w-20 rounded bg-stone-100 animate-pulse" />
+                  <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
+                  <div className="h-3 w-20 rounded bg-stone-200 animate-pulse" />
                 </div>
               </div>
             ))}
           </div>
         ) : (stats?.recentCalls.length ?? 0) === 0 ? (
-          <div className="p-8 text-center text-sm text-stone-400">
-            No data yet.
-          </div>
+          <EmptyState
+            Icon={BarChart3}
+            heading="No data yet"
+            description="AI usage will appear here once your team starts using AI features."
+          />
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 text-xs font-medium text-stone-500 uppercase tracking-wider">
-              <tr>
-                <th className="px-4 py-3 text-left">User</th>
-                <th className="px-4 py-3 text-left">Model</th>
-                <th className="px-4 py-3 text-right">Tokens</th>
-                <th className="px-4 py-3 text-right">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>User</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead className="text-right">Tokens</TableHead>
+                <TableHead className="text-right">Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {stats?.recentCalls.map((call, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-3 text-stone-900">{call.userId ?? "—"}</td>
-                  <td className="px-4 py-3 text-stone-500">{call.model}</td>
-                  <td className="px-4 py-3 text-right text-stone-900">{call.tokens}</td>
-                  <td className="px-4 py-3 text-right text-stone-500">
+                <TableRow key={i}>
+                  <TableCell className="text-stone-900">{call.userId ?? "\u2014"}</TableCell>
+                  <TableCell className="text-stone-500">{call.model}</TableCell>
+                  <TableCell className="text-right text-stone-900">{call.tokens}</TableCell>
+                  <TableCell className="text-right text-stone-500">
                     {new Date(call.timestamp).toLocaleString()}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

@@ -15,7 +15,15 @@ vi.mock("@basicsos/db", () => {
     expiresAt: "expiresAt",
     createdAt: "createdAt",
   };
-  return { invites, db: {} };
+  return {
+    invites,
+    db: {},
+    users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+    sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+    accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+    verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+    tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  };
 });
 
 vi.mock("../lib/email.js", () => ({
@@ -61,7 +69,7 @@ const makeMockDb = (
   const defaultSelectRows = opts.selectRows ?? [];
   let selectCallCount = 0;
 
-  return {
+  const db = {
     select: vi.fn().mockImplementation(() => {
       const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
@@ -69,7 +77,13 @@ const makeMockDb = (
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
     update: vi.fn().mockReturnValue(makeChain([])),
     delete: vi.fn().mockReturnValue(makeChain([])),
+    execute: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn(),
   };
+
+  db.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
+
+  return db;
 };
 
 // ---------------------------------------------------------------------------

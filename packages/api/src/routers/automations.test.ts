@@ -25,7 +25,17 @@ vi.mock("@basicsos/db", () => {
     result: "result",
     error: "error",
   };
-  return { automations, automationRuns, db: {} };
+  return {
+    automations,
+    automationRuns,
+    db: {},
+    users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+    sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+    accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+    verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+    tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+    invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
+  };
 });
 
 import { automationsRouter } from "./automations.js";
@@ -47,7 +57,7 @@ const makeChain = (rows: unknown[]) => {
     catch: promise.catch.bind(promise),
     finally: promise.finally.bind(promise),
   };
-  for (const method of ["from", "where", "set", "values", "orderBy", "returning"]) {
+  for (const method of ["from", "where", "set", "values", "orderBy", "returning", "limit"]) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   return chain;
@@ -63,12 +73,20 @@ const makeMockDb = (
     updateRows?: unknown[];
     deleteRows?: unknown[];
   } = {},
-) => ({
-  select: vi.fn().mockImplementation(() => makeChain(opts.selectRows ?? [])),
-  insert: vi.fn().mockReturnValue(makeChain(opts.insertRows ?? [])),
-  update: vi.fn().mockReturnValue(makeChain(opts.updateRows ?? [])),
-  delete: vi.fn().mockReturnValue(makeChain(opts.deleteRows ?? [])),
-});
+) => {
+  const db = {
+    select: vi.fn().mockImplementation(() => makeChain(opts.selectRows ?? [])),
+    insert: vi.fn().mockReturnValue(makeChain(opts.insertRows ?? [])),
+    update: vi.fn().mockReturnValue(makeChain(opts.updateRows ?? [])),
+    delete: vi.fn().mockReturnValue(makeChain(opts.deleteRows ?? [])),
+    execute: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn(),
+  };
+
+  db.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
+
+  return db;
+};
 
 // ---------------------------------------------------------------------------
 // Context builder

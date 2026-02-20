@@ -8,7 +8,15 @@ vi.mock("../lib/rag.js", () => ({
     finishReason: "stop",
   }),
 }));
-vi.mock("@basicsos/db", () => ({ db: {} }));
+vi.mock("@basicsos/db", () => ({
+  db: {},
+  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
+}));
 
 import { assistantRouter } from "./assistant.js";
 import { ragChat } from "../lib/rag.js";

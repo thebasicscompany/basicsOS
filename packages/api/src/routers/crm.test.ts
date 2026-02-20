@@ -11,6 +11,12 @@ vi.mock("@basicsos/db", () => ({
   deals: {},
   dealActivities: {},
   db: {},
+  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
 }));
 
 vi.mock("../events/bus.js", () => ({
@@ -77,8 +83,10 @@ describe("crm.contacts.list", () => {
     // .list calls .limit() after .where() — wire limit to resolve []
     chain.thenable.limit.mockResolvedValue([]);
 
+    const dbMock = { select: chain.select, execute: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
+    dbMock.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(dbMock));
     const ctx = buildCtx({
-      db: { select: chain.select } as unknown as TRPCContext["db"],
+      db: dbMock as unknown as TRPCContext["db"],
     });
 
     const caller = testRouter.createCaller(ctx);
@@ -117,11 +125,15 @@ describe("crm.deals.updateStage", () => {
     const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
     const updateMock = vi.fn(() => ({ set: updateSetMock }));
 
+    const dbMock = {
+      select: selectChain.select,
+      update: updateMock,
+      execute: vi.fn().mockResolvedValue(undefined),
+      transaction: vi.fn(),
+    };
+    dbMock.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(dbMock));
     const ctx = buildCtx({
-      db: {
-        select: selectChain.select,
-        update: updateMock,
-      } as unknown as TRPCContext["db"],
+      db: dbMock as unknown as TRPCContext["db"],
     });
 
     const caller = testRouter.createCaller(ctx);
@@ -159,11 +171,15 @@ describe("crm.deals.updateStage", () => {
     const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
     const updateMock = vi.fn(() => ({ set: updateSetMock }));
 
+    const dbMock = {
+      select: selectChain.select,
+      update: updateMock,
+      execute: vi.fn().mockResolvedValue(undefined),
+      transaction: vi.fn(),
+    };
+    dbMock.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(dbMock));
     const ctx = buildCtx({
-      db: {
-        select: selectChain.select,
-        update: updateMock,
-      } as unknown as TRPCContext["db"],
+      db: dbMock as unknown as TRPCContext["db"],
     });
 
     const caller = testRouter.createCaller(ctx);

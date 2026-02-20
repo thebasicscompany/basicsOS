@@ -58,9 +58,9 @@ export const NavClient = (): JSX.Element => {
       .slice(0, 2) ?? "A";
 
   return (
-    <div className="flex h-full w-60 flex-col border-r border-stone-200 bg-stone-50/80">
+    <div className="flex h-full w-60 shrink-0 flex-col rounded-2xl border border-stone-200 bg-white">
       {/* Brand header */}
-      <div className="flex items-center gap-2 border-b border-stone-200 px-4 py-4">
+      <div className="flex items-center gap-2 px-4 py-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
           B
         </div>

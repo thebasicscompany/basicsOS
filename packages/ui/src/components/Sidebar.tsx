@@ -47,12 +47,12 @@ export const Sidebar = ({
   return (
     <nav
       className={cn(
-        "flex h-full flex-col bg-stone-50/80 border-r border-stone-200",
+        "flex flex-col",
         width,
         className,
       )}
     >
-      {header && <div className="px-3 py-3 border-b border-stone-200">{header}</div>}
+      {header && <div className="px-3 py-3">{header}</div>}
 
       <ul className="flex flex-col gap-0.5 flex-1 overflow-y-auto px-2 py-2">
         {sections.map((section, si) => (
@@ -92,7 +92,7 @@ export const Sidebar = ({
         ))}
       </ul>
 
-      {footer && <div className="px-3 py-3 border-t border-stone-200">{footer}</div>}
+      {footer && <div className="px-3 py-3">{footer}</div>}
     </nav>
   );
 };

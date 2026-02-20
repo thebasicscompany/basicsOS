@@ -19,7 +19,8 @@
       "WebFetch(domain:www.better-auth.com)",
       "WebFetch(domain:github.com)",
       "Bash(PNPM_BA=/c/Users/aravb/Desktop/Code/basicsOS/node_modules/.pnpm/better-auth@1.4.18_drizzle-orm@0.44.7_@neondatabase+serverless@0.10.4_@types+pg@8.16.0_gel@2._3yli2i6v4dslvkuq52chsctvem/node_modules/better-auth grep:*)",
-      "Bash(PNPM_BA=/c/Users/aravb/Desktop/Code/basicsOS/node_modules/.pnpm/better-auth@1.4.18_drizzle-orm@0.44.7_@neondatabase+serverless@0.10.4_@types+pg@8.16.0_gel@2._3yli2i6v4dslvkuq52chsctvem/node_modules/better-auth cat:*)"
+      "Bash(PNPM_BA=/c/Users/aravb/Desktop/Code/basicsOS/node_modules/.pnpm/better-auth@1.4.18_drizzle-orm@0.44.7_@neondatabase+serverless@0.10.4_@types+pg@8.16.0_gel@2._3yli2i6v4dslvkuq52chsctvem/node_modules/better-auth cat:*)",
+      "Bash(docker exec:*)"
     ]
   }
 }

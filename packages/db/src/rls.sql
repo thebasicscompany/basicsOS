@@ -92,7 +92,7 @@ CREATE POLICY tenant_isolation ON ai_employee_outputs
     SELECT id FROM ai_employee_jobs WHERE tenant_id = current_setting('app.tenant_id', true)::uuid
   ));
 
--- sessions: not tenant-scoped; managed by Better Auth. No RLS policy needed.
+-- sessions: not tenant-scoped (managed by Better Auth). No RLS policy needed.
 
 DROP POLICY IF EXISTS tenant_isolation ON contacts;
 CREATE POLICY tenant_isolation ON contacts

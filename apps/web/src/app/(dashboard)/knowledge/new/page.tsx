@@ -1,57 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 
-// Next.js page — requires default export
+// Immediately creates a blank document and redirects to the editor.
+// Next.js page — requires default export.
 const NewDocumentPage = (): JSX.Element => {
   const router = useRouter();
-  const [title, setTitle] = useState("");
 
   const createMutation = trpc.knowledge.create.useMutation({
     onSuccess: (doc) => {
-      router.push(`/knowledge/${doc.id}`);
+      router.replace(`/knowledge/${doc.id}`);
     },
   });
 
-  const handleCreate = (e: React.FormEvent): void => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    createMutation.mutate({ title: title.trim() });
-  };
+  // Fire once on mount
+  useEffect(() => {
+    createMutation.mutate({ title: "Untitled Document" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (createMutation.error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
+        <p className="text-red-500">{createMutation.error.message}</p>
+        <button
+          onClick={() => router.push("/knowledge")}
+          className="text-sm text-stone-500 hover:text-stone-700"
+        >
+          ← Back to Knowledge Base
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl mx-auto py-12">
-      <h1 className="text-2xl font-bold text-stone-900 mb-6">New Document</h1>
-      <form onSubmit={handleCreate} className="space-y-4">
-        <input
-          autoFocus
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Document title..."
-          className="w-full text-2xl font-medium border-b-2 border-stone-200 focus:border-primary outline-none py-2 bg-transparent"
-        />
-        {createMutation.error && (
-          <p className="text-sm text-red-500">{createMutation.error.message}</p>
-        )}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={!title.trim() || createMutation.isPending}
-            className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
-            {createMutation.isPending ? "Creating..." : "Create Document"}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/knowledge")}
-            className="rounded-lg border px-6 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+    <div className="flex items-center justify-center p-12">
+      <div className="flex items-center gap-2 text-stone-400">
+        <div className="h-4 w-4 rounded-full border-2 border-stone-300 border-t-primary animate-spin" />
+        <span className="text-sm">Creating document…</span>
+      </div>
     </div>
   );
 };

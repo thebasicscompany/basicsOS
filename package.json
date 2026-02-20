@@ -18,6 +18,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json}\" --ignore-path .gitignore",
     "lint:fix": "eslint . --fix --ext .ts,.tsx,.js,.jsx",
     "db:migrate": "bun --filter @basicsos/db migrate",
+    "db:rls": "bun --filter @basicsos/db rls",
     "db:seed": "bun --filter @basicsos/db seed",
     "db:studio": "bun --filter @basicsos/db studio",
     "gen:module": "plop",

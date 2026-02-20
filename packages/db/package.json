@@ -17,8 +17,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "generate": "bunx drizzle-kit generate",
-    "migrate": "bunx drizzle-kit push",
-    "migrate:sql": "bunx drizzle-kit generate && bunx drizzle-kit migrate",
+    "migrate": "bunx drizzle-kit push && bun src/apply-rls.ts",
+    "migrate:sql": "bunx drizzle-kit generate && bunx drizzle-kit migrate && bun src/apply-rls.ts",
+    "rls": "bun src/apply-rls.ts",
     "studio": "bunx drizzle-kit studio",
     "seed": "bun src/seed.ts",
     "clean": "rm -rf dist"

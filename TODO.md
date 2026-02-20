@@ -4,6 +4,17 @@ Issues identified by codebase audit. Ordered by priority.
 
 ---
 
+## P0 — Critical / Security
+
+- [x] **RLS policies are never applied during `bun db:migrate`**
+      `packages/db/src/rls.sql` exists and is correctly written, but nothing executes it automatically.
+      Any developer who runs migrations without the Docker setup — or who runs `bun db:migrate` fresh — gets
+      zero tenant isolation. All tenants can read each other's data.
+      Fix: run `rls.sql` at the end of `scripts/dev-setup.sh` and in `drizzle.config.ts` (or a post-migrate script).
+      Files: `packages/db/src/rls.sql`, `scripts/dev-setup.sh`, `packages/db/drizzle.config.ts`
+
+---
+
 ## P0 — Silent Bugs (Fixed)
 
 - [x] **Wire `registerEmbeddingListener()` + `startEmbeddingWorker()` in `dev.ts`**
@@ -61,12 +72,6 @@ Issues identified by codebase audit. Ordered by priority.
       Fix: after `transcribeAudio` returns a transcript string, call `meetings.uploadTranscript` (or a new `addTranscriptChunk` mutation) to persist it, then refetch.
       Files: `apps/web/src/app/(dashboard)/meetings/[id]/page.tsx`
 
-- [ ] **Knowledge editor requires Hocuspocus — no graceful fallback**
-      `/knowledge/[id]` always connects to `HocuspocusProvider` at `ws://localhost:4001`.
-      If the collab server isn't running, the editor loads but never shows "Live" — confusing UX with no error message.
-      Fix: handle `onDisconnect`/connection error to show a "Collaboration unavailable — saving locally" notice and allow the editor to function in plain save mode.
-      Files: `apps/web/src/app/(dashboard)/knowledge/[id]/page.tsx`
-
 - [ ] **`automation-executor.worker.ts` executes zero actions**
       The worker fetches the automation and logs the action count, then immediately marks the run `completed`.
       No actions from `actionChain` are dispatched.
@@ -84,6 +89,19 @@ Issues identified by codebase audit. Ordered by priority.
       Fix: add Companies tab to CRM page.
       File: `apps/web/src/app/(dashboard)/crm/page.tsx`
 
+- [ ] **Stub embeddings return random vectors when no AI key is set**
+      `buildStubEmbeddings()` returns random float vectors. Semantic search returns garbage results rather than
+      degrading gracefully to "no relevant results found."
+      Fix: return zero vectors (or skip embedding entirely) so cosine similarity correctly ranks nothing, falling
+      back to the "No relevant context" assistant path.
+      File: `packages/api/src/lib/embeddings.ts:6-10`
+
+- [ ] **Knowledge editor requires Hocuspocus — no graceful fallback**
+      `/knowledge/[id]` always connects to `HocuspocusProvider` at `ws://localhost:4001`.
+      If the collab server isn't running, the editor loads but never shows "Live" — confusing UX with no error message.
+      Fix: handle `onDisconnect`/connection error to show a "Collaboration unavailable — saving locally" notice and allow the editor to function in plain save mode.
+      Files: `apps/web/src/app/(dashboard)/knowledge/[id]/page.tsx`
+
 ---
 
 ## P2 — Mobile App
@@ -96,6 +114,21 @@ Issues identified by codebase audit. Ordered by priority.
 ---
 
 ## P3 — Minor Fixes
+
+- [ ] **All meetings hardcoded as "Completed" badge**
+      Every meeting in the list view gets `<Badge variant="success">Completed</Badge>` regardless of state.
+      The `meetings` table has no `status` column. Either add a `status` field or derive status from `endedAt`.
+      File: `apps/web/src/app/(dashboard)/meetings/page.tsx:130`
+
+- [ ] **Contact detail shows raw `companyId` UUID instead of company name**
+      The contact detail page displays the raw UUID under "Company". The `crm.contacts.get` response includes
+      `companyId` but does not join to `companies`. Either join in the router or fetch company name client-side.
+      File: `apps/web/src/app/(dashboard)/crm/[contactId]/page.tsx:51`
+
+- [ ] **Usage table shows raw `userId` UUID instead of user name**
+      `admin/usage/page.tsx` renders `call.userId ?? "—"`. The audit log query already does a `leftJoin(users)` —
+      apply the same pattern to the usage stats query.
+      Files: `packages/api/src/routers/admin.ts`, `apps/web/src/app/(dashboard)/admin/usage/page.tsx:71`
 
 - [ ] **`searchRouter` procedure name mismatch**
       CLAUDE.md and likely some callers reference `trpc.search.global` but the procedure is named `semantic`.
@@ -116,9 +149,9 @@ Issues identified by codebase audit. Ordered by priority.
       Either implement it or remove it from `QUEUE_NAMES` and `dev.ts` to avoid confusion.
       File: `packages/api/src/workers/import.worker.ts`
 
-- [ ] **Admin MCP page uses `pnpm` instead of `bun`**
-      The setup instructions on `/admin/mcp` reference `pnpm --filter @basicsos/mcp-company dev`.
-      Project uses Bun.
+- [ ] **Admin MCP page uses `pnpm` instead of `bun` and references nonexistent npm package**
+      Setup instructions show `pnpm --filter @basicsos/mcp-company dev` and `npx -y @basicsos/mcp-company`
+      (package doesn't exist on npm). The README correctly shows the local path. Two sources now contradict each other.
       File: `apps/web/src/app/(dashboard)/admin/mcp/page.tsx`
 
 - [ ] **Desktop download link is a dead env var**
@@ -126,9 +159,15 @@ Issues identified by codebase audit. Ordered by priority.
       No build artifact is produced or served. Either build a release pipeline or remove the button.
       File: `apps/web/src/app/(dashboard)/settings/page.tsx`
 
+- [ ] **Missing indexes on frequently queried FK columns**
+      No explicit indexes on `transcripts.meetingId`, `documents.parentId`, `tasks.assigneeId`, `dealActivities.dealId`, etc.
+      Drizzle only creates indexes for PKs. These columns are used in WHERE clauses on every page load.
+      Fix: add `.index()` to each FK column in the schema files.
+      Files: `packages/db/src/schema/`
+
 ---
 
-## P3 — Developer Experience (from QOL_IMPROVEMENTS.md)
+## P3 — Developer Experience
 
 - [ ] **No `.env.example` file** — new devs have no idea what env vars to set; `bun dev:setup` generates `.env` but fresh clones without running setup are broken silently.
 
@@ -158,9 +197,6 @@ Issues identified by codebase audit. Ordered by priority.
 
 - [ ] **`CONTRIBUTING.md` and `TESTING_GUIDE.md` use `pnpm` throughout** — project uses Bun. Update all `pnpm` → `bun` references.
       Files: `CONTRIBUTING.md`, `TESTING_GUIDE.md`
-
-- [ ] **Admin MCP page references `@basicsos/mcp-company` npm package** — this package doesn't exist; self-hosters must run the local MCP server directly.
-      File: `apps/web/src/app/(dashboard)/admin/mcp/page.tsx`
 
 ---
 

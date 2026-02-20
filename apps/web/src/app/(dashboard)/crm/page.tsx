@@ -92,7 +92,7 @@ const CRMPage = (): JSX.Element => {
               const stageGroup = (dealsData ?? []).find((g) => g.stage === stage);
               const stageDeals = stageGroup?.deals ?? [];
               return (
-                <div key={stage} className="w-56 flex-shrink-0">
+                <div key={stage} className="w-48 flex-shrink-0">
                   <div className="mb-2 flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`} />
                     <span className="text-xs font-semibold uppercase text-stone-500">{stage}</span>
@@ -100,8 +100,9 @@ const CRMPage = (): JSX.Element => {
                   </div>
                   <div className="flex flex-col gap-2">
                     {stageDeals.length === 0 ? (
-                      <div className="rounded-xl border-2 border-dashed border-stone-200 p-4 text-center text-xs text-stone-400">
-                        No deals
+                      <div className="rounded-xl border-2 border-dashed border-stone-200 py-8 px-4 text-center">
+                        <p className="text-xs text-stone-400">No deals</p>
+                        <p className="mt-1 text-[10px] text-stone-300">Drag or create a deal</p>
                       </div>
                     ) : (
                       stageDeals.map((deal) => (

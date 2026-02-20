@@ -21,7 +21,17 @@ const SecurityPage = (): JSX.Element => {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
+          <div className="divide-y divide-stone-100">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <div className="h-4 w-32 rounded bg-stone-200 animate-pulse" />
+                  <div className="h-3 w-24 rounded bg-stone-100 animate-pulse" />
+                </div>
+                <div className="h-3 w-20 rounded bg-stone-100 animate-pulse" />
+              </div>
+            ))}
+          </div>
         ) : (log?.events.length ?? 0) === 0 ? (
           <div className="p-8 text-center">
             <p className="text-sm text-stone-400">No audit events yet.</p>

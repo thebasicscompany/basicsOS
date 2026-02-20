@@ -27,7 +27,20 @@ const ModulesPage = (): JSX.Element => {
 
       <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
+          <div className="divide-y divide-stone-100">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center justify-between px-6 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-9 w-9 rounded-lg bg-stone-100 animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
+                    <div className="h-3 w-40 rounded bg-stone-100 animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-6 w-11 rounded-full bg-stone-200 animate-pulse" />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="divide-y divide-stone-100">
             {(modules ?? []).map((module) => (

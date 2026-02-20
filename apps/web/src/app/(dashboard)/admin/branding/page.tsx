@@ -37,7 +37,17 @@ const BrandingPage = (): JSX.Element => {
     return (
       <div>
         <PageHeader title="Branding" className="mb-6" />
-        <div className="text-sm text-stone-400">Loading…</div>
+        <div className="space-y-6">
+          <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
+                <div className="h-9 w-full rounded-md bg-stone-100 animate-pulse" />
+              </div>
+            ))}
+            <div className="h-9 w-28 rounded-md bg-stone-200 animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }

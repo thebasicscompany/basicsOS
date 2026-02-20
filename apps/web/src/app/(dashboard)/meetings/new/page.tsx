@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Input, Label, Card, addToast, Textarea, Tabs, TabsList, TabsTrigger, TabsContent } from "@basicsos/ui";
+import { Button, Input, Label, Card, CardFooter, addToast, Textarea, Tabs, TabsList, TabsTrigger, TabsContent } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
 const NewMeetingPage = (): JSX.Element => {
@@ -155,14 +155,14 @@ const NewMeetingPage = (): JSX.Element => {
           </Tabs>
         </Card>
 
-        <div className="flex gap-3">
+        <Card className="flex items-center gap-3 p-4">
           <Button type="submit" disabled={isPending}>
             {isPending ? "Creating…" : "Create Meeting"}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-        </div>
+        </Card>
       </form>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, ArrowUp, Loader2, Button, Textarea } from "@basicsos/ui";
+import { Sparkles, X, ArrowUp, Loader2, Button, Textarea, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 
 type Message = {
@@ -45,14 +45,20 @@ export const AssistantPanel = (): JSX.Element => {
   return (
     <>
       {/* Floating toggle button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-all hover:shadow-xl"
-        title="AI Assistant"
-        aria-label="Toggle AI Assistant"
-      >
-        {open ? <X size={20} /> : <Sparkles size={20} />}
-      </button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setOpen((o) => !o)}
+              className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-all hover:shadow-xl"
+              aria-label="Toggle AI Assistant"
+            >
+              {open ? <X size={20} /> : <Sparkles size={20} />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">AI Assistant</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Slide-in panel */}
       {open && (

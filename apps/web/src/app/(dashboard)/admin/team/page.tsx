@@ -61,9 +61,12 @@ const TeamPage = (): JSX.Element => {
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-stone-400">
-        Team member management requires a user directory API. Invite new members using the button above.
-      </p>
+      <div className="mt-6 rounded-xl border-2 border-dashed border-stone-200 p-8 text-center">
+        <p className="text-sm font-medium text-stone-500">No other team members yet</p>
+        <p className="mt-1 text-xs text-stone-400">
+          Invite team members using the button above to start collaborating.
+        </p>
+      </div>
     </div>
   );
 };

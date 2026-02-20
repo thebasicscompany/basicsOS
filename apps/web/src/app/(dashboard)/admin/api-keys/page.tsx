@@ -4,7 +4,12 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Input, Label, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, addToast, Copy, Trash2, Plus, Check } from "@basicsos/ui";
+import {
+  Button, Badge, Input, Label,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  addToast, PageHeader, Card, CodeBlock, InlineCode,
+  Copy, Trash2, Plus, Check,
+} from "@basicsos/ui";
 
 type CreatedKey = { id: string; name: string; key: string; keyPrefix: string };
 
@@ -73,7 +78,7 @@ const CreateKeyDialog = ({ onCreated }: { onCreated: (key: CreatedKey) => void }
               value={monthlyLimit}
               onChange={(e) => setMonthlyLimit(e.target.value)}
             />
-            <p className="text-xs text-stone-400">Leave blank for unlimited.</p>
+            <p className="text-xs text-stone-500">Leave blank for unlimited.</p>
           </div>
         </div>
         <DialogFooter>
@@ -89,7 +94,7 @@ const CreateKeyDialog = ({ onCreated }: { onCreated: (key: CreatedKey) => void }
               })
             }
           >
-            {create.isPending ? "Creating…" : "Create key"}
+            {create.isPending ? "Creating\u2026" : "Create key"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -98,18 +103,18 @@ const CreateKeyDialog = ({ onCreated }: { onCreated: (key: CreatedKey) => void }
 };
 
 const NewKeyReveal = ({ createdKey, onDismiss }: { createdKey: CreatedKey; onDismiss: () => void }): JSX.Element => (
-  <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+  <Card className="border border-primary/20 ring-1 ring-primary/10 bg-primary/5 p-5">
     <p className="text-sm font-medium text-stone-900">
       Key created — copy it now. You won&apos;t be able to see it again.
     </p>
-    <div className="mt-3 flex items-center gap-2 rounded-lg border bg-white p-3">
+    <div className="mt-3 flex items-center gap-2 rounded-lg bg-white p-3">
       <code className="flex-1 break-all font-mono text-xs text-stone-700">{createdKey.key}</code>
       <CopyButton text={createdKey.key} />
     </div>
     <Button variant="outline" size="sm" className="mt-3" onClick={onDismiss}>
       Done
     </Button>
-  </div>
+  </Card>
 );
 
 const ApiKeysPage = (): JSX.Element => {
@@ -140,29 +145,25 @@ const ApiKeysPage = (): JSX.Element => {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">AI API Keys</h1>
-          <p className="mt-1 text-stone-500">
-            Virtual keys let team members access AI features without sharing raw provider credentials.
-          </p>
-        </div>
-        <CreateKeyDialog onCreated={handleCreated} />
-      </div>
+      <PageHeader
+        title="AI API Keys"
+        description="Virtual keys let team members access AI features without sharing raw provider credentials."
+        action={<CreateKeyDialog onCreated={handleCreated} />}
+      />
 
       {/* Newly created key reveal */}
       {newKey && <NewKeyReveal createdKey={newKey} onDismiss={() => setNewKey(null)} />}
 
       {/* Key list */}
-      <div className="rounded-xl border bg-white">
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-stone-500">Loading\u2026</div>
         ) : keys.length === 0 ? (
-          <div className="p-8 text-center text-sm text-stone-400">
+          <div className="p-8 text-center text-sm text-stone-500">
             No keys yet. Create one to get started.
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-stone-100">
             {keys.map((key) => (
               <div key={key.id} className="flex items-center justify-between p-4">
                 <div>
@@ -172,11 +173,11 @@ const ApiKeysPage = (): JSX.Element => {
                       {key.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </div>
-                  <p className="mt-0.5 font-mono text-xs text-stone-400">
-                    {key.keyPrefix}••••••••••••••••••••
+                  <p className="mt-0.5 font-mono text-xs text-stone-500">
+                    {key.keyPrefix}\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
                   </p>
                   {key.lastUsedAt && (
-                    <p className="mt-0.5 text-xs text-stone-400">
+                    <p className="mt-0.5 text-xs text-stone-500">
                       Last used {new Date(key.lastUsedAt).toLocaleDateString()}
                     </p>
                   )}
@@ -206,23 +207,17 @@ const ApiKeysPage = (): JSX.Element => {
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Self-hosted / BYOK note */}
-      <div className="rounded-xl border bg-stone-50 p-5">
-        <h3 className="font-medium text-stone-700">Bring Your Own Keys</h3>
-        <p className="mt-1 text-sm text-stone-500">
+      <Card className="p-5">
+        <h3 className="font-semibold text-stone-900">Bring Your Own Keys</h3>
+        <p className="mt-1 text-sm text-stone-600">
           Prefer to use your own provider credentials? Set them in your{" "}
-          <code className="rounded bg-stone-100 px-1">.env</code> file and restart the API server.
+          <InlineCode>.env</InlineCode> file and restart the API server.
         </p>
-        <div className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-stone-600">
-          ANTHROPIC_API_KEY=sk-ant-...
-          <br />
-          <span className="text-stone-400"># or</span>
-          <br />
-          AI_API_KEY=bsk_live_...
-        </div>
-      </div>
+        <CodeBlock code={"ANTHROPIC_API_KEY=sk-ant-...\n# or\nAI_API_KEY=bsk_live_..."} className="mt-3" />
+      </Card>
     </div>
   );
 };

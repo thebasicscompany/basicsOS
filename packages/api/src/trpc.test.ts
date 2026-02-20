@@ -3,8 +3,11 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import { protectedProcedure, adminProcedure, memberProcedure, router } from "./trpc.js";
 import type { TRPCContext } from "./context.js";
 
-// Minimal mock db — procedures do not query DB in these tests
-const mockDb = {} as TRPCContext["db"];
+// Minimal mock db — memberProcedure and adminProcedure call db.transaction + tx.execute
+const mockTx = { execute: vi.fn().mockResolvedValue(undefined) };
+const mockDb = {
+  transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(mockTx)),
+} as unknown as TRPCContext["db"];
 
 const buildCtx = (overrides: Partial<TRPCContext> = {}): TRPCContext => ({
   db: mockDb,

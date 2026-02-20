@@ -3,7 +3,12 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, Users, EmptyState } from "@basicsos/ui";
+import {
+  Button, Plus, Users, EmptyState, PageHeader,
+  Tabs, TabsList, TabsTrigger, Card,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Avatar, AvatarFallback,
+} from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
@@ -52,14 +57,13 @@ const CRMPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">CRM</h1>
-        <div className="flex items-center gap-2">
-          {view === "contacts" ? (
+      <PageHeader
+        title="CRM"
+        className="mb-6"
+        action={
+          view === "contacts" ? (
             <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
-              <Button>
-                <Plus size={14} className="mr-1" /> New Contact
-              </Button>
+              <Button><Plus size={14} className="mr-1" /> New Contact</Button>
             </CreateContactDialog>
           ) : (
             <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
@@ -67,33 +71,17 @@ const CRMPage = (): JSX.Element => {
                 <Plus size={14} className="mr-1" /> New Deal
               </Button>
             </CreateDealDialog>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {/* View tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
-        <button
-          onClick={() => setView("pipeline")}
-          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            view === "pipeline"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          Pipeline
-        </button>
-        <button
-          onClick={() => setView("contacts")}
-          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            view === "contacts"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-500 hover:text-stone-700"
-          }`}
-        >
-          Contacts
-        </button>
-      </div>
+      <Tabs value={view} onValueChange={(v) => setView(v as typeof view)} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="contacts">Contacts</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {view === "pipeline" && (
         <div className="overflow-x-auto">
@@ -102,20 +90,19 @@ const CRMPage = (): JSX.Element => {
               const stageGroup = (dealsData ?? []).find((g) => g.stage === stage);
               const stageDeals = stageGroup?.deals ?? [];
               return (
-                <div key={stage} className="w-56 flex-shrink-0">
+                <div key={stage} className="w-48 flex-shrink-0">
                   <div className="mb-2 flex items-center gap-2">
                     <span
                       className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`}
                     />
                     <span className="text-xs font-semibold uppercase text-stone-500">{stage}</span>
-                    <span className="ml-auto rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">
-                      {stageDeals.length}
-                    </span>
+                    <span className="ml-auto rounded-full bg-stone-200 px-2 py-0.5 text-[10px] font-medium text-stone-500">{stageDeals.length}</span>
                   </div>
                   <div className="flex flex-col gap-2">
                     {stageDeals.length === 0 ? (
-                      <div className="rounded-xl border-2 border-dashed border-stone-200 p-4 text-center text-xs text-stone-400">
-                        No deals
+                      <div className="rounded-xl border-2 border-dashed border-stone-200 py-8 px-4 text-center">
+                        <p className="text-xs text-stone-500">No deals</p>
+                        <p className="mt-1 text-[10px] text-stone-300">Drag or create a deal</p>
                       </div>
                     ) : (
                       stageDeals.map((deal) => (
@@ -154,40 +141,37 @@ const CRMPage = (): JSX.Element => {
             }
           />
         ) : (
-          <div className="rounded-xl border border-stone-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="p-3 text-left font-medium text-stone-600">Name</th>
-                  <th className="p-3 text-left font-medium text-stone-600">Email</th>
-                  <th className="p-3 text-left font-medium text-stone-600">Phone</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="p-3">Name</TableHead>
+                  <TableHead className="p-3">Email</TableHead>
+                  <TableHead className="p-3">Phone</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {(contactsData ?? []).map((c) => (
-                  <tr
-                    key={c.id}
-                    className="hover:bg-stone-50 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/crm/${c.id}`)}
-                  >
-                    <td className="p-3">
+                  <TableRow key={c.id} className="cursor-pointer" onClick={() => router.push(`/crm/${c.id}`)}>
+                    <TableCell className="p-3">
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${nameToColor(c.name)}`}
-                        >
-                          {c.name[0]?.toUpperCase() ?? "?"}
-                        </div>
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className={`text-xs font-semibold ${nameToColor(c.name)}`}>
+                            {c.name[0]?.toUpperCase() ?? "?"}
+                          </AvatarFallback>
+                        </Avatar>
                         <span className="font-medium text-stone-900">{c.name}</span>
                       </div>
-                    </td>
-                    <td className="p-3 text-stone-600">{c.email ?? "\u2014"}</td>
-                    <td className="p-3 text-stone-600">{c.phone ?? "\u2014"}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="p-3 text-stone-600">{c.email ?? "\u2014"}</TableCell>
+                    <TableCell className="p-3 text-stone-600">{c.phone ?? "\u2014"}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )
+      )}
     </div>
   );
 };

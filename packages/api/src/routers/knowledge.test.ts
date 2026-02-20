@@ -27,7 +27,16 @@ vi.mock("@basicsos/db", async () => {
     createdAt: drizzle.timestamp("created_at").notNull().defaultNow(),
     updatedAt: drizzle.timestamp("updated_at").notNull().defaultNow(),
   });
-  return { documents, db: {} };
+  return {
+    documents,
+    db: {},
+    users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+    sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+    accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+    verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+    tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+    invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
+  };
 });
 
 import { knowledgeRouter } from "./knowledge.js";
@@ -68,6 +77,7 @@ const makeChain = (returnValue: unknown) => {
     "update",
     "set",
     "delete",
+    "limit",
   ];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnValue(chain);
@@ -84,12 +94,18 @@ const buildMockDb = (queryResult: unknown[] = [], mutationResult: unknown[] = []
   const updateChain = makeChain(mutationResult);
   const deleteChain = makeChain([]);
 
-  return {
+  const db = {
     select: vi.fn().mockReturnValue(selectChain),
     insert: vi.fn().mockReturnValue(insertChain),
     update: vi.fn().mockReturnValue(updateChain),
     delete: vi.fn().mockReturnValue(deleteChain),
+    execute: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn(),
   };
+
+  db.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
+
+  return db;
 };
 
 const buildCtx = (db: TRPCContext["db"]): TRPCContext => ({

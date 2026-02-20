@@ -55,7 +55,8 @@ export const KanbanColumn = ({
     >
       <div className={`mb-3 border-t-2 pt-3 ${COLUMN_ACCENT[status]}`}>
         <h2 className="font-semibold text-stone-700">
-          {label} <span className="ml-1 text-sm font-normal text-stone-400">({tasks.length})</span>
+          {label}{" "}
+          <span className="ml-1 text-sm font-normal text-stone-500">({tasks.length})</span>
         </h2>
       </div>
       <div className="flex flex-col gap-2">
@@ -63,7 +64,7 @@ export const KanbanColumn = ({
           <TaskCard key={task.id} task={task} {...(onStatusChanged ? { onStatusChanged } : {})} />
         ))}
         {tasks.length === 0 && (
-          <div className="rounded-lg border-2 border-dashed border-stone-100 p-4 text-center text-xs text-stone-400">
+          <div className="rounded-lg border-2 border-dashed border-stone-200 p-4 text-center text-xs text-stone-500">
             Drop tasks here
           </div>
         )}

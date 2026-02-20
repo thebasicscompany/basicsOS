@@ -4,6 +4,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 // Mock @basicsos/db to avoid real database connections
 vi.mock("@basicsos/db", () => ({
   db: {},
+  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
 }));
 
 // Mock @basicsos/api to avoid real connections

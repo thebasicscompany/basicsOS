@@ -1,11 +1,34 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  send: (channel: string, ...args: unknown[]): void => {
-    const validChannels = ["set-ignore-mouse", "navigate-main"];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.send(channel, ...args);
-    }
+  /** Listen for activate signal from main process. */
+  onActivate: (cb: () => void): void => {
+    ipcRenderer.on("activate-overlay", cb);
+  },
+
+  /** Listen for deactivate signal from main process. */
+  onDeactivate: (cb: () => void): void => {
+    ipcRenderer.on("deactivate-overlay", cb);
+  },
+
+  /** Receive notch info from main process. */
+  onNotchInfo: (cb: (info: { hasNotch: boolean; notchHeight: number; windowWidth: number }) => void): void => {
+    ipcRenderer.on("notch-info", (_event, info) => cb(info));
+  },
+
+  /** Notify main process that the overlay dismissed itself. */
+  notifyDismissed: (): void => {
+    ipcRenderer.send("overlay-dismissed");
+  },
+
+  /** Toggle click-through on the overlay window. */
+  setIgnoreMouse: (ignore: boolean): void => {
+    ipcRenderer.send("set-ignore-mouse", ignore);
+  },
+
+  /** Navigate the main window to a URL path. */
+  navigateMain: (path: string): void => {
+    ipcRenderer.send("navigate-main", path);
   },
 
   /** Inject text into the active field via clipboard + simulated paste. */

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
+import { Button } from "@basicsos/ui";
 
 // Immediately creates a blank document and redirects to the editor.
 // Next.js page — requires default export.
@@ -18,19 +19,15 @@ const NewDocumentPage = (): JSX.Element => {
   // Fire once on mount
   useEffect(() => {
     createMutation.mutate({ title: "Untitled Document" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (createMutation.error) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
-        <p className="text-red-500">{createMutation.error.message}</p>
-        <button
-          onClick={() => router.push("/knowledge")}
-          className="text-sm text-stone-500 hover:text-stone-700"
-        >
+        <p className="text-destructive">{createMutation.error.message}</p>
+        <Button variant="ghost" onClick={() => router.push("/knowledge")}>
           ← Back to Knowledge Base
-        </button>
+        </Button>
       </div>
     );
   }

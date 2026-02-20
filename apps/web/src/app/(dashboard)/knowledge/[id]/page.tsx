@@ -4,23 +4,27 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { addToast } from "@basicsos/ui";
+import {
+  Button,
+  Input,
+  PageHeader,
+  addToast,
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Code2,
+} from "@basicsos/ui";
 
 const AUTOSAVE_MS = 1500;
-
-type ToolbarButton = {
-  label: string;
-  title: string;
-  action: () => void;
-  active: () => boolean;
-};
 
 // Next.js page — requires default export
 const DocumentDetailPage = (): JSX.Element => {
   const params = useParams();
-  const router = useRouter();
   const id = params["id"] as string;
 
   const utils = trpc.useUtils();
@@ -61,11 +65,9 @@ const DocumentDetailPage = (): JSX.Element => {
     if (doc.contentJson) {
       editor.commands.setContent(
         doc.contentJson as Parameters<typeof editor.commands.setContent>[0],
-        false, // false = don't fire onUpdate, so loading doesn't mark dirty
       );
     }
     // Only re-run when the document ID or editor instance changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.id, editor]);
 
   const save = useCallback(
@@ -108,11 +110,7 @@ const DocumentDetailPage = (): JSX.Element => {
   );
 
   if (error) {
-    return (
-      <div className="p-8 text-center text-red-500">
-        {error.message}
-      </div>
-    );
+    return <div className="p-8 text-center text-destructive">{error.message}</div>;
   }
 
   if (isLoading || !doc) {
@@ -128,134 +126,92 @@ const DocumentDetailPage = (): JSX.Element => {
   const saving = updateMutation.isPending;
   const statusText = saving ? "Saving…" : isDirty ? "Unsaved changes" : "Saved";
 
-  const toolbarButtons: (ToolbarButton | null)[] = [
-    {
-      label: "B",
-      title: "Bold",
-      action: () => editor?.chain().focus().toggleBold().run(),
-      active: () => editor?.isActive("bold") ?? false,
-    },
-    {
-      label: "I",
-      title: "Italic",
-      action: () => editor?.chain().focus().toggleItalic().run(),
-      active: () => editor?.isActive("italic") ?? false,
-    },
-    {
-      label: "S̶",
-      title: "Strikethrough",
-      action: () => editor?.chain().focus().toggleStrike().run(),
-      active: () => editor?.isActive("strike") ?? false,
-    },
-    null,
-    {
-      label: "H1",
-      title: "Heading 1",
-      action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
-      active: () => editor?.isActive("heading", { level: 1 }) ?? false,
-    },
-    {
-      label: "H2",
-      title: "Heading 2",
-      action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
-      active: () => editor?.isActive("heading", { level: 2 }) ?? false,
-    },
-    {
-      label: "H3",
-      title: "Heading 3",
-      action: () => editor?.chain().focus().toggleHeading({ level: 3 }).run(),
-      active: () => editor?.isActive("heading", { level: 3 }) ?? false,
-    },
-    null,
-    {
-      label: "•",
-      title: "Bullet list",
-      action: () => editor?.chain().focus().toggleBulletList().run(),
-      active: () => editor?.isActive("bulletList") ?? false,
-    },
-    {
-      label: "1.",
-      title: "Ordered list",
-      action: () => editor?.chain().focus().toggleOrderedList().run(),
-      active: () => editor?.isActive("orderedList") ?? false,
-    },
-    null,
-    {
-      label: "</>",
-      title: "Code block",
-      action: () => editor?.chain().focus().toggleCodeBlock().run(),
-      active: () => editor?.isActive("codeBlock") ?? false,
-    },
-    {
-      label: "`",
-      title: "Inline code",
-      action: () => editor?.chain().focus().toggleCode().run(),
-      active: () => editor?.isActive("code") ?? false,
-    },
-    null,
-    {
-      label: "⟲",
-      title: "Undo (Ctrl+Z)",
-      action: () => editor?.chain().focus().undo().run(),
-      active: () => false,
-    },
-    {
-      label: "⟳",
-      title: "Redo (Ctrl+Y)",
-      action: () => editor?.chain().focus().redo().run(),
-      active: () => false,
-    },
-  ];
-
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.push("/knowledge")}
-          className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
-        >
-          ← Knowledge Base
-        </button>
-        <span className={`text-xs transition-colors ${saving ? "text-primary" : isDirty ? "text-amber-500" : "text-stone-400"}`}>
-          {statusText}
-        </span>
-      </div>
+      {/* Title bar */}
+      <PageHeader
+        title=""
+        backHref="/knowledge"
+        backLabel="Knowledge Base"
+        className="mb-6"
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-stone-500">{statusText}</span>
+            <Button onClick={() => save()} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Document title */}
-      <input
+      <Input
         value={localTitle}
         onChange={(e) => setLocalTitle(e.target.value)}
         onBlur={(e) => save(e.target.value)}
-        className="w-full text-4xl font-bold text-stone-900 border-none outline-none bg-transparent mb-6 placeholder-stone-300"
+        className="w-full text-4xl font-bold text-stone-900 border-none bg-transparent mb-4 placeholder-stone-300 shadow-none h-auto p-0"
         placeholder="Untitled Document"
       />
 
-      {/* Editor */}
-      <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
+      {/* TipTap editor */}
+      <div className="rounded-lg bg-white shadow-card">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-2">
-          {toolbarButtons.map((btn, i) =>
-            btn === null ? (
-              <div key={i} className="w-px h-5 bg-stone-200 mx-1" />
-            ) : (
-              <button
-                key={btn.label}
-                title={btn.title}
-                onMouseDown={(e) => {
-                  e.preventDefault(); // keep editor focus
-                  btn.action();
-                }}
-                className={`px-2 py-1 text-sm rounded font-mono transition-colors hover:bg-stone-100 ${
-                  btn.active()
-                    ? "bg-stone-200 text-stone-900"
-                    : "text-stone-500 hover:text-stone-900"
-                }`}
-              >
-                {btn.label}
-              </button>
-            ),
-          )}
+        <div className="flex gap-0.5 border-b border-stone-100 px-2 py-1.5">
+          {[
+            {
+              Icon: Bold,
+              title: "Bold",
+              action: () => editor?.chain().focus().toggleBold().run(),
+              active: () => editor?.isActive("bold") ?? false,
+            },
+            {
+              Icon: Italic,
+              title: "Italic",
+              action: () => editor?.chain().focus().toggleItalic().run(),
+              active: () => editor?.isActive("italic") ?? false,
+            },
+            {
+              Icon: Heading1,
+              title: "Heading 1",
+              action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
+              active: () => editor?.isActive("heading", { level: 1 }) ?? false,
+            },
+            {
+              Icon: Heading2,
+              title: "Heading 2",
+              action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
+              active: () => editor?.isActive("heading", { level: 2 }) ?? false,
+            },
+            {
+              Icon: List,
+              title: "Bullet list",
+              action: () => editor?.chain().focus().toggleBulletList().run(),
+              active: () => editor?.isActive("bulletList") ?? false,
+            },
+            {
+              Icon: ListOrdered,
+              title: "Ordered list",
+              action: () => editor?.chain().focus().toggleOrderedList().run(),
+              active: () => editor?.isActive("orderedList") ?? false,
+            },
+            {
+              Icon: Code2,
+              title: "Code block",
+              action: () => editor?.chain().focus().toggleCodeBlock().run(),
+              active: () => editor?.isActive("codeBlock") ?? false,
+            },
+          ].map((btn) => (
+            <Button
+              key={btn.title}
+              variant="ghost"
+              size="icon"
+              title={btn.title}
+              onClick={btn.action}
+              className={btn.active() ? "bg-stone-200" : ""}
+            >
+              <btn.Icon size={16} />
+            </Button>
+          ))}
         </div>
 
         {/* Content */}

@@ -3,7 +3,7 @@
 import { use } from "react";
 import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@basicsos/ui";
+import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -15,7 +15,7 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
   const { data: contact, isLoading, error } = trpc.crm.contacts.get.useQuery({ id: contactId });
 
   if (isLoading) {
-    return <div className="p-8 text-sm text-stone-400">Loading…</div>;
+    return <div className="p-8 text-sm text-stone-500">Loading…</div>;
   }
 
   if (error ?? !contact) {
@@ -24,12 +24,12 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
 
   return (
     <div>
-      <div className="mb-6">
-        <a href="/crm?view=contacts" className="text-sm text-stone-500 hover:text-stone-700">
-          ← Contacts
-        </a>
-        <h1 className="mt-1 text-2xl font-bold text-stone-900">{contact?.name}</h1>
-      </div>
+      <PageHeader
+        title={contact?.name ?? "Contact"}
+        backHref="/crm?view=contacts"
+        backLabel="Contacts"
+        className="mb-6"
+      />
 
       <Card className="mb-8">
         <CardHeader>

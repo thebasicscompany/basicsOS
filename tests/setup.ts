@@ -2,16 +2,26 @@
 import { vi } from "vitest";
 
 // Mock DB to prevent real connections in integration tests
-vi.mock("@basicsos/db", () => ({
-  db: {
+vi.mock("@basicsos/db", () => {
+  const db = {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
-  },
-  // Export all schema tables as empty stubs
-  tenants: { tenantId: "tenantId", id: "id" },
-  users: { id: "id", tenantId: "tenantId", role: "role" },
+    execute: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn(),
+  };
+  db.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(db));
+  return {
+  db,
+  // Auth-required exports (packages/auth/src/config.ts)
+  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
+  // Module schema tables
   documents: { id: "id", tenantId: "tenantId" },
   contacts: { id: "id", tenantId: "tenantId" },
   deals: { id: "id", tenantId: "tenantId", stage: "stage", value: "value" },
@@ -38,15 +48,6 @@ vi.mock("@basicsos/db", () => ({
   meetingParticipants: { id: "id", tenantId: "tenantId", meetingId: "meetingId" },
   transcripts: { id: "id", tenantId: "tenantId", meetingId: "meetingId" },
   meetingSummaries: { id: "id", tenantId: "tenantId", meetingId: "meetingId" },
-  invites: {
-    id: "id",
-    tenantId: "tenantId",
-    token: "token",
-    email: "email",
-    role: "role",
-    acceptedAt: "acceptedAt",
-    expiresAt: "expiresAt",
-  },
   hubLinks: { id: "id", tenantId: "tenantId", position: "position" },
   integrations: { id: "id", tenantId: "tenantId", service: "service", connectedAt: "connectedAt" },
   aiEmployeeJobs: { id: "id", tenantId: "tenantId", status: "status" },
@@ -58,4 +59,4 @@ vi.mock("@basicsos/db", () => ({
     approvedBy: "approvedBy",
   },
   auditLog: { id: "id", tenantId: "tenantId" },
-}));
+};});

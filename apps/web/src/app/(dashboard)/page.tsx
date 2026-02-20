@@ -1,64 +1,81 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import type { ComponentType, SVGProps } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/providers/AuthProvider";
+import { readRecentRoutes } from "@/lib/recent-routes";
+import type { RecentRoute } from "@/lib/recent-routes";
+import { MODULE_ACCENTS } from "@basicsos/shared";
+import type { ModuleId } from "@basicsos/shared";
 import {
   Card,
-  CardContent,
   Button,
-  Plus,
+  SectionLabel,
+  IconBadge,
+  EmptyState,
+  BookOpen,
+  Users,
   CheckSquare,
   Video,
-  Users,
-  BookOpen,
   Link2,
   Sparkles,
+  Settings,
+  ShieldCheck,
+  LayoutDashboard,
+  Clock,
+  Bot,
+  X,
+  ArrowRight,
+  Inbox,
 } from "@basicsos/ui";
-import { useAuth } from "@/providers/AuthProvider";
 
-const MODULES = [
-  {
-    title: "Knowledge Base",
-    desc: "Documents, wikis, and team knowledge",
-    href: "/knowledge",
-    Icon: BookOpen,
-    color: "bg-emerald-50 text-emerald-600",
-  },
-  {
-    title: "CRM",
-    desc: "Contacts, companies, and deals",
-    href: "/crm",
-    Icon: Users,
-    color: "bg-blue-50 text-blue-600",
-  },
-  {
-    title: "Tasks",
-    desc: "Track work across the team",
-    href: "/tasks",
-    Icon: CheckSquare,
-    color: "bg-violet-50 text-violet-600",
-  },
-  {
-    title: "Meetings",
-    desc: "Transcripts, summaries, action items",
-    href: "/meetings",
-    Icon: Video,
-    color: "bg-amber-50 text-amber-600",
-  },
-  {
-    title: "Hub",
-    desc: "Links, integrations, and tools",
-    href: "/hub",
-    Icon: Link2,
-    color: "bg-rose-50 text-rose-600",
-  },
-  {
-    title: "AI Assistant",
-    desc: "Ask questions about company data",
-    href: "/assistant",
-    Icon: Sparkles,
-    color: "bg-primary/8 text-primary",
-  },
-] as const;
+type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
+
+// Map MODULE_ACCENTS string icon names to actual Lucide components
+const ICON_MAP: Record<string, LucideIcon> = {
+  BookOpen,
+  Users,
+  CheckSquare,
+  Video,
+  Link2,
+  Sparkles,
+  Settings,
+  ShieldCheck,
+};
+
+// Extended accent info for modules not in MODULE_ACCENTS
+const EXTRA_ACCENTS: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  admin: { label: "Admin", icon: "ShieldCheck", color: "text-stone-600", bg: "bg-stone-100" },
+  settings: { label: "Settings", icon: "Settings", color: "text-stone-600", bg: "bg-stone-100" },
+};
+
+const iconForModule = (moduleId: string | undefined): LucideIcon => {
+  if (!moduleId) return LayoutDashboard;
+  const accent = MODULE_ACCENTS[moduleId as ModuleId];
+  if (accent) return ICON_MAP[accent.icon] ?? LayoutDashboard;
+  const extra = EXTRA_ACCENTS[moduleId];
+  if (extra) return ICON_MAP[extra.icon] ?? LayoutDashboard;
+  return LayoutDashboard;
+};
+
+const colorForModule = (moduleId: string | undefined): string => {
+  if (!moduleId) return "bg-stone-100 text-stone-500";
+  const accent = MODULE_ACCENTS[moduleId as ModuleId];
+  if (accent) return `${accent.bg} ${accent.color}`;
+  const extra = EXTRA_ACCENTS[moduleId];
+  if (extra) return `${extra.bg} ${extra.color}`;
+  return "bg-stone-100 text-stone-500";
+};
+
+const labelForModule = (moduleId: string | undefined): string => {
+  if (!moduleId) return "Page";
+  const accent = MODULE_ACCENTS[moduleId as ModuleId];
+  if (accent) return accent.label;
+  const extra = EXTRA_ACCENTS[moduleId];
+  if (extra) return extra.label;
+  return moduleId.charAt(0).toUpperCase() + moduleId.slice(1);
+};
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -67,116 +84,225 @@ const getGreeting = (): string => {
   return "Good evening";
 };
 
-// Next.js App Router requires default export — framework exception.
-const DashboardPage = (): JSX.Element => {
-  const { user, isPending } = useAuth();
-  const { data: taskStats } = trpc.tasks.list.useQuery({}, { refetchInterval: 30_000 });
-  const { data: meetingList } = trpc.meetings.list.useQuery({ limit: 5 }, { refetchInterval: 30_000 });
-  const { data: contactList } = trpc.crm.contacts.list.useQuery({}, { refetchInterval: 30_000 });
-  const { data: docList } = trpc.knowledge.list.useQuery({ parentId: null }, { refetchInterval: 30_000 });
+const relativeTime = (ts: number): string => {
+  const diff = Date.now() - ts;
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
 
-  const taskCount = taskStats?.length ?? 0;
-  const meetingCount = meetingList?.length ?? 0;
-  const contactCount = contactList?.length ?? 0;
-  const docCount = docList?.length ?? 0;
+// --- Zone 1: Recent Work Card ---
 
-  const firstName = isPending ? "" : (user?.name?.split(" ")[0] ?? "there");
+const RecentWorkCard = ({ route }: { route: RecentRoute }): JSX.Element => {
+  const Icon = iconForModule(route.moduleId);
+  const color = colorForModule(route.moduleId);
+  const moduleLabel = labelForModule(route.moduleId);
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">
-          {getGreeting()}{firstName ? `, ${firstName}` : ""}
-        </h1>
-        <p className="mt-2 text-stone-500">Your Company Operating System</p>
-      </div>
-
-      {/* Stats */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          {
-            label: "Tasks",
-            count: taskCount,
-            Icon: CheckSquare,
-            color: "bg-violet-50 text-violet-600",
-          },
-          {
-            label: "Meetings",
-            count: meetingCount,
-            Icon: Video,
-            color: "bg-amber-50 text-amber-600",
-          },
-          {
-            label: "Contacts",
-            count: contactCount,
-            Icon: Users,
-            color: "bg-blue-50 text-blue-600",
-          },
-          {
-            label: "Documents",
-            count: docCount,
-            Icon: BookOpen,
-            color: "bg-emerald-50 text-emerald-600",
-          },
-        ].map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="flex items-center gap-3 pt-4">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.color}`}
-              >
-                <stat.Icon size={20} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-stone-900">{stat.count}</p>
-                <p className="text-xs text-stone-500">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-stone-500">
-          Quick Actions
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <a href="/tasks">
-              <Plus size={14} className="mr-1" /> New Task
-            </a>
-          </Button>
-          <Button variant="outline" asChild>
-            <a href="/meetings">
-              <Plus size={14} className="mr-1" /> New Meeting
-            </a>
-          </Button>
-          <Button variant="outline" asChild>
-            <a href="/crm">
-              <Plus size={14} className="mr-1" /> New Contact
-            </a>
-          </Button>
+    <a href={route.path} className="block">
+      <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-stone-50">
+        <IconBadge Icon={Icon} size="sm" color={color} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-stone-900">{route.title}</p>
+          <p className="text-xs text-stone-500">
+            {moduleLabel}
+            <span className="mx-1.5 text-stone-300">&middot;</span>
+            {relativeTime(route.timestamp)}
+          </p>
         </div>
-      </div>
+        <ArrowRight size={14} className="shrink-0 text-stone-300" />
+      </Card>
+    </a>
+  );
+};
 
-      {/* Module grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MODULES.map((module) => (
-          <a
-            key={module.title}
-            href={module.href}
-            className="group block rounded-xl border border-stone-200 bg-white p-6 transition-all hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30"
-          >
-            <div
-              className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${module.color}`}
-            >
-              <module.Icon size={20} />
-            </div>
-            <h3 className="text-lg font-semibold text-stone-900">{module.title}</h3>
-            <p className="mt-1 text-sm text-stone-500">{module.desc}</p>
-          </a>
-        ))}
-      </div>
+// --- Zone 2: Attention Item ---
+
+interface AttentionItemData {
+  id: string;
+  icon: LucideIcon;
+  iconColor: string;
+  title: string;
+  body?: string | undefined;
+  actionHref: string;
+  dismissible: boolean;
+}
+
+const AttentionItem = ({
+  item,
+  onDismiss,
+}: {
+  item: AttentionItemData;
+  onDismiss?: (() => void) | undefined;
+}): JSX.Element => (
+  <div className="flex items-center gap-3 py-3">
+    <item.icon size={16} className={`shrink-0 ${item.iconColor}`} />
+    <div className="min-w-0 flex-1">
+      <p className="text-sm text-stone-900">{item.title}</p>
+      {item.body && <p className="mt-0.5 line-clamp-1 text-xs text-stone-500">{item.body}</p>}
+    </div>
+    <div className="flex shrink-0 items-center gap-1">
+      <Button variant="ghost" size="sm" asChild>
+        <a href={item.actionHref}>
+          View
+          <ArrowRight size={12} className="ml-1" />
+        </a>
+      </Button>
+      {item.dismissible && onDismiss && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-stone-400 hover:text-stone-600"
+          onClick={onDismiss}
+        >
+          <X size={14} />
+        </Button>
+      )}
+    </div>
+  </div>
+);
+
+// --- Page ---
+
+// Next.js App Router requires default export — framework exception
+const DashboardPage = (): JSX.Element => {
+  const { user, isPending } = useAuth();
+  const [recentRoutes, setRecentRoutes] = useState<RecentRoute[]>([]);
+
+  useEffect(() => {
+    setRecentRoutes(readRecentRoutes());
+  }, []);
+
+  // Needs-attention data
+  const { data: overdueTasks, isLoading: overdueLoading } = trpc.tasks.getOverdue.useQuery();
+  const { data: aiJobs, isLoading: aiLoading } = trpc.aiEmployees.listJobs.useQuery();
+  const { data: rawNotifications, isLoading: notifLoading } = trpc.notifications.list.useQuery();
+
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const dismissMutation = trpc.notifications.dismiss.useMutation({
+    onSuccess: (_data, variables) => {
+      setDismissedIds((prev) => new Set([...prev, variables.id]));
+    },
+  });
+
+  const firstName = isPending ? "" : (user?.name?.split(" ")[0] ?? "there");
+  const visibleRecents = recentRoutes.slice(0, 4);
+  const isAttentionLoading = overdueLoading || aiLoading || notifLoading;
+
+  // Build attention items
+  const attentionItems: AttentionItemData[] = [];
+
+  // Unread notifications
+  const unreadNotifications = (rawNotifications ?? []).filter(
+    (n) => !n.read && !dismissedIds.has(n.id),
+  );
+  for (const n of unreadNotifications.slice(0, 5)) {
+    attentionItems.push({
+      id: `notif-${n.id}`,
+      icon: Inbox,
+      iconColor: "text-blue-500",
+      title: n.title,
+      body: n.body ?? undefined,
+      actionHref: n.actionUrl ?? "/",
+      dismissible: true,
+    });
+  }
+
+  // Overdue tasks
+  const overdueCount = overdueTasks?.length ?? 0;
+  if (overdueCount > 0) {
+    attentionItems.push({
+      id: "overdue-tasks",
+      icon: Clock,
+      iconColor: "text-amber-500",
+      title: overdueCount === 1 ? "1 overdue task" : `${overdueCount} overdue tasks`,
+      actionHref: "/tasks",
+      dismissible: false,
+    });
+  }
+
+  // AI jobs awaiting approval
+  const pendingJobs = (aiJobs ?? []).filter((j) => j.status === "awaiting_approval");
+  if (pendingJobs.length > 0) {
+    attentionItems.push({
+      id: "ai-pending",
+      icon: Bot,
+      iconColor: "text-violet-500",
+      title:
+        pendingJobs.length === 1
+          ? "AI employee output needs review"
+          : `${pendingJobs.length} AI outputs need review`,
+      actionHref: "/assistant",
+      dismissible: false,
+    });
+  }
+
+  const handleDismiss = (item: AttentionItemData): void => {
+    const notifId = item.id.replace("notif-", "");
+    dismissMutation.mutate({ id: notifId });
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      {/* Greeting */}
+      <h1 className="mb-10 text-3xl font-semibold font-serif tracking-tight text-stone-900">
+        {getGreeting()}, {firstName}
+      </h1>
+
+      {/* Zone 1: Resume */}
+      <section className="mb-10">
+        <SectionLabel as="h2" className="mb-4">
+          Pick up where you left off
+        </SectionLabel>
+
+        {visibleRecents.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {visibleRecents.map((route, i) => (
+              <RecentWorkCard key={`${route.path}-${i}`} route={route} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            Icon={LayoutDashboard}
+            heading="Start exploring"
+            description="Navigate to any module from the sidebar and your recent work will appear here."
+            className="py-12"
+          />
+        )}
+      </section>
+
+      {/* Zone 2: Needs Attention */}
+      <section>
+        <SectionLabel as="h2" className="mb-3">
+          Needs attention
+        </SectionLabel>
+
+        {isAttentionLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-md bg-stone-100" />
+            ))}
+          </div>
+        ) : attentionItems.length > 0 ? (
+          <Card className="divide-y divide-stone-100 px-4">
+            {attentionItems.map((item) => (
+              <AttentionItem
+                key={item.id}
+                item={item}
+                onDismiss={item.dismissible ? () => handleDismiss(item) : undefined}
+              />
+            ))}
+          </Card>
+        ) : (
+          <p className="py-4 text-sm text-stone-400">
+            All caught up — nothing needs your attention.
+          </p>
+        )}
+      </section>
     </div>
   );
 };

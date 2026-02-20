@@ -4,7 +4,11 @@
 // This is a framework-mandated exception to the project's named-export rule.
 
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, addToast, Trash2 } from "@basicsos/ui";
+import {
+  Button, Badge, PageHeader, Card, Avatar, AvatarFallback, EmptyState, Users,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  addToast, Trash2,
+} from "@basicsos/ui";
 import { InviteMemberDialog } from "./InviteMemberDialog";
 import type { UserRole } from "@basicsos/shared";
 
@@ -14,7 +18,7 @@ const ROLE_VARIANT: Record<UserRole, "default" | "secondary" | "outline"> = {
   viewer: "outline",
 };
 
-const initials = (name: string): string =>
+const getInitials = (name: string): string =>
   name
     .split(" ")
     .map((n) => n[0])
@@ -45,41 +49,46 @@ const TeamPage = (): JSX.Element => {
   const isAdmin = me?.role === "admin";
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">Team Management</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Manage team members, roles, and invitations.
-          </p>
-        </div>
-        {isAdmin && (
-          <InviteMemberDialog>
-            <Button>Invite member</Button>
-          </InviteMemberDialog>
-        )}
-      </div>
+    <div>
+      <PageHeader
+        title="Team Management"
+        description="Manage team members, roles, and invitations."
+        className="mb-6"
+        action={
+          isAdmin ? (
+            <InviteMemberDialog>
+              <Button>Invite Member</Button>
+            </InviteMemberDialog>
+          ) : undefined
+        }
+      />
 
-      <div className="rounded-xl border bg-white">
+      <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-stone-500">Loading\u2026</div>
         ) : members.length === 0 ? (
-          <div className="p-8 text-center text-sm text-stone-400">No members found.</div>
+          <EmptyState
+            Icon={Users}
+            heading="No team members yet"
+            description="Invite team members using the button above to start collaborating."
+          />
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-stone-100">
             {members.map((member) => {
               const isSelf = member.id === me?.userId;
               return (
                 <div key={member.id} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {initials(member.name)}
-                    </div>
+                    <Avatar>
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-stone-900">{member.name}</span>
                         {isSelf && (
-                          <span className="text-xs text-stone-400">(you)</span>
+                          <span className="text-xs text-stone-500">(you)</span>
                         )}
                       </div>
                       <p className="text-sm text-stone-500">{member.email}</p>
@@ -129,7 +138,7 @@ const TeamPage = (): JSX.Element => {
             })}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

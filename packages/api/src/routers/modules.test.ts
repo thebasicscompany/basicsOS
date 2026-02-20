@@ -5,6 +5,12 @@ import { modulesRouter } from "./modules.js";
 vi.mock("@basicsos/db", () => ({
   db: {},
   moduleConfig: { tenantId: "tenantId", moduleName: "moduleName" },
+  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
+  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
+  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
+  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
+  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
+  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
 }));
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
@@ -31,10 +37,16 @@ const makeInsertChain = () => {
   return chain;
 };
 
-const mockDb = {
+const mockDbObj = {
   select: vi.fn().mockReturnValue(makeEmptyChain()),
   insert: vi.fn().mockReturnValue(makeInsertChain()),
-} as unknown as TRPCContext["db"];
+  execute: vi.fn().mockResolvedValue(undefined),
+  transaction: vi.fn(),
+};
+
+mockDbObj.transaction = vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(mockDbObj));
+
+const mockDb = mockDbObj as unknown as TRPCContext["db"];
 
 const buildCtx = (overrides: Partial<TRPCContext> = {}): TRPCContext => ({
   db: mockDb,

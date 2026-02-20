@@ -3,7 +3,6 @@ import {
   BrowserWindow,
   Tray,
   Menu,
-  globalShortcut,
   screen,
   nativeImage,
   ipcMain,
@@ -16,6 +15,11 @@ import path from "path";
 import { exec, execSync } from "child_process";
 import { autoUpdater } from "electron-updater";
 import { is } from "@electron-toolkit/utils";
+import { getOverlaySettings, setOverlaySettings } from "./settings-store.js";
+import { createShortcutManager } from "./shortcut-manager.js";
+import type { ShortcutManager } from "./shortcut-manager.js";
+
+type ActivationMode = "assistant" | "continuous" | "dictation" | "transcribe";
 
 const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:3000";
 const PILL_WIDTH = 400;
@@ -25,6 +29,9 @@ let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let overlayActive = false;
+let activeMode: ActivationMode = "assistant";
+let shortcutMgr: ShortcutManager | null = null;
+let cachedBranding: Branding | null = null;
 
 // ---------------------------------------------------------------------------
 // Branding
@@ -72,7 +79,6 @@ const detectNotch = (): NotchInfo => {
   if (process.platform !== "darwin") return info;
 
   try {
-    // Use Swift to query NSScreen.main?.safeAreaInsets.top
     const result = execSync(
       `swift -e 'import AppKit; if let s = NSScreen.main { print(s.safeAreaInsets.top) } else { print(0) }'`,
       { timeout: 3000, encoding: "utf8" },
@@ -87,6 +93,23 @@ const detectNotch = (): NotchInfo => {
   }
 
   return info;
+};
+
+// ---------------------------------------------------------------------------
+// Overlay activation helpers
+// ---------------------------------------------------------------------------
+
+const activateOverlay = (mode: ActivationMode): void => {
+  if (!overlayWindow) return;
+  overlayActive = true;
+  activeMode = mode;
+  overlayWindow.webContents.send("activate-overlay", mode);
+};
+
+const deactivateOverlay = (): void => {
+  if (!overlayWindow) return;
+  overlayActive = false;
+  overlayWindow.webContents.send("deactivate-overlay");
 };
 
 // ---------------------------------------------------------------------------
@@ -112,7 +135,7 @@ const createMainWindow = (branding: Branding): void => {
 };
 
 // ---------------------------------------------------------------------------
-// Overlay window — fixed 400×200, flush top-center
+// Overlay window — fixed 400x200, flush top-center
 // ---------------------------------------------------------------------------
 
 const createOverlayWindow = (): void => {
@@ -179,10 +202,17 @@ const createOverlayWindow = (): void => {
   // Start in click-through mode
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
 
-  // Send notch info once renderer is ready
+  // Send notch info + branding once renderer is ready
   overlayWindow.webContents.on("did-finish-load", () => {
     const notchInfo = detectNotch();
     overlayWindow?.webContents.send("notch-info", notchInfo);
+    if (cachedBranding) {
+      overlayWindow?.webContents.send("branding-info", {
+        companyName: cachedBranding.companyName,
+        logoUrl: cachedBranding.logoUrl,
+        accentColor: cachedBranding.accentColor,
+      });
+    }
   });
 
   // Show overlay (always visible, click-through by default)
@@ -208,6 +238,30 @@ ipcMain.handle("get-session-token", async () => {
 // Config: return API server URL
 ipcMain.handle("get-api-url", () => {
   return process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+});
+
+// Settings: get current overlay settings
+ipcMain.handle("get-overlay-settings", () => {
+  return getOverlaySettings();
+});
+
+// Settings: update overlay settings (partial merge)
+ipcMain.handle("update-overlay-settings", (_event, partial: Record<string, unknown>) => {
+  const updated = setOverlaySettings(partial as Parameters<typeof setOverlaySettings>[0]);
+
+  // Re-register shortcuts with new keys
+  if (shortcutMgr) {
+    shortcutMgr.registerAll(
+      updated.shortcuts.assistantToggle,
+      updated.shortcuts.dictationToggle,
+      updated.behavior.doubleTapWindowMs,
+    );
+  }
+
+  // Notify renderer of changes
+  overlayWindow?.webContents.send("settings-changed", updated);
+
+  return updated;
 });
 
 // Click-through toggle
@@ -279,33 +333,105 @@ ipcMain.handle("capture-screen", async (): Promise<string> => {
 });
 
 // ---------------------------------------------------------------------------
-// Shortcuts
+// Shortcuts — 4 modes via press / double-tap on two keys
 // ---------------------------------------------------------------------------
 
 const setupShortcuts = (): void => {
-  // Primary: Alt+Space
-  globalShortcut.register("Alt+Space", () => {
-    if (!overlayWindow) return;
-    if (!overlayActive) {
-      overlayActive = true;
-      overlayWindow.webContents.send("activate-overlay");
-    } else {
-      overlayActive = false;
-      overlayWindow.webContents.send("deactivate-overlay");
-    }
+  const settings = getOverlaySettings();
+
+  shortcutMgr = createShortcutManager({
+    // Ctrl+Space press → AI assistant (silence auto-stop)
+    onAssistantPress: () => {
+      if (!overlayWindow) return;
+      if (overlayActive) {
+        // Re-send — renderer handles stop logic per current mode
+        overlayWindow.webContents.send("activate-overlay", activeMode);
+      } else {
+        activateOverlay("assistant");
+      }
+    },
+
+    // Ctrl+Space double-tap → continuous AI listening
+    onAssistantDoubleTap: () => {
+      if (!overlayWindow) return;
+      if (overlayActive) {
+        deactivateOverlay();
+      } else {
+        activateOverlay("continuous");
+      }
+    },
+
+    // Ctrl+Shift+Space press → dictation to paste
+    onDictationPress: () => {
+      if (!overlayWindow) return;
+      if (overlayActive && (activeMode === "dictation" || activeMode === "transcribe")) {
+        // Re-send — renderer handles paste/copy + dismiss
+        overlayWindow.webContents.send("activate-overlay", activeMode);
+      } else if (!overlayActive) {
+        activateOverlay("dictation");
+      } else {
+        deactivateOverlay();
+      }
+    },
+
+    // Ctrl+Shift+Space double-tap → speech-to-text (copy to clipboard)
+    onDictationDoubleTap: () => {
+      if (!overlayWindow) return;
+      if (overlayActive) {
+        deactivateOverlay();
+      } else {
+        activateOverlay("transcribe");
+      }
+    },
   });
 
-  // Secondary: Cmd+Shift+Space
-  globalShortcut.register("CommandOrControl+Shift+Space", () => {
-    if (!overlayWindow) return;
-    if (!overlayActive) {
-      overlayActive = true;
-      overlayWindow.webContents.send("activate-overlay");
-    } else {
-      overlayActive = false;
-      overlayWindow.webContents.send("deactivate-overlay");
+  shortcutMgr.registerAll(
+    settings.shortcuts.assistantToggle,
+    settings.shortcuts.dictationToggle,
+    settings.behavior.doubleTapWindowMs,
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Protocol handler (basicos://)
+// ---------------------------------------------------------------------------
+
+const setupProtocolHandler = (): void => {
+  if (!app.isDefaultProtocolClient("basicos")) {
+    app.setAsDefaultProtocolClient("basicos");
+  }
+};
+
+const handleProtocolUrl = (url: string): void => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "activate-overlay") {
+      const mode = (parsed.searchParams.get("mode") ?? "assistant") as ActivationMode;
+      if (!overlayActive) {
+        activateOverlay(mode);
+      }
+    } else if (parsed.hostname === "update-settings") {
+      const json = parsed.searchParams.get("json");
+      if (json) {
+        try {
+          const partial = JSON.parse(decodeURIComponent(json)) as Record<string, unknown>;
+          const updated = setOverlaySettings(partial as Parameters<typeof setOverlaySettings>[0]);
+          if (shortcutMgr) {
+            shortcutMgr.registerAll(
+              updated.shortcuts.assistantToggle,
+              updated.shortcuts.dictationToggle,
+              updated.behavior.doubleTapWindowMs,
+            );
+          }
+          overlayWindow?.webContents.send("settings-changed", updated);
+        } catch {
+          console.error("[protocol] Failed to parse settings JSON");
+        }
+      }
     }
-  });
+  } catch {
+    // Invalid protocol URL
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -318,6 +444,10 @@ const createTray = (branding: Branding): void => {
   );
   icon.setTemplateImage(true);
 
+  const settings = getOverlaySettings();
+  const fmtAssistant = formatShortcutLabel(settings.shortcuts.assistantToggle);
+  const fmtDictation = formatShortcutLabel(settings.shortcuts.dictationToggle);
+
   tray = new Tray(icon);
   tray.setToolTip(branding.companyName);
   tray.setContextMenu(
@@ -328,18 +458,22 @@ const createTray = (branding: Branding): void => {
           mainWindow?.show() ?? createMainWindow(branding);
         },
       },
+      { type: "separator" },
       {
-        label: "Toggle Overlay  \u2325Space",
-        click: () => {
-          if (!overlayWindow) return;
-          if (!overlayActive) {
-            overlayActive = true;
-            overlayWindow.webContents.send("activate-overlay");
-          } else {
-            overlayActive = false;
-            overlayWindow.webContents.send("deactivate-overlay");
-          }
-        },
+        label: `AI Assistant  ${fmtAssistant}`,
+        click: () => activateOverlay("assistant"),
+      },
+      {
+        label: `Dictation  ${fmtDictation}`,
+        click: () => activateOverlay("dictation"),
+      },
+      {
+        label: `Continuous  2x ${fmtAssistant}`,
+        click: () => activateOverlay("continuous"),
+      },
+      {
+        label: `Transcribe  2x ${fmtDictation}`,
+        click: () => activateOverlay("transcribe"),
       },
       { type: "separator" },
       {
@@ -353,6 +487,19 @@ const createTray = (branding: Branding): void => {
     ]),
   );
   tray.on("click", () => mainWindow?.show() ?? createMainWindow(branding));
+};
+
+const formatShortcutLabel = (shortcut: string): string => {
+  if (process.platform === "darwin") {
+    return shortcut
+      .replace("Control", "\u2303")
+      .replace("Shift", "\u21e7")
+      .replace("Alt", "\u2325")
+      .replace("Command", "\u2318")
+      .replace("CommandOrControl", "\u2318")
+      .replace(/\+/g, "");
+  }
+  return shortcut;
 };
 
 // ---------------------------------------------------------------------------
@@ -383,15 +530,18 @@ const setupAutoUpdater = (): void => {
 // App lifecycle
 // ---------------------------------------------------------------------------
 
+setupProtocolHandler();
+
 app.whenReady().then(async () => {
   const branding = await fetchBranding();
+  cachedBranding = branding;
 
   // Try to create main window — skip silently if web server unavailable
   try {
     const probe = await fetch(WEB_URL, { signal: AbortSignal.timeout(2000) });
     if (probe.ok) createMainWindow(branding);
   } catch {
-    console.warn("[main] Web server not reachable at", WEB_URL, "— skipping main window");
+    console.warn("[main] Web server not reachable at", WEB_URL, "-- skipping main window");
   }
 
   createOverlayWindow();
@@ -410,10 +560,22 @@ app.whenReady().then(async () => {
   });
 });
 
+// macOS: handle protocol URL when app is already running
+app.on("open-url", (_event, url) => {
+  handleProtocolUrl(url);
+});
+
+// Windows/Linux: handle protocol URL via second-instance
+app.on("second-instance", (_event, argv) => {
+  const protocolUrl = argv.find((a) => a.startsWith("basicos://"));
+  if (protocolUrl) handleProtocolUrl(protocolUrl);
+  mainWindow?.show();
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("will-quit", () => {
-  globalShortcut.unregisterAll();
+  shortcutMgr?.unregisterAll();
 });

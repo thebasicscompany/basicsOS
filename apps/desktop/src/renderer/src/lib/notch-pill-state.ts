@@ -4,8 +4,10 @@
 
 export type PillState = "idle" | "listening" | "thinking" | "response";
 
+export type InteractionMode = "assistant" | "continuous" | "dictation" | "transcribe";
+
 export type PillAction =
-  | { type: "ACTIVATE" }
+  | { type: "ACTIVATE"; mode: InteractionMode }
   | { type: "DEACTIVATE" }
   | { type: "LISTENING_COMPLETE"; transcript: string }
   | { type: "COMMAND_RESULT"; title: string; lines: string[] }
@@ -17,6 +19,7 @@ export type PillAction =
 
 export type PillContext = {
   state: PillState;
+  interactionMode: InteractionMode;
   transcript: string;
   responseTitle: string;
   responseLines: string[];
@@ -27,6 +30,7 @@ export type PillContext = {
 
 export const initialPillContext: PillContext = {
   state: "idle",
+  interactionMode: "assistant",
   transcript: "",
   responseTitle: "",
   responseLines: [],
@@ -39,13 +43,25 @@ export const pillReducer = (ctx: PillContext, action: PillAction): PillContext =
   switch (action.type) {
     case "ACTIVATE":
       if (ctx.state !== "idle") return { ...ctx, ...initialPillContext, meetingActive: ctx.meetingActive, meetingId: ctx.meetingId };
-      return { ...ctx, state: "listening", transcript: "", responseTitle: "", responseLines: [], streamingText: "" };
+      return {
+        ...ctx,
+        state: "listening",
+        interactionMode: action.mode,
+        transcript: "",
+        responseTitle: "",
+        responseLines: [],
+        streamingText: "",
+      };
 
     case "DEACTIVATE":
     case "DISMISS":
       return { ...ctx, state: "idle", transcript: "", responseTitle: "", responseLines: [], streamingText: "" };
 
     case "LISTENING_COMPLETE":
+      // Dictation + transcribe go straight to idle (handled externally before dispatch)
+      if (ctx.interactionMode === "dictation" || ctx.interactionMode === "transcribe") {
+        return { ...ctx, state: "idle", transcript: action.transcript };
+      }
       return { ...ctx, state: "thinking", transcript: action.transcript };
 
     case "COMMAND_RESULT":

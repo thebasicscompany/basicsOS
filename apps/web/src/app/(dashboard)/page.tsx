@@ -97,10 +97,14 @@ const relativeTime = (ts: number): string => {
 
 // --- Zone 1: Recent Work Card ---
 
-const RecentWorkCard = ({ route }: { route: RecentRoute }): JSX.Element => {
+interface RecentWorkCardProps {
+  route: RecentRoute;
+  summary?: string | undefined;
+}
+
+const RecentWorkCard = ({ route, summary }: RecentWorkCardProps): JSX.Element => {
   const Icon = iconForModule(route.moduleId);
   const color = colorForModule(route.moduleId);
-  const moduleLabel = labelForModule(route.moduleId);
 
   return (
     <a href={route.path} className="block">
@@ -109,9 +113,7 @@ const RecentWorkCard = ({ route }: { route: RecentRoute }): JSX.Element => {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-stone-900">{route.title}</p>
           <p className="text-xs text-stone-500">
-            {moduleLabel}
-            <span className="mx-1.5 text-stone-300">&middot;</span>
-            {relativeTime(route.timestamp)}
+            {summary ?? relativeTime(route.timestamp)}
           </p>
         </div>
         <ArrowRight size={14} className="shrink-0 text-stone-300" />
@@ -177,6 +179,13 @@ const DashboardPage = (): JSX.Element => {
     setRecentRoutes(readRecentRoutes());
   }, []);
 
+  // Module summaries for recent work cards
+  const { data: taskData } = trpc.tasks.list.useQuery({});
+  const { data: contactData } = trpc.crm.contacts.list.useQuery({});
+  const { data: dealData } = trpc.crm.deals.listByStage.useQuery();
+  const { data: meetingData } = trpc.meetings.list.useQuery({ limit: 5 });
+  const { data: docData } = trpc.knowledge.list.useQuery({ parentId: null });
+
   // Needs-attention data
   const { data: overdueTasks, isLoading: overdueLoading } = trpc.tasks.getOverdue.useQuery();
   const { data: aiJobs, isLoading: aiLoading } = trpc.aiEmployees.listJobs.useQuery();
@@ -192,6 +201,51 @@ const DashboardPage = (): JSX.Element => {
   const firstName = isPending ? "" : (user?.name?.split(" ")[0] ?? "there");
   const visibleRecents = recentRoutes.slice(0, 4);
   const isAttentionLoading = overdueLoading || aiLoading || notifLoading;
+
+  // Build contextual one-liners per module
+  const summaryForModule = (moduleId: string | undefined): string | undefined => {
+    switch (moduleId) {
+      case "tasks": {
+        const all = taskData ?? [];
+        const inProgress = all.filter((t) => t.status === "in-progress").length;
+        const todo = all.filter((t) => t.status === "todo").length;
+        if (all.length === 0) return "No tasks yet";
+        const parts: string[] = [];
+        if (inProgress > 0) parts.push(`${inProgress} in progress`);
+        if (todo > 0) parts.push(`${todo} to do`);
+        return parts.length > 0 ? parts.join(" \u00b7 ") : `${all.length} tasks`;
+      }
+      case "crm": {
+        const contacts = contactData?.length ?? 0;
+        const deals = dealData?.flatMap((s) => s.deals).length ?? 0;
+        if (contacts === 0 && deals === 0) return "No contacts or deals yet";
+        const parts: string[] = [];
+        if (contacts > 0) parts.push(`${contacts} contact${contacts === 1 ? "" : "s"}`);
+        if (deals > 0) parts.push(`${deals} deal${deals === 1 ? "" : "s"}`);
+        return parts.join(" \u00b7 ");
+      }
+      case "knowledge": {
+        const docs = docData?.length ?? 0;
+        if (docs === 0) return "No documents yet";
+        return `${docs} document${docs === 1 ? "" : "s"}`;
+      }
+      case "meetings": {
+        const meetings = meetingData ?? [];
+        if (meetings.length === 0) return "No meetings recorded";
+        return `${meetings.length} recent meeting${meetings.length === 1 ? "" : "s"}`;
+      }
+      case "hub":
+        return "Links & integrations";
+      case "assistant":
+        return "AI-powered search";
+      case "settings":
+        return "Profile & preferences";
+      case "admin":
+        return "Team & configuration";
+      default:
+        return undefined;
+    }
+  };
 
   // Build attention items
   const attentionItems: AttentionItemData[] = [];
@@ -249,9 +303,22 @@ const DashboardPage = (): JSX.Element => {
   return (
     <div className="mx-auto max-w-3xl">
       {/* Greeting */}
-      <h1 className="mb-10 text-3xl font-semibold font-serif tracking-tight text-stone-900">
-        {getGreeting()}, {firstName}
-      </h1>
+      <div className="mb-10 flex items-center justify-between">
+        <h1 className="text-3xl font-semibold font-serif tracking-tight text-stone-900">
+          {getGreeting()}, {firstName}
+        </h1>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            window.location.href = "basicos://activate-overlay";
+          }}
+        >
+          <Sparkles size={14} />
+          Open Overlay
+        </Button>
+      </div>
 
       {/* Zone 1: Resume */}
       <section className="mb-10">
@@ -262,7 +329,11 @@ const DashboardPage = (): JSX.Element => {
         {visibleRecents.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {visibleRecents.map((route, i) => (
-              <RecentWorkCard key={`${route.path}-${i}`} route={route} />
+              <RecentWorkCard
+                key={`${route.path}-${i}`}
+                route={route}
+                summary={summaryForModule(route.moduleId)}
+              />
             ))}
           </div>
         ) : (

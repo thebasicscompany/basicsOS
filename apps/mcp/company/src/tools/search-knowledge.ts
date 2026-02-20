@@ -7,6 +7,7 @@ export const registerSearchKnowledgeTool = (server: McpServer): void => {
     "search_knowledge_base",
     "Search the company knowledge base for documents",
     { query: z.string().describe("Search query") },
+    { readOnlyHint: true },
     async ({ query }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {

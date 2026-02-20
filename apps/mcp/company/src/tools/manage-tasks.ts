@@ -12,6 +12,7 @@ export const registerManageTasksTool = (server: McpServer): void => {
         .optional()
         .describe("Filter tasks by status"),
     },
+    { readOnlyHint: true },
     async ({ status }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {

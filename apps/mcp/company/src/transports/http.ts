@@ -7,7 +7,7 @@ export const createHttpMCPServer = async (): Promise<void> => {
   const port = Number(process.env["MCP_PORT"] ?? "4000");
 
   // Session map for proper MCP session continuity across requests.
-  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; tenantId: string }>();
+  const sessions = new Map<string, { transport: StreamableHTTPServerTransport; tenantId: string; userId: string | undefined }>();
 
   const httpServer = createServer((req, res) => {
     // Tenant resolution: env var (single-tenant deployment) takes precedence,
@@ -25,6 +25,11 @@ export const createHttpMCPServer = async (): Promise<void> => {
       return;
     }
 
+    // User resolution: env var takes precedence, then X-User-ID header.
+    const userId =
+      process.env["MCP_USER_ID"] ??
+      (req.headers["x-user-id"] as string | undefined);
+
     const sessionId = (req.headers["mcp-session-id"] as string | undefined) ?? randomUUID();
     const existing = sessions.get(sessionId);
 
@@ -36,19 +41,30 @@ export const createHttpMCPServer = async (): Promise<void> => {
       return;
     }
 
-    // New session — wire up a fresh server scoped to this tenant.
+    // New session — wire up a fresh server scoped to this tenant + user.
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => sessionId });
-    sessions.set(sessionId, { transport, tenantId });
+    sessions.set(sessionId, { transport, tenantId, userId });
 
-    // Temporarily set the env var so createSystemCaller picks it up.
+    // Temporarily set env vars so createSystemCaller picks them up.
     // Safe because each session is isolated in its own closure.
-    const prev = process.env["MCP_TENANT_ID"];
+    const prevTenant = process.env["MCP_TENANT_ID"];
+    const prevUser = process.env["MCP_USER_ID"];
     process.env["MCP_TENANT_ID"] = tenantId;
+    if (userId !== undefined) {
+      process.env["MCP_USER_ID"] = userId;
+    } else {
+      delete process.env["MCP_USER_ID"];
+    }
     const mcpServer = createMCPServer();
-    if (prev === undefined) {
+    if (prevTenant === undefined) {
       delete process.env["MCP_TENANT_ID"];
     } else {
-      process.env["MCP_TENANT_ID"] = prev;
+      process.env["MCP_TENANT_ID"] = prevTenant;
+    }
+    if (prevUser === undefined) {
+      delete process.env["MCP_USER_ID"];
+    } else {
+      process.env["MCP_USER_ID"] = prevUser;
     }
 
     transport.onclose = () => { sessions.delete(sessionId); };

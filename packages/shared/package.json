@@ -8,22 +8,24 @@
   "exports": {
     ".": {
       "bun": "./src/index.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "pino": "^9.5.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@basicsos/config": "workspace:*",
+    "pino-pretty": "^13.0.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

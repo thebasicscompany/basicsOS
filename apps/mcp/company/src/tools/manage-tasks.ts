@@ -7,10 +7,7 @@ export const registerManageTasksTool = (server: McpServer): void => {
     "list_tasks",
     "List tasks for the company",
     {
-      status: z
-        .enum(["todo", "in-progress", "done"])
-        .optional()
-        .describe("Filter tasks by status"),
+      status: z.enum(["todo", "in-progress", "done"]).optional().describe("Filter tasks by status"),
     },
     { readOnlyHint: true },
     async ({ status }) => {
@@ -27,9 +24,7 @@ export const registerManageTasksTool = (server: McpServer): void => {
           tasks.length === 0
             ? "No tasks found."
             : tasks
-                .map(
-                  (t) => `- [${t.status}] ${t.title} (priority: ${t.priority}, ID: ${t.id})`,
-                )
+                .map((t) => `- [${t.status}] ${t.title} (priority: ${t.priority}, ID: ${t.id})`)
                 .join("\n");
         return { content: [{ type: "text" as const, text }] };
       } catch (err: unknown) {

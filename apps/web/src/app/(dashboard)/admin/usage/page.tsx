@@ -17,7 +17,9 @@ const UsagePage = (): JSX.Element => {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-stone-500">Requests This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-stone-500">
+              Requests This Month
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-stone-900">{stats?.requestsThisMonth ?? 0}</p>
@@ -52,9 +54,7 @@ const UsagePage = (): JSX.Element => {
         {isLoading ? (
           <div className="p-8 text-center text-sm text-stone-400">Loading…</div>
         ) : (stats?.recentCalls.length ?? 0) === 0 ? (
-          <div className="p-8 text-center text-sm text-stone-400">
-            No data yet.
-          </div>
+          <div className="p-8 text-center text-sm text-stone-400">No data yet.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-stone-50 text-xs font-medium text-stone-500 uppercase tracking-wider">

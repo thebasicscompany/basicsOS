@@ -2,15 +2,26 @@ import { z } from "zod";
 
 export const triggerConfigSchema = z.object({
   eventType: z.string(),
-  conditions: z.array(z.object({
-    field: z.string(),
-    operator: z.enum(["eq", "neq", "gt", "lt", "contains"]),
-    value: z.union([z.string(), z.number(), z.boolean()]),
-  })).default([]),
+  conditions: z
+    .array(
+      z.object({
+        field: z.string(),
+        operator: z.enum(["eq", "neq", "gt", "lt", "contains"]),
+        value: z.union([z.string(), z.number(), z.boolean()]),
+      }),
+    )
+    .default([]),
 });
 
 export const actionSchema = z.object({
-  type: z.enum(["send_email", "update_crm", "create_task", "call_webhook", "run_ai_prompt", "post_slack"]),
+  type: z.enum([
+    "send_email",
+    "update_crm",
+    "create_task",
+    "call_webhook",
+    "run_ai_prompt",
+    "post_slack",
+  ]),
   config: z.record(z.unknown()),
 });
 

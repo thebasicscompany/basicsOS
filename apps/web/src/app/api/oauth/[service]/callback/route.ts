@@ -69,12 +69,14 @@ const storeToken = async (
   });
   const encryptedToken = encryptToken(payload);
 
-  const existing = await db.select({ id: integrations.id })
+  const existing = await db
+    .select({ id: integrations.id })
     .from(integrations)
     .where(and(eq(integrations.tenantId, tenantId), eq(integrations.service, service)));
 
   if (existing.length > 0) {
-    await db.update(integrations)
+    await db
+      .update(integrations)
       .set({ oauthTokenEnc: encryptedToken, scopes: scopes ?? null, connectedAt: new Date() })
       .where(and(eq(integrations.tenantId, tenantId), eq(integrations.service, service)));
   } else {
@@ -97,7 +99,8 @@ export const GET = async (req: NextRequest, { params }: RouteParams): Promise<Ne
   const state = searchParams.get("state");
   const errorParam = searchParams.get("error");
 
-  const appUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? process.env["APP_URL"] ?? "http://localhost:3000";
+  const appUrl =
+    process.env["NEXT_PUBLIC_APP_URL"] ?? process.env["APP_URL"] ?? "http://localhost:3000";
   const hubUrl = `${appUrl}/hub`;
 
   if (errorParam) {
@@ -134,7 +137,7 @@ export const GET = async (req: NextRequest, { params }: RouteParams): Promise<Ne
   try {
     const tokenRes = await fetch(cfg.tokenUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -155,7 +158,7 @@ export const GET = async (req: NextRequest, { params }: RouteParams): Promise<Ne
 
     let tokenData: TokenResponse;
     if (cfg.isJsonResponse) {
-      tokenData = await tokenRes.json() as TokenResponse;
+      tokenData = (await tokenRes.json()) as TokenResponse;
     } else {
       const text = await tokenRes.text();
       tokenData = Object.fromEntries(new URLSearchParams(text).entries()) as TokenResponse;

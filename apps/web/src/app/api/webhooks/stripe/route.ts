@@ -36,8 +36,7 @@ const PLAN_BY_PRICE: Record<string, string> = {
   [process.env["STRIPE_PRICE_TEAM"] ?? "__missing__"]: "team",
 };
 
-const getPlanFromPriceId = (priceId: string): string =>
-  PLAN_BY_PRICE[priceId] ?? "starter";
+const getPlanFromPriceId = (priceId: string): string => PLAN_BY_PRICE[priceId] ?? "starter";
 
 const handleSubscriptionUpdated = async (sub: StripeSubscriptionObject): Promise<void> => {
   const tenantId = sub.metadata["tenantId"];
@@ -72,10 +71,7 @@ const handleSubscriptionUpdated = async (sub: StripeSubscriptionObject): Promise
     });
 
   // Mirror the plan onto the tenant row for fast reads
-  await db
-    .update(tenants)
-    .set({ plan })
-    .where(eq(tenants.id, tenantId));
+  await db.update(tenants).set({ plan }).where(eq(tenants.id, tenantId));
 };
 
 const handleSubscriptionDeleted = async (sub: StripeSubscriptionObject): Promise<void> => {
@@ -87,10 +83,7 @@ const handleSubscriptionDeleted = async (sub: StripeSubscriptionObject): Promise
     .set({ status: "canceled", updatedAt: new Date() })
     .where(eq(subscriptions.tenantId, tenantId));
 
-  await db
-    .update(tenants)
-    .set({ plan: "starter" })
-    .where(eq(tenants.id, tenantId));
+  await db.update(tenants).set({ plan: "starter" }).where(eq(tenants.id, tenantId));
 };
 
 const handleCheckoutCompleted = async (session: StripeCheckoutSession): Promise<void> => {
@@ -122,7 +115,11 @@ export const POST = async (req: NextRequest): Promise<NextResponse> => {
     const stripe = new Stripe(process.env["STRIPE_SECRET_KEY"] ?? "", {
       apiVersion: "2025-02-24.acacia",
     });
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret) as unknown as StripeEvent;
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      webhookSecret,
+    ) as unknown as StripeEvent;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[stripe-webhook] Signature verification failed:", message);

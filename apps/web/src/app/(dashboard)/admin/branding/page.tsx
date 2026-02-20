@@ -9,7 +9,8 @@ const BrandingPage = (): JSX.Element => {
   const { data: branding, isLoading } = trpc.admin.getBranding.useQuery();
   const updateBranding = trpc.admin.updateBranding.useMutation({
     onSuccess: () => addToast({ title: "Branding updated", variant: "success" }),
-    onError: (err) => addToast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err) =>
+      addToast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const [name, setName] = useState("");
@@ -46,7 +47,9 @@ const BrandingPage = (): JSX.Element => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-stone-900">Branding</h1>
-        <p className="mt-1 text-sm text-stone-500">Customize your company name, logo, and colors.</p>
+        <p className="mt-1 text-sm text-stone-500">
+          Customize your company name, logo, and colors.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -91,7 +94,9 @@ const BrandingPage = (): JSX.Element => {
                   className="h-9 w-14 cursor-pointer rounded-lg border border-stone-200"
                 />
               </div>
-              <p className="text-xs text-stone-400">Hex format: #rrggbb. Applied to sidebar and primary buttons.</p>
+              <p className="text-xs text-stone-400">
+                Hex format: #rrggbb. Applied to sidebar and primary buttons.
+              </p>
             </div>
 
             <Button type="submit" disabled={updateBranding.isPending}>
@@ -102,13 +107,12 @@ const BrandingPage = (): JSX.Element => {
 
         {/* Live preview */}
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-stone-500 uppercase tracking-wide">Preview</h2>
+          <h2 className="mb-3 text-sm font-semibold text-stone-500 uppercase tracking-wide">
+            Preview
+          </h2>
           <div className="rounded-xl border border-stone-200 overflow-hidden shadow-sm">
             {/* Mini sidebar preview */}
-            <div
-              className="flex h-64 flex-col border-r bg-white"
-              style={{ width: "180px" }}
-            >
+            <div className="flex h-64 flex-col border-r bg-white" style={{ width: "180px" }}>
               <div
                 className="flex items-center gap-2 border-b px-3 py-3"
                 style={{ borderBottomColor: `${accentColor}20` }}
@@ -124,7 +128,9 @@ const BrandingPage = (): JSX.Element => {
                   </div>
                 )}
                 <div>
-                  <div className="text-xs font-semibold text-stone-900">{name || "Company Name"}</div>
+                  <div className="text-xs font-semibold text-stone-900">
+                    {name || "Company Name"}
+                  </div>
                   <div className="text-xs text-stone-400">Company OS</div>
                 </div>
               </div>

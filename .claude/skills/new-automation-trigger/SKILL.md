@@ -1,11 +1,13 @@
 # Skill: Add a New Automation Trigger
 
 ## When to Use
+
 Making a new event type trigger automations (so users can set up "when X happens, do Y").
 
 ## Step 1: Define the Event Type
 
 Add to `packages/shared/src/types/events.ts`:
+
 ```ts
 export const myModuleActionEvent = baseEventSchema.extend({
   type: z.literal("my_module.action_taken"),
@@ -27,16 +29,18 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
 
 ```ts
 // In packages/api/src/routers/my-module.ts
-EventBus.emit(createEvent({
-  type: "my_module.action_taken",
-  tenantId: ctx.tenantId,
-  userId: ctx.userId,
-  payload: {
-    itemId: updated.id,
-    previousValue: existing.field,
-    newValue: input.field,
-  },
-}));
+EventBus.emit(
+  createEvent({
+    type: "my_module.action_taken",
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    payload: {
+      itemId: updated.id,
+      previousValue: existing.field,
+      newValue: input.field,
+    },
+  }),
+);
 ```
 
 ## Step 3: Register in Automation Listener
@@ -70,12 +74,14 @@ it("emits my_module.action_taken when action is taken", async () => {
 ## Event Naming Convention
 
 `module_name.action_past_tense`:
+
 - `crm.deal.stage_changed`
 - `task.completed`
 - `meeting.transcript.finalized`
 - `ai_employee.approval_needed`
 
 ## Checklist
+
 - [ ] Event schema added to `events.ts` with correct payload shape
 - [ ] Event schema added to `BasicsOSEventSchema` discriminated union
 - [ ] `EventBus.emit()` call added to the router mutation

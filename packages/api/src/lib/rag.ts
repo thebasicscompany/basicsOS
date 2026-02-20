@@ -20,17 +20,15 @@ the [Source N] markers.
 ## Company Data Context
 ${context}`;
 
-const buildMessages = (
-  systemPrompt: string,
-  history: ConversationMessage[],
-  query: string,
-) => [
+const buildMessages = (systemPrompt: string, history: ConversationMessage[], query: string) => [
   { role: "system" as const, content: systemPrompt },
   ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
   { role: "user" as const, content: query },
 ];
 
-const buildContextText = (chunks: Array<{ source: string; sourceId: string; text: string }>): string => {
+const buildContextText = (
+  chunks: Array<{ source: string; sourceId: string; text: string }>,
+): string => {
   if (chunks.length === 0) return "No relevant company data found.";
   return chunks
     .map((c, i) => `[Source ${i + 1} — ${c.source} ID: ${c.sourceId}]\n${c.text}`)
@@ -61,7 +59,10 @@ export const ragChat = async (
   // Call LLM — fail with a user-visible error message
   let response: { content: string; finishReason: string };
   try {
-    response = await chatCompletion({ messages }, { tenantId, ...(userId ? { userId } : {}), featureName: "assistant.chat" });
+    response = await chatCompletion(
+      { messages },
+      { tenantId, ...(userId ? { userId } : {}), featureName: "assistant.chat" },
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {

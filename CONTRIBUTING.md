@@ -3,11 +3,13 @@
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js >= 20
 - pnpm >= 9 (`npm install -g pnpm@9`)
 - Docker (for local PostgreSQL + Redis)
 
 ### Getting Started
+
 ```bash
 git clone https://github.com/your-org/basicos
 cd basicos
@@ -22,6 +24,7 @@ pnpm dev
 ## Development Workflow
 
 All development happens in git worktrees, not on main:
+
 ```bash
 git worktree add ../basicos-feature-name -b feature/feature-name
 cd ../basicos-feature-name
@@ -32,12 +35,14 @@ git worktree remove ../basicos-feature-name
 ```
 
 ## Code Standards
+
 - TypeScript strict mode — no `any`
 - Named exports only — no default exports
 - Co-locate tests with source files (`feature.ts` + `feature.test.ts`)
 - Run `pnpm typecheck && pnpm lint && pnpm test` before submitting
 
 ## Commit Format
+
 ```
 type(scope): short description
 
@@ -49,6 +54,7 @@ type(scope): short description
 ```
 
 ## Pull Request Process
+
 1. Create a feature branch from main
 2. Implement changes with tests
 3. Run full test suite: `bun test`

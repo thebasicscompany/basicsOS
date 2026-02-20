@@ -7,9 +7,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }): JSX.Eleme
   <div className="flex h-screen bg-background">
     <NavClient />
     <main className="flex-1 overflow-y-auto p-8">
-      <div className="mx-auto max-w-6xl">
-        {children}
-      </div>
+      <div className="mx-auto max-w-6xl">{children}</div>
     </main>
     <LazyAssistantPanel />
   </div>

@@ -1,12 +1,6 @@
 import { getQueue, createWorker, QUEUE_NAMES } from "./queue.js";
 import { EventBus } from "../events/bus.js";
-import {
-  db,
-  documents,
-  documentEmbeddings,
-  transcripts,
-  meetingEmbeddings,
-} from "@basicsos/db";
+import { db, documents, documentEmbeddings, transcripts, meetingEmbeddings } from "@basicsos/db";
 import { eq } from "drizzle-orm";
 import { chunkText } from "../lib/chunker.js";
 import { embedTexts } from "../lib/embeddings.js";
@@ -27,10 +21,7 @@ const extractTextFromContent = (contentJson: unknown): string => {
   return content.content?.map((node) => node.text ?? "").join("\n") ?? "";
 };
 
-const processDocumentEmbedding = async (
-  tenantId: string,
-  documentId: string,
-): Promise<void> => {
+const processDocumentEmbedding = async (tenantId: string, documentId: string): Promise<void> => {
   const [doc] = await db.select().from(documents).where(eq(documents.id, documentId));
   if (!doc) return;
 
@@ -53,19 +44,14 @@ const processDocumentEmbedding = async (
   }
 };
 
-const processTranscriptEmbedding = async (
-  tenantId: string,
-  meetingId: string,
-): Promise<void> => {
+const processTranscriptEmbedding = async (tenantId: string, meetingId: string): Promise<void> => {
   const transcriptRows = await db
     .select()
     .from(transcripts)
     .where(eq(transcripts.meetingId, meetingId));
   if (transcriptRows.length === 0) return;
 
-  const transcriptText = transcriptRows
-    .map((t) => `${t.speaker}: ${t.text}`)
-    .join("\n");
+  const transcriptText = transcriptRows.map((t) => `${t.speaker}: ${t.text}`).join("\n");
   const chunks = chunkText(transcriptText, "transcript");
   const embedded = await embedTexts(chunks.map((c) => c.text));
 

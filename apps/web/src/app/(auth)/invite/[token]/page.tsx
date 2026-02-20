@@ -25,10 +25,11 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { data, isLoading, error: queryError } = trpc.auth.validateInvite.useQuery(
-    { token },
-    { enabled: token !== "" }
-  );
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = trpc.auth.validateInvite.useQuery({ token }, { enabled: token !== "" });
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -60,9 +61,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
   if (queryError !== null || data === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-50">
-        <p className="text-red-500">
-          {queryError?.message ?? "Invalid or expired invite link."}
-        </p>
+        <p className="text-red-500">{queryError?.message ?? "Invalid or expired invite link."}</p>
       </div>
     );
   }
@@ -73,8 +72,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
         <CardHeader>
           <CardTitle>Accept Invite</CardTitle>
           <p className="text-sm text-stone-500">
-            You&apos;ve been invited to join Basics OS as{" "}
-            <strong>{data.role}</strong>.
+            You&apos;ve been invited to join Basics OS as <strong>{data.role}</strong>.
           </p>
         </CardHeader>
         <CardContent>

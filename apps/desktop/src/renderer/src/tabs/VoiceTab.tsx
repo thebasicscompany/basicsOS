@@ -53,50 +53,47 @@ export const VoiceTab = (): JSX.Element => {
     setInterimText("");
   }, []);
 
-  const handleFinalSegment = useCallback(
-    async (text: string): Promise<void> => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
+  const handleFinalSegment = useCallback(async (text: string): Promise<void> => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
-      if (modeRef.current === "dictate") {
-        const ipc = getIPC();
-        if (ipc?.injectText) {
-          await ipc.injectText(trimmed + " ");
-          setStatus("Injected");
-          setTimeout(() => setStatus(null), 1500);
-        } else {
-          setTranscript((prev) => prev + trimmed + " ");
-        }
+    if (modeRef.current === "dictate") {
+      const ipc = getIPC();
+      if (ipc?.injectText) {
+        await ipc.injectText(trimmed + " ");
+        setStatus("Injected");
+        setTimeout(() => setStatus(null), 1500);
       } else {
-        const cmd = detectCommand(trimmed);
-        if (!cmd) {
-          setStatus(`Not recognized: "${trimmed}"`);
-          setTimeout(() => setStatus(null), 2500);
-          return;
-        }
-
-        if (cmd.type === "create_task") {
-          setStatus(`Creating task: "${cmd.title}"...`);
-          try {
-            await trpcCall("tasks.create", { title: cmd.title, description: "" });
-            setStatus(`Task created: "${cmd.title}"`);
-          } catch {
-            setStatus("Failed to create task");
-          }
-          setTimeout(() => setStatus(null), 3000);
-        } else if (cmd.type === "navigate") {
-          sendIPC("navigate-main", cmd.url);
-          setStatus(`Opened ${cmd.module}`);
-          setTimeout(() => setStatus(null), 1500);
-        } else if (cmd.type === "search") {
-          sendIPC("navigate-main", `/knowledge?q=${encodeURIComponent(cmd.query)}`);
-          setStatus(`Searching "${cmd.query}"...`);
-          setTimeout(() => setStatus(null), 1500);
-        }
+        setTranscript((prev) => prev + trimmed + " ");
       }
-    },
-    [],
-  );
+    } else {
+      const cmd = detectCommand(trimmed);
+      if (!cmd) {
+        setStatus(`Not recognized: "${trimmed}"`);
+        setTimeout(() => setStatus(null), 2500);
+        return;
+      }
+
+      if (cmd.type === "create_task") {
+        setStatus(`Creating task: "${cmd.title}"...`);
+        try {
+          await trpcCall("tasks.create", { title: cmd.title, description: "" });
+          setStatus(`Task created: "${cmd.title}"`);
+        } catch {
+          setStatus("Failed to create task");
+        }
+        setTimeout(() => setStatus(null), 3000);
+      } else if (cmd.type === "navigate") {
+        sendIPC("navigate-main", cmd.url);
+        setStatus(`Opened ${cmd.module}`);
+        setTimeout(() => setStatus(null), 1500);
+      } else if (cmd.type === "search") {
+        sendIPC("navigate-main", `/knowledge?q=${encodeURIComponent(cmd.query)}`);
+        setStatus(`Searching "${cmd.query}"...`);
+        setTimeout(() => setStatus(null), 1500);
+      }
+    }
+  }, []);
 
   const startListening = useCallback((): void => {
     setError(null);
@@ -148,9 +145,12 @@ export const VoiceTab = (): JSX.Element => {
     setIsListening(true);
   }, [stopListening, handleFinalSegment]);
 
-  useEffect(() => () => {
-    recognitionRef.current?.stop();
-  }, []);
+  useEffect(
+    () => () => {
+      recognitionRef.current?.stop();
+    },
+    [],
+  );
 
   if (!isSpeechSupported) {
     return (

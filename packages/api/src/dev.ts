@@ -8,11 +8,11 @@ import {
 } from "./workers/meeting-processor.worker.js";
 import { startNotificationWorker } from "./workers/notification.worker.js";
 import { registerAiEmployeeWorker } from "./workers/ai-employee.worker.js";
-import {
-  startEmbeddingWorker,
-  registerEmbeddingListener,
-} from "./workers/embedding.worker.js";
+import { startEmbeddingWorker, registerEmbeddingListener } from "./workers/embedding.worker.js";
 import { startAutomationExecutorWorker } from "./workers/automation-executor.worker.js";
+import { createLogger } from "@basicsos/shared";
+
+const logger = createLogger("api");
 
 const port = Number(process.env["PORT"] ?? "3001");
 
@@ -32,4 +32,4 @@ const app = createApp();
 
 // Bun's native HTTP server — accepts the standard Web Fetch handler directly.
 Bun.serve({ fetch: app.fetch, port });
-console.warn(`Basics OS API server running on http://localhost:${port}`);
+logger.info({ port }, "Basics OS API server running");

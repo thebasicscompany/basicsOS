@@ -2,13 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
-import {
-  meetings,
-  meetingParticipants,
-  transcripts,
-  meetingSummaries,
-  tasks,
-} from "@basicsos/db";
+import { meetings, meetingParticipants, transcripts, meetingSummaries, tasks } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 import { meetingProcessorQueue } from "../workers/meeting-processor.worker.js";
 import { createWriteStream } from "node:fs";
@@ -251,15 +245,17 @@ export const meetingsRouter = router({
 
       // Enqueue worker to update the summary with real LLM output.
       // Worker reads the summaryId and UPDATEs the existing row.
-      await meetingProcessorQueue.add("process-meeting", {
-        tenantId: ctx.tenantId,
-        meetingId: input.meetingId,
-        summaryId: summary.id,
-      }).catch((err: unknown) => {
-        // Queue failure is non-fatal — summary already inserted above.
-        // Worker can be re-triggered manually if needed.
-        console.error("[meetings.process] Failed to enqueue worker job:", err);
-      });
+      await meetingProcessorQueue
+        .add("process-meeting", {
+          tenantId: ctx.tenantId,
+          meetingId: input.meetingId,
+          summaryId: summary.id,
+        })
+        .catch((err: unknown) => {
+          // Queue failure is non-fatal — summary already inserted above.
+          // Worker can be re-triggered manually if needed.
+          console.error("[meetings.process] Failed to enqueue worker job:", err);
+        });
 
       EventBus.emit(
         createEvent({
@@ -295,12 +291,14 @@ export const meetingsRouter = router({
     }),
 
   transcribeAudio: memberProcedure
-    .input(z.object({
-      meetingId: z.string().uuid(),
-      // Base64-encoded audio chunk (WAV or WebM)
-      audioChunk: z.string(),
-      format: z.enum(["wav", "webm"]).default("wav"),
-    }))
+    .input(
+      z.object({
+        meetingId: z.string().uuid(),
+        // Base64-encoded audio chunk (WAV or WebM)
+        audioChunk: z.string(),
+        format: z.enum(["wav", "webm"]).default("wav"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const deepgramKey = process.env["DEEPGRAM_API_KEY"];
 
@@ -323,7 +321,7 @@ export const meetingsRouter = router({
           {
             method: "POST",
             headers: {
-              "Authorization": `Token ${deepgramKey}`,
+              Authorization: `Token ${deepgramKey}`,
               "Content-Type": `audio/${input.format}`,
             },
             body: audioBuffer,
@@ -342,7 +340,7 @@ export const meetingsRouter = router({
           };
         };
 
-        const result = await response.json() as DeepgramResult;
+        const result = (await response.json()) as DeepgramResult;
         const transcript = result.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
 
         return { transcript, message: null, configured: true };
@@ -357,10 +355,12 @@ export const meetingsRouter = router({
    * Used by the overlay's live Meeting Notes view (polled every 3–5s).
    */
   getTranscript: protectedProcedure
-    .input(z.object({
-      meetingId: z.string().uuid(),
-      limit: z.number().int().min(1).max(200).default(50),
-    }))
+    .input(
+      z.object({
+        meetingId: z.string().uuid(),
+        limit: z.number().int().min(1).max(200).default(50),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
 
@@ -372,7 +372,11 @@ export const meetingsRouter = router({
       if (!meeting) throw new TRPCError({ code: "NOT_FOUND" });
 
       const chunks = await ctx.db
-        .select({ speaker: transcripts.speaker, text: transcripts.text, timestampMs: transcripts.timestampMs })
+        .select({
+          speaker: transcripts.speaker,
+          text: transcripts.text,
+          timestampMs: transcripts.timestampMs,
+        })
         .from(transcripts)
         .where(eq(transcripts.meetingId, input.meetingId))
         .orderBy(transcripts.timestampMs)

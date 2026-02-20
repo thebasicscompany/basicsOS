@@ -51,9 +51,7 @@ const KnowledgeScreen = (): JSX.Element => {
             activeOpacity={0.7}
             onPress={() => {
               const url = `${APP_URL}/knowledge/${item.id}`;
-              void import("react-native").then(({ Linking }) =>
-                Linking.openURL(url),
-              );
+              void import("react-native").then(({ Linking }) => Linking.openURL(url));
             }}
           >
             <View style={styles.docIcon}>
@@ -112,7 +110,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
 });
 
 export default KnowledgeScreen;

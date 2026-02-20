@@ -21,10 +21,7 @@ export const knowledgeRouter = router({
       const filter =
         input.parentId === null
           ? and(eq(documents.tenantId, ctx.tenantId), isNull(documents.parentId))
-          : and(
-              eq(documents.tenantId, ctx.tenantId),
-              eq(documents.parentId, input.parentId),
-            );
+          : and(eq(documents.tenantId, ctx.tenantId), eq(documents.parentId, input.parentId));
 
       return ctx.db
         .select({
@@ -56,87 +53,83 @@ export const knowledgeRouter = router({
       return doc;
     }),
 
-  create: memberProcedure
-    .input(createKnowledgeDocumentSchema)
-    .mutation(async ({ ctx, input }) => {
-      const [doc] = await ctx.db
-        .insert(documents)
-        .values({
-          tenantId: ctx.tenantId,
-          title: input.title,
-          parentId: input.parentId ?? null,
-          position: input.position,
-          createdBy: ctx.userId,
-        })
-        .returning();
+  create: memberProcedure.input(createKnowledgeDocumentSchema).mutation(async ({ ctx, input }) => {
+    const [doc] = await ctx.db
+      .insert(documents)
+      .values({
+        tenantId: ctx.tenantId,
+        title: input.title,
+        parentId: input.parentId ?? null,
+        position: input.position,
+        createdBy: ctx.userId,
+      })
+      .returning();
 
-      if (!doc) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      }
+    if (!doc) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    }
 
-      EventBus.emit(
-        createEvent({
-          type: "document.created",
-          tenantId: ctx.tenantId,
-          userId: ctx.userId,
-          payload: { documentId: doc.id },
-        }),
-      );
+    EventBus.emit(
+      createEvent({
+        type: "document.created",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        payload: { documentId: doc.id },
+      }),
+    );
 
-      return doc;
-    }),
+    return doc;
+  }),
 
-  update: memberProcedure
-    .input(updateKnowledgeDocumentSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { id, title, contentJson, position } = input;
+  update: memberProcedure.input(updateKnowledgeDocumentSchema).mutation(async ({ ctx, input }) => {
+    const { id, title, contentJson, position } = input;
 
-      const [existing] = await ctx.db
-        .select({ id: documents.id })
-        .from(documents)
-        .where(and(eq(documents.id, id), eq(documents.tenantId, ctx.tenantId)));
+    const [existing] = await ctx.db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(and(eq(documents.id, id), eq(documents.tenantId, ctx.tenantId)));
 
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
-      }
+    if (!existing) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+    }
 
-      type DocUpdate = {
-        title?: string;
-        contentJson?: Record<string, unknown>;
-        position?: number;
-        updatedBy: string;
-        updatedAt: Date;
-      };
+    type DocUpdate = {
+      title?: string;
+      contentJson?: Record<string, unknown>;
+      position?: number;
+      updatedBy: string;
+      updatedAt: Date;
+    };
 
-      const updates: DocUpdate = {
-        updatedBy: ctx.userId,
-        updatedAt: new Date(),
-      };
-      if (title !== undefined) updates.title = title;
-      if (contentJson !== undefined) updates.contentJson = contentJson;
-      if (position !== undefined) updates.position = position;
+    const updates: DocUpdate = {
+      updatedBy: ctx.userId,
+      updatedAt: new Date(),
+    };
+    if (title !== undefined) updates.title = title;
+    if (contentJson !== undefined) updates.contentJson = contentJson;
+    if (position !== undefined) updates.position = position;
 
-      const [doc] = await ctx.db
-        .update(documents)
-        .set(updates)
-        .where(and(eq(documents.id, id), eq(documents.tenantId, ctx.tenantId)))
-        .returning();
+    const [doc] = await ctx.db
+      .update(documents)
+      .set(updates)
+      .where(and(eq(documents.id, id), eq(documents.tenantId, ctx.tenantId)))
+      .returning();
 
-      if (!doc) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      }
+    if (!doc) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    }
 
-      EventBus.emit(
-        createEvent({
-          type: "document.updated",
-          tenantId: ctx.tenantId,
-          userId: ctx.userId,
-          payload: { documentId: doc.id },
-        }),
-      );
+    EventBus.emit(
+      createEvent({
+        type: "document.updated",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        payload: { documentId: doc.id },
+      }),
+    );
 
-      return doc;
-    }),
+    return doc;
+  }),
 
   delete: memberProcedure
     .input(z.object({ id: z.string().uuid() }))
@@ -174,9 +167,7 @@ export const knowledgeRouter = router({
           ctx.db
             .update(documents)
             .set({ position: update.position, updatedAt: new Date() })
-            .where(
-              and(eq(documents.id, update.id), eq(documents.tenantId, ctx.tenantId)),
-            ),
+            .where(and(eq(documents.id, update.id), eq(documents.tenantId, ctx.tenantId))),
         ),
       );
       // Emit update event for each reordered document
@@ -199,15 +190,17 @@ export const knowledgeRouter = router({
    * then create a knowledge document containing the AI-generated description.
    */
   createFromCapture: memberProcedure
-    .input(z.object({
-      imageBase64: z.string().min(1),
-      title: z.string().min(1).max(255).default("Captured Workflow"),
-    }))
+    .input(
+      z.object({
+        imageBase64: z.string().min(1),
+        title: z.string().min(1).max(255).default("Captured Workflow"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const analysis = await analyzeImage(
         input.imageBase64,
         "You are analyzing a workflow screenshot. Describe what the user is doing step by step. " +
-        "Be concise and structured. Output as numbered steps.",
+          "Be concise and structured. Output as numbered steps.",
         { tenantId: ctx.tenantId, userId: ctx.userId, featureName: "workflow_capture" },
       );
 
@@ -235,12 +228,14 @@ export const knowledgeRouter = router({
 
       if (!doc) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      EventBus.emit(createEvent({
-        type: "document.created",
-        tenantId: ctx.tenantId,
-        userId: ctx.userId,
-        payload: { documentId: doc.id },
-      }));
+      EventBus.emit(
+        createEvent({
+          type: "document.created",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { documentId: doc.id },
+        }),
+      );
 
       return { id: doc.id, title: doc.title, analysis };
     }),

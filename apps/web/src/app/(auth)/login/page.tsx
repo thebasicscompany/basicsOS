@@ -41,7 +41,9 @@ const LoginPage = (): JSX.Element => {
         </div>
         <h1 className="mb-6 text-center text-2xl font-bold text-stone-900">Sign in</h1>
         {error !== null && (
-          <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+            {error}
+          </p>
         )}
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
           <div className="space-y-1.5">

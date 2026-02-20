@@ -6,10 +6,7 @@ import { describe, it, expect } from "vitest";
 // Since shouldTrigger is not exported, we test its observable behavior by
 // testing the module's logic directly here:
 
-const shouldTriggerTest = (
-  automation: { triggerConfig: unknown },
-  eventType: string,
-): boolean => {
+const shouldTriggerTest = (automation: { triggerConfig: unknown }, eventType: string): boolean => {
   if (!automation.triggerConfig || typeof automation.triggerConfig !== "object") return false;
   const config = automation.triggerConfig as Record<string, unknown>;
   return typeof config["eventType"] === "string" && config["eventType"] === eventType;

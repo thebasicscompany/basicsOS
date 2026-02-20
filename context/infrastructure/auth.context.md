@@ -1,6 +1,7 @@
 # Auth — Infrastructure Context
 
 ## Stack
+
 - **Library**: Better Auth v1 (`packages/auth/`)
 - **Storage**: Drizzle adapter → same PostgreSQL database (users, sessions tables)
 - **Roles**: admin | member | viewer
@@ -45,9 +46,9 @@ viewer → read-only access to all content
 ```ts
 type TRPCContext = {
   db: DbConnection;
-  userId: string | null;        // null = unauthenticated
-  tenantId: string | null;      // null = no tenant yet (fresh registration)
-  role: UserRole | null;        // "admin" | "member" | "viewer"
+  userId: string | null; // null = unauthenticated
+  tenantId: string | null; // null = no tenant yet (fresh registration)
+  role: UserRole | null; // "admin" | "member" | "viewer"
   sessionId: string | null;
   headers: Headers;
 };

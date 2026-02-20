@@ -3,7 +3,9 @@ import { tenants } from "./tenants.js";
 
 export const hubLinks = pgTable("hub_links", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   url: text("url").notNull(),
   icon: text("icon"),
@@ -14,7 +16,9 @@ export const hubLinks = pgTable("hub_links", {
 
 export const integrations = pgTable("integrations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   service: text("service").notNull(), // slack | google-drive | etc
   oauthTokenEnc: text("oauth_token_enc"),
   scopes: text("scopes"),

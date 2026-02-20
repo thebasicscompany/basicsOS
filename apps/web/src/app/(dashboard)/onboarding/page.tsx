@@ -3,7 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, BookOpen, Users, CheckSquare, Video, Link2, Sparkles, Volume2, VolumeX, Check, Download } from "@basicsos/ui";
+import {
+  Button,
+  BookOpen,
+  Users,
+  CheckSquare,
+  Video,
+  Link2,
+  Sparkles,
+  Volume2,
+  VolumeX,
+  Check,
+  Download,
+} from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import type { ComponentType, SVGProps } from "react";
 
@@ -43,12 +55,42 @@ const NARRATION: string[] = [
 ];
 
 const MODULES: { Icon: LucideIcon; name: string; desc: string; color: string }[] = [
-  { Icon: BookOpen, name: "Knowledge Base", desc: "Store and search team documents", color: "bg-emerald-50 text-emerald-600" },
-  { Icon: Users, name: "CRM", desc: "Contacts, companies, and deals", color: "bg-blue-50 text-blue-600" },
-  { Icon: CheckSquare, name: "Tasks", desc: "Track work with a kanban board", color: "bg-violet-50 text-violet-600" },
-  { Icon: Video, name: "Meetings", desc: "AI-powered meeting summaries", color: "bg-amber-50 text-amber-600" },
-  { Icon: Link2, name: "Hub", desc: "Links, integrations, and tools", color: "bg-rose-50 text-rose-600" },
-  { Icon: Sparkles, name: "AI Assistant", desc: "Ask questions about company data", color: "bg-primary/10 text-primary" },
+  {
+    Icon: BookOpen,
+    name: "Knowledge Base",
+    desc: "Store and search team documents",
+    color: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    Icon: Users,
+    name: "CRM",
+    desc: "Contacts, companies, and deals",
+    color: "bg-blue-50 text-blue-600",
+  },
+  {
+    Icon: CheckSquare,
+    name: "Tasks",
+    desc: "Track work with a kanban board",
+    color: "bg-violet-50 text-violet-600",
+  },
+  {
+    Icon: Video,
+    name: "Meetings",
+    desc: "AI-powered meeting summaries",
+    color: "bg-amber-50 text-amber-600",
+  },
+  {
+    Icon: Link2,
+    name: "Hub",
+    desc: "Links, integrations, and tools",
+    color: "bg-rose-50 text-rose-600",
+  },
+  {
+    Icon: Sparkles,
+    name: "AI Assistant",
+    desc: "Ask questions about company data",
+    color: "bg-primary/10 text-primary",
+  },
 ];
 
 const isTTSSupported = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -68,22 +110,27 @@ const OnboardingPage = (): JSX.Element => {
     }
   }, [router]);
 
-  const speak = useCallback((text: string): void => {
-    if (!isTTSSupported || !ttsEnabled) return;
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1.05;
-    utt.pitch = 1.0;
-    utt.onstart = () => setIsSpeaking(true);
-    utt.onend = () => setIsSpeaking(false);
-    utt.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utt);
-  }, [ttsEnabled]);
+  const speak = useCallback(
+    (text: string): void => {
+      if (!isTTSSupported || !ttsEnabled) return;
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.05;
+      utt.pitch = 1.0;
+      utt.onstart = () => setIsSpeaking(true);
+      utt.onend = () => setIsSpeaking(false);
+      utt.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utt);
+    },
+    [ttsEnabled],
+  );
 
   useEffect(() => {
     const text = NARRATION[step];
     if (text) speak(text);
-    return () => { window.speechSynthesis?.cancel(); };
+    return () => {
+      window.speechSynthesis?.cancel();
+    };
   }, [step, speak]);
 
   useEffect(() => {
@@ -107,7 +154,9 @@ const OnboardingPage = (): JSX.Element => {
     });
   };
 
-  const handleFinish = (): void => { completeOnboarding.mutate(); };
+  const handleFinish = (): void => {
+    completeOnboarding.mutate();
+  };
 
   const goToStep = (next: number): void => {
     window.speechSynthesis?.cancel();
@@ -125,8 +174,8 @@ const OnboardingPage = (): JSX.Element => {
                 i === step
                   ? "bg-primary text-primary-foreground"
                   : i < step
-                  ? "bg-primary/20 text-primary"
-                  : "bg-stone-100 text-stone-400"
+                    ? "bg-primary/20 text-primary"
+                    : "bg-stone-100 text-stone-400"
               }`}
             >
               {i < step ? <Check size={16} /> : i + 1}
@@ -144,7 +193,11 @@ const OnboardingPage = (): JSX.Element => {
             onClick={() => setTtsEnabled((v) => !v)}
             className="ml-auto text-stone-400 hover:text-stone-600 transition-colors"
           >
-            {ttsEnabled ? <Volume2 size={18} className={isSpeaking ? "text-primary" : ""} /> : <VolumeX size={18} />}
+            {ttsEnabled ? (
+              <Volume2 size={18} className={isSpeaking ? "text-primary" : ""} />
+            ) : (
+              <VolumeX size={18} />
+            )}
           </button>
         )}
       </div>
@@ -267,11 +320,7 @@ const OnboardingPage = (): JSX.Element => {
 
       {/* Navigation */}
       <div className="mt-6 flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => goToStep(step - 1)}
-          disabled={step === 0}
-        >
+        <Button variant="outline" onClick={() => goToStep(step - 1)} disabled={step === 0}>
           Back
         </Button>
 

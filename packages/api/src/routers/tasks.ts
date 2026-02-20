@@ -14,30 +14,28 @@ const listInputSchema = z.object({
 });
 
 export const tasksRouter = router({
-  list: protectedProcedure
-    .input(listInputSchema)
-    .query(async ({ ctx, input }) => {
-      const conditions = [eq(tasks.tenantId, ctx.tenantId ?? "")];
+  list: protectedProcedure.input(listInputSchema).query(async ({ ctx, input }) => {
+    const conditions = [eq(tasks.tenantId, ctx.tenantId ?? "")];
 
-      if (input.status !== undefined) {
-        conditions.push(eq(tasks.status, input.status));
-      }
-      if (input.assigneeId !== undefined) {
-        conditions.push(eq(tasks.assigneeId, input.assigneeId));
-      }
-      if (input.priority !== undefined) {
-        conditions.push(eq(tasks.priority, input.priority));
-      }
-      if (input.sourceType !== undefined) {
-        conditions.push(eq(tasks.sourceType, input.sourceType));
-      }
+    if (input.status !== undefined) {
+      conditions.push(eq(tasks.status, input.status));
+    }
+    if (input.assigneeId !== undefined) {
+      conditions.push(eq(tasks.assigneeId, input.assigneeId));
+    }
+    if (input.priority !== undefined) {
+      conditions.push(eq(tasks.priority, input.priority));
+    }
+    if (input.sourceType !== undefined) {
+      conditions.push(eq(tasks.sourceType, input.sourceType));
+    }
 
-      return ctx.db
-        .select()
-        .from(tasks)
-        .where(and(...conditions))
-        .orderBy(tasks.createdAt);
-    }),
+    return ctx.db
+      .select()
+      .from(tasks)
+      .where(and(...conditions))
+      .orderBy(tasks.createdAt);
+  }),
 
   get: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
@@ -45,12 +43,7 @@ export const tasksRouter = router({
       const [task] = await ctx.db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.id, input.id),
-            eq(tasks.tenantId, ctx.tenantId ?? ""),
-          ),
-        );
+        .where(and(eq(tasks.id, input.id), eq(tasks.tenantId, ctx.tenantId ?? "")));
 
       if (!task) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
@@ -95,12 +88,7 @@ export const tasksRouter = router({
       const [existing] = await ctx.db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.id, id),
-            eq(tasks.tenantId, ctx.tenantId),
-          ),
-        );
+        .where(and(eq(tasks.id, id), eq(tasks.tenantId, ctx.tenantId)));
 
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
@@ -109,12 +97,7 @@ export const tasksRouter = router({
       const [updated] = await ctx.db
         .update(tasks)
         .set({ ...updateData, updatedAt: new Date() })
-        .where(
-          and(
-            eq(tasks.id, id),
-            eq(tasks.tenantId, ctx.tenantId),
-          ),
-        )
+        .where(and(eq(tasks.id, id), eq(tasks.tenantId, ctx.tenantId)))
         .returning();
 
       if (!updated) {
@@ -132,10 +115,7 @@ export const tasksRouter = router({
         );
       }
 
-      if (
-        updateData.assigneeId !== undefined &&
-        updateData.assigneeId !== existing.assigneeId
-      ) {
+      if (updateData.assigneeId !== undefined && updateData.assigneeId !== existing.assigneeId) {
         EventBus.emit(
           createEvent({
             type: "task.assigned",
@@ -154,12 +134,7 @@ export const tasksRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [deleted] = await ctx.db
         .delete(tasks)
-        .where(
-          and(
-            eq(tasks.id, input.id),
-            eq(tasks.tenantId, ctx.tenantId),
-          ),
-        )
+        .where(and(eq(tasks.id, input.id), eq(tasks.tenantId, ctx.tenantId)))
         .returning();
 
       if (!deleted) {

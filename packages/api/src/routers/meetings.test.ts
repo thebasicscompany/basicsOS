@@ -61,8 +61,8 @@ import { meetingsRouter } from "./meetings.js";
 // ---------------------------------------------------------------------------
 // Test constants
 // ---------------------------------------------------------------------------
-const TENANT_ID  = "00000000-0000-0000-0000-000000000001";
-const USER_ID    = "00000000-0000-0000-0000-000000000002";
+const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
 const MEETING_ID = "00000000-0000-0000-0000-000000000003";
 
 // ---------------------------------------------------------------------------
@@ -75,9 +75,7 @@ const makeChain = (rows: unknown[]) => {
     catch: promise.catch.bind(promise),
     finally: promise.finally.bind(promise),
   };
-  for (const method of [
-    "from", "where", "set", "values", "orderBy", "returning", "limit",
-  ]) {
+  for (const method of ["from", "where", "set", "values", "orderBy", "returning", "limit"]) {
     chain[method] = vi.fn().mockReturnValue(chain);
   }
   return chain;
@@ -86,25 +84,25 @@ const makeChain = (rows: unknown[]) => {
 // ---------------------------------------------------------------------------
 // DB mock builder
 // ---------------------------------------------------------------------------
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
-  const insertRows  = opts.insertRows  ?? [];
-  const updateRows  = opts.updateRows  ?? [];
-  const deleteRows  = opts.deleteRows  ?? [];
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
+  const insertRows = opts.insertRows ?? [];
+  const updateRows = opts.updateRows ?? [];
+  const deleteRows = opts.deleteRows ?? [];
   const selectSequence = opts.selectSequence;
   const defaultSelectRows = opts.selectRows ?? [];
   let selectCallCount = 0;
 
   return {
     select: vi.fn().mockImplementation(() => {
-      const rows = selectSequence
-        ? (selectSequence[selectCallCount++] ?? [])
-        : defaultSelectRows;
+      const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
     }),
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
@@ -401,7 +399,13 @@ describe("meetings.process", () => {
   it("enqueues a worker job", async () => {
     const { meetingProcessorQueue } = await import("../workers/meeting-processor.worker.js");
     const meeting = makeMeeting();
-    const summary = { id: "sum-1", meetingId: MEETING_ID, tenantId: TENANT_ID, summaryJson: {}, createdAt: new Date() };
+    const summary = {
+      id: "sum-1",
+      meetingId: MEETING_ID,
+      tenantId: TENANT_ID,
+      summaryJson: {},
+      createdAt: new Date(),
+    };
     const db = makeMockDb({ selectSequence: [[meeting]], insertRows: [summary] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
 
@@ -415,7 +419,13 @@ describe("meetings.process", () => {
 
   it("emits meeting.summary.generated event", async () => {
     const meeting = makeMeeting();
-    const summary = { id: "sum-2", meetingId: MEETING_ID, tenantId: TENANT_ID, summaryJson: {}, createdAt: new Date() };
+    const summary = {
+      id: "sum-2",
+      meetingId: MEETING_ID,
+      tenantId: TENANT_ID,
+      summaryJson: {},
+      createdAt: new Date(),
+    };
     const db = makeMockDb({ selectSequence: [[meeting]], insertRows: [summary] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
 

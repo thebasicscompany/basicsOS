@@ -17,12 +17,10 @@ const pruneExpired = (): void => {
 // Converts plain text (newline-separated) into a minimal TipTap/ProseMirror doc.
 const textToTiptap = (text: string): Record<string, unknown> => ({
   type: "doc",
-  content: text
-    .split("\n")
-    .map((line) => ({
-      type: "paragraph",
-      content: line.trim() ? [{ type: "text", text: line }] : [],
-    })),
+  content: text.split("\n").map((line) => ({
+    type: "paragraph",
+    content: line.trim() ? [{ type: "text", text: line }] : [],
+  })),
 });
 
 export const registerWriteKnowledgeTools = (server: McpServer): void => {
@@ -53,10 +51,12 @@ export const registerWriteKnowledgeTools = (server: McpServer): void => {
         }
 
         return {
-          content: [{
-            type: "text" as const,
-            text: `Created document "${title}" (ID: ${doc.id})`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Created document "${title}" (ID: ${doc.id})`,
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -107,7 +107,9 @@ export const registerWriteKnowledgeTools = (server: McpServer): void => {
     async ({ id }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {
-        return { content: [{ type: "text" as const, text: "Error: MCP_TENANT_ID not configured" }] };
+        return {
+          content: [{ type: "text" as const, text: "Error: MCP_TENANT_ID not configured" }],
+        };
       }
       try {
         pruneExpired();
@@ -123,15 +125,17 @@ export const registerWriteKnowledgeTools = (server: McpServer): void => {
         });
 
         return {
-          content: [{
-            type: "text" as const,
-            text: [
-              `About to delete: "${doc.title}" (ID: ${id})`,
-              `Confirmation token: ${token}`,
-              `Token expires in 5 minutes.`,
-              `Call delete_document_confirm with this token to proceed.`,
-            ].join("\n"),
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: [
+                `About to delete: "${doc.title}" (ID: ${id})`,
+                `Confirmation token: ${token}`,
+                `Token expires in 5 minutes.`,
+                `Call delete_document_confirm with this token to proceed.`,
+              ].join("\n"),
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -153,10 +157,12 @@ export const registerWriteKnowledgeTools = (server: McpServer): void => {
       const pending = pendingDeletes.get(token);
       if (!pending) {
         return {
-          content: [{
-            type: "text" as const,
-            text: "Error: Invalid or expired confirmation token. Call delete_document_preview again.",
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: "Error: Invalid or expired confirmation token. Call delete_document_preview again.",
+            },
+          ],
         };
       }
 
@@ -166,10 +172,12 @@ export const registerWriteKnowledgeTools = (server: McpServer): void => {
         const caller = createSystemCaller(pending.tenantId);
         await caller.knowledge.delete({ id: pending.documentId });
         return {
-          content: [{
-            type: "text" as const,
-            text: `Deleted document "${pending.title}" (ID: ${pending.documentId})`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Deleted document "${pending.title}" (ID: ${pending.documentId})`,
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

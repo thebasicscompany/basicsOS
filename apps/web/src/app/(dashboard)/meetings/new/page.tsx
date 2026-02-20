@@ -62,7 +62,9 @@ const NewMeetingPage = (): JSX.Element => {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">← Meetings</a>
+        <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">
+          ← Meetings
+        </a>
         <h1 className="mt-1 text-2xl font-bold text-stone-900">New Meeting</h1>
       </div>
 
@@ -139,7 +141,9 @@ const NewMeetingPage = (): JSX.Element => {
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
                   rows={10}
-                  placeholder={"Alice: Welcome everyone to the meeting.\nBob: Thanks for having us..."}
+                  placeholder={
+                    "Alice: Welcome everyone to the meeting.\nBob: Thanks for having us..."
+                  }
                   className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono"
                 />
                 <p className="text-xs text-stone-400">
@@ -162,7 +166,8 @@ const NewMeetingPage = (): JSX.Element => {
                   </p>
                 )}
                 <p className="text-xs text-stone-400">
-                  Requires DEEPGRAM_API_KEY for transcription. Supports .mp4, .mp3, .wav, .webm, .m4a.
+                  Requires DEEPGRAM_API_KEY for transcription. Supports .mp4, .mp3, .wav, .webm,
+                  .m4a.
                 </p>
               </div>
             )}

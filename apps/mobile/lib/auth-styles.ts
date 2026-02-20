@@ -16,7 +16,13 @@ export const authStyles = StyleSheet.create({
     backgroundColor: colors.surfaceCard,
     borderRadius: radius.xl,
     padding: 24,
-    ...({ shadowColor: "#1c1917", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 6 }),
+    ...{
+      shadowColor: "#1c1917",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 6,
+    },
   },
   logoRow: {
     flexDirection: "row",

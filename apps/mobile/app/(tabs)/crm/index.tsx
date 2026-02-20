@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import { Users } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
 import { trpc } from "../../../lib/trpc";
@@ -55,9 +49,7 @@ const CRMScreen = (): JSX.Element => {
               <View style={styles.info}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.email}>{item.email ?? "\u2014"}</Text>
-                {item.phone != null && (
-                  <Text style={styles.phone}>{item.phone}</Text>
-                )}
+                {item.phone != null && <Text style={styles.phone}>{item.phone}</Text>}
               </View>
             </View>
           );
@@ -107,7 +99,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
 });
 
 export default CRMScreen;

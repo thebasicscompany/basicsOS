@@ -38,11 +38,17 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
     onSuccess: () => {
       addToast({ title: "Deal created", variant: "success" });
       setOpen(false);
-      setTitle(""); setValue(""); setStage("lead");
+      setTitle("");
+      setValue("");
+      setStage("lead");
       onCreated?.();
     },
     onError: (err) => {
-      addToast({ title: "Failed to create deal", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to create deal",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -89,7 +95,9 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="deal-stage">Stage</Label>
             <Select value={stage} onValueChange={(v) => setStage(v as DealStage)}>
-              <SelectTrigger id="deal-stage"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="deal-stage">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="lead">Lead</SelectItem>
                 <SelectItem value="qualified">Qualified</SelectItem>
@@ -101,7 +109,9 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createDeal.isPending}>
               {createDeal.isPending ? "Creating…" : "Create Deal"}
             </Button>

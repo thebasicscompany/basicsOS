@@ -26,7 +26,10 @@ export const adminRouter = router({
       z.object({
         name: z.string().min(1).max(128).optional(),
         logoUrl: z.string().url().optional().nullable(),
-        accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        accentColor: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/)
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

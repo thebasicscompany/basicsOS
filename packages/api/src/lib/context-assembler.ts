@@ -10,7 +10,10 @@ const TOKENS_PER_CHAR = 0.25; // rough estimate
 
 const estimateTokens = (text: string): number => Math.ceil(text.length * TOKENS_PER_CHAR);
 
-export const assembleContext = (results: SearchResult[], maxTokens = MAX_CONTEXT_TOKENS): AssembledContext => {
+export const assembleContext = (
+  results: SearchResult[],
+  maxTokens = MAX_CONTEXT_TOKENS,
+): AssembledContext => {
   const sorted = [...results].sort((a, b) => b.score - a.score);
   const chunks: AssembledContext["chunks"] = [];
   let tokensUsed = 0;

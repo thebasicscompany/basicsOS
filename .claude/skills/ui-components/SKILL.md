@@ -37,19 +37,19 @@ const myVariants = cva("base-classes", {
 });
 
 interface MyComponentProps
-  extends React.ComponentPropsWithoutRef<typeof MyPrimitive.Root>,
+  extends
+    React.ComponentPropsWithoutRef<typeof MyPrimitive.Root>,
     VariantProps<typeof myVariants> {}
 
-export const MyComponent = forwardRef<
-  React.ElementRef<typeof MyPrimitive.Root>,
-  MyComponentProps
->(({ className, variant, size, ...props }, ref) => (
-  <MyPrimitive.Root
-    ref={ref}
-    className={cn(myVariants({ variant, size }), className)}
-    {...props}
-  />
-));
+export const MyComponent = forwardRef<React.ElementRef<typeof MyPrimitive.Root>, MyComponentProps>(
+  ({ className, variant, size, ...props }, ref) => (
+    <MyPrimitive.Root
+      ref={ref}
+      className={cn(myVariants({ variant, size }), className)}
+      {...props}
+    />
+  ),
+);
 MyComponent.displayName = MyPrimitive.Root.displayName;
 ```
 
@@ -74,15 +74,15 @@ import { MyComponent } from "@basicsos/ui";
 
 ## Design token classes to use
 
-| Purpose | Class |
-|---|---|
-| Primary action | `bg-primary text-primary-foreground` |
+| Purpose        | Class                                        |
+| -------------- | -------------------------------------------- |
+| Primary action | `bg-primary text-primary-foreground`         |
 | Error / delete | `bg-destructive text-destructive-foreground` |
-| Success | `bg-success text-success-foreground` |
-| Warning | `bg-warning text-warning-foreground` |
-| Border | `border-border` or `border-gray-200` |
-| Muted text | `text-muted-foreground` |
-| Background | `bg-background` |
+| Success        | `bg-success text-success-foreground`         |
+| Warning        | `bg-warning text-warning-foreground`         |
+| Border         | `border-border` or `border-gray-200`         |
+| Muted text     | `text-muted-foreground`                      |
+| Background     | `bg-background`                              |
 
 **Never use raw color values like `bg-indigo-600` or `bg-blue-500` — use semantic tokens.**
 

@@ -11,7 +11,8 @@ export const createHttpEngineerServer = async (): Promise<void> => {
       sessionIdGenerator: () => randomUUID(),
     }) as unknown as Transport;
     const server = createEngineerMCPServer();
-    server.connect(transport)
+    server
+      .connect(transport)
       .then(() => {
         const raw = transport as unknown as StreamableHTTPServerTransport;
         return raw.handleRequest(req, res);

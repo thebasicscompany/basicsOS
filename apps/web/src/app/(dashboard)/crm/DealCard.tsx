@@ -11,7 +11,10 @@ interface Deal {
   probability: number;
 }
 
-const STAGE_VARIANT: Record<DealStage, "secondary" | "default" | "warning" | "destructive" | "success" | "outline"> = {
+const STAGE_VARIANT: Record<
+  DealStage,
+  "secondary" | "default" | "warning" | "destructive" | "success" | "outline"
+> = {
   lead: "secondary",
   qualified: "default",
   proposal: "warning",

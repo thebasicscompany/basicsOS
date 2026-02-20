@@ -1,9 +1,11 @@
 # Basics OS Architecture
 
 ## Overview
+
 Basics OS is a monorepo that companies clone to get a complete internal OS: knowledge system, CRM, meetings, automations, AI employees, and an always-present AI assistant. Five platform targets from one codebase.
 
 ## Monorepo Structure
+
 ```
 basicos/
 ├── apps/
@@ -25,19 +27,21 @@ basicos/
 ```
 
 ## Key Architectural Decisions
-| Layer | Choice | Reason |
-|-------|--------|--------|
-| Monorepo | Turborepo + pnpm 9 | 3x faster than Nx, proven at Cal.com/Supabase |
-| Backend | tRPC v11 + Hono v4 | End-to-end type safety, 3x faster than Express |
-| Database | PostgreSQL (Neon) + pgvector | Cloud-hosted with vector search |
-| ORM | Drizzle v0.44 | Code-first TypeScript, 7.4KB bundle |
-| Auth | Better Auth v1 | Open-source, multi-platform, Drizzle adapter |
-| Real-time | Yjs v13 CRDTs | Used by Notion, conflict-free collaboration |
-| AI client | OpenAI-compatible | Works with any OpenAI-compatible API endpoint |
-| Desktop | Electron v33 | Only framework with mature overlay + desktopCapturer |
-| Mobile | Expo SDK 54 | Official RN recommendation, no Xcode config |
+
+| Layer     | Choice                       | Reason                                               |
+| --------- | ---------------------------- | ---------------------------------------------------- |
+| Monorepo  | Turborepo + pnpm 9           | 3x faster than Nx, proven at Cal.com/Supabase        |
+| Backend   | tRPC v11 + Hono v4           | End-to-end type safety, 3x faster than Express       |
+| Database  | PostgreSQL (Neon) + pgvector | Cloud-hosted with vector search                      |
+| ORM       | Drizzle v0.44                | Code-first TypeScript, 7.4KB bundle                  |
+| Auth      | Better Auth v1               | Open-source, multi-platform, Drizzle adapter         |
+| Real-time | Yjs v13 CRDTs                | Used by Notion, conflict-free collaboration          |
+| AI client | OpenAI-compatible            | Works with any OpenAI-compatible API endpoint        |
+| Desktop   | Electron v33                 | Only framework with mature overlay + desktopCapturer |
+| Mobile    | Expo SDK 54                  | Official RN recommendation, no Xcode config          |
 
 ## Data Flow
+
 All platforms → single tRPC API server → single PostgreSQL database
 Company MCP server imports appRouter directly (no HTTP hop)
 Events → Event Bus (EventEmitter) → BullMQ workers → side effects

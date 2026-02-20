@@ -2,8 +2,11 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { BasicsOSEvent, BasicsOSEventType } from "@basicsos/shared";
 
-type ListenerFor<T extends BasicsOSEventType, E extends BasicsOSEvent = BasicsOSEvent> =
-  E extends { type: T } ? (event: E) => void | Promise<void> : never;
+type ListenerFor<T extends BasicsOSEventType, E extends BasicsOSEvent = BasicsOSEvent> = E extends {
+  type: T;
+}
+  ? (event: E) => void | Promise<void>
+  : never;
 
 type AnyListener = (event: BasicsOSEvent) => void | Promise<void>;
 
@@ -29,18 +32,12 @@ class BasicsOSEventBus {
     return this.emitter.emit(event.type, event);
   }
 
-  on<T extends BasicsOSEventType>(
-    eventType: T,
-    listener: ListenerFor<T>,
-  ): this {
+  on<T extends BasicsOSEventType>(eventType: T, listener: ListenerFor<T>): this {
     this.emitter.on(eventType, listener as (...args: unknown[]) => void);
     return this;
   }
 
-  off<T extends BasicsOSEventType>(
-    eventType: T,
-    listener: ListenerFor<T>,
-  ): this {
+  off<T extends BasicsOSEventType>(eventType: T, listener: ListenerFor<T>): this {
     this.emitter.off(eventType, listener as (...args: unknown[]) => void);
     return this;
   }
@@ -62,9 +59,7 @@ class BasicsOSEventBus {
 
 export const EventBus = new BasicsOSEventBus();
 
-export const createEvent = <T extends BasicsOSEvent>(
-  event: Omit<T, "id" | "createdAt">,
-): T =>
+export const createEvent = <T extends BasicsOSEvent>(event: Omit<T, "id" | "createdAt">): T =>
   ({
     ...event,
     id: randomUUID(),

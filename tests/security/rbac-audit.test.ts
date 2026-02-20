@@ -9,8 +9,16 @@ describe("AppRouter RBAC Audit", () => {
 
     // Verify all core modules are registered
     const expectedPrefixes = [
-      "auth.", "knowledge.", "tasks.", "crm.", "meetings.", "search.",
-      "assistant.", "modules.", "automations.", "hub.",
+      "auth.",
+      "knowledge.",
+      "tasks.",
+      "crm.",
+      "meetings.",
+      "search.",
+      "assistant.",
+      "modules.",
+      "automations.",
+      "hub.",
       "aiEmployees.",
     ];
 

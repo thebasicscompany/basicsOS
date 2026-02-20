@@ -22,7 +22,9 @@ export const EmptyState = ({
   className,
   iconClassName,
 }: EmptyStateProps): JSX.Element => (
-  <div className={cn("flex flex-col items-center justify-center py-16 px-4 text-center", className)}>
+  <div
+    className={cn("flex flex-col items-center justify-center py-16 px-4 text-center", className)}
+  >
     <div
       className={cn(
         "flex h-12 w-12 items-center justify-center rounded-xl bg-stone-100 text-stone-400 mb-4",
@@ -32,9 +34,7 @@ export const EmptyState = ({
       <Icon size={24} />
     </div>
     <h3 className="text-sm font-semibold text-stone-900">{heading}</h3>
-    {description && (
-      <p className="mt-1 text-sm text-stone-500 max-w-xs">{description}</p>
-    )}
+    {description && <p className="mt-1 text-sm text-stone-500 max-w-xs">{description}</p>}
     {action && <div className="mt-4">{action}</div>}
   </div>
 );

@@ -6,9 +6,15 @@
   "exports": {
     "./typescript": "./tsconfig.json",
     "./prettier": "./prettier.js",
+    "./eslint": "./eslint.js",
     "./tailwind": "./tailwind.config.ts"
   },
-  "files": ["tsconfig.json", "prettier.js", "tailwind.config.ts"],
+  "files": [
+    "tsconfig.json",
+    "prettier.js",
+    "eslint.js",
+    "tailwind.config.ts"
+  ],
   "devDependencies": {
     "typescript": "^5.6.0"
   }

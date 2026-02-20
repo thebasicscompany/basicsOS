@@ -4,9 +4,9 @@
 
 We release patches for security vulnerabilities. Which versions are eligible for receiving such patches depends on the CVSS v3.0 Rating:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| Latest  | :white_check_mark: |
+| Version  | Supported          |
+| -------- | ------------------ |
+| Latest   | :white_check_mark: |
 | < Latest | :x:                |
 
 ## Reporting a Vulnerability
@@ -76,4 +76,3 @@ We follow responsible disclosure practices:
 4. **Credit**: We'll credit security researchers (if desired)
 
 Thank you for helping keep Basics OS secure!
-

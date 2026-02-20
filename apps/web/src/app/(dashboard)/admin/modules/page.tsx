@@ -32,7 +32,9 @@ const ModulesPage = (): JSX.Element => {
             {(modules ?? []).map((module) => (
               <div key={module.name} className="flex items-center justify-between px-6 py-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100 text-stone-600"><span className="text-lg">{module.icon}</span></div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100 text-stone-600">
+                    <span className="text-lg">{module.icon}</span>
+                  </div>
                   <div>
                     <p className="font-medium text-stone-900">{module.displayName}</p>
                     <p className="text-sm text-stone-500">{module.description}</p>

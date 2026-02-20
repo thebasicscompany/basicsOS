@@ -16,7 +16,11 @@ export const registerClaudeMdResource = (server: McpServer): void => {
       } catch {
         content = "# CLAUDE.md\n\nNo CLAUDE.md found in REPO_ROOT.";
       }
-      return { contents: [{ uri: "basicoseng://config/CLAUDE.md", mimeType: "text/markdown", text: content }] };
+      return {
+        contents: [
+          { uri: "basicoseng://config/CLAUDE.md", mimeType: "text/markdown", text: content },
+        ],
+      };
     },
   );
 };

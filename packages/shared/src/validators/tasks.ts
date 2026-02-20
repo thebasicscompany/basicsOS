@@ -14,7 +14,9 @@ export const insertTaskSchema = z.object({
   createdBy: z.string().uuid(),
 });
 
-export const updateTaskSchema = insertTaskSchema.partial().omit({ tenantId: true, createdBy: true });
+export const updateTaskSchema = insertTaskSchema
+  .partial()
+  .omit({ tenantId: true, createdBy: true });
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;

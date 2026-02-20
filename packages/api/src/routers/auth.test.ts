@@ -49,11 +49,13 @@ const makeChain = (rows: unknown[]) => {
   return chain;
 };
 
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
   const insertRows = opts.insertRows ?? [];
   const selectSequence = opts.selectSequence;
   const defaultSelectRows = opts.selectRows ?? [];
@@ -61,9 +63,7 @@ const makeMockDb = (opts: {
 
   return {
     select: vi.fn().mockImplementation(() => {
-      const rows = selectSequence
-        ? (selectSequence[selectCallCount++] ?? [])
-        : defaultSelectRows;
+      const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
     }),
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
@@ -119,7 +119,7 @@ describe("auth.sendInvite", () => {
   it("creates an invite and sends email", async () => {
     const invite = { id: INVITE_ID, email: "new@example.com", role: "member", token: TOKEN };
     const db = makeMockDb({
-      selectRows: [],        // no existing invite
+      selectRows: [], // no existing invite
       insertRows: [invite],
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
@@ -137,9 +137,9 @@ describe("auth.sendInvite", () => {
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
 
-    await expect(
-      caller(ctx).sendInvite({ email: "existing@example.com" }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(caller(ctx).sendInvite({ email: "existing@example.com" })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
   });
 
   it("does not fail the mutation when email delivery fails", async () => {
@@ -196,9 +196,9 @@ describe("auth.validateInvite", () => {
       sessionId: null,
     });
 
-    await expect(
-      caller(ctx).validateInvite({ token: "bad-token" }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller(ctx).validateInvite({ token: "bad-token" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("throws CONFLICT for already-used invite", async () => {
@@ -218,9 +218,9 @@ describe("auth.validateInvite", () => {
       sessionId: null,
     });
 
-    await expect(
-      caller(ctx).validateInvite({ token: TOKEN }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(caller(ctx).validateInvite({ token: TOKEN })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
   });
 
   it("throws FORBIDDEN for expired invite", async () => {
@@ -240,8 +240,8 @@ describe("auth.validateInvite", () => {
       sessionId: null,
     });
 
-    await expect(
-      caller(ctx).validateInvite({ token: TOKEN }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller(ctx).validateInvite({ token: TOKEN })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

@@ -10,10 +10,12 @@ const conversationMessageSchema = z.object({
 
 export const assistantRouter = router({
   chat: protectedProcedure
-    .input(z.object({
-      message: z.string().min(1).max(2000),
-      history: z.array(conversationMessageSchema).default([]),
-    }))
+    .input(
+      z.object({
+        message: z.string().min(1).max(2000),
+        history: z.array(conversationMessageSchema).default([]),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       const result = await ragChat(input.message, ctx.tenantId, input.history, ctx.userId);

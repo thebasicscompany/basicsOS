@@ -4,12 +4,13 @@ import { Badge, Card, addToast } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 import type { TaskStatus, TaskPriority, Task } from "./types";
 
-const PRIORITY_VARIANT: Record<TaskPriority, "destructive" | "warning" | "secondary" | "outline"> = {
-  urgent: "destructive",
-  high: "warning",
-  medium: "secondary",
-  low: "outline",
-};
+const PRIORITY_VARIANT: Record<TaskPriority, "destructive" | "warning" | "secondary" | "outline"> =
+  {
+    urgent: "destructive",
+    high: "warning",
+    medium: "secondary",
+    low: "outline",
+  };
 
 interface TaskCardProps {
   task: Task;

@@ -1,12 +1,15 @@
 # Database — Infrastructure Context
 
 ## Stack
+
 - **ORM**: Drizzle v0.44+ with `drizzle-orm/pg-core`
 - **Database**: PostgreSQL 16 with pgvector extension (local: docker-compose, cloud: Neon)
 - **Config**: `packages/db/drizzle.config.ts` → `packages/db/dist/schema/index.js`
 
 ## Schema Location
+
 All tables are in `packages/db/src/schema/`:
+
 - `tenants.ts` — tenants, users, sessions, invites
 - `documents.ts` — documents, document_embeddings
 - `crm.ts` — contacts, companies, deals, deal_activities, deal_activity_embeddings
@@ -42,7 +45,9 @@ import { tenants } from "./tenants.js";
 
 export const myTable = pgTable("my_table", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -50,6 +55,7 @@ export const myTable = pgTable("my_table", {
 ```
 
 Then export from `packages/db/src/schema/index.ts` and run:
+
 ```bash
 # Build TypeScript first (drizzle.config.ts reads from dist/), then push schema
 DATABASE_URL="..." pnpm --filter @basicsos/db migrate
@@ -81,6 +87,7 @@ export const insertMySchema = z.object({
 
 Embedding columns use pgvector: `vector("embedding", { dimensions: 1536 })`.
 Search uses cosine similarity (`<=>` operator):
+
 ```sql
 SELECT *, 1 - (embedding <=> '[...]'::vector) as score
 FROM document_embeddings

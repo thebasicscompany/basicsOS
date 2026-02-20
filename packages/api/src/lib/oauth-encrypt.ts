@@ -11,7 +11,9 @@ const TAG_BYTES = 16;
 const getKey = (): Buffer => {
   const hex = process.env["OAUTH_ENCRYPTION_KEY"];
   if (!hex || hex.length !== 64) {
-    throw new Error("OAUTH_ENCRYPTION_KEY must be 64 hex characters (32 bytes). Generate with: openssl rand -hex 32");
+    throw new Error(
+      "OAUTH_ENCRYPTION_KEY must be 64 hex characters (32 bytes). Generate with: openssl rand -hex 32",
+    );
   }
   return Buffer.from(hex, "hex");
 };

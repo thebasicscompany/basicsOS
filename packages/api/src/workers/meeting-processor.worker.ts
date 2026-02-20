@@ -25,7 +25,9 @@ const STUB_SUMMARY: SummaryJson = {
   note: "Meeting summary pending processing. Configure AI_API_KEY to enable LLM summarization.",
 };
 
-const buildTranscriptText = (rows: Array<{ speaker: string; text: string; timestampMs: number }>): string =>
+const buildTranscriptText = (
+  rows: Array<{ speaker: string; text: string; timestampMs: number }>,
+): string =>
   rows
     .sort((a, b) => a.timestampMs - b.timestampMs)
     .map((r) => `${r.speaker}: ${r.text}`)
@@ -56,7 +58,10 @@ Keep each item concise (under 100 characters). Return empty arrays if nothing ap
     );
 
     // Strip markdown code fences if present
-    const raw = response.content.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+    const raw = response.content
+      .replace(/^```(?:json)?\n?/m, "")
+      .replace(/\n?```$/m, "")
+      .trim();
 
     const parsed = JSON.parse(raw) as Partial<SummaryJson>;
     return {
@@ -67,7 +72,10 @@ Keep each item concise (under 100 characters). Return empty arrays if nothing ap
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[meeting-processor] LLM summary generation failed for meeting:${meetingId}:`, message);
+    console.error(
+      `[meeting-processor] LLM summary generation failed for meeting:${meetingId}:`,
+      message,
+    );
     return {
       ...STUB_SUMMARY,
       note: `LLM processing failed: ${message}. Raw transcript is available.`,
@@ -87,7 +95,7 @@ const processJob = async (job: { data: MeetingProcessorJob }): Promise<void> => 
 
   console.warn(
     `[meeting-processor] Processing meeting:${meetingId} for tenant:${tenantId} ` +
-    `with ${transcriptRows.length} transcript rows`,
+      `with ${transcriptRows.length} transcript rows`,
   );
 
   // Generate AI summary if transcript rows exist; fall back to stub otherwise.
@@ -149,11 +157,13 @@ export const startMeetingProcessorWorker = () =>
 
 export const registerMeetingProcessorListener = (): void => {
   EventBus.on("meeting.transcript.finalized", (event) => {
-    meetingProcessorQueue.add("process-meeting", {
-      tenantId: event.tenantId,
-      meetingId: event.payload.meetingId,
-    }).catch((err) => {
-      console.error("[meeting-processor] Failed to enqueue job:", err);
-    });
+    meetingProcessorQueue
+      .add("process-meeting", {
+        tenantId: event.tenantId,
+        meetingId: event.payload.meetingId,
+      })
+      .catch((err) => {
+        console.error("[meeting-processor] Failed to enqueue job:", err);
+      });
   });
 };

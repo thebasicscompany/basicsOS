@@ -60,6 +60,7 @@ bun gen:module
 ```
 
 Prompts you for name, description, fields → scaffolds all 5 layers:
+
 1. **Schema** — `packages/db/src/schema/[name].ts` (Drizzle table with `tenant_id` + RLS)
 2. **Validators** — `packages/shared/src/validators/[name].ts` (Zod schemas)
 3. **Router** — `packages/api/src/routers/[name].ts` (tRPC CRUD + events)
@@ -67,6 +68,7 @@ Prompts you for name, description, fields → scaffolds all 5 layers:
 5. **Context** — `context/modules/[name].context.md` (for AI tools)
 
 Then add it to `packages/api/src/routers/index.ts`:
+
 ```ts
 import { myRouter } from "./my-module.js";
 export const appRouter = router({ ..., myModule: myRouter });
@@ -101,6 +103,7 @@ export const tasksRouter = router({
 ```
 
 **Rules:**
+
 - `protectedProcedure` = requires login. Check `ctx.tenantId` manually.
 - `memberProcedure` = requires login + tenantId (non-null guaranteed).
 - `adminProcedure` = requires admin role + tenantId.
@@ -120,6 +123,7 @@ const docs = await ctx.db.select().from(documents).where(eq(documents.tenantId, 
 ```
 
 To add a field to an existing table:
+
 1. Add column to `packages/db/src/schema/[table].ts`
 2. Run `bun db:generate` then `bun db:migrate`
 3. Add field to Zod validator in `packages/shared/src/validators/[module].ts`
@@ -132,12 +136,14 @@ See: [context/infrastructure/database.context.md](context/infrastructure/databas
 Every mutation emits an event. Subscribers and workers react asynchronously.
 
 ```ts
-EventBus.emit(createEvent({
-  type: "crm.deal.stage_changed",
-  tenantId: ctx.tenantId,
-  userId: ctx.userId,
-  payload: { dealId: deal.id, fromStage: "lead", toStage: "qualified" },
-}));
+EventBus.emit(
+  createEvent({
+    type: "crm.deal.stage_changed",
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    payload: { dealId: deal.id, fromStage: "lead", toStage: "qualified" },
+  }),
+);
 ```
 
 All event types are defined in `packages/shared/src/types/events.ts`. Workers in `packages/api/src/workers/` process them via BullMQ queues.
@@ -146,17 +152,18 @@ All event types are defined in `packages/shared/src/types/events.ts`. Workers in
 
 All workers live in `packages/api/src/workers/`. They use BullMQ queues with Redis, 3 retries, exponential backoff, concurrency 5.
 
-| Worker | Queue | What it does |
-|--------|-------|-------------|
-| `embedding.worker.ts` | `embedding` | Chunks docs/transcripts → `embedTexts()` → pgvector embeddings |
-| `meeting-processor.worker.ts` | `meeting-processor` | Transcript → `chatCompletion` (Haiku) → structured summary + push notification |
-| `notification.worker.ts` | `notification` | Persists in-app notification → sends push via Expo Push API |
-| `ai-employee.worker.ts` | *(EventBus direct)* | Runs `chatCompletion` (Sonnet) → saves output with `requiresApproval: true` |
-| `automation-executor.worker.ts` | `automation-executor` | Fetches automation → runs action chain → logs to `automationRuns` |
-| `import.worker.ts` | `import` | Bulk data ingestion (stub) |
-| `queue.ts` | — | Shared setup: `getQueue()`, `createWorker()`, `QUEUE_NAMES` |
+| Worker                          | Queue                 | What it does                                                                   |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------------ |
+| `embedding.worker.ts`           | `embedding`           | Chunks docs/transcripts → `embedTexts()` → pgvector embeddings                 |
+| `meeting-processor.worker.ts`   | `meeting-processor`   | Transcript → `chatCompletion` (Haiku) → structured summary + push notification |
+| `notification.worker.ts`        | `notification`        | Persists in-app notification → sends push via Expo Push API                    |
+| `ai-employee.worker.ts`         | _(EventBus direct)_   | Runs `chatCompletion` (Sonnet) → saves output with `requiresApproval: true`    |
+| `automation-executor.worker.ts` | `automation-executor` | Fetches automation → runs action chain → logs to `automationRuns`              |
+| `import.worker.ts`              | `import`              | Bulk data ingestion (stub)                                                     |
+| `queue.ts`                      | —                     | Shared setup: `getQueue()`, `createWorker()`, `QUEUE_NAMES`                    |
 
 To add a new worker:
+
 1. Create `packages/api/src/workers/my-worker.worker.ts`
 2. Export `startMyWorker` and `registerMyWorkerListener` functions
 3. Register the listener in `packages/api/src/dev.ts` on startup
@@ -221,18 +228,18 @@ Register it in `apps/mcp/company/src/server.ts`. See: [@.claude/skills/new-mcp-t
 
 ## Common Tasks
 
-| Task | Where to look |
-|------|--------------|
-| Orient yourself / find context | [@.claude/skills/navigate-codebase](/.claude/skills/navigate-codebase/SKILL.md) |
-| Add a field to a table | [@.claude/skills/add-field](/.claude/skills/add-field/SKILL.md) |
-| Add a tRPC endpoint | [@.claude/skills/new-api-endpoint](/.claude/skills/new-api-endpoint/SKILL.md) |
-| Create a UI view | [@.claude/skills/new-view](/.claude/skills/new-view/SKILL.md) |
-| Expose a tool to AI | [@.claude/skills/new-mcp-tool](/.claude/skills/new-mcp-tool/SKILL.md) |
-| Build a full module | [@.claude/skills/new-module](/.claude/skills/new-module/SKILL.md) |
-| Add an automation | [@.claude/skills/new-automation-trigger](/.claude/skills/new-automation-trigger/SKILL.md) |
-| Write tests | [@.claude/skills/testing-patterns](/.claude/skills/testing-patterns/SKILL.md) |
-| Architecture decision | [@.claude/skills/architecture](/.claude/skills/architecture/SKILL.md) |
-| UI component patterns | [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md) |
+| Task                           | Where to look                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| Orient yourself / find context | [@.claude/skills/navigate-codebase](/.claude/skills/navigate-codebase/SKILL.md)           |
+| Add a field to a table         | [@.claude/skills/add-field](/.claude/skills/add-field/SKILL.md)                           |
+| Add a tRPC endpoint            | [@.claude/skills/new-api-endpoint](/.claude/skills/new-api-endpoint/SKILL.md)             |
+| Create a UI view               | [@.claude/skills/new-view](/.claude/skills/new-view/SKILL.md)                             |
+| Expose a tool to AI            | [@.claude/skills/new-mcp-tool](/.claude/skills/new-mcp-tool/SKILL.md)                     |
+| Build a full module            | [@.claude/skills/new-module](/.claude/skills/new-module/SKILL.md)                         |
+| Add an automation              | [@.claude/skills/new-automation-trigger](/.claude/skills/new-automation-trigger/SKILL.md) |
+| Write tests                    | [@.claude/skills/testing-patterns](/.claude/skills/testing-patterns/SKILL.md)             |
+| Architecture decision          | [@.claude/skills/architecture](/.claude/skills/architecture/SKILL.md)                     |
+| UI component patterns          | [@.claude/skills/ui-components](/.claude/skills/ui-components/SKILL.md)                   |
 
 ## Running Locally
 
@@ -246,10 +253,12 @@ bunx vitest run                            # integration + security tests
 ```
 
 **Required env vars** (see `.env.example`):
+
 - `DATABASE_URL`, `REDIS_URL` — Postgres + Redis (Docker via `bun dev:setup`)
 - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` — auth system
 
 **Optional env vars for features:**
+
 - `AI_API_KEY` or `ANTHROPIC_API_KEY` — AI features (assistant, summaries, embeddings)
 - `DEEPGRAM_API_KEY` — meeting transcription
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_TEAM` — billing
@@ -273,25 +282,28 @@ Claude Code agents in `.claude/agents/` extend your workflow:
 ### Design Tokens
 
 Color tokens are defined in two places:
+
 - **Web/Desktop**: `packages/ui/src/tokens.css` — single source of truth imported by both apps
 - **Mobile**: `apps/mobile/lib/tokens.ts` — mirrored constants for React Native (`colors`, `radius`, `shadows`, `nameToColor()`)
 
 The palette uses **warm stone** (not cold gray). Brand color: `#6366f1` (indigo).
 
-| Token | Tailwind class | Use |
-|---|---|---|
-| `--primary` | `bg-primary`, `text-primary` | Main action color (indigo-600) |
-| `--primary-foreground` | `text-primary-foreground` | Text on primary background |
-| `--destructive` | `bg-destructive` | Delete / error actions |
-| `--success` | `bg-success` | Success states |
-| `--warning` | `bg-warning` | Warning states |
+| Token                  | Tailwind class               | Use                            |
+| ---------------------- | ---------------------------- | ------------------------------ |
+| `--primary`            | `bg-primary`, `text-primary` | Main action color (indigo-600) |
+| `--primary-foreground` | `text-primary-foreground`    | Text on primary background     |
+| `--destructive`        | `bg-destructive`             | Delete / error actions         |
+| `--success`            | `bg-success`                 | Success states                 |
+| `--warning`            | `bg-warning`                 | Warning states                 |
 
 **Rules:**
+
 - **Never use `gray-*` Tailwind classes — always use `stone-*`** (warm palette)
 - **Prefer semantic tokens** (`bg-primary`, `text-foreground`, `border-border`) over raw colors
 - Never write `bg-indigo-600` or `bg-blue-600` — use `bg-primary`
 
 Common stone usage:
+
 - `stone-900` — primary text
 - `stone-700` — section headings
 - `stone-500` — secondary text
@@ -310,6 +322,7 @@ import { Sparkles, BookOpen, Users, CheckSquare, Video, Link2, Plus, Search } fr
 ```
 
 **Rule: never use emoji as icons — always use Lucide.** Common mappings:
+
 - `Sparkles` — AI features
 - `BookOpen` — knowledge base
 - `Users` — CRM / team
@@ -321,6 +334,7 @@ import { Sparkles, BookOpen, Users, CheckSquare, Video, Link2, Plus, Search } fr
 ### Component Customization
 
 Every component accepts a `className` prop merged via the `cn()` utility:
+
 ```ts
 import { cn } from "@basicsos/ui";
 ```
@@ -355,7 +369,17 @@ import { cn } from "@basicsos/ui";
 All reusable components live in `packages/ui/src/`. Import from `@basicsos/ui`.
 
 ```ts
-import { Button, Input, Card, Dialog, Select, Badge, EmptyState, useToast, addToast } from "@basicsos/ui";
+import {
+  Button,
+  Input,
+  Card,
+  Dialog,
+  Select,
+  Badge,
+  EmptyState,
+  useToast,
+  addToast,
+} from "@basicsos/ui";
 ```
 
 - **Button** — CVA variants: `default | destructive | outline | ghost | link`; sizes: `default | sm | lg | icon`
@@ -392,11 +416,13 @@ const MyDialog = (): JSX.Element => {
 ```
 
 ### "use client" rules
+
 - Add to any component using hooks (`useState`, `useEffect`, `useRouter`, tRPC hooks)
 - Radix-based components (`Dialog`, `Select`) have it built-in — consuming code may also need it
 - Server components (`Card`, `Badge`, `Separator`, `Input`) do NOT need it
 
 ### Adding a new component
+
 1. Install Radix dep in `packages/ui/package.json`
 2. Create `packages/ui/src/components/MyComponent.tsx` (add `"use client"` if interactive)
 3. Export from `packages/ui/src/index.ts`
@@ -446,10 +472,10 @@ Electron v33 desktop app at `apps/desktop/`, built with **electron-vite**.
 
 ### Window Architecture
 
-| Window | Size | Content | Auth |
-|--------|------|---------|------|
-| **Main** | 1280x800 | Loads web app (`BASICOS_URL`) | Session cookie (same as browser) |
-| **Overlay** | 420x480 | Local React renderer (electron-vite) | IPC cookie extraction → Bearer token |
+| Window      | Size     | Content                              | Auth                                 |
+| ----------- | -------- | ------------------------------------ | ------------------------------------ |
+| **Main**    | 1280x800 | Loads web app (`BASICOS_URL`)        | Session cookie (same as browser)     |
+| **Overlay** | 420x480  | Local React renderer (electron-vite) | IPC cookie extraction → Bearer token |
 
 - Overlay: frameless, transparent, always-on-top, `vibrancy: "under-window"`, visible on all workspaces
 - Toggle: `Cmd+Shift+Space` (macOS) / `Ctrl+Shift+Space` (Windows/Linux)
@@ -471,14 +497,14 @@ bun --filter @basicsos/desktop package  # electron-builder → .dmg/.exe
 
 ### Key IPC Channels
 
-| Channel | Direction | Purpose |
-|---------|-----------|---------|
-| `get-session-token` | Renderer → Main | Extract session cookie for API auth |
-| `get-api-url` | Renderer → Main | Get API server URL |
-| `inject-text` | Renderer → Main | Clipboard + simulated paste into active field |
-| `capture-screen` | Renderer → Main | Screenshot → base64 PNG |
-| `set-ignore-mouse` | Renderer → Main | Click-through mode for overlay |
-| `navigate-main` | Renderer → Main | Load URL in main window |
+| Channel             | Direction       | Purpose                                       |
+| ------------------- | --------------- | --------------------------------------------- |
+| `get-session-token` | Renderer → Main | Extract session cookie for API auth           |
+| `get-api-url`       | Renderer → Main | Get API server URL                            |
+| `inject-text`       | Renderer → Main | Clipboard + simulated paste into active field |
+| `capture-screen`    | Renderer → Main | Screenshot → base64 PNG                       |
+| `set-ignore-mouse`  | Renderer → Main | Click-through mode for overlay                |
+| `navigate-main`     | Renderer → Main | Load URL in main window                       |
 
 See: [context/platforms/desktop.context.md](context/platforms/desktop.context.md)
 
@@ -492,6 +518,7 @@ Pattern: **server layout → client nav child**
 ## Route Protection
 
 Dashboard routes are protected by `apps/web/src/middleware.ts`. Public paths:
+
 - `/login`, `/register`, `/invite/*` — always public
 - `/api/*` — bypasses middleware
 - All other paths require `better-auth.session_token` cookie
@@ -500,11 +527,11 @@ Dashboard routes are protected by `apps/web/src/middleware.ts`. Public paths:
 
 Stripe-powered billing lives in `packages/api/src/routers/billing.ts`.
 
-| Procedure | Access | What it does |
-|-----------|--------|-------------|
-| `getSubscription` | `protectedProcedure` | Returns current plan + subscription state |
-| `createCheckoutSession` | `adminProcedure` | Creates Stripe Checkout for starter/team plan |
-| `createPortalSession` | `adminProcedure` | Opens Stripe Customer Portal for self-service |
+| Procedure               | Access               | What it does                                  |
+| ----------------------- | -------------------- | --------------------------------------------- |
+| `getSubscription`       | `protectedProcedure` | Returns current plan + subscription state     |
+| `createCheckoutSession` | `adminProcedure`     | Creates Stripe Checkout for starter/team plan |
+| `createPortalSession`   | `adminProcedure`     | Opens Stripe Customer Portal for self-service |
 
 - **DB**: `subscriptions` table tracks `stripeCustomerId`, `stripeSubscriptionId`, `plan`, `status` per tenant
 - **Webhook**: `apps/web/src/app/api/webhooks/stripe/route.ts` handles `checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`
@@ -522,13 +549,13 @@ Enables tenants to use a single managed API key for all LLM providers.
 
 Hub connects third-party services via OAuth. Code in `packages/api/src/routers/hub.ts`.
 
-| Procedure | What it does |
-|-----------|-------------|
-| `getOAuthUrl` | Builds authorization URL with CSRF state param |
-| `storeOAuthToken` | Encrypts + stores access/refresh tokens |
-| `disconnectIntegration` | Removes integration |
-| `getDecryptedToken` | Decrypts stored token for API calls |
-| `listIntegrations` | Returns connected/configured status for each service |
+| Procedure               | What it does                                         |
+| ----------------------- | ---------------------------------------------------- |
+| `getOAuthUrl`           | Builds authorization URL with CSRF state param       |
+| `storeOAuthToken`       | Encrypts + stores access/refresh tokens              |
+| `disconnectIntegration` | Removes integration                                  |
+| `getDecryptedToken`     | Decrypts stored token for API calls                  |
+| `listIntegrations`      | Returns connected/configured status for each service |
 
 - **Supported services**: Slack, Google Drive, GitHub
 - **Callback route**: `apps/web/src/app/api/oauth/[service]/callback/route.ts`
@@ -550,11 +577,11 @@ Per-tenant module enable/disable in `packages/api/src/routers/modules.ts`.
 
 Built-in modules (with defaults): `knowledge` (on), `crm` (on), `tasks` (on), `meetings` (on), `hub` (on), `ai-employees` (off), `automations` (off).
 
-| Procedure | Access | What it does |
-|-----------|--------|-------------|
-| `list` | `protectedProcedure` | All modules with effective enabled state |
-| `getStatus` | `protectedProcedure` | Single module status |
-| `setEnabled` | `adminProcedure` | Upserts `moduleConfig` (toggle on/off) |
+| Procedure    | Access               | What it does                             |
+| ------------ | -------------------- | ---------------------------------------- |
+| `list`       | `protectedProcedure` | All modules with effective enabled state |
+| `getStatus`  | `protectedProcedure` | Single module status                     |
+| `setEnabled` | `adminProcedure`     | Upserts `moduleConfig` (toggle on/off)   |
 
 Admin UI at `/admin/modules`.
 
@@ -562,14 +589,14 @@ Admin UI at `/admin/modules`.
 
 Admin-only pages under `apps/web/src/app/(dashboard)/admin/`:
 
-| Route | What it does |
-|-------|-------------|
-| `/admin/team` | Invite members, manage roles, deactivate users |
-| `/admin/modules` | Enable/disable modules per tenant |
-| `/admin/usage` | LLM spend breakdown by model, user, feature |
-| `/admin/security` | Immutable audit log trail |
-| `/admin/branding` | Company name, logo URL, accent color |
-| `/admin/mcp` | MCP server status, tool permissions |
+| Route             | What it does                                   |
+| ----------------- | ---------------------------------------------- |
+| `/admin/team`     | Invite members, manage roles, deactivate users |
+| `/admin/modules`  | Enable/disable modules per tenant              |
+| `/admin/usage`    | LLM spend breakdown by model, user, feature    |
+| `/admin/security` | Immutable audit log trail                      |
+| `/admin/branding` | Company name, logo URL, accent color           |
+| `/admin/mcp`      | MCP server status, tool permissions            |
 
 Usage analytics and audit log queries live in `packages/api/src/routers/admin.ts`.
 
@@ -598,59 +625,59 @@ docker-compose -f docker-compose.prod.yml up  # prod: full stack
 
 ### Deployment Modes
 
-| Mode | Cost | What you manage |
-|------|------|----------------|
-| Self-hosted (free) | $0 | Everything — your infra, your keys |
-| Self-hosted + managed AI key | $29-99/mo | Your infra, we provide AI API key |
-| Fully managed | $99-499/mo | We host everything |
+| Mode                         | Cost       | What you manage                    |
+| ---------------------------- | ---------- | ---------------------------------- |
+| Self-hosted (free)           | $0         | Everything — your infra, your keys |
+| Self-hosted + managed AI key | $29-99/mo  | Your infra, we provide AI API key  |
+| Fully managed                | $99-499/mo | We host everything                 |
 
 ## All Routers
 
 The 14 routers registered in `packages/api/src/routers/index.ts`:
 
-| Router | Key procedures | Docs in |
-|--------|---------------|---------|
-| `auth` | `me`, `onboard`, `registerPushToken` | Auth in Web/Mobile/Desktop sections |
-| `knowledge` | `list`, `create`, `search` | `context/modules/knowledge-base.context.md` |
-| `tasks` | `list`, `create`, `update`, `delete` | `context/modules/task-manager.context.md` |
-| `crm` | contacts/companies/deals CRUD | `context/modules/crm.context.md` |
-| `meetings` | `list`, `create`, transcripts, summaries | `context/modules/meeting-notes.context.md` |
-| `search` | `global` — cross-module full-text + vector search | `context/architecture.context.md` |
-| `assistant` | `chat`, `history` — non-streaming AI chat | Streaming AI section above |
-| `modules` | `list`, `getStatus`, `setEnabled` | Module Config section |
-| `automations` | CRUD + `automationRuns` | `context/modules/ai-employees.context.md` |
-| `hub` | links CRUD + OAuth flows | Hub OAuth Integrations section |
-| `aiEmployees` | `create`, `approve`, `reject`, jobs | `context/modules/ai-employees.context.md` |
-| `admin` | usage stats, audit log, team mgmt | Admin Panel section |
-| `billing` | checkout, portal, subscription state | Billing & Subscriptions section |
-| `llmKeys` | virtual key CRUD + validation | LiteLLM Proxy section |
+| Router        | Key procedures                                    | Docs in                                     |
+| ------------- | ------------------------------------------------- | ------------------------------------------- |
+| `auth`        | `me`, `onboard`, `registerPushToken`              | Auth in Web/Mobile/Desktop sections         |
+| `knowledge`   | `list`, `create`, `search`                        | `context/modules/knowledge-base.context.md` |
+| `tasks`       | `list`, `create`, `update`, `delete`              | `context/modules/task-manager.context.md`   |
+| `crm`         | contacts/companies/deals CRUD                     | `context/modules/crm.context.md`            |
+| `meetings`    | `list`, `create`, transcripts, summaries          | `context/modules/meeting-notes.context.md`  |
+| `search`      | `global` — cross-module full-text + vector search | `context/architecture.context.md`           |
+| `assistant`   | `chat`, `history` — non-streaming AI chat         | Streaming AI section above                  |
+| `modules`     | `list`, `getStatus`, `setEnabled`                 | Module Config section                       |
+| `automations` | CRUD + `automationRuns`                           | `context/modules/ai-employees.context.md`   |
+| `hub`         | links CRUD + OAuth flows                          | Hub OAuth Integrations section              |
+| `aiEmployees` | `create`, `approve`, `reject`, jobs               | `context/modules/ai-employees.context.md`   |
+| `admin`       | usage stats, audit log, team mgmt                 | Admin Panel section                         |
+| `billing`     | checkout, portal, subscription state              | Billing & Subscriptions section             |
+| `llmKeys`     | virtual key CRUD + validation                     | LiteLLM Proxy section                       |
 
 ## Context File Map
 
 All context files live in `context/`. Read these for deep dives into specific areas.
 
-| File | What it covers |
-|------|---------------|
-| **Architecture & Conventions** | |
-| `context/architecture.context.md` | System design, data flow, tech stack decisions |
-| `context/conventions.context.md` | Code style, naming, file organization rules |
-| `context/ui-components.context.md` | UI component library patterns and usage |
-| **Infrastructure** | |
-| `context/infrastructure/auth.context.md` | Better Auth setup, RBAC, session handling |
-| `context/infrastructure/database.context.md` | Drizzle schema, RLS, migrations, pgvector |
-| `context/infrastructure/deployment.context.md` | Railway, Docker, CI/CD pipeline |
-| **Platforms** | |
-| `context/platforms/web.context.md` | Next.js 15 app router, middleware, SSR |
-| `context/platforms/desktop.context.md` | Electron + electron-vite, overlay, IPC |
-| `context/platforms/mobile.context.md` | Expo SDK 54, auth, navigation |
-| `context/platforms/mcp.context.md` | MCP server, tool registration, system caller |
-| **Modules** | |
-| `context/modules/knowledge-base.context.md` | Documents, embeddings, RAG search |
-| `context/modules/crm.context.md` | Contacts, companies, deals, pipeline |
-| `context/modules/task-manager.context.md` | Tasks, Kanban, assignments |
-| `context/modules/meeting-notes.context.md` | Meetings, transcripts, AI summaries |
-| `context/modules/hub.context.md` | Links, OAuth integrations |
-| `context/modules/ai-employees.context.md` | Autonomous AI jobs, approval workflow |
+| File                                           | What it covers                                 |
+| ---------------------------------------------- | ---------------------------------------------- |
+| **Architecture & Conventions**                 |                                                |
+| `context/architecture.context.md`              | System design, data flow, tech stack decisions |
+| `context/conventions.context.md`               | Code style, naming, file organization rules    |
+| `context/ui-components.context.md`             | UI component library patterns and usage        |
+| **Infrastructure**                             |                                                |
+| `context/infrastructure/auth.context.md`       | Better Auth setup, RBAC, session handling      |
+| `context/infrastructure/database.context.md`   | Drizzle schema, RLS, migrations, pgvector      |
+| `context/infrastructure/deployment.context.md` | Railway, Docker, CI/CD pipeline                |
+| **Platforms**                                  |                                                |
+| `context/platforms/web.context.md`             | Next.js 15 app router, middleware, SSR         |
+| `context/platforms/desktop.context.md`         | Electron + electron-vite, overlay, IPC         |
+| `context/platforms/mobile.context.md`          | Expo SDK 54, auth, navigation                  |
+| `context/platforms/mcp.context.md`             | MCP server, tool registration, system caller   |
+| **Modules**                                    |                                                |
+| `context/modules/knowledge-base.context.md`    | Documents, embeddings, RAG search              |
+| `context/modules/crm.context.md`               | Contacts, companies, deals, pipeline           |
+| `context/modules/task-manager.context.md`      | Tasks, Kanban, assignments                     |
+| `context/modules/meeting-notes.context.md`     | Meetings, transcripts, AI summaries            |
+| `context/modules/hub.context.md`               | Links, OAuth integrations                      |
+| `context/modules/ai-employees.context.md`      | Autonomous AI jobs, approval workflow          |
 
 ## What Not to Do
 

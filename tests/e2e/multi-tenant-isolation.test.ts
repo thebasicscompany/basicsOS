@@ -63,8 +63,7 @@ const makeChain = (rows: unknown[]) => {
   }
   chain["then"] = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
     Promise.resolve(rows).then(resolve, reject);
-  chain["catch"] = (reject: (e: unknown) => unknown) =>
-    Promise.resolve(rows).catch(reject);
+  chain["catch"] = (reject: (e: unknown) => unknown) => Promise.resolve(rows).catch(reject);
   return chain;
 };
 

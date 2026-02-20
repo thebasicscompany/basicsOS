@@ -22,10 +22,7 @@ const testRouter = router({
   memberOnly: memberProcedure.query(() => "member-data"),
 });
 
-const callProcedure = async (
-  path: keyof typeof testRouter._def.procedures,
-  ctx: TRPCContext,
-) => {
+const callProcedure = async (path: keyof typeof testRouter._def.procedures, ctx: TRPCContext) => {
   const caller = testRouter.createCaller(ctx);
   return caller[path]();
 };

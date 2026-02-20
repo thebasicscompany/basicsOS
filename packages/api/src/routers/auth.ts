@@ -28,7 +28,10 @@ export const authRouter = router({
           ),
         );
       if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "A pending invite already exists for this email" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A pending invite already exists for this email",
+        });
       }
 
       const token = crypto.randomUUID();
@@ -70,13 +73,12 @@ export const authRouter = router({
   validateInvite: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ ctx, input }) => {
-      const [invite] = await ctx.db
-        .select()
-        .from(invites)
-        .where(eq(invites.token, input.token));
+      const [invite] = await ctx.db.select().from(invites).where(eq(invites.token, input.token));
       if (!invite) throw new TRPCError({ code: "NOT_FOUND" });
-      if (invite.acceptedAt) throw new TRPCError({ code: "CONFLICT", message: "Invite already used" });
-      if (invite.expiresAt < new Date()) throw new TRPCError({ code: "FORBIDDEN", message: "Invite expired" });
+      if (invite.acceptedAt)
+        throw new TRPCError({ code: "CONFLICT", message: "Invite already used" });
+      if (invite.expiresAt < new Date())
+        throw new TRPCError({ code: "FORBIDDEN", message: "Invite expired" });
       return { email: invite.email, role: invite.role, tenantId: invite.tenantId };
     }),
 
@@ -89,10 +91,12 @@ export const authRouter = router({
    * Upserts so re-registrations (on app reinstall / token refresh) are idempotent.
    */
   registerPushToken: protectedProcedure
-    .input(z.object({
-      token: z.string().min(1),
-      platform: z.enum(["ios", "android", "unknown"]).default("unknown"),
-    }))
+    .input(
+      z.object({
+        token: z.string().min(1),
+        platform: z.enum(["ios", "android", "unknown"]).default("unknown"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       if (!ctx.userId) throw new TRPCError({ code: "UNAUTHORIZED" });

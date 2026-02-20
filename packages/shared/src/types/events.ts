@@ -94,7 +94,11 @@ export const automationCompletedEvent = baseEventSchema.extend({
 
 export const automationFailedEvent = baseEventSchema.extend({
   type: z.literal("automation.failed"),
-  payload: z.object({ automationId: z.string().uuid(), runId: z.string().uuid(), error: z.string() }),
+  payload: z.object({
+    automationId: z.string().uuid(),
+    runId: z.string().uuid(),
+    error: z.string(),
+  }),
 });
 
 // AI employee events

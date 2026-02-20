@@ -52,10 +52,8 @@ import { router } from "../trpc.js";
 function makeSelectChain(rows: unknown[]) {
   // The final "thenable" object that resolves when awaited
   const thenable = {
-    then: (
-      resolve: (value: unknown) => unknown,
-      reject?: (reason: unknown) => unknown,
-    ) => Promise.resolve(rows).then(resolve, reject),
+    then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+      Promise.resolve(rows).then(resolve, reject),
     // Support .limit() at the end of the chain too
     limit: vi.fn(() => Promise.resolve(rows)),
   };
@@ -176,8 +174,6 @@ describe("crm.deals.updateStage", () => {
 
     expect(emittedTypes).toContain("crm.deal.stage_changed");
     expect(emittedTypes).toContain("crm.deal.won");
-    expect(createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "crm.deal.won" }),
-    );
+    expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "crm.deal.won" }));
   });
 });

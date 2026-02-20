@@ -1,6 +1,7 @@
 ---
 paths: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
 ---
+
 # Security Rules
 
 - NEVER hardcode secrets, API keys, or credentials in source code

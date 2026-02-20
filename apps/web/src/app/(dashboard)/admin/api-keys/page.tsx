@@ -11,8 +11,8 @@ const ApiKeysPage = (): JSX.Element => (
           <div>
             <h3 className="font-semibold text-stone-900">Managed API Key</h3>
             <p className="mt-1 text-sm text-stone-600">
-              One key covers all AI models, speech-to-text, and text-to-speech.
-              No provider accounts needed.
+              One key covers all AI models, speech-to-text, and text-to-speech. No provider accounts
+              needed.
             </p>
           </div>
           <a
@@ -25,7 +25,8 @@ const ApiKeysPage = (): JSX.Element => (
           </a>
         </div>
         <div className="mt-3 rounded-lg bg-white p-3 font-mono text-xs text-stone-700">
-          AI_API_KEY=bsk_live_...<br />
+          AI_API_KEY=bsk_live_...
+          <br />
           AI_API_URL=https://api.basicsos.com
         </div>
       </div>
@@ -33,20 +34,20 @@ const ApiKeysPage = (): JSX.Element => (
       {/* Option B */}
       <div className="rounded-xl border bg-white p-5">
         <h3 className="font-semibold text-stone-900">Bring Your Own Keys</h3>
-        <p className="mt-1 text-sm text-stone-600">
-          Use your own Anthropic or OpenAI account.
-        </p>
+        <p className="mt-1 text-sm text-stone-600">Use your own Anthropic or OpenAI account.</p>
         <div className="mt-3 rounded-lg bg-stone-50 p-3 font-mono text-xs text-stone-700">
-          ANTHROPIC_API_KEY=sk-ant-...<br />
-          <span className="text-stone-400"># or</span><br />
+          ANTHROPIC_API_KEY=sk-ant-...
+          <br />
+          <span className="text-stone-400"># or</span>
+          <br />
           OPENAI_API_KEY=sk-...
         </div>
       </div>
     </div>
 
     <p className="mt-4 text-sm text-stone-400">
-      Edit your <code className="rounded bg-stone-100 px-1">.env</code> file and restart
-      the API server to apply changes.
+      Edit your <code className="rounded bg-stone-100 px-1">.env</code> file and restart the API
+      server to apply changes.
     </p>
   </div>
 );

@@ -17,7 +17,9 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
 const TasksPage = (): JSX.Element => {
   const { data, refetch, isLoading } = trpc.tasks.list.useQuery({});
   const updateTask = trpc.tasks.update.useMutation({
-    onSuccess: () => { void refetch(); },
+    onSuccess: () => {
+      void refetch();
+    },
     onError: (err) => {
       addToast({ title: "Update failed", description: err.message, variant: "destructive" });
     },
@@ -39,7 +41,9 @@ const TasksPage = (): JSX.Element => {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-stone-900">Tasks</h1>
         <CreateTaskDialog onCreated={() => void refetch()}>
-          <Button><Plus size={14} className="mr-1" /> New Task</Button>
+          <Button>
+            <Plus size={14} className="mr-1" /> New Task
+          </Button>
         </CreateTaskDialog>
       </div>
 
@@ -50,7 +54,10 @@ const TasksPage = (): JSX.Element => {
               <div className="rounded-2xl bg-muted/40 p-3 space-y-3">
                 <div className="h-5 w-24 rounded bg-stone-200 animate-pulse" />
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 rounded-xl bg-white border border-stone-200 animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-20 rounded-xl bg-white border border-stone-200 animate-pulse"
+                  />
                 ))}
               </div>
             </div>
@@ -63,7 +70,9 @@ const TasksPage = (): JSX.Element => {
           description="Create your first task to get started."
           action={
             <CreateTaskDialog onCreated={() => void refetch()}>
-              <Button><Plus size={14} className="mr-1" /> Create Task</Button>
+              <Button>
+                <Plus size={14} className="mr-1" /> Create Task
+              </Button>
             </CreateTaskDialog>
           }
         />

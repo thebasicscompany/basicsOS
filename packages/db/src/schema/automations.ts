@@ -3,7 +3,9 @@ import { tenants } from "./tenants.js";
 
 export const automations = pgTable("automations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   triggerConfig: jsonb("trigger_config").notNull(),
   actionChain: jsonb("action_chain").notNull(),
@@ -15,7 +17,9 @@ export const automations = pgTable("automations", {
 
 export const automationRuns = pgTable("automation_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  automationId: uuid("automation_id").notNull().references(() => automations.id, { onDelete: "cascade" }),
+  automationId: uuid("automation_id")
+    .notNull()
+    .references(() => automations.id, { onDelete: "cascade" }),
   status: text("status").notNull().default("pending"), // pending | running | completed | failed
   startedAt: timestamp("started_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),

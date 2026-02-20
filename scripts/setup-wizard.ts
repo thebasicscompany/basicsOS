@@ -10,7 +10,14 @@ const escapeEnvValue = (value: string): string =>
   value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validateUrl = (url: string): boolean => { try { new URL(url); return true; } catch { return false; } };
+const validateUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const main = async (): Promise<void> => {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -18,21 +25,31 @@ const main = async (): Promise<void> => {
   console.warn("Welcome to Basics OS Setup Wizard\n");
 
   const companyName = await ask(rl, "Company name: ");
-  if (!companyName.trim()) { rl.close(); throw new Error("Company name is required"); }
+  if (!companyName.trim()) {
+    rl.close();
+    throw new Error("Company name is required");
+  }
 
   const adminEmail = await ask(rl, "Admin email: ");
-  if (!validateEmail(adminEmail)) { rl.close(); throw new Error(`Invalid email: ${adminEmail}`); }
+  if (!validateEmail(adminEmail)) {
+    rl.close();
+    throw new Error(`Invalid email: ${adminEmail}`);
+  }
 
   const appUrl = await ask(rl, "App URL (e.g. https://os.acmecorp.com): ");
-  if (!validateUrl(appUrl)) { rl.close(); throw new Error(`Invalid URL: ${appUrl}`); }
+  if (!validateUrl(appUrl)) {
+    rl.close();
+    throw new Error(`Invalid URL: ${appUrl}`);
+  }
 
   const dbUrl =
-    (await ask(rl, "PostgreSQL URL (default: postgresql://basicos:CHANGE_ME@localhost:5432/basicos): "))
-    || "postgresql://basicos:CHANGE_ME@localhost:5432/basicos";
+    (await ask(
+      rl,
+      "PostgreSQL URL (default: postgresql://basicos:CHANGE_ME@localhost:5432/basicos): ",
+    )) || "postgresql://basicos:CHANGE_ME@localhost:5432/basicos";
 
   const redisUrl =
-    (await ask(rl, "Redis URL (default: redis://localhost:6379): ")) ||
-    "redis://localhost:6379";
+    (await ask(rl, "Redis URL (default: redis://localhost:6379): ")) || "redis://localhost:6379";
 
   console.warn("\nAI features — choose how to enable them:");
   console.warn("  1. Managed key from basicsos.com (covers all models, no accounts needed)");
@@ -41,7 +58,8 @@ const main = async (): Promise<void> => {
   console.warn("  Leave blank to configure later — everything works without AI keys.\n");
 
   const aiChoice = await ask(rl, "Enter 1, 2, 3, or leave blank: ");
-  let apiKeyLine = "# Add an AI key to enable the assistant, summarization, and embeddings:\n# AI_API_KEY=bsk_live_...   (basicsos.com managed key)\n# ANTHROPIC_API_KEY=sk-ant-...\n# OPENAI_API_KEY=sk-...";
+  let apiKeyLine =
+    "# Add an AI key to enable the assistant, summarization, and embeddings:\n# AI_API_KEY=bsk_live_...   (basicsos.com managed key)\n# ANTHROPIC_API_KEY=sk-ant-...\n# OPENAI_API_KEY=sk-...";
 
   if (aiChoice.trim() === "1") {
     const managedKey = await ask(rl, "Managed API key (from basicsos.com/keys): ");
@@ -50,7 +68,8 @@ const main = async (): Promise<void> => {
     }
   } else if (aiChoice.trim() === "2") {
     const anthropicKey = await ask(rl, "Anthropic API key (sk-ant-...): ");
-    if (anthropicKey.trim()) apiKeyLine = `ANTHROPIC_API_KEY="${escapeEnvValue(anthropicKey.trim())}"`;
+    if (anthropicKey.trim())
+      apiKeyLine = `ANTHROPIC_API_KEY="${escapeEnvValue(anthropicKey.trim())}"`;
   } else if (aiChoice.trim() === "3") {
     const openaiKey = await ask(rl, "OpenAI API key (sk-...): ");
     if (openaiKey.trim()) apiKeyLine = `OPENAI_API_KEY="${escapeEnvValue(openaiKey.trim())}"`;

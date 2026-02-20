@@ -107,10 +107,7 @@ const LoginScreen = (): JSX.Element => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={s.linkRow}
-            onPress={() => router.replace("/(auth)/register")}
-          >
+          <TouchableOpacity style={s.linkRow} onPress={() => router.replace("/(auth)/register")}>
             <Text style={s.linkText}>Don&apos;t have an account? </Text>
             <Text style={s.link}>Sign up</Text>
           </TouchableOpacity>

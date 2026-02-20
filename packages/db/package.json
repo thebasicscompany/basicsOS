@@ -8,14 +8,14 @@
   "exports": {
     ".": {
       "bun": "./src/index.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
     "generate": "bunx drizzle-kit generate",
     "migrate": "bunx drizzle-kit push",
     "migrate:sql": "bunx drizzle-kit generate && bunx drizzle-kit migrate",

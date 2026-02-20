@@ -12,12 +12,17 @@ interface KanbanColumnProps {
 }
 
 const COLUMN_ACCENT: Record<TaskStatus, string> = {
-  "todo": "border-t-stone-300",
+  todo: "border-t-stone-300",
   "in-progress": "border-t-primary",
-  "done": "border-t-success",
+  done: "border-t-success",
 };
 
-export const KanbanColumn = ({ status, label, tasks, onStatusChanged }: KanbanColumnProps): JSX.Element => {
+export const KanbanColumn = ({
+  status,
+  label,
+  tasks,
+  onStatusChanged,
+}: KanbanColumnProps): JSX.Element => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
@@ -50,8 +55,7 @@ export const KanbanColumn = ({ status, label, tasks, onStatusChanged }: KanbanCo
     >
       <div className={`mb-3 border-t-2 pt-3 ${COLUMN_ACCENT[status]}`}>
         <h2 className="font-semibold text-stone-700">
-          {label}{" "}
-          <span className="ml-1 text-sm font-normal text-stone-400">({tasks.length})</span>
+          {label} <span className="ml-1 text-sm font-normal text-stone-400">({tasks.length})</span>
         </h2>
       </div>
       <div className="flex flex-col gap-2">

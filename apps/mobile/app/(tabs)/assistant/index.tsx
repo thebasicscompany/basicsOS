@@ -137,7 +137,10 @@ const AssistantScreen = (): JSX.Element => {
             onSubmitEditing={() => handleSend()}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!input.trim() || chatMutation.isPending) && styles.sendBtnDisabled]}
+            style={[
+              styles.sendBtn,
+              (!input.trim() || chatMutation.isPending) && styles.sendBtnDisabled,
+            ]}
             onPress={() => handleSend()}
             disabled={!input.trim() || chatMutation.isPending}
           >

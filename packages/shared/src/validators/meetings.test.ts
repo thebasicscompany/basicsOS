@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  insertMeetingSchema,
-  insertTranscriptSchema,
-  uploadTranscriptSchema,
-} from "./meetings.js";
+import { insertMeetingSchema, insertTranscriptSchema, uploadTranscriptSchema } from "./meetings.js";
 
 const VALID_UUID = "00000000-0000-0000-0000-000000000001";
 const VALID_UUID_2 = "00000000-0000-0000-0000-000000000002";
@@ -46,21 +42,19 @@ describe("insertMeetingSchema", () => {
   });
 
   it("rejects title over 512 characters", () => {
-    expect(
-      insertMeetingSchema.safeParse({ ...validInput, title: "a".repeat(513) }).success,
-    ).toBe(false);
+    expect(insertMeetingSchema.safeParse({ ...validInput, title: "a".repeat(513) }).success).toBe(
+      false,
+    );
   });
 
   it("rejects invalid tenantId", () => {
-    expect(
-      insertMeetingSchema.safeParse({ ...validInput, tenantId: "not-uuid" }).success,
-    ).toBe(false);
+    expect(insertMeetingSchema.safeParse({ ...validInput, tenantId: "not-uuid" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects invalid createdBy", () => {
-    expect(
-      insertMeetingSchema.safeParse({ ...validInput, createdBy: "bad" }).success,
-    ).toBe(false);
+    expect(insertMeetingSchema.safeParse({ ...validInput, createdBy: "bad" }).success).toBe(false);
   });
 });
 
@@ -91,27 +85,23 @@ describe("insertTranscriptSchema", () => {
   });
 
   it("rejects empty speaker", () => {
-    expect(
-      insertTranscriptSchema.safeParse({ ...validInput, speaker: "" }).success,
-    ).toBe(false);
+    expect(insertTranscriptSchema.safeParse({ ...validInput, speaker: "" }).success).toBe(false);
   });
 
   it("rejects empty text", () => {
-    expect(
-      insertTranscriptSchema.safeParse({ ...validInput, text: "" }).success,
-    ).toBe(false);
+    expect(insertTranscriptSchema.safeParse({ ...validInput, text: "" }).success).toBe(false);
   });
 
   it("rejects invalid meetingId", () => {
-    expect(
-      insertTranscriptSchema.safeParse({ ...validInput, meetingId: "bad" }).success,
-    ).toBe(false);
+    expect(insertTranscriptSchema.safeParse({ ...validInput, meetingId: "bad" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects negative timestampMs", () => {
-    expect(
-      insertTranscriptSchema.safeParse({ ...validInput, timestampMs: -1 }).success,
-    ).toBe(false);
+    expect(insertTranscriptSchema.safeParse({ ...validInput, timestampMs: -1 }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -137,8 +127,6 @@ describe("uploadTranscriptSchema", () => {
   });
 
   it("rejects missing meetingId", () => {
-    expect(
-      uploadTranscriptSchema.safeParse({ transcriptText: "text" }).success,
-    ).toBe(false);
+    expect(uploadTranscriptSchema.safeParse({ transcriptText: "text" }).success).toBe(false);
   });
 });

@@ -69,7 +69,9 @@ export const SummaryCard = ({ summaryJson, isPending }: SummaryCardProps): JSX.E
             <h4 className="mb-2 text-xs font-semibold uppercase text-stone-500">Decisions</h4>
             <ul className="space-y-1">
               {decisions.map((item, i) => (
-                <li key={i} className="text-sm text-stone-700">• {item}</li>
+                <li key={i} className="text-sm text-stone-700">
+                  • {item}
+                </li>
               ))}
             </ul>
           </div>
@@ -80,7 +82,9 @@ export const SummaryCard = ({ summaryJson, isPending }: SummaryCardProps): JSX.E
             <h4 className="mb-2 text-xs font-semibold uppercase text-stone-500">Follow-ups</h4>
             <ul className="space-y-1">
               {followUps.map((item, i) => (
-                <li key={i} className="text-sm text-stone-700">• {item}</li>
+                <li key={i} className="text-sm text-stone-700">
+                  • {item}
+                </li>
               ))}
             </ul>
           </div>

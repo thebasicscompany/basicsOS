@@ -34,8 +34,8 @@ import { hubRouter } from "./hub.js";
 // Test constants
 // ---------------------------------------------------------------------------
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID   = "00000000-0000-0000-0000-000000000002";
-const LINK_ID   = "00000000-0000-0000-0000-000000000003";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
+const LINK_ID = "00000000-0000-0000-0000-000000000003";
 
 // ---------------------------------------------------------------------------
 // Thenable chain factory
@@ -59,13 +59,15 @@ const makeChain = (rows: unknown[]) => {
 // ---------------------------------------------------------------------------
 // DB mock builder
 // ---------------------------------------------------------------------------
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
   const insertRows = opts.insertRows ?? [];
   const updateRows = opts.updateRows ?? [];
   const deleteRows = opts.deleteRows ?? [];
@@ -76,9 +78,7 @@ const makeMockDb = (opts: {
 
   return {
     select: vi.fn().mockImplementation(() => {
-      const rows = selectSequence
-        ? (selectSequence[selectCallCount++] ?? [])
-        : defaultSelectRows;
+      const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
     }),
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
@@ -252,7 +252,10 @@ describe("hub.storeOAuthToken", () => {
       insertRows: [integration],
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    const result = await caller(ctx).storeOAuthToken({ service: "slack", accessToken: "xoxb-test" });
+    const result = await caller(ctx).storeOAuthToken({
+      service: "slack",
+      accessToken: "xoxb-test",
+    });
     expect(result).toMatchObject({ service: "slack", tenantId: TENANT_ID });
     expect(db.insert).toHaveBeenCalledOnce();
   });
@@ -265,7 +268,10 @@ describe("hub.storeOAuthToken", () => {
       updateRows: [updated],
     });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    const result = await caller(ctx).storeOAuthToken({ service: "slack", accessToken: "xoxb-test" });
+    const result = await caller(ctx).storeOAuthToken({
+      service: "slack",
+      accessToken: "xoxb-test",
+    });
     expect(result).toMatchObject({ service: "slack" });
     expect(db.update).toHaveBeenCalledOnce();
     expect(db.insert).not.toHaveBeenCalled();

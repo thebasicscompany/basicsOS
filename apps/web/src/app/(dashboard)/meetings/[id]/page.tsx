@@ -25,7 +25,11 @@ const MeetingDetailPage = (): JSX.Element => {
       void refetch();
     },
     onError: (err) => {
-      addToast({ title: "Failed to save transcript", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to save transcript",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -54,7 +58,7 @@ const MeetingDetailPage = (): JSX.Element => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ json: { meetingId: id, audioChunk: base64, format: "webm" } }),
         });
-        const data = await res.json() as {
+        const data = (await res.json()) as {
           result?: { data?: { transcript: string | null; configured: boolean } };
         };
         if (!data.result?.data?.configured) {
@@ -107,9 +111,7 @@ const MeetingDetailPage = (): JSX.Element => {
 
   const handleSaveTranscript = (): void => {
     if (!meeting?.transcripts || meeting.transcripts.length === 0) return;
-    const text = meeting.transcripts
-      .map((t) => `${t.speaker}: ${t.text}`)
-      .join("\n");
+    const text = meeting.transcripts.map((t) => `${t.speaker}: ${t.text}`).join("\n");
     uploadTranscript.mutate({ meetingId: id, transcriptText: text });
   };
 
@@ -120,18 +122,21 @@ const MeetingDetailPage = (): JSX.Element => {
   const transcripts = meeting?.transcripts ?? [];
   const summaries = meeting?.summaries ?? [];
   const latestSummary = summaries[0];
-  const summaryJson = latestSummary?.summaryJson as {
-    decisions?: string[];
-    actionItems?: string[];
-    followUps?: string[];
-    note?: string;
-  } | null ?? null;
+  const summaryJson =
+    (latestSummary?.summaryJson as {
+      decisions?: string[];
+      actionItems?: string[];
+      followUps?: string[];
+      note?: string;
+    } | null) ?? null;
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">← Meetings</a>
+          <a href="/meetings" className="text-sm text-stone-500 hover:text-stone-700">
+            ← Meetings
+          </a>
           <h1 className="mt-1 text-2xl font-bold text-stone-900">
             {meeting?.title ?? "Meeting Recording"}
           </h1>
@@ -182,10 +187,7 @@ const MeetingDetailPage = (): JSX.Element => {
         {/* Summary */}
         <div>
           <h2 className="mb-3 text-lg font-semibold text-stone-700">Summary</h2>
-          <SummaryCard
-            summaryJson={summaryJson}
-            isPending={processMeeting.isPending}
-          />
+          <SummaryCard summaryJson={summaryJson} isPending={processMeeting.isPending} />
         </div>
       </div>
     </div>

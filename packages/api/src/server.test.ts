@@ -19,13 +19,13 @@ describe("GET /health", () => {
   it("returns 200 with status ok", async () => {
     const res = await app.request("/health");
     expect(res.status).toBe(200);
-    const body = await res.json() as { status: string };
+    const body = (await res.json()) as { status: string };
     expect(body.status).toBe("ok");
   });
 
   it("includes a timestamp", async () => {
     const res = await app.request("/health");
-    const body = await res.json() as { timestamp: string };
+    const body = (await res.json()) as { timestamp: string };
     expect(new Date(body.timestamp).getTime()).toBeGreaterThan(0);
   });
 });

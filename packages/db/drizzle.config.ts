@@ -13,6 +13,10 @@ export default defineConfig({
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env["DATABASE_URL"] ?? (() => { throw new Error("DATABASE_URL is required — create a .env file at the repo root"); })(),
+    url:
+      process.env["DATABASE_URL"] ??
+      (() => {
+        throw new Error("DATABASE_URL is required — create a .env file at the repo root");
+      })(),
   },
 });

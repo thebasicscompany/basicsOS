@@ -34,9 +34,7 @@ type ExpoPushResponse = {
  * Send push notifications via Expo Push Notification Service.
  * Silently ignores invalid/expired tokens (DeviceNotRegistered).
  */
-const sendExpoPushNotifications = async (
-  messages: ExpoPushMessage[],
-): Promise<void> => {
+const sendExpoPushNotifications = async (messages: ExpoPushMessage[]): Promise<void> => {
   if (messages.length === 0) return;
 
   try {
@@ -44,7 +42,7 @@ const sendExpoPushNotifications = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        Accept: "application/json",
         "Accept-Encoding": "gzip, deflate",
       },
       body: JSON.stringify(messages),
@@ -55,7 +53,7 @@ const sendExpoPushNotifications = async (
       return;
     }
 
-    const result = await res.json() as ExpoPushResponse;
+    const result = (await res.json()) as ExpoPushResponse;
     for (const ticket of result.data) {
       if (ticket.status === "error") {
         // DeviceNotRegistered means the token is stale — clean it up
@@ -66,7 +64,9 @@ const sendExpoPushNotifications = async (
               .delete(pushTokens)
               .where(eq(pushTokens.token, staleToken))
               .catch(() => undefined);
-            console.warn(`[notification-worker] Removed stale push token: ${staleToken.slice(0, 20)}...`);
+            console.warn(
+              `[notification-worker] Removed stale push token: ${staleToken.slice(0, 20)}...`,
+            );
           }
         } else {
           console.error("[notification-worker] Push ticket error:", ticket.message);

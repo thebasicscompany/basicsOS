@@ -40,7 +40,11 @@ export const CreateTaskDialog = ({ children, onCreated }: CreateTaskDialogProps)
       onCreated?.();
     },
     onError: (err) => {
-      addToast({ title: "Failed to create task", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to create task",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 

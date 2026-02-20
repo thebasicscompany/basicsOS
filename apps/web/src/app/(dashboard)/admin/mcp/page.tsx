@@ -61,12 +61,16 @@ const AdminMCPPage = (): JSX.Element => {
                 status === "checking"
                   ? "bg-stone-300 animate-pulse"
                   : status === "healthy"
-                  ? "bg-green-500"
-                  : "bg-red-400"
+                    ? "bg-green-500"
+                    : "bg-red-400"
               }`}
             />
             <span className="text-sm font-medium text-stone-700">
-              {status === "checking" ? "Checking…" : status === "healthy" ? "Healthy" : "Unreachable"}
+              {status === "checking"
+                ? "Checking…"
+                : status === "healthy"
+                  ? "Healthy"
+                  : "Unreachable"}
             </span>
           </div>
           <code className="rounded bg-stone-50 px-2 py-1 text-xs text-stone-700 border border-stone-200">

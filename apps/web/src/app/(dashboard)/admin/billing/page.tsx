@@ -11,8 +11,8 @@ const BillingPage = (): JSX.Element => (
           <div>
             <h3 className="font-semibold text-stone-900">Managed Hosting</h3>
             <p className="mt-1 text-sm text-stone-600">
-              One-click deploy, automatic updates, no infrastructure to manage.
-              Includes an AI API key covering all models.
+              One-click deploy, automatic updates, no infrastructure to manage. Includes an AI API
+              key covering all models.
             </p>
           </div>
           <a

@@ -1,6 +1,7 @@
 # Mobile App — Platform Context
 
 ## Stack
+
 - **Framework**: Expo SDK 54+ with React Native (`apps/mobile/`)
 - **Routing**: Expo Router v4 (file-based, same as Next.js App Router)
 - **Styling**: React Native `StyleSheet` (mobile-native — NOT Tailwind/Radix/Tamagui)
@@ -43,6 +44,7 @@ apps/mobile/
 ## Tab Navigation
 
 8 tabs in the bottom bar (icons via `lucide-react-native`):
+
 1. `LayoutDashboard` — Dashboard
 2. `Sparkles` — Assistant (AI chat)
 3. `BookOpen` — Knowledge base
@@ -64,12 +66,14 @@ apps/mobile/
 ## Shared Code with Web
 
 The mobile app shares:
+
 - `packages/shared` — all Zod validators and TypeScript types
 - `packages/api` — `AppRouter` type (for end-to-end type safety)
 - `packages/auth` — Better Auth client (via `apps/mobile/lib/auth-client.ts`)
 - tRPC call patterns — same `trpc.module.procedure.useQuery/useMutation()` API
 
 It does NOT share:
+
 - UI components (`packages/ui` is web/Radix/Tailwind only)
 - CSS/Tailwind (mobile uses React Native `StyleSheet`)
 - Next.js-specific features (routing is Expo Router)

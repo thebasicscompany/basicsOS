@@ -105,7 +105,10 @@ export const AssistantPanel = (): JSX.Element => {
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-stone-200 p-3">
+          <form
+            onSubmit={handleSubmit}
+            className="flex items-end gap-2 border-t border-stone-200 p-3"
+          >
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -119,11 +122,7 @@ export const AssistantPanel = (): JSX.Element => {
               rows={1}
               className="flex-1 resize-none rounded-xl border border-stone-200 bg-muted px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
-            <Button
-              type="submit"
-              disabled={!input.trim() || chatMutation.isPending}
-              size="icon"
-            >
+            <Button type="submit" disabled={!input.trim() || chatMutation.isPending} size="icon">
               <ArrowUp size={16} />
             </Button>
           </form>

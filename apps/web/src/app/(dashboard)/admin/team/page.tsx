@@ -25,7 +25,9 @@ const TeamPage = (): JSX.Element => {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">Team Management</h1>
-          <p className="mt-1 text-sm text-stone-500">Manage team members, roles, and invitations.</p>
+          <p className="mt-1 text-sm text-stone-500">
+            Manage team members, roles, and invitations.
+          </p>
         </div>
         {me?.role === "admin" && (
           <InviteMemberDialog>
@@ -53,15 +55,14 @@ const TeamPage = (): JSX.Element => {
             </div>
           </div>
           {me?.role !== undefined && (
-            <Badge variant={ROLE_VARIANT[me.role as UserRole] ?? "outline"}>
-              {me.role}
-            </Badge>
+            <Badge variant={ROLE_VARIANT[me.role as UserRole] ?? "outline"}>{me.role}</Badge>
           )}
         </div>
       </div>
 
       <p className="mt-4 text-xs text-stone-400">
-        Team member management requires a user directory API. Invite new members using the button above.
+        Team member management requires a user directory API. Invite new members using the button
+        above.
       </p>
     </div>
   );

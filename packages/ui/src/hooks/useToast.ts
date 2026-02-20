@@ -59,7 +59,9 @@ export const useToast = (): ToastState => {
 
   return {
     toasts: localToasts,
-    toast: (opts) => { addToast(opts); },
+    toast: (opts) => {
+      addToast(opts);
+    },
     dismiss: dismissToast,
   };
 };

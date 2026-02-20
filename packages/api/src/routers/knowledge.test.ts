@@ -58,14 +58,23 @@ const buildDoc = (overrides: Record<string, unknown> = {}) => ({
 const makeChain = (returnValue: unknown) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: Record<string, any> = {};
-  const methods = ["select", "from", "where", "insert", "values", "returning", "update", "set", "delete"];
+  const methods = [
+    "select",
+    "from",
+    "where",
+    "insert",
+    "values",
+    "returning",
+    "update",
+    "set",
+    "delete",
+  ];
   for (const m of methods) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
   chain["then"] = (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
     Promise.resolve(returnValue).then(resolve, reject);
-  chain["catch"] = (reject: (e: unknown) => unknown) =>
-    Promise.resolve(returnValue).catch(reject);
+  chain["catch"] = (reject: (e: unknown) => unknown) => Promise.resolve(returnValue).catch(reject);
   return chain;
 };
 
@@ -94,7 +103,10 @@ const buildCtx = (db: TRPCContext["db"]): TRPCContext => ({
 
 describe("knowledge.list", () => {
   it("returns documents for tenant at root level (parentId null)", async () => {
-    const docs = [buildDoc(), buildDoc({ id: "00000000-0000-0000-0000-000000000004", title: "Second" })];
+    const docs = [
+      buildDoc(),
+      buildDoc({ id: "00000000-0000-0000-0000-000000000004", title: "Second" }),
+    ];
     const mockDb = buildMockDb(docs);
     const caller = knowledgeRouter.createCaller(buildCtx(mockDb as unknown as TRPCContext["db"]));
 
@@ -197,7 +209,9 @@ describe("knowledge.update", () => {
     const mockDb = buildMockDb([], []); // empty select result
     const caller = knowledgeRouter.createCaller(buildCtx(mockDb as unknown as TRPCContext["db"]));
 
-    await expect(caller.update({ id: DOC_ID, title: "X" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller.update({ id: DOC_ID, title: "X" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 

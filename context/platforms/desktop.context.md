@@ -1,6 +1,7 @@
 # Desktop App — Platform Context
 
 ## Stack
+
 - **Framework**: Electron v33+ (`apps/desktop/`)
 - **Build system**: electron-vite (dev server with HMR, production build to `dist/`)
 - **Main process**: TypeScript → `dist/main/index.js`
@@ -22,6 +23,7 @@ pnpm --filter @basicsos/desktop package  # electron-builder → .dmg/.exe
 Two windows:
 
 ### 1. Main Dashboard Window
+
 - Full Basics OS web portal in a native macOS app frame
 - `titleBarStyle: "hiddenInset"` for macOS traffic lights
 - Loads `BASICOS_URL` (defaults to `http://localhost:3000`)
@@ -29,6 +31,7 @@ Two windows:
 - No preload script needed (runs the full web app)
 
 ### 2. Overlay Window
+
 - **420x480px**, frameless, transparent, always-on-top (`setAlwaysOnTop(true, "screen-saver")`)
 - Visible on all workspaces including fullscreen apps
 - `vibrancy: "under-window"` for macOS blur effect, `skipTaskbar: true`
@@ -66,28 +69,29 @@ const res = await fetch(`${apiUrl}/stream/assistant`, {
 
 Exposed via `contextBridge.exposeInMainWorld("electronAPI", ...)` in `apps/desktop/src/preload/index.ts`:
 
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `send` | `(channel: string, ...args: unknown[]) => void` | One-way IPC (validated channels: `set-ignore-mouse`, `navigate-main`) |
-| `injectText` | `(text: string) => Promise<void>` | Clipboard + simulated paste into active field |
-| `captureScreen` | `() => Promise<string>` | Screenshot primary display → base64 PNG |
-| `getSessionToken` | `() => Promise<string \| null>` | Extract session cookie for API auth |
-| `getApiUrl` | `() => Promise<string>` | Get API server URL (`BASICOS_API_URL` or `http://localhost:3001`) |
+| Method            | Signature                                       | Purpose                                                               |
+| ----------------- | ----------------------------------------------- | --------------------------------------------------------------------- |
+| `send`            | `(channel: string, ...args: unknown[]) => void` | One-way IPC (validated channels: `set-ignore-mouse`, `navigate-main`) |
+| `injectText`      | `(text: string) => Promise<void>`               | Clipboard + simulated paste into active field                         |
+| `captureScreen`   | `() => Promise<string>`                         | Screenshot primary display → base64 PNG                               |
+| `getSessionToken` | `() => Promise<string \| null>`                 | Extract session cookie for API auth                                   |
+| `getApiUrl`       | `() => Promise<string>`                         | Get API server URL (`BASICOS_API_URL` or `http://localhost:3001`)     |
 
 ## IPC Channels (Main Process)
 
-| Channel | Type | Handler |
-|---------|------|---------|
-| `get-session-token` | `ipcMain.handle` | Reads `better-auth.session_token` cookie |
-| `get-api-url` | `ipcMain.handle` | Returns `BASICOS_API_URL` env var |
-| `inject-text` | `ipcMain.handle` | Copies text to clipboard, simulates paste via osascript (macOS) / PowerShell (Windows) |
-| `capture-screen` | `ipcMain.handle` | Hides overlay → `desktopCapturer` screenshot → returns base64 PNG |
-| `set-ignore-mouse` | `ipcMain.on` | Toggles click-through mode on overlay |
-| `navigate-main` | `ipcMain.on` | Loads a URL in the main window |
+| Channel             | Type             | Handler                                                                                |
+| ------------------- | ---------------- | -------------------------------------------------------------------------------------- |
+| `get-session-token` | `ipcMain.handle` | Reads `better-auth.session_token` cookie                                               |
+| `get-api-url`       | `ipcMain.handle` | Returns `BASICOS_API_URL` env var                                                      |
+| `inject-text`       | `ipcMain.handle` | Copies text to clipboard, simulates paste via osascript (macOS) / PowerShell (Windows) |
+| `capture-screen`    | `ipcMain.handle` | Hides overlay → `desktopCapturer` screenshot → returns base64 PNG                      |
+| `set-ignore-mouse`  | `ipcMain.on`     | Toggles click-through mode on overlay                                                  |
+| `navigate-main`     | `ipcMain.on`     | Loads a URL in the main window                                                         |
 
 ## White-Label Branding
 
 On `app.whenReady()`, before any windows are created:
+
 1. `fetchBranding()` calls `GET ${WEB_URL}/api/branding` (3-second timeout)
 2. Returns `{ companyName, logoUrl, accentColor, apiUrl, mcpUrl }`
 3. Falls back to `DEFAULT_BRANDING` on any error
@@ -106,6 +110,7 @@ Branding values are cached in memory for the app session lifetime.
 ## Tray Icon
 
 A system tray icon appears in the menu bar. Menu items:
+
 - Open Basics OS (shows main window)
 - Toggle Overlay (Cmd+Shift+Space)
 - Check for Updates
@@ -121,13 +126,13 @@ Uses `electron-builder` config in `apps/desktop/`. Target: macOS universal binar
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `apps/desktop/src/main/index.ts` | Entry point — windows, tray, hotkey, IPC, branding, auto-update |
-| `apps/desktop/src/preload/index.ts` | contextBridge → `window.electronAPI` |
-| `apps/desktop/src/renderer/` | Local React overlay app (electron-vite bundled) |
-| `apps/desktop/electron.vite.config.ts` | electron-vite config (main + preload + renderer) |
-| `apps/web/src/app/api/branding/route.ts` | Branding config endpoint |
+| File                                     | Purpose                                                         |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `apps/desktop/src/main/index.ts`         | Entry point — windows, tray, hotkey, IPC, branding, auto-update |
+| `apps/desktop/src/preload/index.ts`      | contextBridge → `window.electronAPI`                            |
+| `apps/desktop/src/renderer/`             | Local React overlay app (electron-vite bundled)                 |
+| `apps/desktop/electron.vite.config.ts`   | electron-vite config (main + preload + renderer)                |
+| `apps/web/src/app/api/branding/route.ts` | Branding config endpoint                                        |
 
 ## Adding Features to the Overlay
 

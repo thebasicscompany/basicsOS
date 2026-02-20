@@ -10,7 +10,10 @@ interface LiveTranscriptPanelProps {
   title: string;
 }
 
-export const LiveTranscriptPanel = ({ meetingId, title }: LiveTranscriptPanelProps): JSX.Element => {
+export const LiveTranscriptPanel = ({
+  meetingId,
+  title,
+}: LiveTranscriptPanelProps): JSX.Element => {
   const transcriptRef = useRef<HTMLDivElement>(null);
   const [chunks, setChunks] = useState<TranscriptChunk[]>([]);
 
@@ -46,9 +49,7 @@ export const LiveTranscriptPanel = ({ meetingId, title }: LiveTranscriptPanelPro
       <div className="flex items-center justify-between px-3 py-2 border-b border-red-200">
         <div className="flex items-center gap-2">
           <Radio size={12} className="text-red-500 animate-pulse" />
-          <span className="text-xs font-semibold text-red-600 truncate max-w-[160px]">
-            {title}
-          </span>
+          <span className="text-xs font-semibold text-red-600 truncate max-w-[160px]">{title}</span>
         </div>
         <button
           type="button"

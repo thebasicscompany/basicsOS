@@ -13,12 +13,12 @@ export type TRPCContext = {
   headers: Headers;
 };
 
-export const createContext = async (
-  opts: FetchCreateContextFnOptions,
-): Promise<TRPCContext> => {
-  const session = await auth.api.getSession({
-    headers: opts.req.headers,
-  }).catch(() => null);
+export const createContext = async (opts: FetchCreateContextFnOptions): Promise<TRPCContext> => {
+  const session = await auth.api
+    .getSession({
+      headers: opts.req.headers,
+    })
+    .catch(() => null);
 
   if (!session?.user) {
     return {

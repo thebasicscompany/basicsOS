@@ -1,9 +1,11 @@
 # Web Portal Platform Context
 
 ## Overview
+
 The Basics OS web portal is a Next.js 15 application (`apps/web`) providing the primary browser-based interface for company operations.
 
 ## Tech Stack
+
 - **Framework**: Next.js 15 with App Router
 - **Runtime**: React 18 with server and client components
 - **Data fetching**: tRPC v11 + TanStack Query v5
@@ -63,6 +65,7 @@ export const NavClient = (): JSX.Element => { ... };
 ## Route Protection
 
 `apps/web/src/middleware.ts` guards all routes except:
+
 - `/login`, `/register`, `/invite/*` — always public
 - `/api/*` — bypasses middleware
 
@@ -72,7 +75,7 @@ Requires `better-auth.session_token` cookie. Unauthenticated users are redirecte
 
 ```ts
 // Read current user
-const { user } = useAuth();  // from @/providers/AuthProvider
+const { user } = useAuth(); // from @/providers/AuthProvider
 
 // Sign in / out
 import { authClient } from "@/lib/auth-client";
@@ -128,6 +131,7 @@ export const CreateFooDialog = ({ children, onCreated }): JSX.Element => {
 ```
 
 Existing dialog examples to copy from:
+
 - `(dashboard)/tasks/CreateTaskDialog.tsx` — title + Select priority
 - `(dashboard)/crm/CreateContactDialog.tsx` — contact fields
 - `(dashboard)/crm/CreateDealDialog.tsx` — deal + stage Select
@@ -140,10 +144,32 @@ All from `@basicsos/ui`:
 
 ```ts
 import {
-  Button, Input, Label, Card, CardHeader, CardTitle, CardContent, CardFooter,
-  Badge, Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-  Avatar, AvatarImage, AvatarFallback, Separator, Toaster, addToast,
+  Button,
+  Input,
+  Label,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+  Badge,
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  Separator,
+  Toaster,
+  addToast,
 } from "@basicsos/ui";
 ```
 
@@ -151,13 +177,13 @@ import {
 
 Always use semantic tokens — never raw Tailwind color classes:
 
-| Use | Token class |
-|-----|-------------|
+| Use             | Token class                  |
+| --------------- | ---------------------------- |
 | Primary actions | `bg-primary`, `text-primary` |
-| Text on primary | `text-primary-foreground` |
-| Destructive | `bg-destructive` |
-| Success | `bg-success` |
-| Warning | `bg-warning` |
+| Text on primary | `text-primary-foreground`    |
+| Destructive     | `bg-destructive`             |
+| Success         | `bg-success`                 |
+| Warning         | `bg-warning`                 |
 
 ## "use client" Rules
 

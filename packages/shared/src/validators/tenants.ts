@@ -3,7 +3,10 @@ import { z } from "zod";
 export const insertTenantSchema = z.object({
   name: z.string().min(1).max(255),
   logoUrl: z.string().url().optional(),
-  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#6366f1"),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#6366f1"),
   domain: z.string().optional(),
   plan: z.enum(["starter", "team", "enterprise"]).default("starter"),
 });

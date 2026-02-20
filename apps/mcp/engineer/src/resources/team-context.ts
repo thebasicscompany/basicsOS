@@ -14,7 +14,15 @@ export const registerTeamContextResource = (server: McpServer): void => {
         team: { roster: [], note: "Roster — populated from users table" },
         deployment: { status: "unknown", note: "Deployment status — configure CI/CD" },
       };
-      return { contents: [{ uri: "basicoseng://team/context", mimeType: "application/json", text: JSON.stringify(context, null, 2) }] };
+      return {
+        contents: [
+          {
+            uri: "basicoseng://team/context",
+            mimeType: "application/json",
+            text: JSON.stringify(context, null, 2),
+          },
+        ],
+      };
     },
   );
 };

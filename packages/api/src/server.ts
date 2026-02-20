@@ -10,6 +10,9 @@ import { auth } from "@basicsos/auth";
 import { semanticSearch } from "./lib/semantic-search.js";
 import { analyzeQuery } from "./lib/query-analyzer.js";
 import { assembleContext } from "./lib/context-assembler.js";
+import { createLogger } from "@basicsos/shared";
+
+const logger = createLogger("server");
 
 export const createApp = (): Hono => {
   const app = new Hono();
@@ -29,24 +32,33 @@ export const createApp = (): Hono => {
     const rawKey = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!rawKey.startsWith("bos_live_sk_")) {
-      return c.json({ error: { message: "Invalid API key format", type: "invalid_request_error" } }, 401);
+      return c.json(
+        { error: { message: "Invalid API key format", type: "invalid_request_error" } },
+        401,
+      );
     }
 
     const tenantId = await validateVirtualKey(rawKey);
     if (!tenantId) {
-      return c.json({ error: { message: "API key not found or inactive", type: "invalid_request_error" } }, 401);
+      return c.json(
+        { error: { message: "API key not found or inactive", type: "invalid_request_error" } },
+        401,
+      );
     }
 
     type OpenAIMessage = { role: string; content: string };
     type OpenAIBody = { messages?: OpenAIMessage[]; model?: string; temperature?: number };
-    const body = await c.req.json() as OpenAIBody;
+    const body = (await c.req.json()) as OpenAIBody;
     const messages = (body.messages ?? []).map((m) => ({
       role: m.role as "system" | "user" | "assistant",
       content: m.content,
     }));
 
     if (messages.length === 0) {
-      return c.json({ error: { message: "messages array is required", type: "invalid_request_error" } }, 400);
+      return c.json(
+        { error: { message: "messages array is required", type: "invalid_request_error" } },
+        400,
+      );
     }
 
     const opts = {
@@ -62,11 +74,13 @@ export const createApp = (): Hono => {
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
       model: body.model ?? "claude-sonnet-4-6",
-      choices: [{
-        index: 0,
-        message: { role: "assistant", content: result.content },
-        finish_reason: result.finishReason,
-      }],
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: result.content },
+          finish_reason: result.finishReason,
+        },
+      ],
       usage: result.usage
         ? {
             prompt_tokens: result.usage.promptTokens,
@@ -91,7 +105,7 @@ export const createApp = (): Hono => {
     if (!tenantId) return c.json({ error: "No tenant context" }, 401);
 
     type ChatBody = { message?: string; history?: Array<{ role: string; content: string }> };
-    const body = await c.req.json() as ChatBody;
+    const body = (await c.req.json()) as ChatBody;
     const message = body.message?.trim() ?? "";
     if (!message) return c.json({ error: "message is required" }, 400);
 
@@ -111,7 +125,9 @@ export const createApp = (): Hono => {
           .map((ch, i) => `[Source ${i + 1} — ${ch.source} ID: ${ch.sourceId}]\n${ch.text}`)
           .join("\n\n---\n\n");
       }
-    } catch { /* empty context on failure */ }
+    } catch {
+      /* empty context on failure */
+    }
 
     const systemPrompt = `You are Basics OS Company Assistant — an AI grounded in this company's data.\nAnswer questions based ONLY on the context provided below.\n\n## Company Data Context\n${contextText}`;
     const messages = [
@@ -147,7 +163,7 @@ export const createApp = (): Hono => {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
+          Connection: "keep-alive",
           "Access-Control-Allow-Origin": c.req.header("Origin") ?? "*",
         },
       },
@@ -162,7 +178,7 @@ export const createApp = (): Hono => {
       createContext: (opts) => createContext(opts),
       onError: ({ error, path }) => {
         if (error.code === "INTERNAL_SERVER_ERROR") {
-          console.error(`tRPC error on ${path}:`, error);
+          logger.error({ err: error, path }, "tRPC error");
         }
       },
     }),

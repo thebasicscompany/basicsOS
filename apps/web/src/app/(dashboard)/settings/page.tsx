@@ -140,7 +140,12 @@ const SettingsPage = (): JSX.Element => {
             <h2 className="mb-4 text-base font-semibold text-stone-900">Profile</h2>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {user?.name?.split(" ").map((n: string) => n[0] ?? "").join("").toUpperCase().slice(0, 2) ?? "A"}
+                {user?.name
+                  ?.split(" ")
+                  .map((n: string) => n[0] ?? "")
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2) ?? "A"}
               </div>
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-stone-700">{user?.name ?? "\u2014"}</p>
@@ -206,9 +211,11 @@ const SettingsPage = (): JSX.Element => {
           <div className="rounded-xl border border-stone-200 bg-white p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Local Setup (stdio)</h2>
             <p className="mb-4 text-sm text-stone-500">
-              Use this when Basics OS is running on the same machine as Claude Desktop.
-              Replace the <code className="text-xs bg-stone-100 px-1 rounded">args</code> path
-              with the actual path to your cloned repo, and update <code className="text-xs bg-stone-100 px-1 rounded">DATABASE_URL</code> from your <code className="text-xs bg-stone-100 px-1 rounded">.env</code> file.
+              Use this when Basics OS is running on the same machine as Claude Desktop. Replace the{" "}
+              <code className="text-xs bg-stone-100 px-1 rounded">args</code> path with the actual
+              path to your cloned repo, and update{" "}
+              <code className="text-xs bg-stone-100 px-1 rounded">DATABASE_URL</code> from your{" "}
+              <code className="text-xs bg-stone-100 px-1 rounded">.env</code> file.
             </p>
             <CopyBlock label="claude_desktop_config.json" code={localStdioConfig} />
           </div>
@@ -217,8 +224,8 @@ const SettingsPage = (): JSX.Element => {
           <div className="rounded-xl border border-stone-200 bg-white p-6">
             <h2 className="mb-1 text-base font-semibold text-stone-900">Remote Setup (HTTP)</h2>
             <p className="mb-4 text-sm text-stone-500">
-              Use this when the MCP server is deployed separately. The server must be
-              started with <code className="text-xs bg-stone-100 px-1 rounded">MCP_TRANSPORT=http</code>.
+              Use this when the MCP server is deployed separately. The server must be started with{" "}
+              <code className="text-xs bg-stone-100 px-1 rounded">MCP_TRANSPORT=http</code>.
             </p>
             <CopyBlock label="claude_desktop_config.json" code={remoteHttpConfig} />
           </div>
@@ -244,7 +251,11 @@ const SettingsPage = (): JSX.Element => {
               <div className="rounded-lg border border-stone-100 bg-stone-50 p-4 space-y-2">
                 <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcut</h3>
                 <p className="text-sm text-stone-500">
-                  Press <kbd className="rounded border border-stone-300 bg-white px-1.5 py-0.5 text-xs font-mono">⌘ Shift Space</kbd> anywhere to toggle the AI overlay.
+                  Press{" "}
+                  <kbd className="rounded border border-stone-300 bg-white px-1.5 py-0.5 text-xs font-mono">
+                    ⌘ Shift Space
+                  </kbd>{" "}
+                  anywhere to toggle the AI overlay.
                 </p>
               </div>
 
@@ -252,9 +263,18 @@ const SettingsPage = (): JSX.Element => {
                 <h3 className="text-sm font-medium text-stone-700">Setup</h3>
                 <ol className="text-sm text-stone-500 space-y-1 list-decimal list-inside">
                   <li>Download and install the app above</li>
-                  <li>Set <code className="text-xs">BASICOS_URL=http://localhost:3000</code> in your environment</li>
+                  <li>
+                    Set <code className="text-xs">BASICOS_URL=http://localhost:3000</code> in your
+                    environment
+                  </li>
                   <li>Launch the app — it runs in your system tray</li>
-                  <li>Press <kbd className="rounded border border-stone-300 bg-white px-1 py-0.5 text-xs font-mono">⌘⇧Space</kbd> to open the overlay</li>
+                  <li>
+                    Press{" "}
+                    <kbd className="rounded border border-stone-300 bg-white px-1 py-0.5 text-xs font-mono">
+                      ⌘⇧Space
+                    </kbd>{" "}
+                    to open the overlay
+                  </li>
                 </ol>
               </div>
             </div>

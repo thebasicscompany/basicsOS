@@ -8,14 +8,14 @@
   "exports": {
     ".": {
       "bun": "./src/index.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },

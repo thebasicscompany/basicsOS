@@ -1,11 +1,13 @@
 # Skill: Add a Field to a Module
 
 ## When to Use
+
 Adding a new column to an existing database table and surfacing it through the API.
 
 ## Steps
 
 ### 1. Add to Schema (`packages/db/src/schema/[module].ts`)
+
 ```ts
 myTable = pgTable("my_table", {
   ...,
@@ -17,12 +19,14 @@ myTable = pgTable("my_table", {
 ```
 
 ### 2. Run Migration
+
 ```bash
 bun db:generate   # creates SQL file in packages/db/migrations/
 bun db:migrate    # applies to database
 ```
 
 ### 3. Update Zod Validator (`packages/shared/src/validators/[module].ts`)
+
 ```ts
 export const insertMySchema = z.object({
   tenantId: z.string().uuid(),
@@ -35,12 +39,15 @@ export const insertMySchema = z.object({
 ```
 
 ### 4. Update tRPC Router (`packages/api/src/routers/[module].ts`)
+
 - Add `newField` to the `.input()` schema of `create` and `update` procedures
 - For `update`, the field should be `.optional()` (partial updates)
 - Return it in `.select()` projections if you're using column selects
 
 ### 5. Update Tests
+
 Add test cases to `packages/api/src/routers/[module].test.ts`:
+
 ```ts
 it("stores and returns newField", async () => {
   const row = makeMyModel({ newField: "test-value" });
@@ -51,6 +58,7 @@ it("stores and returns newField", async () => {
 ```
 
 ## Checklist
+
 - [ ] Schema column added
 - [ ] Migration generated and applied
 - [ ] Zod validator updated (insert + update schemas)

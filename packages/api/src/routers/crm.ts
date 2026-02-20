@@ -18,7 +18,8 @@ const contactsSubRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
       const { search, limit = 50 } = input;
 
@@ -44,7 +45,8 @@ const contactsSubRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
       const [contact] = await ctx.db
         .select()
@@ -147,7 +149,8 @@ const companiesSubRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
       const [company] = await ctx.db
         .select()
@@ -159,12 +162,7 @@ const companiesSubRouter = router({
       const linkedContacts = await ctx.db
         .select()
         .from(contacts)
-        .where(
-          and(
-            eq(contacts.companyId, input.id),
-            eq(contacts.tenantId, ctx.tenantId),
-          ),
-        );
+        .where(and(eq(contacts.companyId, input.id), eq(contacts.tenantId, ctx.tenantId)));
 
       return { ...company, contacts: linkedContacts };
     }),
@@ -238,10 +236,7 @@ const dealsSubRouter = router({
   listByStage: protectedProcedure.query(async ({ ctx }) => {
     if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
-    const rows = await ctx.db
-      .select()
-      .from(deals)
-      .where(eq(deals.tenantId, ctx.tenantId));
+    const rows = await ctx.db.select().from(deals).where(eq(deals.tenantId, ctx.tenantId));
 
     const grouped: Record<string, typeof rows> = {};
     for (const deal of rows) {
@@ -256,7 +251,8 @@ const dealsSubRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
       const [deal] = await ctx.db
         .select()
@@ -398,12 +394,10 @@ const activitiesSubRouter = router({
   list: protectedProcedure
     .input(z.object({ dealId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+      if (!ctx.tenantId)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
-      return ctx.db
-        .select()
-        .from(dealActivities)
-        .where(eq(dealActivities.dealId, input.dealId));
+      return ctx.db.select().from(dealActivities).where(eq(dealActivities.dealId, input.dealId));
     }),
 
   create: memberProcedure

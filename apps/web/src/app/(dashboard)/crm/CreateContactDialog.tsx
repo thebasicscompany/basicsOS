@@ -21,7 +21,10 @@ interface CreateContactDialogProps {
   onCreated?: () => void;
 }
 
-export const CreateContactDialog = ({ children, onCreated }: CreateContactDialogProps): JSX.Element => {
+export const CreateContactDialog = ({
+  children,
+  onCreated,
+}: CreateContactDialogProps): JSX.Element => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,11 +34,17 @@ export const CreateContactDialog = ({ children, onCreated }: CreateContactDialog
     onSuccess: () => {
       addToast({ title: "Contact created", variant: "success" });
       setOpen(false);
-      setName(""); setEmail(""); setPhone("");
+      setName("");
+      setEmail("");
+      setPhone("");
       onCreated?.();
     },
     onError: (err) => {
-      addToast({ title: "Failed to create contact", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to create contact",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -89,7 +98,9 @@ export const CreateContactDialog = ({ children, onCreated }: CreateContactDialog
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createContact.isPending}>
               {createContact.isPending ? "Creating…" : "Create Contact"}
             </Button>

@@ -8,18 +8,12 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground",
-        secondary:
-          "border-transparent bg-stone-100 text-stone-700",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground",
-        outline:
-          "border-stone-300 text-stone-700",
-        success:
-          "border-transparent bg-success text-success-foreground",
-        warning:
-          "border-transparent bg-warning text-warning-foreground",
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-transparent bg-stone-100 text-stone-700",
+        destructive: "border-transparent bg-destructive text-destructive-foreground",
+        outline: "border-stone-300 text-stone-700",
+        success: "border-transparent bg-success text-success-foreground",
+        warning: "border-transparent bg-warning text-warning-foreground",
       },
     },
     defaultVariants: {
@@ -28,9 +22,7 @@ const badgeVariants = cva(
   },
 );
 
-interface BadgeProps
-  extends HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+interface BadgeProps extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 export const Badge = ({ className, variant, ...props }: BadgeProps): JSX.Element => (
   <div className={cn(badgeVariants({ variant }), className)} {...props} />

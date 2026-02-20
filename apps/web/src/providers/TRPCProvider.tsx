@@ -22,7 +22,10 @@ export const TRPCProvider = ({ children }: TRPCProviderProps): JSX.Element => {
         httpBatchLink({
           url: `${process.env.NEXT_PUBLIC_API_URL ?? ""}/trpc`,
           fetch: (url, opts) =>
-            fetch(url as string, Object.assign({}, opts, { credentials: "include" }) as RequestInit),
+            fetch(
+              url as string,
+              Object.assign({}, opts, { credentials: "include" }) as RequestInit,
+            ),
         }),
       ],
     }),

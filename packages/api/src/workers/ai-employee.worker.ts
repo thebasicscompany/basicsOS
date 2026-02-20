@@ -27,9 +27,7 @@ const runJob = async (jobId: string, tenantId: string): Promise<void> => {
     const response = await chatCompletion(
       {
         model: "claude-sonnet-4-6",
-        messages: [
-          { role: "user", content: job.instructions },
-        ],
+        messages: [{ role: "user", content: job.instructions }],
       },
       { tenantId, featureName: "ai_employee" },
     );

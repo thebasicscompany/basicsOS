@@ -1,6 +1,7 @@
 ---
 paths: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
 ---
+
 # Code Style Rules
 
 - Use named exports exclusively — no default exports

@@ -1,9 +1,20 @@
-import { pgTable, uuid, text, timestamp, boolean, integer, jsonb, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  jsonb,
+  unique,
+} from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants.js";
 
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
   payload: jsonb("payload").notNull().default({}),
   userId: uuid("user_id").references(() => users.id),
@@ -12,8 +23,12 @@ export const events = pgTable("events", {
 
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(),
   title: text("title").notNull(),
   body: text("body"),
@@ -24,20 +39,28 @@ export const notifications = pgTable("notifications", {
 
 export const files = pgTable("files", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   key: text("key").notNull().unique(),
   filename: text("filename").notNull(),
   mimeType: text("mime_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
-  uploadedBy: uuid("uploaded_by").notNull().references(() => users.id),
+  uploadedBy: uuid("uploaded_by")
+    .notNull()
+    .references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Expo push tokens registered by mobile clients.
 export const pushTokens = pgTable("push_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(), // Expo push token: ExponentPushToken[...]
   platform: text("platform").notNull().default("unknown"), // ios | android | unknown
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -46,18 +69,26 @@ export const pushTokens = pgTable("push_tokens", {
 
 // Per-tenant module enable/disable state. Rows only exist for overrides.
 // Missing row = use the module's activeByDefault value.
-export const moduleConfig = pgTable("module_config", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  moduleName: text("module_name").notNull(),
-  enabled: boolean("enabled").notNull(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => [unique().on(t.tenantId, t.moduleName)]);
+export const moduleConfig = pgTable(
+  "module_config",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    moduleName: text("module_name").notNull(),
+    enabled: boolean("enabled").notNull(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.tenantId, t.moduleName)],
+);
 
 // LLM call telemetry — one row per API call for usage metering.
 export const llmUsageLogs = pgTable("llm_usage_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: uuid("user_id").references(() => users.id),
   model: text("model").notNull(),
   promptTokens: integer("prompt_tokens").notNull().default(0),
@@ -69,7 +100,9 @@ export const llmUsageLogs = pgTable("llm_usage_logs", {
 
 export const auditLog = pgTable("audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   userId: uuid("user_id").references(() => users.id),
   action: text("action").notNull(),
   resourceType: text("resource_type").notNull(),
@@ -81,7 +114,9 @@ export const auditLog = pgTable("audit_log", {
 // Stripe subscription state per tenant.
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   stripeCustomerId: text("stripe_customer_id").notNull().unique(),
   stripeSubscriptionId: text("stripe_subscription_id").unique(),
   stripePriceId: text("stripe_price_id"),
@@ -97,7 +132,9 @@ export const subscriptions = pgTable("subscriptions", {
 // The actual secret is only returned once at creation; only the hash is stored.
 export const virtualKeys = pgTable("virtual_keys", {
   id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   keyHash: text("key_hash").notNull().unique(),
   keyPrefix: text("key_prefix").notNull(), // first 8 chars for display: "bos_live..."

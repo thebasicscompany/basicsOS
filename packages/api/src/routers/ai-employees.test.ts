@@ -38,8 +38,8 @@ import { aiEmployeesRouter } from "./ai-employees.js";
 // Test constants
 // ---------------------------------------------------------------------------
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID   = "00000000-0000-0000-0000-000000000002";
-const JOB_ID    = "00000000-0000-0000-0000-000000000003";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
+const JOB_ID = "00000000-0000-0000-0000-000000000003";
 const OUTPUT_ID = "00000000-0000-0000-0000-000000000004";
 
 // ---------------------------------------------------------------------------
@@ -61,13 +61,15 @@ const makeChain = (rows: unknown[]) => {
 // ---------------------------------------------------------------------------
 // DB mock builder
 // ---------------------------------------------------------------------------
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
   const insertRows = opts.insertRows ?? [];
   const updateRows = opts.updateRows ?? [];
   const deleteRows = opts.deleteRows ?? [];
@@ -78,9 +80,7 @@ const makeMockDb = (opts: {
 
   return {
     select: vi.fn().mockImplementation(() => {
-      const rows = selectSequence
-        ? (selectSequence[selectCallCount++] ?? [])
-        : defaultSelectRows;
+      const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
     }),
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
@@ -309,7 +309,11 @@ describe("aiEmployees.approveOutput", () => {
   it("approves an output and clears requiresApproval", async () => {
     const output = makeOutput({ requiresApproval: true });
     const job = makeJob();
-    const approved = makeOutput({ requiresApproval: false, approvedAt: new Date(), approvedBy: USER_ID });
+    const approved = makeOutput({
+      requiresApproval: false,
+      approvedAt: new Date(),
+      approvedBy: USER_ID,
+    });
     const db = makeMockDb({ selectSequence: [[output], [job]], updateRows: [approved] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
     const result = await caller(ctx).approveOutput({ outputId: OUTPUT_ID });

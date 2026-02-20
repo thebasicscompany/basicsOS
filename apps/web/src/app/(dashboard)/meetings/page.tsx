@@ -32,7 +32,11 @@ const CreateMeetingDialog = ({ onCreated }: { onCreated?: (id: string) => void }
       onCreated?.(meeting.id);
     },
     onError: (err) => {
-      addToast({ title: "Failed to create meeting", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to create meeting",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -45,7 +49,9 @@ const CreateMeetingDialog = ({ onCreated }: { onCreated?: (id: string) => void }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button><Plus size={14} className="mr-1" /> New Meeting</Button>
+        <Button>
+          <Plus size={14} className="mr-1" /> New Meeting
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -64,7 +70,9 @@ const CreateMeetingDialog = ({ onCreated }: { onCreated?: (id: string) => void }
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createMeeting.isPending}>
               {createMeeting.isPending ? "Creating..." : "Create Meeting"}
             </Button>

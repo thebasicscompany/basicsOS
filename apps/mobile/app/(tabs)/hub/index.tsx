@@ -66,8 +66,7 @@ const HubScreen = (): JSX.Element => {
                 style={[
                   styles.categoryBadge,
                   {
-                    backgroundColor:
-                      CATEGORY_COLORS[item.category] ?? colors.textSecondary,
+                    backgroundColor: CATEGORY_COLORS[item.category] ?? colors.textSecondary,
                   },
                 ]}
               >
@@ -122,7 +121,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
 });
 
 export default HubScreen;

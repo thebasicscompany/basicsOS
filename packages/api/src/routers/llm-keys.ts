@@ -41,10 +41,12 @@ export const llmKeysRouter = router({
    * Subsequent reads only return the prefix for display.
    */
   create: adminProcedure
-    .input(z.object({
-      name: z.string().min(1).max(128),
-      monthlyLimitTokens: z.number().int().positive().optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().min(1).max(128),
+        monthlyLimitTokens: z.number().int().positive().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const { key, keyHash, keyPrefix } = generateKey();
 
@@ -68,18 +70,17 @@ export const llmKeysRouter = router({
 
   /** Activate or deactivate a key. */
   setActive: adminProcedure
-    .input(z.object({
-      id: z.string().uuid(),
-      isActive: z.boolean(),
-    }))
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        isActive: z.boolean(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const [updated] = await ctx.db
         .update(virtualKeys)
         .set({ isActive: input.isActive })
-        .where(and(
-          eq(virtualKeys.id, input.id),
-          eq(virtualKeys.tenantId, ctx.tenantId),
-        ))
+        .where(and(eq(virtualKeys.id, input.id), eq(virtualKeys.tenantId, ctx.tenantId)))
         .returning();
 
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
@@ -92,10 +93,7 @@ export const llmKeysRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [deleted] = await ctx.db
         .delete(virtualKeys)
-        .where(and(
-          eq(virtualKeys.id, input.id),
-          eq(virtualKeys.tenantId, ctx.tenantId),
-        ))
+        .where(and(eq(virtualKeys.id, input.id), eq(virtualKeys.tenantId, ctx.tenantId)))
         .returning();
 
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
@@ -121,8 +119,7 @@ export const validateVirtualKey = async (rawKey: string): Promise<string | null>
   if (!row || !row.isActive) return null;
 
   // Update lastUsedAt fire-and-forget
-  db
-    .update(virtualKeys)
+  db.update(virtualKeys)
     .set({ lastUsedAt: new Date() })
     .where(eq(virtualKeys.id, row.id))
     .catch(() => undefined);

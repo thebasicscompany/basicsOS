@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Loader2, CheckSquare, Users, Video, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  CheckSquare,
+  Users,
+  Video,
+  BookOpen,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
 import { trpcCall } from "../api";
 import { sendIPC } from "../lib/ipc";
 
@@ -70,7 +79,9 @@ export const AskTab = (): JSX.Element => {
       )}
 
       <div className="px-4 pb-2">
-        <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">Quick Actions</div>
+        <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">
+          Quick Actions
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {quickActions.map((action) => (
             <button

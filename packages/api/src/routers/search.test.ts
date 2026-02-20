@@ -43,9 +43,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe("search.semantic", () => {
   it("returns results from semanticSearch", async () => {
-    const results = [
-      { sourceType: "document", sourceId: "d1", chunkText: "hello", score: 0.9 },
-    ];
+    const results = [{ sourceType: "document", sourceId: "d1", chunkText: "hello", score: 0.9 }];
     mockSemanticSearch.mockResolvedValue(results);
     const ctx = buildCtx();
 
@@ -76,8 +74,8 @@ describe("search.semantic", () => {
   it("throws UNAUTHORIZED when tenantId is null", async () => {
     const ctx = buildCtx({ tenantId: null });
 
-    await expect(
-      caller(ctx).semantic({ query: "test" }),
-    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller(ctx).semantic({ query: "test" })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 });

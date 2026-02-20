@@ -29,11 +29,13 @@ export const registerSkillsResource = (server: McpServer): void => {
         // Skills directory not found — return empty
       }
       return {
-        contents: [{
-          uri: "basicoseng://config/skills",
-          mimeType: "application/json",
-          text: JSON.stringify(skills, null, 2),
-        }],
+        contents: [
+          {
+            uri: "basicoseng://config/skills",
+            mimeType: "application/json",
+            text: JSON.stringify(skills, null, 2),
+          },
+        ],
       };
     },
   );

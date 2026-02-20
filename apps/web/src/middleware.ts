@@ -20,8 +20,7 @@ export const middleware = (request: NextRequest): NextResponse => {
   }
 
   const hasSession =
-    request.cookies.has("better-auth.session_token") ||
-    request.cookies.has("__session");
+    request.cookies.has("better-auth.session_token") || request.cookies.has("__session");
 
   if (!hasSession) {
     const loginUrl = new URL("/login", request.url);
@@ -33,7 +32,5 @@ export const middleware = (request: NextRequest): NextResponse => {
 };
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico).*)"],
 };

@@ -1,11 +1,13 @@
 # Skill: Add a tRPC Endpoint
 
 ## When to Use
+
 Adding a new query or mutation to an existing module router.
 
 ## Procedure Templates
 
 ### Query (read data)
+
 ```ts
 myProcedure: protectedProcedure
   .input(z.object({
@@ -24,6 +26,7 @@ myProcedure: protectedProcedure
 ```
 
 ### Mutation (write data)
+
 ```ts
 myMutation: memberProcedure
   .input(z.object({
@@ -49,20 +52,20 @@ myMutation: memberProcedure
 
 ## Procedure Choice
 
-| Procedure | Use when | ctx.tenantId |
-|-----------|----------|-------------|
-| `publicProcedure` | No auth required (health check, branding) | may be null |
-| `protectedProcedure` | Any logged-in user; check tenantId manually | may be null |
-| `memberProcedure` | Writing data; member or admin | guaranteed non-null string |
-| `adminProcedure` | Admin-only actions | guaranteed non-null string |
+| Procedure            | Use when                                    | ctx.tenantId               |
+| -------------------- | ------------------------------------------- | -------------------------- |
+| `publicProcedure`    | No auth required (health check, branding)   | may be null                |
+| `protectedProcedure` | Any logged-in user; check tenantId manually | may be null                |
+| `memberProcedure`    | Writing data; member or admin               | guaranteed non-null string |
+| `adminProcedure`     | Admin-only actions                          | guaranteed non-null string |
 
 ## Error Codes
 
 ```ts
-throw new TRPCError({ code: "UNAUTHORIZED" });  // not logged in / no tenant
-throw new TRPCError({ code: "FORBIDDEN" });      // wrong role
-throw new TRPCError({ code: "NOT_FOUND" });      // record doesn't exist
-throw new TRPCError({ code: "CONFLICT" });       // duplicate / already exists
+throw new TRPCError({ code: "UNAUTHORIZED" }); // not logged in / no tenant
+throw new TRPCError({ code: "FORBIDDEN" }); // wrong role
+throw new TRPCError({ code: "NOT_FOUND" }); // record doesn't exist
+throw new TRPCError({ code: "CONFLICT" }); // duplicate / already exists
 throw new TRPCError({ code: "BAD_REQUEST", message: "Specific reason" });
 throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" }); // DB insert returned nothing
 ```
@@ -82,13 +85,15 @@ describe("myModule.myProcedure", () => {
   it("throws NOT_FOUND for unknown id", async () => {
     const db = makeMockDb({ selectRows: [] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    await expect(myRouter.createCaller(ctx).myProcedure({ id: UNKNOWN_ID }))
-      .rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(myRouter.createCaller(ctx).myProcedure({ id: UNKNOWN_ID })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 ```
 
 ## Checklist
+
 - [ ] Procedure added to router with correct procedure type
 - [ ] Input validated with Zod
 - [ ] Tenant isolation enforced (tenantId in WHERE or via memberProcedure)

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const SECRET_PATTERNS = [
   /ANTHROPIC_API_KEY\s*=\s*sk-ant-/,
   /OPENAI_API_KEY\s*=\s*sk-/,
-  /BETTER_AUTH_SECRET\s*=\s*[a-zA-Z0-9]{20,}/,  // hardcoded non-placeholder
+  /BETTER_AUTH_SECRET\s*=\s*[a-zA-Z0-9]{20,}/, // hardcoded non-placeholder
   /DEEPGRAM_API_KEY\s*=\s*[a-zA-Z0-9]{20,}/,
 ];
 
@@ -21,7 +21,7 @@ const getAllTsFiles = async (dir: string): Promise<string[]> => {
     if (EXCLUDE_DIRS.includes(entry.name)) continue;
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await getAllTsFiles(fullPath));
+      files.push(...(await getAllTsFiles(fullPath)));
     } else if (entry.name.endsWith(".ts") && !EXCLUDE_FILES.includes(entry.name)) {
       files.push(fullPath);
     }

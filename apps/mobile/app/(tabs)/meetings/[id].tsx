@@ -82,17 +82,22 @@ const MeetingDetailScreen = (): JSX.Element => {
     );
   }
 
-  const summaryJson = meeting.summaries[0]?.summaryJson as {
-    decisions?: string[];
-    actionItems?: string[];
-    followUps?: string[];
-    note?: string;
-  } | null ?? null;
+  const summaryJson =
+    (meeting.summaries[0]?.summaryJson as {
+      decisions?: string[];
+      actionItems?: string[];
+      followUps?: string[];
+      note?: string;
+    } | null) ?? null;
 
   return (
     <Screen title={meeting.title}>
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <ChevronRight size={14} color={colors.brand} style={{ transform: [{ rotate: "180deg" }] }} />
+        <ChevronRight
+          size={14}
+          color={colors.brand}
+          style={{ transform: [{ rotate: "180deg" }] }}
+        />
         <Text style={styles.backText}>Meetings</Text>
       </TouchableOpacity>
 
@@ -127,10 +132,7 @@ const MeetingDetailScreen = (): JSX.Element => {
               resizeMode={ResizeMode.CONTAIN}
               useNativeControls
             />
-            <TouchableOpacity
-              style={styles.removeVideoBtn}
-              onPress={() => setVideoUri(null)}
-            >
+            <TouchableOpacity style={styles.removeVideoBtn} onPress={() => setVideoUri(null)}>
               <Text style={styles.removeVideoText}>Remove</Text>
             </TouchableOpacity>
           </View>
@@ -159,14 +161,14 @@ const MeetingDetailScreen = (): JSX.Element => {
       {summaryJson && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Summary</Text>
-          {summaryJson.note && (
-            <Text style={styles.noteText}>{summaryJson.note}</Text>
-          )}
+          {summaryJson.note && <Text style={styles.noteText}>{summaryJson.note}</Text>}
           {(summaryJson.decisions?.length ?? 0) > 0 && (
             <View style={styles.summaryBlock}>
               <Text style={styles.summaryLabel}>Decisions</Text>
               {summaryJson.decisions?.map((d, i) => (
-                <Text key={i} style={styles.summaryItem}>{"\u2022"} {d}</Text>
+                <Text key={i} style={styles.summaryItem}>
+                  {"\u2022"} {d}
+                </Text>
               ))}
             </View>
           )}
@@ -174,7 +176,9 @@ const MeetingDetailScreen = (): JSX.Element => {
             <View style={styles.summaryBlock}>
               <Text style={styles.summaryLabel}>Action Items</Text>
               {summaryJson.actionItems?.map((a, i) => (
-                <Text key={i} style={styles.summaryItem}>{"\u2022"} {a}</Text>
+                <Text key={i} style={styles.summaryItem}>
+                  {"\u2022"} {a}
+                </Text>
               ))}
             </View>
           )}
@@ -184,9 +188,7 @@ const MeetingDetailScreen = (): JSX.Element => {
       {/* Transcript */}
       {meeting.transcripts.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Transcript ({meeting.transcripts.length} lines)
-          </Text>
+          <Text style={styles.sectionTitle}>Transcript ({meeting.transcripts.length} lines)</Text>
           <FlatList
             data={meeting.transcripts}
             keyExtractor={(t) => t.id}
@@ -256,7 +258,11 @@ const styles = StyleSheet.create({
   },
   videoBtnPrimary: { backgroundColor: colors.brand },
   videoBtnPrimaryText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  videoBtnSecondary: { backgroundColor: colors.surfaceSubtle, borderWidth: 1, borderColor: colors.border },
+  videoBtnSecondary: {
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   videoBtnSecondaryText: { color: colors.textPrimary, fontSize: 13, fontWeight: "600" },
   videoWrapper: { gap: 8 },
   video: { width: "100%", height: 200, borderRadius: radius.sm, backgroundColor: "#000" },

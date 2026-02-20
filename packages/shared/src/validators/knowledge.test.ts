@@ -31,9 +31,7 @@ describe("createKnowledgeDocumentSchema", () => {
   });
 
   it("rejects title over 512 characters", () => {
-    expect(
-      createKnowledgeDocumentSchema.safeParse({ title: "x".repeat(513) }).success,
-    ).toBe(false);
+    expect(createKnowledgeDocumentSchema.safeParse({ title: "x".repeat(513) }).success).toBe(false);
   });
 
   it("rejects invalid parentId", () => {
@@ -70,27 +68,23 @@ describe("updateKnowledgeDocumentSchema", () => {
   });
 
   it("rejects missing id", () => {
-    expect(
-      updateKnowledgeDocumentSchema.safeParse({ title: "No ID" }).success,
-    ).toBe(false);
+    expect(updateKnowledgeDocumentSchema.safeParse({ title: "No ID" }).success).toBe(false);
   });
 
   it("rejects invalid id", () => {
-    expect(
-      updateKnowledgeDocumentSchema.safeParse({ id: "not-uuid" }).success,
-    ).toBe(false);
+    expect(updateKnowledgeDocumentSchema.safeParse({ id: "not-uuid" }).success).toBe(false);
   });
 
   it("rejects empty title when provided", () => {
-    expect(
-      updateKnowledgeDocumentSchema.safeParse({ id: VALID_UUID, title: "" }).success,
-    ).toBe(false);
+    expect(updateKnowledgeDocumentSchema.safeParse({ id: VALID_UUID, title: "" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects negative position", () => {
-    expect(
-      updateKnowledgeDocumentSchema.safeParse({ id: VALID_UUID, position: -1 }).success,
-    ).toBe(false);
+    expect(updateKnowledgeDocumentSchema.safeParse({ id: VALID_UUID, position: -1 }).success).toBe(
+      false,
+    );
   });
 });
 

@@ -5,10 +5,7 @@ const OVERLAP_TOKENS = 50;
 
 const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
-export const chunkText = (
-  text: string,
-  mode: "document" | "transcript" = "document",
-): Chunk[] => {
+export const chunkText = (text: string, mode: "document" | "transcript" = "document"): Chunk[] => {
   if (mode === "transcript") return chunkTranscript(text);
   return chunkDocument(text);
 };

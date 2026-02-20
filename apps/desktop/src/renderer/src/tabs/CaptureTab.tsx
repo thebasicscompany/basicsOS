@@ -40,14 +40,20 @@ export const CaptureTab = (): JSX.Element => {
     }
   };
 
-  const StatusIcon = status === "capturing" ? Loader2
-    : status === "analyzing" ? Sparkles
-    : status === "done" ? CheckCircle
-    : Camera;
+  const StatusIcon =
+    status === "capturing"
+      ? Loader2
+      : status === "analyzing"
+        ? Sparkles
+        : status === "done"
+          ? CheckCircle
+          : Camera;
 
   return (
     <div className="px-4 pb-4 space-y-3">
-      <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">Workflow Capture</div>
+      <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider">
+        Workflow Capture
+      </div>
       <p className="text-xs text-stone-400 leading-relaxed">
         Take a screenshot of your current workflow. Claude will describe what&apos;s happening and
         save it to your Knowledge Base.
@@ -69,7 +75,12 @@ export const CaptureTab = (): JSX.Element => {
         disabled={status === "capturing" || status === "analyzing"}
         className="w-full rounded-xl bg-primary text-white disabled:opacity-50 disabled:cursor-not-allowed py-3 text-sm font-semibold transition hover:opacity-90 shadow-sm flex items-center justify-center gap-2"
       >
-        <StatusIcon size={16} className={status === "capturing" ? "animate-spin" : status === "analyzing" ? "animate-pulse" : ""} />
+        <StatusIcon
+          size={16}
+          className={
+            status === "capturing" ? "animate-spin" : status === "analyzing" ? "animate-pulse" : ""
+          }
+        />
         {status === "idle" || status === "done" || status === "error"
           ? "Capture Screen Now"
           : status === "capturing"

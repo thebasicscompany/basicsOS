@@ -24,99 +24,109 @@ const AssistantPage = (): JSX.Element => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = useCallback(async (text: string): Promise<void> => {
-    if (!text.trim() || isStreaming) return;
+  const sendMessage = useCallback(
+    async (text: string): Promise<void> => {
+      if (!text.trim() || isStreaming) return;
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
-    const assistantId = crypto.randomUUID();
-    const assistantMsg: Message = { id: assistantId, role: "assistant", content: "", streaming: true };
+      const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
+      const assistantId = crypto.randomUUID();
+      const assistantMsg: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        streaming: true,
+      };
 
-    setMessages((prev) => [...prev, userMsg, assistantMsg]);
-    setInput("");
-    setIsStreaming(true);
+      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+      setInput("");
+      setIsStreaming(true);
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    const controller = new AbortController();
-    abortRef.current = controller;
+      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    try {
-      const res = await fetch(`${API_URL}/stream/assistant`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ message: text, history }),
-        signal: controller.signal,
-      });
+      try {
+        const res = await fetch(`${API_URL}/stream/assistant`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ message: text, history }),
+          signal: controller.signal,
+        });
 
-      if (!res.ok || !res.body) {
-        const err = await res.text();
+        if (!res.ok || !res.body) {
+          const err = await res.text();
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: `Error: ${err || res.statusText}`, streaming: false }
+                : m,
+            ),
+          );
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const part of parts) {
+            const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue;
+            const raw = dataLine.slice(6).trim();
+            if (raw === "[DONE]") break;
+
+            try {
+              const event = JSON.parse(raw) as { token?: string; error?: string };
+              if (event.token) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: m.content + event.token } : m,
+                  ),
+                );
+              }
+              if (event.error) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: m.content || `Error: ${event.error}`, streaming: false }
+                      : m,
+                  ),
+                );
+              }
+            } catch {
+              /* malformed event */
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if ((err as { name?: string }).name === "AbortError") return;
+        const message = err instanceof Error ? err.message : "Unknown error";
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? { ...m, content: `Error: ${err || res.statusText}`, streaming: false }
+              ? { ...m, content: `Connection error: ${message}`, streaming: false }
               : m,
           ),
         );
-        return;
+      } finally {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
+        );
+        setIsStreaming(false);
+        abortRef.current = null;
       }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-
-        for (const part of parts) {
-          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
-          if (!dataLine) continue;
-          const raw = dataLine.slice(6).trim();
-          if (raw === "[DONE]") break;
-
-          try {
-            const event = JSON.parse(raw) as { token?: string; error?: string };
-            if (event.token) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId ? { ...m, content: m.content + event.token } : m,
-                ),
-              );
-            }
-            if (event.error) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, content: m.content || `Error: ${event.error}`, streaming: false }
-                    : m,
-                ),
-              );
-            }
-          } catch { /* malformed event */ }
-        }
-      }
-    } catch (err: unknown) {
-      if ((err as { name?: string }).name === "AbortError") return;
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `Connection error: ${message}`, streaming: false }
-            : m,
-        ),
-      );
-    } finally {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
-      );
-      setIsStreaming(false);
-      abortRef.current = null;
-    }
-  }, [messages, isStreaming]);
+    },
+    [messages, isStreaming],
+  );
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
@@ -196,7 +206,10 @@ const AssistantPage = (): JSX.Element => {
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-end gap-3 border-t border-stone-200 p-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-end gap-3 border-t border-stone-200 p-4"
+        >
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

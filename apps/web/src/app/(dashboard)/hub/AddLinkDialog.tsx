@@ -32,7 +32,10 @@ export const AddLinkDialog = ({ children, onCreated }: AddLinkDialogProps): JSX.
     onSuccess: () => {
       addToast({ title: "Link added", variant: "success" });
       setOpen(false);
-      setTitle(""); setUrl(""); setCategory("custom"); setIcon("🔗");
+      setTitle("");
+      setUrl("");
+      setCategory("custom");
+      setIcon("🔗");
       onCreated?.();
     },
     onError: (err) => {
@@ -98,7 +101,9 @@ export const AddLinkDialog = ({ children, onCreated }: AddLinkDialogProps): JSX.
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={createLink.isPending}>
               {createLink.isPending ? "Adding…" : "Add Link"}
             </Button>

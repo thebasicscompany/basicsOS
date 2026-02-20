@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },

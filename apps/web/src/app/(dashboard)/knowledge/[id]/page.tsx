@@ -62,8 +62,7 @@ const DocumentDetailPage = (): JSX.Element => {
     ],
     editorProps: {
       attributes: {
-        class:
-          "prose prose-stone max-w-none min-h-[400px] focus:outline-none p-4",
+        class: "prose prose-stone max-w-none min-h-[400px] focus:outline-none p-4",
       },
     },
   });
@@ -77,8 +76,8 @@ const DocumentDetailPage = (): JSX.Element => {
         doc.contentJson as Parameters<typeof editor.commands.setContent>[0],
       );
     }
-  // Run once when doc id and editor are both available
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Run once when doc id and editor are both available
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.id, editor]);
 
   const save = useCallback((): void => {
@@ -172,18 +171,14 @@ const DocumentDetailPage = (): JSX.Element => {
             {
               label: "H1",
               title: "Heading 1",
-              action: () =>
-                editor?.chain().focus().toggleHeading({ level: 1 }).run(),
-              active: () =>
-                editor?.isActive("heading", { level: 1 }) ?? false,
+              action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
+              active: () => editor?.isActive("heading", { level: 1 }) ?? false,
             },
             {
               label: "H2",
               title: "Heading 2",
-              action: () =>
-                editor?.chain().focus().toggleHeading({ level: 2 }).run(),
-              active: () =>
-                editor?.isActive("heading", { level: 2 }) ?? false,
+              action: () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
+              active: () => editor?.isActive("heading", { level: 2 }) ?? false,
             },
             {
               label: "•",

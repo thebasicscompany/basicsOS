@@ -66,9 +66,7 @@ export const MeetingsTab = (): JSX.Element => {
 
   return (
     <div className="pb-4 space-y-2">
-      {liveMeeting && (
-        <LiveTranscriptPanel meetingId={liveMeeting.id} title={liveMeeting.title} />
-      )}
+      {liveMeeting && <LiveTranscriptPanel meetingId={liveMeeting.id} title={liveMeeting.title} />}
 
       <div className="px-4 space-y-2">
         <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">
@@ -84,7 +82,9 @@ export const MeetingsTab = (): JSX.Element => {
               onClick={() => sendIPC("navigate-main", `/meetings/${m.id}`)}
               className="w-full flex items-start gap-3 rounded-xl bg-white border border-stone-200 hover:border-stone-300 hover:shadow-sm px-3 py-3 transition-all text-left"
             >
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 mt-0.5 ${isLive ? "bg-red-50 text-red-500" : "bg-stone-100 text-stone-400"}`}>
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 mt-0.5 ${isLive ? "bg-red-50 text-red-500" : "bg-stone-100 text-stone-400"}`}
+              >
                 {isLive ? <Calendar size={15} /> : <Calendar size={15} />}
               </div>
               <div className="min-w-0 flex-1">

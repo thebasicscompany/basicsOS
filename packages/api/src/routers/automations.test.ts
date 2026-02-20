@@ -33,9 +33,9 @@ import { automationsRouter } from "./automations.js";
 // ---------------------------------------------------------------------------
 // Test constants
 // ---------------------------------------------------------------------------
-const TENANT_ID       = "00000000-0000-0000-0000-000000000001";
-const USER_ID         = "00000000-0000-0000-0000-000000000002";
-const AUTOMATION_ID   = "00000000-0000-0000-0000-000000000003";
+const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
+const AUTOMATION_ID = "00000000-0000-0000-0000-000000000003";
 
 // ---------------------------------------------------------------------------
 // Thenable chain factory — mirrors the pattern used in tasks.test.ts
@@ -56,12 +56,14 @@ const makeChain = (rows: unknown[]) => {
 // ---------------------------------------------------------------------------
 // DB mock builder
 // ---------------------------------------------------------------------------
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-} = {}) => ({
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+  } = {},
+) => ({
   select: vi.fn().mockImplementation(() => makeChain(opts.selectRows ?? [])),
   insert: vi.fn().mockReturnValue(makeChain(opts.insertRows ?? [])),
   update: vi.fn().mockReturnValue(makeChain(opts.updateRows ?? [])),
@@ -169,9 +171,9 @@ describe("automations.get", () => {
   it("throws NOT_FOUND for an unknown id", async () => {
     const db = makeMockDb({ selectRows: [] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    await expect(
-      caller(ctx).get({ id: AUTOMATION_ID }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller(ctx).get({ id: AUTOMATION_ID })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("returns automation when found", async () => {
@@ -220,9 +222,9 @@ describe("automations.delete", () => {
   it("throws NOT_FOUND when automation does not exist", async () => {
     const db = makeMockDb({ deleteRows: [] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    await expect(
-      caller(ctx).delete({ id: AUTOMATION_ID }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller(ctx).delete({ id: AUTOMATION_ID })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 
@@ -241,8 +243,8 @@ describe("automations.update", () => {
   it("throws NOT_FOUND when automation does not exist", async () => {
     const db = makeMockDb({ updateRows: [] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
-    await expect(
-      caller(ctx).update({ id: AUTOMATION_ID, enabled: false }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller(ctx).update({ id: AUTOMATION_ID, enabled: false })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });

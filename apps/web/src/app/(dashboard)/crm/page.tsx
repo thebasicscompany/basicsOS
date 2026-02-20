@@ -22,7 +22,13 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 const nameToColor = (name: string): string => {
-  const colors = ["bg-blue-100 text-blue-700", "bg-emerald-100 text-emerald-700", "bg-violet-100 text-violet-700", "bg-amber-100 text-amber-700", "bg-rose-100 text-rose-700"];
+  const colors = [
+    "bg-blue-100 text-blue-700",
+    "bg-emerald-100 text-emerald-700",
+    "bg-violet-100 text-violet-700",
+    "bg-amber-100 text-amber-700",
+    "bg-rose-100 text-rose-700",
+  ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length] ?? colors[0] ?? "";
@@ -50,11 +56,15 @@ const CRMPage = (): JSX.Element => {
         <div className="flex items-center gap-2">
           {view === "contacts" ? (
             <CreateContactDialog onCreated={() => void refetchContacts()}>
-              <Button><Plus size={14} className="mr-1" /> New Contact</Button>
+              <Button>
+                <Plus size={14} className="mr-1" /> New Contact
+              </Button>
             </CreateContactDialog>
           ) : (
             <CreateDealDialog onCreated={() => void refetchDeals()}>
-              <Button><Plus size={14} className="mr-1" /> New Deal</Button>
+              <Button>
+                <Plus size={14} className="mr-1" /> New Deal
+              </Button>
             </CreateDealDialog>
           )}
         </div>
@@ -93,9 +103,13 @@ const CRMPage = (): JSX.Element => {
               return (
                 <div key={stage} className="w-56 flex-shrink-0">
                   <div className="mb-2 flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`} />
+                    <span
+                      className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`}
+                    />
                     <span className="text-xs font-semibold uppercase text-stone-500">{stage}</span>
-                    <span className="ml-auto rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">{stageDeals.length}</span>
+                    <span className="ml-auto rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">
+                      {stageDeals.length}
+                    </span>
                   </div>
                   <div className="flex flex-col gap-2">
                     {stageDeals.length === 0 ? (
@@ -124,15 +138,17 @@ const CRMPage = (): JSX.Element => {
         </div>
       )}
 
-      {view === "contacts" && (
-        (contactsData ?? []).length === 0 ? (
+      {view === "contacts" &&
+        ((contactsData ?? []).length === 0 ? (
           <EmptyState
             Icon={Users}
             heading="No contacts yet"
             description="Add your first contact to get started."
             action={
               <CreateContactDialog onCreated={() => void refetchContacts()}>
-                <Button><Plus size={14} className="mr-1" /> Add Contact</Button>
+                <Button>
+                  <Plus size={14} className="mr-1" /> Add Contact
+                </Button>
               </CreateContactDialog>
             }
           />
@@ -148,10 +164,16 @@ const CRMPage = (): JSX.Element => {
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {(contactsData ?? []).map((c) => (
-                  <tr key={c.id} className="hover:bg-stone-50 cursor-pointer transition-colors" onClick={() => router.push(`/crm/${c.id}`)}>
+                  <tr
+                    key={c.id}
+                    className="hover:bg-stone-50 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/crm/${c.id}`)}
+                  >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${nameToColor(c.name)}`}>
+                        <div
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${nameToColor(c.name)}`}
+                        >
                           {c.name[0]?.toUpperCase() ?? "?"}
                         </div>
                         <span className="font-medium text-stone-900">{c.name}</span>
@@ -164,8 +186,7 @@ const CRMPage = (): JSX.Element => {
               </tbody>
             </table>
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 };

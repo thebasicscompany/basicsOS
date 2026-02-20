@@ -1,6 +1,7 @@
 # Skill: Add a New MCP Tool
 
 ## When to Use
+
 Exposing a tRPC procedure as a tool that AI assistants (Claude, ChatGPT, Copilot) can call.
 
 ## Tool File Template
@@ -13,7 +14,7 @@ import { createSystemCaller } from "../caller.js";
 
 export const registerMyTool = (server: McpServer): void => {
   server.tool(
-    "my_tool_name",                    // snake_case, used by AI to call it
+    "my_tool_name", // snake_case, used by AI to call it
     "Clear description of what this tool does and when to use it",
     {
       // Input schema — what the AI must provide
@@ -23,16 +24,19 @@ export const registerMyTool = (server: McpServer): void => {
     async ({ query, limit }) => {
       const tenantId = process.env["MCP_TENANT_ID"] ?? "";
       if (!tenantId) {
-        return { content: [{ type: "text" as const, text: "Error: MCP_TENANT_ID not configured" }] };
+        return {
+          content: [{ type: "text" as const, text: "Error: MCP_TENANT_ID not configured" }],
+        };
       }
 
       try {
         const caller = createSystemCaller(tenantId);
         const results = await caller.myModule.search({ query, limit: limit ?? 10 });
 
-        const text = results.length === 0
-          ? "No results found."
-          : results.map((r) => `- ${r.name} (ID: ${r.id})`).join("\n");
+        const text =
+          results.length === 0
+            ? "No results found."
+            : results.map((r) => `- ${r.name} (ID: ${r.id})`).join("\n");
 
         return { content: [{ type: "text" as const, text }] };
       } catch (err: unknown) {
@@ -47,13 +51,14 @@ export const registerMyTool = (server: McpServer): void => {
 ## Register in Server
 
 Edit `apps/mcp/company/src/server.ts`:
+
 ```ts
 import { registerMyTool } from "./tools/my-tool.js";
 
 export const createMCPServer = (): McpServer => {
   const server = new McpServer({ name: "Basics OS Company MCP Server", version: "1.0.0" });
   // ...existing tools...
-  registerMyTool(server);    // add this line
+  registerMyTool(server); // add this line
   return server;
 };
 ```
@@ -67,20 +72,24 @@ export const createMCPServer = (): McpServer => {
 ## Return Format
 
 Always return MCP-compatible content:
+
 ```ts
 // Text response
 return { content: [{ type: "text" as const, text: "Your response here" }] };
 
 // Multiple content blocks
-return { content: [
-  { type: "text" as const, text: "Summary:" },
-  { type: "text" as const, text: JSON.stringify(data, null, 2) },
-] };
+return {
+  content: [
+    { type: "text" as const, text: "Summary:" },
+    { type: "text" as const, text: JSON.stringify(data, null, 2) },
+  ],
+};
 ```
 
 ## RBAC Considerations
 
 The system caller uses `role: "admin"` by default. For viewer-safe tools:
+
 - Don't expose write operations via MCP unless the PRD explicitly allows it
 - Return read-only data from `protectedProcedure` routes only
 
@@ -95,6 +104,7 @@ MCP_TRANSPORT=http MCP_TENANT_ID=<id> bun --filter @basicsos/mcp-company dev
 ```
 
 ## Checklist
+
 - [ ] Tool file created in `apps/mcp/company/src/tools/`
 - [ ] Tool registered in `apps/mcp/company/src/server.ts`
 - [ ] Input schema has `.describe()` on each field

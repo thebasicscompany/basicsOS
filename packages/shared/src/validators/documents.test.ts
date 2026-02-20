@@ -43,27 +43,23 @@ describe("insertDocumentSchema", () => {
   });
 
   it("rejects title over 512 characters", () => {
-    expect(
-      insertDocumentSchema.safeParse({ ...validInput, title: "a".repeat(513) }).success,
-    ).toBe(false);
+    expect(insertDocumentSchema.safeParse({ ...validInput, title: "a".repeat(513) }).success).toBe(
+      false,
+    );
   });
 
   it("rejects invalid tenantId", () => {
-    expect(
-      insertDocumentSchema.safeParse({ ...validInput, tenantId: "not-a-uuid" }).success,
-    ).toBe(false);
+    expect(insertDocumentSchema.safeParse({ ...validInput, tenantId: "not-a-uuid" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects invalid parentId", () => {
-    expect(
-      insertDocumentSchema.safeParse({ ...validInput, parentId: "bad" }).success,
-    ).toBe(false);
+    expect(insertDocumentSchema.safeParse({ ...validInput, parentId: "bad" }).success).toBe(false);
   });
 
   it("rejects negative position", () => {
-    expect(
-      insertDocumentSchema.safeParse({ ...validInput, position: -1 }).success,
-    ).toBe(false);
+    expect(insertDocumentSchema.safeParse({ ...validInput, position: -1 }).success).toBe(false);
   });
 });
 

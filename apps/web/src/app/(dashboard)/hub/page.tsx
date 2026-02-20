@@ -3,7 +3,17 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast } from "@basicsos/ui";
+import {
+  Button,
+  Badge,
+  Plus,
+  Link2,
+  MessageSquare,
+  HardDrive,
+  Github,
+  EmptyState,
+  addToast,
+} from "@basicsos/ui";
 import { AddLinkDialog } from "./AddLinkDialog";
 
 const SERVICE_ICONS: Record<string, React.ElementType> = {
@@ -17,8 +27,7 @@ const HubPage = (): JSX.Element => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: links, refetch: refetchLinks } = trpc.hub.listLinks.useQuery();
-  const { data: integrations, refetch: refetchIntegrations } =
-    trpc.hub.listIntegrations.useQuery();
+  const { data: integrations, refetch: refetchIntegrations } = trpc.hub.listIntegrations.useQuery();
 
   const getOAuthUrl = trpc.hub.getOAuthUrl.useMutation({
     onSuccess: ({ url }) => {
@@ -47,10 +56,14 @@ const HubPage = (): JSX.Element => {
       void refetchIntegrations();
       router.replace("/hub");
     } else if (error) {
-      addToast({ title: "OAuth failed", description: decodeURIComponent(error), variant: "destructive" });
+      addToast({
+        title: "OAuth failed",
+        description: decodeURIComponent(error),
+        variant: "destructive",
+      });
       router.replace("/hub");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const byCategory = (links ?? []).reduce<Record<string, typeof links>>((acc, link) => {
@@ -64,7 +77,9 @@ const HubPage = (): JSX.Element => {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-stone-900">Hub</h1>
         <AddLinkDialog onCreated={() => void refetchLinks()}>
-          <Button><Plus size={14} className="mr-1" /> Add Link</Button>
+          <Button>
+            <Plus size={14} className="mr-1" /> Add Link
+          </Button>
         </AddLinkDialog>
       </div>
 
@@ -75,7 +90,9 @@ const HubPage = (): JSX.Element => {
           description="Add your first link to organize your team's tools and resources."
           action={
             <AddLinkDialog onCreated={() => void refetchLinks()}>
-              <Button><Plus size={14} className="mr-1" /> Add Link</Button>
+              <Button>
+                <Plus size={14} className="mr-1" /> Add Link
+              </Button>
             </AddLinkDialog>
           }
         />
@@ -115,7 +132,9 @@ const HubPage = (): JSX.Element => {
               <div
                 key={svc.service}
                 className={`flex items-center justify-between rounded-xl border bg-white p-4 transition-all ${
-                  svc.connected ? "border-l-4 border-l-emerald-500 border-stone-200" : "border-stone-200"
+                  svc.connected
+                    ? "border-l-4 border-l-emerald-500 border-stone-200"
+                    : "border-stone-200"
                 }`}
               >
                 <div className="flex items-center gap-3">

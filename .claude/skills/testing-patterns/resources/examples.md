@@ -32,13 +32,15 @@ const makeChain = (rows: unknown[]) => {
 Supports multiple sequential `select()` calls via `selectSequence` (e.g., when a procedure does a lookup then a list query).
 
 ```ts
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
   const insertRows = opts.insertRows ?? [];
   const updateRows = opts.updateRows ?? [];
   const deleteRows = opts.deleteRows ?? [];
@@ -65,7 +67,7 @@ const makeMockDb = (opts: {
 
 ```ts
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID   = "00000000-0000-0000-0000-000000000002";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
 
 const buildCtx = (dbOverrides = {}): TRPCContext => ({
   userId: USER_ID,
@@ -85,9 +87,13 @@ import { EventBus } from "../events/bus.js";
 // Mock the DB module BEFORE importing the router
 vi.mock("@basicsos/db", () => {
   const tasks = {
-    id: "id", tenantId: "tenantId", status: "status",
-    priority: "priority", assigneeId: "assigneeId",
-    createdAt: "createdAt", updatedAt: "updatedAt",
+    id: "id",
+    tenantId: "tenantId",
+    status: "status",
+    priority: "priority",
+    assigneeId: "assigneeId",
+    createdAt: "createdAt",
+    updatedAt: "updatedAt",
   };
   return { tasks, db: {} };
 });
@@ -95,13 +101,15 @@ vi.mock("@basicsos/db", () => {
 import { tasksRouter } from "./tasks.js";
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID   = "00000000-0000-0000-0000-000000000002";
-const TASK_ID   = "00000000-0000-0000-0000-000000000003";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
+const TASK_ID = "00000000-0000-0000-0000-000000000003";
 
 const caller = (ctx: TRPCContext) => tasksRouter.createCaller(ctx);
 
 describe("tasks router", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("list returns tasks for tenant", async () => {
     const mockTask = { id: TASK_ID, tenantId: TENANT_ID, title: "Test" };
@@ -135,7 +143,7 @@ When a procedure makes multiple `db.select()` calls (e.g., check existence then 
 ```ts
 it("update fetches existing then updates", async () => {
   const existing = { id: TASK_ID, tenantId: TENANT_ID, title: "Old" };
-  const updated  = { id: TASK_ID, tenantId: TENANT_ID, title: "New" };
+  const updated = { id: TASK_ID, tenantId: TENANT_ID, title: "New" };
 
   // First select() returns existing row, second returns updated row
   const ctx = buildCtx({

@@ -33,12 +33,21 @@ export const InviteMemberDialog = ({ children }: InviteMemberDialogProps): JSX.E
 
   const sendInvite = trpc.auth.sendInvite.useMutation({
     onSuccess: () => {
-      addToast({ title: "Invite sent", description: `Invitation sent to ${email}`, variant: "success" });
+      addToast({
+        title: "Invite sent",
+        description: `Invitation sent to ${email}`,
+        variant: "success",
+      });
       setOpen(false);
-      setEmail(""); setRole("member");
+      setEmail("");
+      setRole("member");
     },
     onError: (err) => {
-      addToast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
+      addToast({
+        title: "Failed to send invite",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -71,7 +80,9 @@ export const InviteMemberDialog = ({ children }: InviteMemberDialogProps): JSX.E
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="invite-role">Role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger id="invite-role"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="invite-role">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
@@ -80,7 +91,9 @@ export const InviteMemberDialog = ({ children }: InviteMemberDialogProps): JSX.E
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={sendInvite.isPending}>
               {sendInvite.isPending ? "Sending…" : "Send Invite"}
             </Button>

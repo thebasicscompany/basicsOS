@@ -77,7 +77,5 @@ export const semanticSearch = async (
   void documentEmbeddings;
   void meetingEmbeddings;
 
-  return [...docResults, ...meetingResults]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  return [...docResults, ...meetingResults].sort((a, b) => b.score - a.score).slice(0, limit);
 };

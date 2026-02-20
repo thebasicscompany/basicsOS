@@ -26,10 +26,12 @@ export const registerWriteTasksTools = (server: McpServer): void => {
         const caller = createSystemCaller(tenantId, userId);
         const task = await caller.tasks.create({ title, description, priority });
         return {
-          content: [{
-            type: "text" as const,
-            text: `Created task "${task.title}" (ID: ${task.id}, priority: ${task.priority})`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Created task "${task.title}" (ID: ${task.id}, priority: ${task.priority})`,
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -57,10 +59,12 @@ export const registerWriteTasksTools = (server: McpServer): void => {
         const caller = createSystemCaller(tenantId, userId);
         const task = await caller.tasks.update({ id, status });
         return {
-          content: [{
-            type: "text" as const,
-            text: `Updated task "${task.title}" → ${task.status}`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Updated task "${task.title}" → ${task.status}`,
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

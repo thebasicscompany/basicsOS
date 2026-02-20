@@ -10,8 +10,7 @@ const plopConfig = (plop: NodePlopAPI): void => {
         name: "name",
         message: "Module name (lowercase, hyphenated, e.g. inventory):",
         validate: (input: string) =>
-          /^[a-z][a-z0-9-]*$/.test(input) ||
-          "Use lowercase letters, numbers, and hyphens only",
+          /^[a-z][a-z0-9-]*$/.test(input) || "Use lowercase letters, numbers, and hyphens only",
       },
       {
         type: "input",

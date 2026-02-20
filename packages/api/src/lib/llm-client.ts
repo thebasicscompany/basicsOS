@@ -96,8 +96,7 @@ const persistUsage = (
   if (!response.usage || !telemetry.tenantId) return;
 
   // Fire-and-forget — never block the caller on DB write
-  db
-    .insert(llmUsageLogs)
+  db.insert(llmUsageLogs)
     .values({
       tenantId: telemetry.tenantId,
       userId: telemetry.userId ?? null,
@@ -179,7 +178,11 @@ export async function* chatCompletionStream(
 
       try {
         const event = JSON.parse(raw) as StreamEvent;
-        if (event.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
+        if (
+          event.type === "content_block_delta" &&
+          event.delta?.type === "text_delta" &&
+          event.delta.text
+        ) {
           yield event.delta.text;
         }
         if (event.type === "message_start" && event.message?.usage) {
@@ -196,8 +199,7 @@ export async function* chatCompletionStream(
 
   // Persist usage after stream completes
   if (telemetry.tenantId && (totalInputTokens > 0 || totalOutputTokens > 0)) {
-    db
-      .insert(llmUsageLogs)
+    db.insert(llmUsageLogs)
       .values({
         tenantId: telemetry.tenantId,
         userId: telemetry.userId ?? null,
@@ -254,7 +256,7 @@ export const analyzeImage = async (
 
   if (!response.ok) throw new Error(`Vision API error: ${response.status}`);
 
-  const raw = await response.json() as AnthropicResponse;
+  const raw = (await response.json()) as AnthropicResponse;
   const content = (raw.content ?? [])
     .filter((c) => c.type === "text")
     .map((c) => c.text)
@@ -264,15 +266,17 @@ export const analyzeImage = async (
   if (telemetry.tenantId && raw.usage) {
     const inputTokens = raw.usage.input_tokens ?? 0;
     const outputTokens = raw.usage.output_tokens ?? 0;
-    db.insert(llmUsageLogs).values({
-      tenantId: telemetry.tenantId,
-      userId: telemetry.userId ?? null,
-      model: DEFAULT_MODEL,
-      promptTokens: inputTokens,
-      completionTokens: outputTokens,
-      totalTokens: inputTokens + outputTokens,
-      featureName: telemetry.featureName ?? "workflow_capture",
-    }).catch(() => undefined);
+    db.insert(llmUsageLogs)
+      .values({
+        tenantId: telemetry.tenantId,
+        userId: telemetry.userId ?? null,
+        model: DEFAULT_MODEL,
+        promptTokens: inputTokens,
+        completionTokens: outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        featureName: telemetry.featureName ?? "workflow_capture",
+      })
+      .catch(() => undefined);
   }
 
   return content;

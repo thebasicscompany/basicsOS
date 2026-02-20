@@ -23,10 +23,12 @@ export const registerWriteCrmTools = (server: McpServer): void => {
         const caller = createSystemCaller(tenantId, userId);
         const contact = await caller.crm.contacts.create({ name, email, phone });
         return {
-          content: [{
-            type: "text" as const,
-            text: `Added contact "${contact.name}"${contact.email ? ` <${contact.email}>` : ""} (ID: ${contact.id})`,
-          }],
+          content: [
+            {
+              type: "text" as const,
+              text: `Added contact "${contact.name}"${contact.email ? ` <${contact.email}>` : ""} (ID: ${contact.id})`,
+            },
+          ],
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

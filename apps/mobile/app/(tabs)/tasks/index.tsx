@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import { CheckSquare } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
 import { trpc } from "../../../lib/trpc";
@@ -53,9 +47,7 @@ const TasksScreen = (): JSX.Element => {
         renderItem={({ item }) => (
           <View style={styles.task}>
             <View style={styles.taskInfo}>
-              <Text
-                style={[styles.taskTitle, item.status === "done" && styles.done]}
-              >
+              <Text style={[styles.taskTitle, item.status === "done" && styles.done]}>
                 {item.title}
               </Text>
               <Text style={styles.statusText}>{item.status.replace("-", " ")}</Text>
@@ -93,7 +85,12 @@ const styles = StyleSheet.create({
   taskInfo: { flex: 1 },
   taskTitle: { fontSize: 15, fontWeight: "500", color: colors.textPrimary },
   done: { textDecorationLine: "line-through", color: colors.textPlaceholder },
-  statusText: { fontSize: 12, color: colors.textSecondary, marginTop: 2, textTransform: "capitalize" },
+  statusText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
   badgeText: { color: "#fff", fontSize: 11, fontWeight: "600" },
   separator: { height: 8 },
@@ -108,7 +105,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
 });
 
 export default TasksScreen;

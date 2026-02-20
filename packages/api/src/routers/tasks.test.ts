@@ -27,9 +27,9 @@ import { tasksRouter } from "./tasks.js";
 // Test constants
 // ---------------------------------------------------------------------------
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID   = "00000000-0000-0000-0000-000000000002";
-const TASK_ID   = "00000000-0000-0000-0000-000000000003";
-const USER2_ID  = "00000000-0000-0000-0000-000000000004";
+const USER_ID = "00000000-0000-0000-0000-000000000002";
+const TASK_ID = "00000000-0000-0000-0000-000000000003";
+const USER2_ID = "00000000-0000-0000-0000-000000000004";
 
 // ---------------------------------------------------------------------------
 // Thenable chain factory
@@ -66,13 +66,15 @@ const makeChain = (rows: unknown[]) => {
 // DB mock builder
 // Supports multiple sequential select calls via selectSequence.
 // ---------------------------------------------------------------------------
-const makeMockDb = (opts: {
-  selectRows?: unknown[];
-  insertRows?: unknown[];
-  updateRows?: unknown[];
-  deleteRows?: unknown[];
-  selectSequence?: unknown[][];
-} = {}) => {
+const makeMockDb = (
+  opts: {
+    selectRows?: unknown[];
+    insertRows?: unknown[];
+    updateRows?: unknown[];
+    deleteRows?: unknown[];
+    selectSequence?: unknown[][];
+  } = {},
+) => {
   const insertRows = opts.insertRows ?? [];
   const updateRows = opts.updateRows ?? [];
   const deleteRows = opts.deleteRows ?? [];
@@ -83,9 +85,7 @@ const makeMockDb = (opts: {
 
   return {
     select: vi.fn().mockImplementation(() => {
-      const rows = selectSequence
-        ? (selectSequence[selectCallCount++] ?? [])
-        : defaultSelectRows;
+      const rows = selectSequence ? (selectSequence[selectCallCount++] ?? []) : defaultSelectRows;
       return makeChain(rows);
     }),
     insert: vi.fn().mockReturnValue(makeChain(insertRows)),
@@ -296,9 +296,9 @@ describe("tasks.update", () => {
     const db = makeMockDb({ selectSequence: [[]] });
     const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
 
-    await expect(
-      caller(ctx).update({ id: TASK_ID, status: "done" }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller(ctx).update({ id: TASK_ID, status: "done" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 

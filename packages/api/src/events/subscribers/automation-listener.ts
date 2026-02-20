@@ -4,10 +4,7 @@ import { db, automations } from "@basicsos/db";
 import { eq, and } from "drizzle-orm";
 import type { BasicsOSEvent } from "@basicsos/shared";
 
-const shouldTrigger = (
-  automation: { triggerConfig: unknown },
-  event: BasicsOSEvent,
-): boolean => {
+const shouldTrigger = (automation: { triggerConfig: unknown }, event: BasicsOSEvent): boolean => {
   // Safe runtime check — triggerConfig is JSONB from DB, validate before accessing
   if (!automation.triggerConfig || typeof automation.triggerConfig !== "object") return false;
   const config = automation.triggerConfig as Record<string, unknown>;
@@ -22,22 +19,19 @@ export const registerAutomationListener = (): void => {
       const matchingAutomations = await db
         .select()
         .from(automations)
-        .where(
-          and(
-            eq(automations.tenantId, event.tenantId),
-            eq(automations.enabled, true),
-          ),
-        );
+        .where(and(eq(automations.tenantId, event.tenantId), eq(automations.enabled, true)));
 
       for (const automation of matchingAutomations) {
         if (shouldTrigger(automation, event)) {
-          queue.add("run-automation", {
-            tenantId: event.tenantId,
-            automationId: automation.id,
-            triggerPayload: event.payload,
-          }).catch((err: unknown) => {
-            console.error("[automation-listener] Failed to enqueue:", err);
-          });
+          queue
+            .add("run-automation", {
+              tenantId: event.tenantId,
+              automationId: automation.id,
+              triggerPayload: event.payload,
+            })
+            .catch((err: unknown) => {
+              console.error("[automation-listener] Failed to enqueue:", err);
+            });
         }
       }
     } catch (err: unknown) {

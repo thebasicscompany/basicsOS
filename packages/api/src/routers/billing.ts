@@ -49,11 +49,13 @@ export const billingRouter = router({
    * Returns the session URL for redirect.
    */
   createCheckoutSession: adminProcedure
-    .input(z.object({
-      plan: z.enum(["starter", "team"]),
-      successUrl: z.string().url(),
-      cancelUrl: z.string().url(),
-    }))
+    .input(
+      z.object({
+        plan: z.enum(["starter", "team"]),
+        successUrl: z.string().url(),
+        cancelUrl: z.string().url(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const stripe = getStripe();
       const priceId = PLAN_PRICE_IDS[input.plan];
@@ -112,7 +114,10 @@ export const billingRouter = router({
       });
 
       if (!session.url) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a session URL" });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Stripe did not return a session URL",
+        });
       }
 
       return { url: session.url, sessionId: session.id };

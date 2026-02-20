@@ -1,13 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import {
-  BookOpen,
-  Users,
-  CheckSquare,
-  Video,
-  Sparkles,
-  Link2,
-} from "lucide-react-native";
+import { BookOpen, Users, CheckSquare, Video, Sparkles, Link2 } from "lucide-react-native";
 import { Screen } from "../../components/Screen";
 import { trpc } from "../../lib/trpc";
 import { colors, radius, shadows } from "../../lib/tokens";
@@ -15,12 +8,30 @@ import type { ComponentType } from "react";
 
 type IconProps = { size?: number; color?: string };
 
-const MODULES: { name: string; Icon: ComponentType<IconProps>; route: string; bg: string; fg: string }[] = [
-  { name: "Knowledge", Icon: BookOpen, route: "/knowledge", bg: colors.emeraldSubtle, fg: colors.emerald },
+const MODULES: {
+  name: string;
+  Icon: ComponentType<IconProps>;
+  route: string;
+  bg: string;
+  fg: string;
+}[] = [
+  {
+    name: "Knowledge",
+    Icon: BookOpen,
+    route: "/knowledge",
+    bg: colors.emeraldSubtle,
+    fg: colors.emerald,
+  },
   { name: "CRM", Icon: Users, route: "/crm", bg: colors.blueSubtle, fg: colors.blue },
   { name: "Tasks", Icon: CheckSquare, route: "/tasks", bg: colors.violetSubtle, fg: colors.violet },
   { name: "Meetings", Icon: Video, route: "/meetings", bg: colors.amberSubtle, fg: colors.amber },
-  { name: "Assistant", Icon: Sparkles, route: "/assistant", bg: colors.brandSubtle, fg: colors.brand },
+  {
+    name: "Assistant",
+    Icon: Sparkles,
+    route: "/assistant",
+    bg: colors.brandSubtle,
+    fg: colors.brand,
+  },
   { name: "Hub", Icon: Link2, route: "/hub", bg: colors.roseSubtle, fg: colors.rose },
 ];
 

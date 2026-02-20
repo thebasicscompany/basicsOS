@@ -14,13 +14,18 @@ const KnowledgePage = (): JSX.Element => {
       <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-stone-900">Knowledge Base</h1>
         <Button asChild>
-          <a href="/knowledge/new"><Plus size={14} className="mr-1" /> New Document</a>
+          <a href="/knowledge/new">
+            <Plus size={14} className="mr-1" /> New Document
+          </a>
         </Button>
       </div>
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 animate-pulse">
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 animate-pulse"
+            >
               <div className="h-8 w-8 rounded-lg bg-stone-100" />
               <div className="h-4 w-48 rounded bg-stone-100" />
             </div>
@@ -33,7 +38,9 @@ const KnowledgePage = (): JSX.Element => {
           description="Create your first document to build your knowledge base."
           action={
             <Button asChild>
-              <a href="/knowledge/new"><Plus size={14} className="mr-1" /> Create Document</a>
+              <a href="/knowledge/new">
+                <Plus size={14} className="mr-1" /> Create Document
+              </a>
             </Button>
           }
         />

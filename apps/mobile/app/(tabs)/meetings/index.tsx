@@ -1,11 +1,4 @@
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Video, ChevronRight } from "lucide-react-native";
 import { Screen } from "../../../components/Screen";
@@ -124,7 +117,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: colors.textSecondary, textAlign: "center", paddingHorizontal: 32 },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
 });
 
 export default MeetingsScreen;

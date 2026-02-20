@@ -2,6 +2,9 @@ import { EventBus } from "../bus.js";
 import { db } from "@basicsos/db";
 import { auditLog } from "@basicsos/db";
 import type { BasicsOSEvent } from "@basicsos/shared";
+import { createLogger } from "@basicsos/shared";
+
+const logger = createLogger("audit-logger");
 
 const logToAudit = async (event: BasicsOSEvent): Promise<void> => {
   try {
@@ -15,7 +18,10 @@ const logToAudit = async (event: BasicsOSEvent): Promise<void> => {
     });
   } catch (err) {
     // Audit logging must never throw — silently log the failure
-    console.error("[audit-logger] Failed to write audit log:", err);
+    logger.error(
+      { err, eventType: event.type, tenantId: event.tenantId },
+      "Failed to write audit log",
+    );
   }
 };
 

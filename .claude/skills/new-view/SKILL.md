@@ -1,6 +1,7 @@
 # Skill: Create a New UI View
 
 ## When to Use
+
 Adding a new page or component to the web portal.
 
 ## Next.js App Router Page
@@ -47,6 +48,7 @@ export default MyModulePage;
 ## Add to Sidebar Navigation
 
 Edit `apps/web/src/app/(dashboard)/NavClient.tsx` — add an entry to the `NAV_ITEMS` array:
+
 ```ts
 import { Wrench } from "lucide-react";
 
@@ -97,12 +99,14 @@ const MyClientComponent = (): JSX.Element => {
 ```
 
 ## File Naming Rules
+
 - Route groups `(dashboard)`, `(auth)` don't add to URL path
 - `page.tsx` → default export required (Next.js)
 - `layout.tsx` → default export required (Next.js)
 - All other files → named exports only
 
 ## Checklist
+
 - [ ] Page created at correct route path
 - [ ] Default export used (Next.js requirement)
 - [ ] Data fetched from DB (server component) or via tRPC (client component)

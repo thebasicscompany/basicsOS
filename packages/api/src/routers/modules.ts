@@ -77,7 +77,9 @@ export const modulesRouter = router({
 
     return BUILT_IN_MODULES.map((m) => ({
       ...m,
-      enabled: overrideMap.has(m.name) ? (overrideMap.get(m.name) ?? m.activeByDefault) : m.activeByDefault,
+      enabled: overrideMap.has(m.name)
+        ? (overrideMap.get(m.name) ?? m.activeByDefault)
+        : m.activeByDefault,
     }));
   }),
 

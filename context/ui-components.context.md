@@ -4,21 +4,21 @@ All reusable components live in `packages/ui/src/components/`. Import from `@bas
 
 ## Available Components
 
-| Component | File | Type | Description |
-|-----------|------|------|-------------|
-| `Button` | `Button.tsx` | client | CVA variants: `default \| destructive \| outline \| ghost \| link`; sizes: `default \| sm \| lg \| icon` |
-| `Input` | `Input.tsx` | server | Forwarded ref text input; `border-primary` focus ring |
-| `Label` | `Label.tsx` | server | Form label (Radix Label) |
-| `Card` + parts | `Card.tsx` | server | `Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter` |
-| `Badge` | `Badge.tsx` | server | CVA variants: `default \| secondary \| destructive \| outline \| success \| warning` |
-| `Dialog` + parts | `Dialog.tsx` | client | `Dialog, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription` |
-| `Select` + parts | `Select.tsx` | client | `Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator` |
-| `Avatar` + parts | `Avatar.tsx` | client | `Avatar, AvatarImage, AvatarFallback` |
-| `Separator` | `Separator.tsx` | server | Radix Separator |
-| `EmptyState` | `EmptyState.tsx` | server | `Icon` + `heading` + `description` + optional `action` slot; accepts `className`, `iconClassName` |
-| `Toaster` | `Toaster.tsx` | client | Render once in root layout |
-| `Toast` + parts | `Toast.tsx` | client | Low-level primitives (prefer `addToast` instead) |
-| `Sidebar` | `Sidebar.tsx` | client | Navigation sidebar; accepts `items: SidebarItem[]`, `activeHref`, `width`, `header`, `footer` |
+| Component        | File             | Type   | Description                                                                                                                                  |
+| ---------------- | ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`         | `Button.tsx`     | client | CVA variants: `default \| destructive \| outline \| ghost \| link`; sizes: `default \| sm \| lg \| icon`                                     |
+| `Input`          | `Input.tsx`      | server | Forwarded ref text input; `border-primary` focus ring                                                                                        |
+| `Label`          | `Label.tsx`      | server | Form label (Radix Label)                                                                                                                     |
+| `Card` + parts   | `Card.tsx`       | server | `Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter`                                                                      |
+| `Badge`          | `Badge.tsx`      | server | CVA variants: `default \| secondary \| destructive \| outline \| success \| warning`                                                         |
+| `Dialog` + parts | `Dialog.tsx`     | client | `Dialog, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription` |
+| `Select` + parts | `Select.tsx`     | client | `Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator`                                   |
+| `Avatar` + parts | `Avatar.tsx`     | client | `Avatar, AvatarImage, AvatarFallback`                                                                                                        |
+| `Separator`      | `Separator.tsx`  | server | Radix Separator                                                                                                                              |
+| `EmptyState`     | `EmptyState.tsx` | server | `Icon` + `heading` + `description` + optional `action` slot; accepts `className`, `iconClassName`                                            |
+| `Toaster`        | `Toaster.tsx`    | client | Render once in root layout                                                                                                                   |
+| `Toast` + parts  | `Toast.tsx`      | client | Low-level primitives (prefer `addToast` instead)                                                                                             |
+| `Sidebar`        | `Sidebar.tsx`    | client | Navigation sidebar; accepts `items: SidebarItem[]`, `activeHref`, `width`, `header`, `footer`                                                |
 
 ## Design Tokens
 
@@ -34,10 +34,21 @@ Key colors use the **warm stone palette** (not cold gray). Brand: `#6366f1` (ind
 All icons are re-exported from `packages/ui/src/index.ts` for consistent usage:
 
 ```ts
-import { Sparkles, BookOpen, Users, CheckSquare, Video, Link2, Plus, Search, Loader2 } from "@basicsos/ui";
+import {
+  Sparkles,
+  BookOpen,
+  Users,
+  CheckSquare,
+  Video,
+  Link2,
+  Plus,
+  Search,
+  Loader2,
+} from "@basicsos/ui";
 ```
 
 Common icon mappings:
+
 - `Sparkles` — AI features
 - `BookOpen` — knowledge base
 - `Users` — CRM / team
@@ -55,10 +66,11 @@ Every component accepts a `className` prop merged via `cn()`:
 import { cn } from "@basicsos/ui";
 
 // In component definition:
-<div className={cn("default-classes", className)} />
+<div className={cn("default-classes", className)} />;
 ```
 
 Component-specific customization:
+
 - **Sidebar**: `width` prop, `header`/`footer` slot props
 - **EmptyState**: `className` for container, `iconClassName` for icon color
 - **Button**: extend via CVA — add new variants to `buttonVariants`
@@ -88,16 +100,16 @@ addToast({ title: "Error", description: err.message, variant: "destructive" });
 
 ### Color Reference (stone palette)
 
-| Class | Use |
-|-------|-----|
-| `text-stone-900` | Primary text |
-| `text-stone-700` | Section headings |
-| `text-stone-500` | Secondary text |
-| `text-stone-400` | Placeholder, timestamps |
-| `border-stone-200` | Default borders |
-| `border-stone-300` | Strong borders |
-| `bg-stone-100` | Subtle backgrounds |
-| `bg-stone-50` | App background, muted inputs |
+| Class              | Use                          |
+| ------------------ | ---------------------------- |
+| `text-stone-900`   | Primary text                 |
+| `text-stone-700`   | Section headings             |
+| `text-stone-500`   | Secondary text               |
+| `text-stone-400`   | Placeholder, timestamps      |
+| `border-stone-200` | Default borders              |
+| `border-stone-300` | Strong borders               |
+| `bg-stone-100`     | Subtle backgrounds           |
+| `bg-stone-50`      | App background, muted inputs |
 
 ## Adding a New Component
 
@@ -110,18 +122,18 @@ addToast({ title: "Error", description: err.message, variant: "destructive" });
 
 These live co-located with their feature pages in `apps/web/src/app/(dashboard)/`:
 
-| Component | Location |
-|-----------|----------|
-| `CreateTaskDialog` | `tasks/CreateTaskDialog.tsx` |
-| `KanbanColumn` | `tasks/KanbanColumn.tsx` |
-| `TaskCard` | `tasks/TaskCard.tsx` |
-| `CreateContactDialog` | `crm/CreateContactDialog.tsx` |
-| `CreateDealDialog` | `crm/CreateDealDialog.tsx` |
-| `DealCard` | `crm/DealCard.tsx` |
-| `AddLinkDialog` | `hub/AddLinkDialog.tsx` |
-| `InviteMemberDialog` | `admin/team/InviteMemberDialog.tsx` |
-| `SummaryCard` | `meetings/[id]/SummaryCard.tsx` |
-| `TranscriptDisplay` | `meetings/[id]/TranscriptDisplay.tsx` |
-| `NavClient` | `NavClient.tsx` (dashboard sidebar + user widget) |
+| Component             | Location                                          |
+| --------------------- | ------------------------------------------------- |
+| `CreateTaskDialog`    | `tasks/CreateTaskDialog.tsx`                      |
+| `KanbanColumn`        | `tasks/KanbanColumn.tsx`                          |
+| `TaskCard`            | `tasks/TaskCard.tsx`                              |
+| `CreateContactDialog` | `crm/CreateContactDialog.tsx`                     |
+| `CreateDealDialog`    | `crm/CreateDealDialog.tsx`                        |
+| `DealCard`            | `crm/DealCard.tsx`                                |
+| `AddLinkDialog`       | `hub/AddLinkDialog.tsx`                           |
+| `InviteMemberDialog`  | `admin/team/InviteMemberDialog.tsx`               |
+| `SummaryCard`         | `meetings/[id]/SummaryCard.tsx`                   |
+| `TranscriptDisplay`   | `meetings/[id]/TranscriptDisplay.tsx`             |
+| `NavClient`           | `NavClient.tsx` (dashboard sidebar + user widget) |
 
 These are **not** in `@basicsos/ui` — they are feature-specific and import from it. Use them as reference implementations for new dialogs.

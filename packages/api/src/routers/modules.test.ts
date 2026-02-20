@@ -2,7 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import type { TRPCContext } from "../context.js";
 import { modulesRouter } from "./modules.js";
 
-vi.mock("@basicsos/db", () => ({ db: {}, moduleConfig: { tenantId: "tenantId", moduleName: "moduleName" } }));
+vi.mock("@basicsos/db", () => ({
+  db: {},
+  moduleConfig: { tenantId: "tenantId", moduleName: "moduleName" },
+}));
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const USER_ID = "00000000-0000-0000-0000-000000000002";
@@ -104,15 +107,15 @@ describe("modules.setEnabled", () => {
 
   it("throws UNAUTHORIZED when tenantId is missing", async () => {
     const caller = modulesRouter.createCaller(buildCtx({ tenantId: null }));
-    await expect(
-      caller.setEnabled({ moduleName: "crm", enabled: false }),
-    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.setEnabled({ moduleName: "crm", enabled: false })).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("throws FORBIDDEN for non-admin role", async () => {
     const caller = modulesRouter.createCaller(buildCtx({ role: "member" }));
-    await expect(
-      caller.setEnabled({ moduleName: "crm", enabled: false }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.setEnabled({ moduleName: "crm", enabled: false })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

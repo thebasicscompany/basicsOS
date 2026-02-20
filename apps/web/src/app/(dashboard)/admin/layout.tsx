@@ -1,10 +1,6 @@
 // Next.js App Router requires default exports for layout/page segments.
 // This is a framework-mandated exception to the project's named-export rule.
-const AdminLayout = ({
-  children,
-}: {
-  children: React.ReactNode;
-}): JSX.Element => (
+const AdminLayout = ({ children }: { children: React.ReactNode }): JSX.Element => (
   <div>
     <header className="mb-6 border-b border-stone-200 pb-4">
       <h2 className="text-2xl font-bold text-stone-900">Admin Panel</h2>

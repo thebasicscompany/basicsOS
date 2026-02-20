@@ -3,13 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "description": "BasicOS tRPC API server",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./src/index.ts",
       "bun": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./src/index.ts"
     }
   },
   "scripts": {

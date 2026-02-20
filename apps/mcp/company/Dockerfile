@@ -21,11 +21,11 @@ COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/apps/mcp/company/node_modules ./apps/mcp/company/node_modules
 COPY . .
-RUN pnpm --filter @basicos/shared build && \
-    pnpm --filter @basicos/db build && \
-    pnpm --filter @basicos/auth build && \
-    pnpm --filter @basicos/api build && \
-    pnpm --filter @basicos/mcp-company build
+RUN pnpm --filter @basicsos/shared build && \
+    pnpm --filter @basicsos/db build && \
+    pnpm --filter @basicsos/auth build && \
+    pnpm --filter @basicsos/api build && \
+    pnpm --filter @basicsos/mcp-company build
 
 FROM base AS runner
 ENV NODE_ENV=production

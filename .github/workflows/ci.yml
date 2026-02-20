@@ -23,22 +23,22 @@ jobs:
 
       - name: Build packages
         run: |
-          bun --filter @basicos/shared build
-          bun --filter @basicos/db build
-          bun --filter @basicos/auth build
-          bun --filter @basicos/ui build
-          bun --filter @basicos/api build
+          bun --filter @basicsos/shared build
+          bun --filter @basicsos/db build
+          bun --filter @basicsos/auth build
+          bun --filter @basicsos/ui build
+          bun --filter @basicsos/api build
 
       - name: Typecheck
         run: |
-          bun --filter @basicos/shared typecheck
-          bun --filter @basicos/db typecheck
-          bun --filter @basicos/auth typecheck
-          bun --filter @basicos/api typecheck
-          bun --filter @basicos/web typecheck
+          bun --filter @basicsos/shared typecheck
+          bun --filter @basicsos/db typecheck
+          bun --filter @basicsos/auth typecheck
+          bun --filter @basicsos/api typecheck
+          bun --filter @basicsos/web typecheck
 
       - name: Test (package unit tests)
-        run: bun --filter @basicos/shared test && bun --filter @basicos/api test
+        run: bun --filter @basicsos/shared test && bun --filter @basicsos/api test
 
       - name: Test (E2E + security integration tests)
         # Run root-level security audits: RBAC, input validation, secrets scan, multi-tenant isolation

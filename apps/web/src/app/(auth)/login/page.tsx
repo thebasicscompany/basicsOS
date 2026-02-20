@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +8,8 @@ import { Button, Input, Label } from "@basicsos/ui";
 
 // Next.js App Router requires default exports for page segments.
 // This is a framework-mandated exception to the project's named-export rule.
-const LoginPage = (): JSX.Element => {
+
+const LoginForm = (): JSX.Element => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -81,6 +82,14 @@ const LoginPage = (): JSX.Element => {
         </p>
       </div>
     </div>
+  );
+};
+
+const LoginPage = (): JSX.Element => {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 };
 

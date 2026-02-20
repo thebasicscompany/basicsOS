@@ -8,7 +8,7 @@ import {
   jsonb,
   unique,
 } from "drizzle-orm/pg-core";
-import { users, tenants } from "./tenants.js";
+import { users, tenants } from "./tenants";
 
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -77,7 +77,6 @@ const DocumentDetailPage = (): JSX.Element => {
       );
     }
     // Run once when doc id and editor are both available
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.id, editor]);
 
   const save = useCallback((): void => {

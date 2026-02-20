@@ -1,9 +1,9 @@
-export { cn } from "./lib/utils.js";
-export { Sidebar } from "./components/Sidebar.js";
-export type { SidebarItem } from "./components/Sidebar.js";
-export { Button, buttonVariants } from "./components/Button.js";
-export { Input } from "./components/Input.js";
-export { Label } from "./components/Label.js";
+export { cn } from "./lib/utils";
+export { Sidebar } from "./components/Sidebar";
+export type { SidebarItem } from "./components/Sidebar";
+export { Button, buttonVariants } from "./components/Button";
+export { Input } from "./components/Input";
+export { Label } from "./components/Label";
 export {
   Card,
   CardHeader,
@@ -11,8 +11,8 @@ export {
   CardDescription,
   CardContent,
   CardFooter,
-} from "./components/Card.js";
-export { Badge, badgeVariants } from "./components/Badge.js";
+} from "./components/Card";
+export { Badge, badgeVariants } from "./components/Badge";
 export {
   Dialog,
   DialogTrigger,
@@ -24,7 +24,7 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} from "./components/Dialog.js";
+} from "./components/Dialog";
 export {
   Select,
   SelectGroup,
@@ -36,9 +36,9 @@ export {
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
-} from "./components/Select.js";
-export { Avatar, AvatarImage, AvatarFallback } from "./components/Avatar.js";
-export { Separator } from "./components/Separator.js";
+} from "./components/Select";
+export { Avatar, AvatarImage, AvatarFallback } from "./components/Avatar";
+export { Separator } from "./components/Separator";
 export {
   ToastProvider,
   ToastViewport,
@@ -47,11 +47,11 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
-} from "./components/Toast.js";
-export { Toaster } from "./components/Toaster.js";
-export { useToast, addToast, dismissToast } from "./hooks/useToast.js";
-export type { Toast as ToastType, ToastVariant } from "./hooks/useToast.js";
-export { EmptyState } from "./components/EmptyState.js";
+} from "./components/Toast";
+export { Toaster } from "./components/Toaster";
+export { useToast, addToast, dismissToast } from "./hooks/useToast";
+export type { Toast as ToastType, ToastVariant } from "./hooks/useToast";
+export { EmptyState } from "./components/EmptyState";
 
 // Curated Lucide icon re-exports
 export {

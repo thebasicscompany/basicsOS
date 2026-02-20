@@ -63,7 +63,6 @@ const HubPage = (): JSX.Element => {
       });
       router.replace("/hub");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const byCategory = (links ?? []).reduce<Record<string, typeof links>>((acc, link) => {

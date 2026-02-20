@@ -1,55 +1,29 @@
 import pino from "pino";
 
 /**
- * Creates a Pino logger instance with sensible defaults.
- * Pino is the industry standard for structured logging in Node.js.
+ * Creates a Pino logger.
  *
- * In development:
- * - Uses pretty printing for readability
- * - Default level: "debug"
+ * Pino writes newline-delimited JSON to stdout — no transports, no worker
+ * threads, fully Bun-compatible.  Pipe through `pino-pretty` locally if you
+ * want human-readable output:
  *
- * In production:
- * - Uses JSON output for structured logging
- * - Default level: "info"
+ *   bun --filter @basicsos/api dev | bunx pino-pretty
  */
-export function createLogger(module?: string): pino.Logger {
-  const isDevelopment = process.env.NODE_ENV !== "production";
-  const isTest = process.env.NODE_ENV === "test";
+export const createLogger = (module?: string): pino.Logger => {
+  const isDev = process.env["NODE_ENV"] !== "production";
+  const isTest = process.env["NODE_ENV"] === "test";
 
-  // Allow LOG_LEVEL env var to override default
-  const level =
-    (process.env.LOG_LEVEL as pino.Level | undefined) ?? (isDevelopment ? "debug" : "info");
-  const pretty = isDevelopment && !isTest;
+  return pino({
+    level: (process.env["LOG_LEVEL"] as pino.Level | undefined) ?? (isDev ? "debug" : "info"),
+    enabled: !isTest,
+    base: {
+      service: process.env["SERVICE_NAME"] ?? "basicsos",
+      env: process.env["NODE_ENV"] ?? "development",
+      ...(module !== undefined && { module }),
+    },
+  });
+};
 
-  const base = {
-    service: process.env.SERVICE_NAME ?? "basicsos",
-    env: process.env.NODE_ENV ?? "development",
-    ...(module && { module }),
-  };
-
-  const pinoOptions: pino.LoggerOptions = {
-    level,
-    base,
-    ...(pretty && {
-      transport: {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "HH:MM:ss.l",
-          ignore: "pid,hostname,service,env",
-          singleLine: false,
-        },
-      },
-    }),
-  };
-
-  return pino(pinoOptions);
-}
-
-/**
- * Default logger instance.
- */
 export const logger = createLogger();
 
-// Re-export Pino types for convenience
 export type { Logger } from "pino";

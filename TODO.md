@@ -43,7 +43,7 @@ Issues identified by codebase audit. Ordered by priority.
       Needs: list keys, create key (show full key once on creation), delete key, set active.
       Procedures: `llmKeys.list`, `llmKeys.create`, `llmKeys.delete`, `llmKeys.setActive`
 
-- [ ] **`/admin/team` — add member list + role management**
+- [x] **`/admin/team` — add member list + role management**
       Page only has an invite dialog. No way to see existing members, change roles, or deactivate users.
       Also missing: `adminRouter` has no `listMembers`, `updateRole`, `deactivateUser` procedures.
       Files: `packages/api/src/routers/admin.ts`, `apps/web/src/app/(dashboard)/admin/team/page.tsx`

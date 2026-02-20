@@ -3,13 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "description": "BasicOS authentication with Better Auth",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {
@@ -21,6 +18,7 @@
   },
   "dependencies": {
     "@basicsos/db": "workspace:*",
+    "@basicsos/shared": "workspace:*",
     "better-auth": "^1.0.0",
     "drizzle-orm": "^0.45.1",
     "zod": "^3.23.0"

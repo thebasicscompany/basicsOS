@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "@basicsos/db";
 import { integrations } from "@basicsos/db";
 import { and, eq } from "drizzle-orm";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, randomBytes } from "node:crypto";
 
 // GET /api/oauth/[service]/callback
 // Handles the OAuth 2.0 authorization code exchange for Slack, Google Drive, and GitHub.
@@ -42,7 +42,6 @@ const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
 // Simple AES-256-GCM encryption — mirrors packages/api/src/lib/oauth-encrypt.ts
 const ALGO = "aes-256-gcm";
 const IV_BYTES = 12;
-const TAG_BYTES = 16;
 
 const encryptToken = (plaintext: string): string => {
   const hexKey = process.env["OAUTH_ENCRYPTION_KEY"] ?? "";

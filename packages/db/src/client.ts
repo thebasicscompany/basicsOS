@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import path from "path";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "./schema/index.js";
+import * as schema from "./schema/index";
 
 // Load root .env when running directly (seed, workers, tests).
 // This file compiles to CommonJS so __dirname is available as a global.

@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "bun --watch src/dev.ts",
     "build": "tsc",
+    "start": "bun src/dev.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
@@ -30,7 +31,7 @@
     "hono": "^4.6.0",
     "ioredis": "^5.4.0",
     "resend": "^6.9.2",
-    "stripe": "^17.7.0",
+    "stripe": "^20.3.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {

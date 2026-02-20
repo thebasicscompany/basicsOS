@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@basicsos/db";
-import { tenants, invites } from "@basicsos/db";
-import * as schema from "@basicsos/db";
+import { db, users, sessions, accounts, verifications, tenants, invites } from "@basicsos/db";
 import { and, eq, isNull, gt } from "drizzle-orm";
+import { createLogger } from "@basicsos/shared";
+
+const logger = createLogger("auth");
 
 // Defer env var validation to first request — allows module evaluation during
 // Next.js build-time static analysis without requiring env vars to be present.
@@ -21,17 +22,20 @@ export const auth = betterAuth({
   trustedOrigins: [baseUrl, apiUrl],
   advanced: {
     database: {
-      // Our schema uses uuid columns — use UUID format for all generated IDs.
-      generateId: "uuid",
+      // All ID columns are uuid type — tell Better Auth to generate UUIDs
+      // instead of its default nanoid, which fails uuid column validation.
+      generateId: () => crypto.randomUUID(),
     },
   },
   database: drizzleAdapter(db, {
     provider: "pg",
+    // Better Auth looks up models by singular key name ("user", "session", …).
+    // Our exports use plural names so we map them explicitly here.
     schema: {
-      user: schema.users,
-      session: schema.sessions,
-      account: schema.accounts,
-      verification: schema.verifications,
+      user: users,
+      session: sessions,
+      account: accounts,
+      verification: verifications,
     },
   }),
   user: {
@@ -55,46 +59,70 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // If there's a valid pending invite for this email, join that tenant
-          // instead of creating a new one. Mark the invite as accepted.
-          const [invite] = await db
-            .select()
-            .from(invites)
-            .where(
-              and(
-                eq(invites.email, user.email),
-                isNull(invites.acceptedAt),
-                gt(invites.expiresAt, new Date()),
-              ),
-            )
-            .limit(1);
+          try {
+            logger.debug({ email: user.email }, "User creation hook triggered");
+            
+            // If there's a valid pending invite for this email, join that tenant
+            // instead of creating a new one. Mark the invite as accepted.
+            const [invite] = await db
+              .select()
+              .from(invites)
+              .where(
+                and(
+                  eq(invites.email, user.email),
+                  isNull(invites.acceptedAt),
+                  gt(invites.expiresAt, new Date()),
+                ),
+              )
+              .limit(1);
 
-          if (invite) {
-            await db
-              .update(invites)
-              .set({ acceptedAt: new Date() })
-              .where(eq(invites.id, invite.id));
+            if (invite) {
+              logger.debug({ email: user.email, tenantId: invite.tenantId }, "Found pending invite, joining tenant");
+              await db
+                .update(invites)
+                .set({ acceptedAt: new Date() })
+                .where(eq(invites.id, invite.id));
+              return {
+                data: {
+                  ...user,
+                  tenantId: invite.tenantId,
+                  role: invite.role,
+                },
+              };
+            }
+
+            // Fresh signup — create a new tenant, make the user admin.
+            logger.debug({ email: user.email }, "No invite found, creating new tenant");
+            const [tenant] = await db
+              .insert(tenants)
+              .values({ name: user.name ?? "My Company" })
+              .returning();
+            
+            if (!tenant) {
+              logger.error({ email: user.email }, "Failed to create tenant");
+              throw new Error("Failed to create tenant");
+            }
+            
+            logger.debug({ email: user.email, tenantId: tenant.id }, "Created new tenant for user");
             return {
               data: {
                 ...user,
-                tenantId: invite.tenantId,
-                role: invite.role,
+                tenantId: tenant.id,
+                role: "admin",
               },
             };
+          } catch (error: unknown) {
+            logger.error(
+              {
+                err: error,
+                email: user.email,
+                errorMessage: error instanceof Error ? error.message : String(error),
+                errorStack: error instanceof Error ? error.stack : undefined,
+              },
+              "Error in user creation hook",
+            );
+            throw error;
           }
-
-          // Fresh signup — create a new tenant, make the user admin.
-          const [tenant] = await db
-            .insert(tenants)
-            .values({ name: user.name ?? "My Company" })
-            .returning();
-          return {
-            data: {
-              ...user,
-              tenantId: tenant!.id,
-              role: "admin",
-            },
-          };
         },
       },
     },

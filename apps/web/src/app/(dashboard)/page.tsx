@@ -69,7 +69,7 @@ const getGreeting = (): string => {
 
 // Next.js App Router requires default export — framework exception.
 const DashboardPage = (): JSX.Element => {
-  const { user } = useAuth();
+  const { user, isPending } = useAuth();
   const { data: taskStats } = trpc.tasks.list.useQuery({});
   const { data: meetingList } = trpc.meetings.list.useQuery({ limit: 5 });
   const { data: contactList } = trpc.crm.contacts.list.useQuery({});
@@ -80,13 +80,13 @@ const DashboardPage = (): JSX.Element => {
   const contactCount = contactList?.length ?? 0;
   const docCount = docList?.length ?? 0;
 
-  const firstName = user?.name?.split(" ")[0] ?? "there";
+  const firstName = isPending ? "" : (user?.name?.split(" ")[0] ?? "there");
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-stone-900">
-          {getGreeting()}, {firstName}
+          {getGreeting()}{firstName ? `, ${firstName}` : ""}
         </h1>
         <p className="mt-2 text-stone-500">Your Company Operating System</p>
       </div>

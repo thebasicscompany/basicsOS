@@ -3,13 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "description": "BasicOS database schema and migrations",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "bun": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {

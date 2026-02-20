@@ -20,7 +20,7 @@ const getStripe = (): Stripe => {
       message: "Stripe is not configured — set STRIPE_SECRET_KEY in .env",
     });
   }
-  return new Stripe(secretKey, { apiVersion: "2025-02-24.acacia" });
+  return new Stripe(secretKey, { apiVersion: "2026-01-28.clover" });
 };
 
 export const billingRouter = router({

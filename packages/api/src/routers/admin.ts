@@ -104,6 +104,65 @@ export const adminRouter = router({
     };
   }),
 
+  /** List all members of the current tenant (excluding the requesting admin). */
+  listMembers: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        avatarUrl: users.avatarUrl,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.tenantId, ctx.tenantId))
+      .orderBy(users.createdAt);
+  }),
+
+  /** Change a team member's role. Cannot change your own role. */
+  updateRole: adminProcedure
+    .input(
+      z.object({
+        userId: z.string().uuid(),
+        role: z.enum(["admin", "member", "viewer"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.userId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot change your own role" });
+      }
+
+      const [updated] = await ctx.db
+        .update(users)
+        .set({ role: input.role, updatedAt: new Date() })
+        .where(eq(users.id, input.userId))
+        .returning();
+
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  /** Remove a member from the tenant. Cannot remove yourself. */
+  removeUser: adminProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.userId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot remove yourself" });
+      }
+
+      // Verify the user belongs to this tenant before deleting
+      const [target] = await ctx.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, input.userId));
+
+      if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await ctx.db.delete(users).where(eq(users.id, input.userId));
+      return { success: true };
+    }),
+
   getAuditLog: adminProcedure
     .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }))
     .query(async ({ ctx, input }) => {

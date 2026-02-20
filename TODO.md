@@ -33,12 +33,12 @@ Issues identified by codebase audit. Ordered by priority.
 
 ## P1 — Admin Panel Pages Are Static HTML
 
-- [ ] **`/admin/billing` — connect to `billingRouter`**
+- [x] **`/admin/billing` — connect to `billingRouter`**
       Page shows static marketing copy. Backend is fully implemented (`packages/api/src/routers/billing.ts`).
       Needs: show current plan/status, Stripe checkout button (starter/team), customer portal button.
       Procedures: `billing.getSubscription`, `billing.createCheckoutSession`, `billing.createPortalSession`
 
-- [ ] **`/admin/api-keys` — connect to `llmKeysRouter`**
+- [x] **`/admin/api-keys` — connect to `llmKeysRouter`**
       Page shows static docs. Backend is fully implemented (`packages/api/src/routers/llm-keys.ts`).
       Needs: list keys, create key (show full key once on creation), delete key, set active.
       Procedures: `llmKeys.list`, `llmKeys.create`, `llmKeys.delete`, `llmKeys.setActive`

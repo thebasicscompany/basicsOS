@@ -17,7 +17,7 @@ export const TRPCProvider = ({ children }: TRPCProviderProps): JSX.Element => {
           queries: {
             staleTime: 60_000,
             gcTime: 5 * 60_000,
-            refetchOnWindowFocus: false,
+            refetchOnWindowFocus: true,
             retry: 1,
           },
         },

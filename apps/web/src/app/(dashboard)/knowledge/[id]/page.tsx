@@ -42,6 +42,7 @@ const DocumentDetailPage = (): JSX.Element => {
   const saveRef = useRef<(titleOverride?: string) => void>(() => {});
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: "Start writing…" }),

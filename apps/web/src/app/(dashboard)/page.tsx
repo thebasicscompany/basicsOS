@@ -70,10 +70,10 @@ const getGreeting = (): string => {
 // Next.js App Router requires default export — framework exception.
 const DashboardPage = (): JSX.Element => {
   const { user, isPending } = useAuth();
-  const { data: taskStats } = trpc.tasks.list.useQuery({});
-  const { data: meetingList } = trpc.meetings.list.useQuery({ limit: 5 });
-  const { data: contactList } = trpc.crm.contacts.list.useQuery({});
-  const { data: docList } = trpc.knowledge.list.useQuery({ parentId: null });
+  const { data: taskStats } = trpc.tasks.list.useQuery({}, { refetchInterval: 30_000 });
+  const { data: meetingList } = trpc.meetings.list.useQuery({ limit: 5 }, { refetchInterval: 30_000 });
+  const { data: contactList } = trpc.crm.contacts.list.useQuery({}, { refetchInterval: 30_000 });
+  const { data: docList } = trpc.knowledge.list.useQuery({ parentId: null }, { refetchInterval: 30_000 });
 
   const taskCount = taskStats?.length ?? 0;
   const meetingCount = meetingList?.length ?? 0;

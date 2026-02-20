@@ -7,35 +7,47 @@ import {
   integer,
   jsonb,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
 
-export const events = pgTable("events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  payload: jsonb("payload").notNull().default({}),
-  userId: uuid("user_id").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").notNull().default({}),
+    userId: uuid("user_id").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("events_tenant_id_idx").on(t.tenantId)],
+);
 
-export const notifications = pgTable("notifications", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  title: text("title").notNull(),
-  body: text("body"),
-  read: boolean("read").notNull().default(false),
-  actionUrl: text("action_url"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    read: boolean("read").notNull().default(false),
+    actionUrl: text("action_url"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("notifications_user_id_idx").on(t.userId),
+    index("notifications_read_idx").on(t.read),
+  ],
+);
 
 export const files = pgTable("files", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -84,32 +96,46 @@ export const moduleConfig = pgTable(
 );
 
 // LLM call telemetry — one row per API call for usage metering.
-export const llmUsageLogs = pgTable("llm_usage_logs", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").references(() => users.id),
-  model: text("model").notNull(),
-  promptTokens: integer("prompt_tokens").notNull().default(0),
-  completionTokens: integer("completion_tokens").notNull().default(0),
-  totalTokens: integer("total_tokens").notNull().default(0),
-  featureName: text("feature_name"), // e.g. "assistant.chat", "meeting.summary"
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const llmUsageLogs = pgTable(
+  "llm_usage_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    featureName: text("feature_name"), // e.g. "assistant.chat", "meeting.summary"
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("llm_usage_logs_tenant_id_idx").on(t.tenantId),
+    index("llm_usage_logs_created_at_idx").on(t.createdAt),
+  ],
+);
 
-export const auditLog = pgTable("audit_log", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").references(() => users.id),
-  action: text("action").notNull(),
-  resourceType: text("resource_type").notNull(),
-  resourceId: uuid("resource_id"),
-  metadata: jsonb("metadata").notNull().default({}),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id),
+    action: text("action").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id"),
+    metadata: jsonb("metadata").notNull().default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_log_tenant_id_idx").on(t.tenantId),
+    index("audit_log_created_at_idx").on(t.createdAt),
+  ],
+);
 
 // Stripe subscription state per tenant.
 export const subscriptions = pgTable("subscriptions", {

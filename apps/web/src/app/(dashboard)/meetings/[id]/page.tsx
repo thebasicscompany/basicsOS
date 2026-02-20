@@ -17,12 +17,13 @@ const MeetingDetailPage = (): JSX.Element => {
   const chunksRef = useRef<Blob[]>([]);
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: meeting, refetch } = trpc.meetings.get.useQuery({ id });
+  const utils = trpc.useUtils();
+  const { data: meeting } = trpc.meetings.get.useQuery({ id });
 
   const uploadTranscript = trpc.meetings.uploadTranscript.useMutation({
     onSuccess: () => {
       addToast({ title: "Transcript saved", variant: "success" });
-      void refetch();
+      void utils.meetings.get.invalidate({ id });
     },
     onError: (err) => {
       addToast({
@@ -36,7 +37,7 @@ const MeetingDetailPage = (): JSX.Element => {
   const processMeeting = trpc.meetings.process.useMutation({
     onSuccess: () => {
       addToast({ title: "Processing started", description: "AI summary will be ready shortly." });
-      void refetch();
+      void utils.meetings.get.invalidate({ id });
     },
     onError: (err) => {
       addToast({ title: "Failed to process", description: err.message, variant: "destructive" });

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { trpcServer } from "@hono/trpc-server";
 import { corsMiddleware } from "./middleware/cors.js";
 import { rateLimitMiddleware } from "./middleware/rate-limit.js";
@@ -20,6 +21,7 @@ export const createApp = (): Hono => {
   // Middleware chain order matters
   app.use("*", corsMiddleware);
   app.use("*", rateLimitMiddleware);
+  app.use("*", compress());
 
   // Health check — no auth required
   app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));

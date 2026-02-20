@@ -14,14 +14,14 @@ const contactsSubRouter = router({
     .input(
       z.object({
         search: z.string().optional(),
-        limit: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(500).default(500),
       }),
     )
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId)
         throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
-      const { search, limit = 50 } = input;
+      const { search, limit } = input;
 
       const rows = await ctx.db
         .select()

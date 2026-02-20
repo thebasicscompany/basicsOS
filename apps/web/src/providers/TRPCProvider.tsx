@@ -13,7 +13,14 @@ export const TRPCProvider = ({ children }: TRPCProviderProps): JSX.Element => {
   const [queryClient] = useState(
     () =>
       new QueryClient({
-        defaultOptions: { queries: { staleTime: 60_000 } },
+        defaultOptions: {
+          queries: {
+            staleTime: 60_000,
+            gcTime: 5 * 60_000,
+            refetchOnWindowFocus: false,
+            retry: 1,
+          },
+        },
       }),
   );
   const [trpcClient] = useState(() =>

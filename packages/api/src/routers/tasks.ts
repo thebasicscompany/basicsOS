@@ -11,6 +11,7 @@ const listInputSchema = z.object({
   assigneeId: z.string().uuid().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
   sourceType: z.enum(["meeting", "automation", "ai-employee"]).optional(),
+  limit: z.number().int().min(1).max(1000).default(500),
 });
 
 export const tasksRouter = router({
@@ -34,7 +35,8 @@ export const tasksRouter = router({
       .select()
       .from(tasks)
       .where(and(...conditions))
-      .orderBy(tasks.createdAt);
+      .orderBy(tasks.createdAt)
+      .limit(input.limit);
   }),
 
   get: protectedProcedure

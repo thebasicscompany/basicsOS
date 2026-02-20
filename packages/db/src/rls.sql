@@ -149,3 +149,17 @@ CREATE POLICY tenant_isolation ON audit_log
 DROP POLICY IF EXISTS tenant_isolation ON invites;
 CREATE POLICY tenant_isolation ON invites
   USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- ─── pgvector HNSW indexes for semantic search ───────────────────────────────
+-- HNSW is preferred over IVFFlat: no training step, better recall at scale.
+-- vector_cosine_ops matches the cosine similarity used in the search router.
+-- CONCURRENTLY cannot run inside a transaction block — apply-rls.ts executes
+-- each of these statements in a separate client.query() call.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS document_embeddings_embedding_idx
+  ON document_embeddings USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS meeting_embeddings_embedding_idx
+  ON meeting_embeddings USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS deal_activity_embeddings_embedding_idx
+  ON deal_activity_embeddings USING hnsw (embedding vector_cosine_ops);

@@ -36,12 +36,13 @@ const nameToColor = (name: string): string => {
 
 // Next.js App Router requires default export — framework exception.
 const CRMPage = (): JSX.Element => {
+  const utils = trpc.useUtils();
   const searchParams = useSearchParams();
   const router = useRouter();
   const view = (searchParams.get("view") ?? "pipeline") as "pipeline" | "contacts";
 
-  const { data: contactsData, refetch: refetchContacts } = trpc.crm.contacts.list.useQuery({});
-  const { data: dealsData, refetch: refetchDeals } = trpc.crm.deals.listByStage.useQuery();
+  const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
+  const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
 
   const setView = (v: "pipeline" | "contacts"): void => {
     const params = new URLSearchParams(searchParams.toString());
@@ -55,13 +56,13 @@ const CRMPage = (): JSX.Element => {
         <h1 className="text-2xl font-bold text-stone-900">CRM</h1>
         <div className="flex items-center gap-2">
           {view === "contacts" ? (
-            <CreateContactDialog onCreated={() => void refetchContacts()}>
+            <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
               <Button>
                 <Plus size={14} className="mr-1" /> New Contact
               </Button>
             </CreateContactDialog>
           ) : (
-            <CreateDealDialog onCreated={() => void refetchDeals()}>
+            <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
               <Button>
                 <Plus size={14} className="mr-1" /> New Deal
               </Button>
@@ -145,7 +146,7 @@ const CRMPage = (): JSX.Element => {
             heading="No contacts yet"
             description="Add your first contact to get started."
             action={
-              <CreateContactDialog onCreated={() => void refetchContacts()}>
+              <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
                 <Button>
                   <Plus size={14} className="mr-1" /> Add Contact
                 </Button>

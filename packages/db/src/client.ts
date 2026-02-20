@@ -16,11 +16,20 @@ const connectionString = process.env["DATABASE_URL"];
 // Defer the hard error to query time — the Pool is lazy and won't attempt a
 // connection until a query is made, so module evaluation is safe without
 // DATABASE_URL (e.g. during Next.js build-time static analysis).
-const pool = new Pool({ connectionString: connectionString ?? "" });
+const pool = new Pool({
+  connectionString: connectionString ?? "",
+  max: 20,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
+});
 
 if (!connectionString) {
-  pool.on("error", () => {
-    // swallow pool-level errors; per-query errors will surface naturally
+  pool.on("error", (err) => {
+    console.error("[db] Pool error (no DATABASE_URL configured):", err.message);
+  });
+} else {
+  pool.on("error", (err) => {
+    console.error("[db] Unexpected pool error:", err.message);
   });
 }
 

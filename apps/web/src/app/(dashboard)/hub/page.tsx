@@ -24,10 +24,11 @@ const SERVICE_ICONS: Record<string, React.ElementType> = {
 
 // Next.js App Router requires default export — framework exception.
 const HubPage = (): JSX.Element => {
+  const utils = trpc.useUtils();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: links, refetch: refetchLinks } = trpc.hub.listLinks.useQuery();
-  const { data: integrations, refetch: refetchIntegrations } = trpc.hub.listIntegrations.useQuery();
+  const { data: links } = trpc.hub.listLinks.useQuery();
+  const { data: integrations } = trpc.hub.listIntegrations.useQuery();
 
   const getOAuthUrl = trpc.hub.getOAuthUrl.useMutation({
     onSuccess: ({ url }) => {
@@ -41,7 +42,7 @@ const HubPage = (): JSX.Element => {
   const disconnect = trpc.hub.disconnectIntegration.useMutation({
     onSuccess: (_data, { service }) => {
       addToast({ title: `${service} disconnected`, variant: "success" });
-      void refetchIntegrations();
+      void utils.hub.listIntegrations.invalidate();
     },
     onError: (err) => {
       addToast({ title: "Error", description: err.message, variant: "destructive" });
@@ -53,7 +54,7 @@ const HubPage = (): JSX.Element => {
     const error = searchParams.get("oauth_error");
     if (success) {
       addToast({ title: `${success} connected successfully`, variant: "success" });
-      void refetchIntegrations();
+      void utils.hub.listIntegrations.invalidate();
       router.replace("/hub");
     } else if (error) {
       addToast({
@@ -75,7 +76,7 @@ const HubPage = (): JSX.Element => {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-stone-900">Hub</h1>
-        <AddLinkDialog onCreated={() => void refetchLinks()}>
+        <AddLinkDialog onCreated={() => void utils.hub.listLinks.invalidate()}>
           <Button>
             <Plus size={14} className="mr-1" /> Add Link
           </Button>
@@ -88,7 +89,7 @@ const HubPage = (): JSX.Element => {
           heading="No links yet"
           description="Add your first link to organize your team's tools and resources."
           action={
-            <AddLinkDialog onCreated={() => void refetchLinks()}>
+            <AddLinkDialog onCreated={() => void utils.hub.listLinks.invalidate()}>
               <Button>
                 <Plus size={14} className="mr-1" /> Add Link
               </Button>

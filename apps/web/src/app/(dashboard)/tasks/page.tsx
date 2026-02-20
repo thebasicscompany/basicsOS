@@ -15,10 +15,11 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
 
 // Next.js App Router requires default export — framework exception.
 const TasksPage = (): JSX.Element => {
-  const { data, refetch, isLoading } = trpc.tasks.list.useQuery({});
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.tasks.list.useQuery({});
   const updateTask = trpc.tasks.update.useMutation({
     onSuccess: () => {
-      void refetch();
+      void utils.tasks.list.invalidate();
     },
     onError: (err) => {
       addToast({ title: "Update failed", description: err.message, variant: "destructive" });
@@ -40,7 +41,7 @@ const TasksPage = (): JSX.Element => {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-stone-900">Tasks</h1>
-        <CreateTaskDialog onCreated={() => void refetch()}>
+        <CreateTaskDialog onCreated={() => void utils.tasks.list.invalidate()}>
           <Button>
             <Plus size={14} className="mr-1" /> New Task
           </Button>
@@ -69,7 +70,7 @@ const TasksPage = (): JSX.Element => {
           heading="No tasks yet"
           description="Create your first task to get started."
           action={
-            <CreateTaskDialog onCreated={() => void refetch()}>
+            <CreateTaskDialog onCreated={() => void utils.tasks.list.invalidate()}>
               <Button>
                 <Plus size={14} className="mr-1" /> Create Task
               </Button>
@@ -84,7 +85,7 @@ const TasksPage = (): JSX.Element => {
                 status={status}
                 label={label}
                 tasks={taskList.filter((t) => t.status === status)}
-                onStatusChanged={() => void refetch()}
+                onStatusChanged={() => void utils.tasks.list.invalidate()}
               />
             </div>
           ))}

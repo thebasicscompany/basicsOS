@@ -13,9 +13,35 @@ Knowledge base · CRM · Tasks · Meetings · AI Assistant · Automations — al
 
 ---
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+  - [macOS / Linux](#macos--linux)
+  - [Windows](#windows)
+- [What's Included](#whats-included)
+- [Platforms](#platforms)
+  - [Web](#web----appsweb)
+  - [Desktop](#desktop----appsdesktop)
+  - [Mobile](#mobile----appsmobile)
+  - [MCP Servers](#mcp-servers)
+- [Architecture](#architecture)
+- [Environment Variables](#environment-variables)
+- [Commands](#commands)
+- [Deployment](#deployment)
+  - [Railway](#railway-recommended)
+  - [Docker](#docker)
+- [Developing with Claude Code](#developing-with-claude-code)
+- [Tech Stack](#tech-stack)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Quick Start
 
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) · [Bun 1.2+](https://bun.sh)
+
+### macOS / Linux
 
 ```bash
 git clone https://github.com/basicos/basicos
@@ -23,38 +49,48 @@ cd basicos
 bash scripts/dev-setup.sh
 ```
 
-The setup script generates your `.env`, starts Postgres + Redis, runs migrations, and seeds demo data. Then:
+The setup script generates your `.env`, starts Postgres + Redis in Docker, runs migrations, and seeds demo data. Once it's done:
 
 ```bash
-# Terminal 1
-bun --filter @basicsos/api dev
-
-# Terminal 2
-bun --filter @basicsos/web dev
+bun dev
 ```
 
-Open **http://localhost:3000** and sign in:
+That's it. Both the API (`:3001`) and web app (`:3000`) start together in one terminal.
+
+Open **http://localhost:3000** and sign in with the demo account:
 
 ```
 Email:    admin@acme.example.com
 Password: password
 ```
 
+> **Tip:** You can also run them separately if you want their logs in different windows:
+> ```bash
+> # Terminal 1
+> bun --filter @basicsos/api dev
+>
+> # Terminal 2
+> bun --filter @basicsos/web dev
+> ```
+
 ### Windows
 
-The setup script requires bash. On Windows, run the steps manually:
+The setup script requires bash. Run the steps manually instead:
 
 ```bash
 bun install
 docker-compose up -d
 ```
 
-Create `.env` in the repo root (copy from `.env.example`), then:
+Copy `.env.example` to `.env` in the repo root, then:
 
 ```bash
 bun db:migrate
 bun db:seed
+bun dev
 ```
+
+Open **http://localhost:3000** — same demo credentials as above.
 
 ---
 
@@ -97,7 +133,7 @@ Electron v33. Two windows:
 Overlay tabs: Ask (AI Q&A) · Meetings (live transcript) · Voice (dictation + commands) · Capture (screenshot → knowledge base)
 
 ```bash
-bun --filter @basicsos/desktop dev   # requires web on :3000
+bun --filter @basicsos/desktop dev   # requires web running on :3000
 ```
 
 ### Mobile — `apps/mobile/`
@@ -203,7 +239,7 @@ packages/
 | `BETTER_AUTH_SECRET`  | Session signing key (32+ random chars)         |
 | `BETTER_AUTH_URL`     | Auth server base URL (`http://localhost:3000`) |
 | `NEXT_PUBLIC_APP_URL` | Public web app URL                             |
-| `NEXT_PUBLIC_API_URL` | Public API URL (`http://localhost:3001`)       |
+| `NEXT_PUBLIC_API_URL` | Public API URL (`http://localhost:3001`)        |
 
 **Optional** (unlock specific features):
 
@@ -223,19 +259,26 @@ packages/
 ## Commands
 
 ```bash
+# Development
 bash scripts/dev-setup.sh          # first-time setup (macOS/Linux)
+bun dev                            # start API + web together (recommended)
+bun --filter @basicsos/api dev     # API server only, on :3001
+bun --filter @basicsos/web dev     # web portal only, on :3000
+bun --filter @basicsos/desktop dev # desktop app (requires web on :3000)
 
-bun --filter @basicsos/api dev     # API server on :3001
-bun --filter @basicsos/web dev     # Web portal on :3000
-bun --filter @basicsos/desktop dev # Desktop app (requires web on :3000)
-
-bun db:migrate                     # push schema to database
-bun db:seed                        # seed demo data
+# Database
 bun db:generate                    # generate migration SQL from schema changes
-bun db:studio                      # Drizzle Studio (visual DB browser)
+bun db:migrate                     # apply migrations + RLS policies
+bun db:seed                        # seed demo data
+bun db:studio                      # open Drizzle Studio (visual DB browser)
 
+# Code quality
 bun test                           # run all tests
-bun gen:module                     # scaffold a new module (interactive)
+bun lint                           # lint all packages
+bun typecheck                      # TypeScript type-check all packages
+
+# Scaffolding
+bun gen:module                     # interactive: scaffold a new module
 ```
 
 ---

@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Sidebar, SidebarPanel, Avatar, AvatarFallback, Button } from "@basicsos/ui";
-import type { SidebarItem } from "@basicsos/ui";
+import { IconRail, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@basicsos/ui";
+import type { IconRailItem } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
 import {
-  LayoutDashboard,
   BookOpen,
   Users,
   CheckSquare,
@@ -18,19 +18,22 @@ import {
   LogOut,
 } from "@basicsos/ui";
 
-const NAV_ITEMS: SidebarItem[] = [
-  { label: "Dashboard", href: "/", Icon: LayoutDashboard, section: "Workspace" },
-  { label: "Knowledge", href: "/knowledge", Icon: BookOpen, section: "Workspace" },
-  { label: "CRM", href: "/crm", Icon: Users, section: "Workspace" },
-  { label: "Tasks", href: "/tasks", Icon: CheckSquare, section: "Workspace" },
-  { label: "Meetings", href: "/meetings", Icon: Video, section: "Workspace" },
-  { label: "Hub", href: "/hub", Icon: Link2, section: "Workspace" },
-  { label: "Assistant", href: "/assistant", Icon: Sparkles, section: "Workspace" },
-  { label: "Admin", href: "/admin/team", Icon: ShieldCheck, section: "System" },
-  { label: "Settings", href: "/settings", Icon: Settings, section: "System" },
+const NAV_ITEMS: IconRailItem[] = [
+  { id: "knowledge", label: "Knowledge Base", href: "/knowledge", Icon: BookOpen, accentColor: "text-amber-600", accentBg: "bg-amber-50" },
+  { id: "crm", label: "CRM", href: "/crm", Icon: Users, accentColor: "text-blue-600", accentBg: "bg-blue-50" },
+  { id: "tasks", label: "Tasks", href: "/tasks", Icon: CheckSquare, accentColor: "text-emerald-600", accentBg: "bg-emerald-50" },
+  { id: "meetings", label: "Meetings", href: "/meetings", Icon: Video, accentColor: "text-violet-600", accentBg: "bg-violet-50" },
+  { id: "hub", label: "Hub", href: "/hub", Icon: Link2, accentColor: "text-rose-600", accentBg: "bg-rose-50" },
+  { id: "assistant", label: "Assistant", href: "/assistant", Icon: Sparkles },
+  { id: "admin", label: "Admin", href: "/admin/team", Icon: ShieldCheck },
+  { id: "settings", label: "Settings", href: "/settings", Icon: Settings },
 ];
 
-export const NavClient = (): JSX.Element => {
+interface NavClientProps {
+  onSearchClick?: () => void;
+}
+
+export const NavClient = ({ onSearchClick }: NavClientProps): JSX.Element => {
   const pathname = usePathname();
   const { user } = useAuth();
   const router = useRouter();
@@ -39,10 +42,10 @@ export const NavClient = (): JSX.Element => {
     item.href.startsWith("/admin") ? user?.role === "admin" : true,
   );
 
-  const activeHref =
+  const activeId =
     visibleItems.find((item) =>
       item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
-    )?.href ?? "/";
+    )?.id;
 
   const handleSignOut = async (): Promise<void> => {
     await authClient.signOut();
@@ -57,44 +60,42 @@ export const NavClient = (): JSX.Element => {
       .toUpperCase()
       .slice(0, 2) ?? "A";
 
-  const brandHeader = (
-    <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+  const brandMark = (
+    <Link href="/" aria-label="Home">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground transition-opacity hover:opacity-80">
         B
       </div>
-      <div>
-        <div className="text-sm font-semibold text-stone-900">Basics OS</div>
-        <div className="text-xs text-stone-600">Company OS</div>
-      </div>
-    </div>
-  );
-
-  const userWidget = (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Avatar className="h-7 w-7">
-          <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="text-xs">
-          <div className="font-medium text-stone-900">{user?.name ?? "Account"}</div>
-          <div className="text-stone-600">{user?.email ?? ""}</div>
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => void handleSignOut()}
-        title="Sign out"
-        className="h-7 w-7 text-stone-600 hover:text-stone-800"
-      >
-        <LogOut size={16} />
-      </Button>
-    </div>
+    </Link>
   );
 
   return (
-    <SidebarPanel header={brandHeader} footer={userWidget}>
-      <Sidebar items={visibleItems} activeHref={activeHref} />
-    </SidebarPanel>
+    <IconRail
+      items={visibleItems}
+      activeId={activeId}
+      header={brandMark}
+      onSearchClick={onSearchClick}
+      userInitials={initials}
+      onNavigate={(href) => router.push(href)}
+      footer={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="mt-1 text-stone-500 hover:text-stone-700 transition-colors" aria-label="More options">
+              <Settings size={16} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="end" sideOffset={8}>
+            <DropdownMenuItem onClick={() => router.push("/settings")}>
+              <Settings size={14} className="mr-2" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => void handleSignOut()}>
+              <LogOut size={14} className="mr-2" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    />
   );
 };

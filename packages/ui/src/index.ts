@@ -87,6 +87,15 @@ export { CodeBlock } from "./components/CodeBlock.js";
 export { SectionLabel } from "./components/SectionLabel.js";
 export { IconBadge } from "./components/IconBadge.js";
 export { InlineCode } from "./components/InlineCode.js";
+export { IconRail } from "./components/IconRail.js";
+export type { IconRailItem } from "./components/IconRail.js";
+export {
+  CommandPalette,
+  CommandPaletteGroup,
+  CommandPaletteItem,
+  CommandPaletteEmpty,
+} from "./components/CommandPalette.js";
+export { useCommandPalette } from "./hooks/useCommandPalette.js";
 
 // Curated Lucide icon re-exports
 export {
@@ -154,4 +163,15 @@ export {
   Code2,
   Square,
   Circle,
+  Send,
+  Pin,
+  PinOff,
+  EyeOff,
+  GripHorizontal,
+  MicOff,
+  Pause,
+  Play,
+  Bookmark,
+  Flag,
+  ExternalLink,
 } from "lucide-react";

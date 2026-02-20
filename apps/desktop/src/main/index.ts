@@ -13,17 +13,23 @@ import {
   session,
 } from "electron";
 import path from "path";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import { autoUpdater } from "electron-updater";
 import { is } from "@electron-toolkit/utils";
 
 const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:3000";
+const PILL_WIDTH = 400;
+const PILL_HEIGHT = 200;
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let overlayActive = false;
 
-// Branding fetched from /api/branding on launch
+// ---------------------------------------------------------------------------
+// Branding
+// ---------------------------------------------------------------------------
+
 type Branding = {
   companyName: string;
   logoUrl: string | null;
@@ -50,6 +56,43 @@ const fetchBranding = async (): Promise<Branding> => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Notch detection (macOS only)
+// ---------------------------------------------------------------------------
+
+type NotchInfo = {
+  hasNotch: boolean;
+  notchHeight: number;
+  windowWidth: number;
+};
+
+const detectNotch = (): NotchInfo => {
+  const info: NotchInfo = { hasNotch: false, notchHeight: 0, windowWidth: PILL_WIDTH };
+
+  if (process.platform !== "darwin") return info;
+
+  try {
+    // Use Swift to query NSScreen.main?.safeAreaInsets.top
+    const result = execSync(
+      `swift -e 'import AppKit; if let s = NSScreen.main { print(s.safeAreaInsets.top) } else { print(0) }'`,
+      { timeout: 3000, encoding: "utf8" },
+    ).trim();
+    const insetTop = parseFloat(result);
+    if (insetTop > 0) {
+      info.hasNotch = true;
+      info.notchHeight = Math.round(insetTop);
+    }
+  } catch {
+    // Swift not available or failed — assume no notch
+  }
+
+  return info;
+};
+
+// ---------------------------------------------------------------------------
+// Main window
+// ---------------------------------------------------------------------------
+
 const createMainWindow = (branding: Branding): void => {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -59,7 +102,7 @@ const createMainWindow = (branding: Branding): void => {
     title: branding.companyName,
     webPreferences: { contextIsolation: true },
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 12, y: 16 },
+    trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: "#f9fafb",
   });
   mainWindow.loadURL(WEB_URL);
@@ -68,23 +111,30 @@ const createMainWindow = (branding: Branding): void => {
   });
 };
 
+// ---------------------------------------------------------------------------
+// Overlay window — fixed 400×200, flush top-center
+// ---------------------------------------------------------------------------
+
 const createOverlayWindow = (): void => {
-  const { width } = screen.getPrimaryDisplay().workAreaSize;
+  const { width: screenW } = screen.getPrimaryDisplay().workAreaSize;
+  const x = Math.round((screenW - PILL_WIDTH) / 2);
 
   overlayWindow = new BrowserWindow({
-    width: 420,
-    height: 480,
-    x: width - 440,
-    y: 60,
+    width: PILL_WIDTH,
+    height: PILL_HEIGHT,
+    x,
+    y: 0,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
     resizable: false,
+    movable: false,
+    roundedCorners: false,
+    enableLargerThanScreen: true,
     webPreferences: {
       contextIsolation: true,
-      // sandbox: false is required for electron-vite preload scripts using contextBridge
       sandbox: false,
       preload: path.join(__dirname, "../preload/index.js"),
     },
@@ -95,19 +145,19 @@ const createOverlayWindow = (): void => {
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
 
-  // Load the local renderer (Vite dev server in dev, bundled file in production)
+  // Load the local renderer
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     overlayWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
     overlayWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
-  // Block any navigation away from the local renderer
+  // Block navigation away from local renderer
   overlayWindow.webContents.on("will-navigate", (event) => {
     event.preventDefault();
   });
 
-  // Handle window.open / target="_blank" links: same-origin → main window, external → system browser
+  // Handle window.open links
   overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       const target = new URL(url);
@@ -126,11 +176,17 @@ const createOverlayWindow = (): void => {
     return { action: "deny" as const };
   });
 
-  overlayWindow.on("show", () => {
-    overlayWindow?.setIgnoreMouseEvents(false);
+  // Start in click-through mode
+  overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+
+  // Send notch info once renderer is ready
+  overlayWindow.webContents.on("did-finish-load", () => {
+    const notchInfo = detectNotch();
+    overlayWindow?.webContents.send("notch-info", notchInfo);
   });
 
-  // No blur-to-hide — overlay stays visible alongside dashboard
+  // Show overlay (always visible, click-through by default)
+  overlayWindow.showInactive();
 };
 
 // ---------------------------------------------------------------------------
@@ -154,7 +210,7 @@ ipcMain.handle("get-api-url", () => {
   return process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
 });
 
-// IPC: renderer tells us whether the mouse is over an interactive element.
+// Click-through toggle
 ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
   if (ignore) {
     overlayWindow?.setIgnoreMouseEvents(true, { forward: true });
@@ -163,16 +219,26 @@ ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
   }
 });
 
-// IPC: inject text into the currently focused field.
-// Strategy: write to clipboard, then simulate Cmd+V in the previously active app.
-// Requires Accessibility permission on macOS (prompted automatically on first use).
+// Overlay self-dismissed
+ipcMain.on("overlay-dismissed", () => {
+  overlayActive = false;
+});
+
+// Navigate main window
+ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
+  if (mainWindow) {
+    mainWindow.show();
+    const fullUrl = urlOrPath.startsWith("http") ? urlOrPath : `${WEB_URL}${urlOrPath}`;
+    mainWindow.loadURL(fullUrl).catch(() => undefined);
+  }
+});
+
+// Inject text via clipboard + simulated paste
 ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
   return new Promise((resolve) => {
     clipboard.writeText(text);
 
     if (process.platform === "darwin") {
-      // Hide overlay so the previously focused window regains focus, then paste
-      overlayWindow?.hide();
       setTimeout(() => {
         exec(
           `osascript -e 'tell application "System Events" to keystroke "v" using {command down}'`,
@@ -181,10 +247,8 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
             resolve();
           },
         );
-      }, 120); // wait for focus to return to previous app
+      }, 120);
     } else if (process.platform === "win32") {
-      // Windows: use PowerShell to send Ctrl+V
-      overlayWindow?.hide();
       setTimeout(() => {
         exec(
           `powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`,
@@ -195,32 +259,13 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
         );
       }, 120);
     } else {
-      // Linux / fallback: clipboard is set; user must paste manually
       resolve();
     }
   });
 });
 
-// IPC: navigate the main window to a URL path (for overlay quick actions / voice commands).
-ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
-  if (mainWindow) {
-    mainWindow.show();
-    // If it's a relative path, prepend the web URL
-    const fullUrl = urlOrPath.startsWith("http") ? urlOrPath : `${WEB_URL}${urlOrPath}`;
-    mainWindow.loadURL(fullUrl).catch(() => undefined);
-  }
-});
-
-// IPC: capture a screenshot of the primary display and return base64 PNG.
-// Hides the overlay first so it doesn't appear in the capture.
+// Capture screenshot
 ipcMain.handle("capture-screen", async (): Promise<string> => {
-  // Hide overlay so it's excluded from the capture
-  const wasVisible = overlayWindow?.isVisible() ?? false;
-  overlayWindow?.hide();
-
-  // Wait for the OS to composite the display without the overlay
-  await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   const sources = await desktopCapturer.getSources({
     types: ["screen"],
@@ -228,28 +273,44 @@ ipcMain.handle("capture-screen", async (): Promise<string> => {
   });
 
   const primary = sources[0];
-  if (!primary) {
-    if (wasVisible) overlayWindow?.show();
-    throw new Error("No screen source found");
-  }
+  if (!primary) throw new Error("No screen source found");
 
-  const png = primary.thumbnail.toPNG();
-  if (wasVisible) overlayWindow?.show();
-
-  return png.toString("base64");
+  return primary.thumbnail.toPNG().toString("base64");
 });
 
-const toggleOverlay = (): void => {
-  if (!overlayWindow) return;
-  if (overlayWindow.isVisible()) {
-    overlayWindow.hide();
-  } else {
-    const { width } = screen.getPrimaryDisplay().workAreaSize;
-    overlayWindow.setPosition(width - 440, 60);
-    overlayWindow.show();
-    overlayWindow.focus();
-  }
+// ---------------------------------------------------------------------------
+// Shortcuts
+// ---------------------------------------------------------------------------
+
+const setupShortcuts = (): void => {
+  // Primary: Alt+Space
+  globalShortcut.register("Alt+Space", () => {
+    if (!overlayWindow) return;
+    if (!overlayActive) {
+      overlayActive = true;
+      overlayWindow.webContents.send("activate-overlay");
+    } else {
+      overlayActive = false;
+      overlayWindow.webContents.send("deactivate-overlay");
+    }
+  });
+
+  // Secondary: Cmd+Shift+Space
+  globalShortcut.register("CommandOrControl+Shift+Space", () => {
+    if (!overlayWindow) return;
+    if (!overlayActive) {
+      overlayActive = true;
+      overlayWindow.webContents.send("activate-overlay");
+    } else {
+      overlayActive = false;
+      overlayWindow.webContents.send("deactivate-overlay");
+    }
+  });
 };
+
+// ---------------------------------------------------------------------------
+// Tray
+// ---------------------------------------------------------------------------
 
 const createTray = (branding: Branding): void => {
   const icon = nativeImage.createFromDataURL(
@@ -267,7 +328,19 @@ const createTray = (branding: Branding): void => {
           mainWindow?.show() ?? createMainWindow(branding);
         },
       },
-      { label: "Toggle Overlay  ⌘⇧Space", click: toggleOverlay },
+      {
+        label: "Toggle Overlay  \u2325Space",
+        click: () => {
+          if (!overlayWindow) return;
+          if (!overlayActive) {
+            overlayActive = true;
+            overlayWindow.webContents.send("activate-overlay");
+          } else {
+            overlayActive = false;
+            overlayWindow.webContents.send("deactivate-overlay");
+          }
+        },
+      },
       { type: "separator" },
       {
         label: "Check for Updates",
@@ -287,7 +360,6 @@ const createTray = (branding: Branding): void => {
 // ---------------------------------------------------------------------------
 
 const setupAutoUpdater = (): void => {
-  // Only run in packaged builds — not in dev
   if (!app.isPackaged) return;
 
   autoUpdater.checkForUpdatesAndNotify().catch((err: unknown) => {
@@ -295,11 +367,11 @@ const setupAutoUpdater = (): void => {
   });
 
   autoUpdater.on("update-available", () => {
-    console.warn("[auto-updater] Update available — downloading...");
+    console.warn("[auto-updater] Update available -- downloading...");
   });
 
   autoUpdater.on("update-downloaded", () => {
-    console.warn("[auto-updater] Update downloaded — will install on next restart.");
+    console.warn("[auto-updater] Update downloaded -- will install on next restart.");
   });
 
   autoUpdater.on("error", (err: Error) => {
@@ -314,15 +386,27 @@ const setupAutoUpdater = (): void => {
 app.whenReady().then(async () => {
   const branding = await fetchBranding();
 
-  createMainWindow(branding);
+  // Try to create main window — skip silently if web server unavailable
+  try {
+    const probe = await fetch(WEB_URL, { signal: AbortSignal.timeout(2000) });
+    if (probe.ok) createMainWindow(branding);
+  } catch {
+    console.warn("[main] Web server not reachable at", WEB_URL, "— skipping main window");
+  }
+
   createOverlayWindow();
   createTray(branding);
   setupAutoUpdater();
-
-  globalShortcut.register("CommandOrControl+Shift+Space", toggleOverlay);
+  setupShortcuts();
 
   app.on("activate", () => {
-    if (mainWindow === null) createMainWindow(branding);
+    if (mainWindow === null) {
+      try {
+        createMainWindow(branding);
+      } catch {
+        // web server still unavailable
+      }
+    }
   });
 });
 

@@ -27,7 +27,7 @@
 }
 
 :root {
-  /* Warm stone palette — matches web app globals.css */
+  /* Warm stone palette -- matches web app globals.css */
   --background: 30 14% 98%;
   --foreground: 24 10% 10%;
   --accent: 30 6% 90%;
@@ -47,7 +47,7 @@
   --warning-foreground: 0 0% 100%;
 }
 
-/* Transparent overlay background — only the pill panel is visible */
+/* Transparent overlay background -- only the pill is visible */
 html, body, #root {
   background: transparent !important;
   margin: 0;
@@ -61,7 +61,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth transitions by default */
-* {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Accessibility: respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
 }

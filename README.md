@@ -77,6 +77,31 @@ Password: password
 > bun --filter @basicsos/web dev
 > ```
 
+### Selective install — pick only the apps you need
+
+If you don't need the Desktop app (Electron) or Mobile app (Expo), you can skip
+installing their dependencies and save **300–700 MB** of download time:
+
+```bash
+bun scripts/create-basicos.ts
+# or
+bun run setup:select
+```
+
+This opens an interactive wizard:
+
+```
+◆  Which apps do you need?
+│  ◼  Web portal    Next.js — the main UI (recommended)
+│  ◻  Desktop app   Electron — macOS / Windows / Linux  (~200 MB)
+│  ◻  Mobile app    Expo — iOS & Android  (~500 MB)
+│  ◻  MCP servers   Claude / ChatGPT tool integration
+```
+
+It works on a fresh clone — no prior `bun install` needed. The script
+auto-installs its own dependencies, walks you through setup, and only
+runs `bun install` for the apps you selected.
+
 ### macOS / Linux (alternative)
 
 If you prefer the bash script:

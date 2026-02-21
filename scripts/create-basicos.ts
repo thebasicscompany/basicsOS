@@ -36,6 +36,9 @@ if (clackMissing || pcMissing) {
     cwd: ROOT,
     stdio: "inherit",
   });
+  // Re-exec so Bun's module resolver picks up the newly installed packages.
+  execSync(`bun ${fileURLToPath(import.meta.url)}`, { cwd: ROOT, stdio: "inherit" });
+  process.exit(0);
 }
 
 // Dynamic imports — guaranteed available after the bootstrap above

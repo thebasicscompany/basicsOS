@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Loader2, Button, Textarea, PageHeader, Card } from "@basicsos/ui";
+import { ArrowUp, Loader2, Mic, MicOff, Volume2, Button, Textarea, PageHeader, Card } from "@basicsos/ui";
 
 type Message = {
   id: string;
@@ -10,6 +10,25 @@ type Message = {
   streaming?: boolean;
 };
 
+// Minimal local types for Web Speech API (not all browsers expose these globally)
+type SpeechRecognitionClass = new () => {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((e: { results: SpeechRecognitionResultList }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionClass;
+    webkitSpeechRecognition?: SpeechRecognitionClass;
+  }
+}
+
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:3001";
 
 // Next.js App Router requires default export — framework exception
@@ -17,13 +36,105 @@ const AssistantPage = (): JSX.Element => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [hasSpeechApi, setHasSpeechApi] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<InstanceType<SpeechRecognitionClass> | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    setHasSpeechApi(
+      window.SpeechRecognition !== undefined || window.webkitSpeechRecognition !== undefined,
+    );
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Voice input (Web Speech API → populate textarea)
+  // ---------------------------------------------------------------------------
+  const stopListening = useCallback((): void => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }, []);
+
+  const startListening = useCallback((): void => {
+    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? "";
+      if (transcript) setInput(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsListening(true);
+  }, []);
+
+  const handleMicClick = useCallback((): void => {
+    if (isListening) stopListening();
+    else startListening();
+  }, [isListening, startListening, stopListening]);
+
+  // ---------------------------------------------------------------------------
+  // TTS playback (gateway Deepgram via basicsOS API proxy)
+  // ---------------------------------------------------------------------------
+  const speakMessage = useCallback(async (messageId: string, text: string): Promise<void> => {
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+      setSpeakingId(null);
+      return;
+    }
+
+    setSpeakingId(messageId);
+    try {
+      const res = await fetch(`${API_URL}/v1/audio/speech`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return;
+
+      const buffer = await res.arrayBuffer();
+      const blob = new Blob([buffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        currentAudioRef.current = null;
+        setSpeakingId(null);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        currentAudioRef.current = null;
+        setSpeakingId(null);
+      };
+      void audio.play();
+    } catch {
+      setSpeakingId(null);
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Send message
+  // ---------------------------------------------------------------------------
   const sendMessage = useCallback(
     async (text: string): Promise<void> => {
       if (!text.trim() || isStreaming) return;
@@ -181,21 +292,38 @@ const AssistantPage = (): JSX.Element => {
               key={msg.id}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[75%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-stone-900 border-l-2 border-primary/20"
-                }`}
-              >
-                {msg.content}
-                {msg.streaming && msg.content && (
-                  <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground" />
-                )}
-                {msg.streaming && !msg.content && (
-                  <span className="flex items-center gap-1.5 text-stone-500">
-                    <Loader2 size={12} className="animate-spin" /> Thinking...
-                  </span>
+              <div className="group relative">
+                <div
+                  className={`max-w-[75%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-stone-900 border-l-2 border-primary/20"
+                  }`}
+                >
+                  {msg.content}
+                  {msg.streaming && msg.content && (
+                    <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground" />
+                  )}
+                  {msg.streaming && !msg.content && (
+                    <span className="flex items-center gap-1.5 text-stone-500">
+                      <Loader2 size={12} className="animate-spin" /> Thinking...
+                    </span>
+                  )}
+                </div>
+
+                {/* TTS button on assistant messages */}
+                {msg.role === "assistant" && !msg.streaming && msg.content && (
+                  <button
+                    type="button"
+                    onClick={() => void speakMessage(msg.id, msg.content)}
+                    className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-white border border-stone-200 text-stone-400 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-stone-700"
+                    title={speakingId === msg.id ? "Stop" : "Listen"}
+                  >
+                    <Volume2
+                      size={11}
+                      className={speakingId === msg.id ? "text-primary" : ""}
+                    />
+                  </button>
                 )}
               </div>
             </div>
@@ -204,7 +332,7 @@ const AssistantPage = (): JSX.Element => {
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-end gap-3 pt-4 p-4">
+        <form onSubmit={handleSubmit} className="flex items-end gap-3 p-4 pt-4">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -219,6 +347,20 @@ const AssistantPage = (): JSX.Element => {
             disabled={isStreaming}
             className="flex-1 resize-none rounded-xl bg-muted min-h-0"
           />
+
+          {/* Mic button — only shown when Web Speech API is available */}
+          {hasSpeechApi && !isStreaming && (
+            <Button
+              type="button"
+              variant={isListening ? "destructive" : "outline"}
+              size="icon"
+              onClick={handleMicClick}
+              title={isListening ? "Stop listening" : "Voice input"}
+            >
+              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+            </Button>
+          )}
+
           {isStreaming ? (
             <Button type="button" variant="destructive" onClick={handleStop}>
               Stop

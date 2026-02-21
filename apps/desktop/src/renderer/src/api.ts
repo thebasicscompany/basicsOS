@@ -43,6 +43,27 @@ export const trpcCall = async <T>(
 };
 
 /**
+ * Synthesize speech via the basicsOS API proxy → infra gateway → Deepgram.
+ * Returns an ArrayBuffer (mp3) or null if the gateway is not configured.
+ */
+export const synthesizeSpeech = async (text: string): Promise<ArrayBuffer | null> => {
+  const apiUrl = await getApiUrl();
+  const token = await window.electronAPI?.getSessionToken();
+
+  const res = await fetch(`${apiUrl}/v1/audio/speech`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!res.ok) return null;
+  return res.arrayBuffer();
+};
+
+/**
  * Stream an SSE endpoint (used for assistant.chat streaming).
  * Returns an async generator of string chunks.
  */

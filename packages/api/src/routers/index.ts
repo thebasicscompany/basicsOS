@@ -14,6 +14,7 @@ import { adminRouter } from "./admin.js";
 import { billingRouter } from "./billing.js";
 import { llmKeysRouter } from "./llm-keys.js";
 import { notificationsRouter } from "./notifications.js";
+import { gatewayRouter } from "./gateway.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -31,6 +32,7 @@ export const appRouter = router({
   billing: billingRouter,
   llmKeys: llmKeysRouter,
   notifications: notificationsRouter,
+  gateway: gatewayRouter,
 });
 
 export type AppRouter = typeof appRouter;

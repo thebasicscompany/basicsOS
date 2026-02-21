@@ -7,6 +7,11 @@ import { appRouter } from "./routers/index.js";
 import { createContext } from "./context.js";
 import { validateVirtualKey } from "./routers/llm-keys.js";
 import { chatCompletion, chatCompletionStream } from "./lib/llm-client.js";
+import {
+  isGatewayConfigured,
+  transcribeAudio,
+  synthesizeSpeech,
+} from "./lib/gateway-client.js";
 import { auth } from "@basicsos/auth";
 import { semanticSearch } from "./lib/semantic-search.js";
 import { analyzeQuery } from "./lib/query-analyzer.js";
@@ -91,6 +96,63 @@ export const createApp = (): Hono => {
           }
         : undefined,
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Audio proxy — TTS + STT via infra gateway (Deepgram)
+  // Auth: Better Auth session cookie (web) or Bearer token (desktop overlay)
+  // ---------------------------------------------------------------------------
+
+  app.post("/v1/audio/speech", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+    if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
+
+    if (!isGatewayConfigured()) {
+      return c.json({ error: "TTS gateway not configured (set GATEWAY_URL + GATEWAY_API_KEY)" }, 503);
+    }
+
+    type TtsBody = { text?: string };
+    const body = (await c.req.json()) as TtsBody;
+    const text = body.text?.trim();
+    if (!text) return c.json({ error: "text is required" }, 400);
+
+    const audioBuffer = await synthesizeSpeech(text);
+    return new Response(audioBuffer, {
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Access-Control-Allow-Origin": c.req.header("Origin") ?? "*",
+      },
+    });
+  });
+
+  app.post("/v1/audio/transcriptions", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers }).catch(() => null);
+    if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
+
+    if (!isGatewayConfigured()) {
+      return c.json({ error: "STT gateway not configured (set GATEWAY_URL + GATEWAY_API_KEY)" }, 503);
+    }
+
+    const contentType = c.req.header("content-type") ?? "";
+    let audioBuffer: ArrayBuffer;
+    let mimeType = "audio/webm";
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await c.req.formData();
+      const file = form.get("file");
+      if (!(file instanceof File)) return c.json({ error: "Missing file in form data" }, 400);
+      audioBuffer = await file.arrayBuffer();
+      mimeType = file.type || "audio/webm";
+    } else {
+      type SttBody = { audio?: string; mime_type?: string };
+      const body = (await c.req.json()) as SttBody;
+      if (!body.audio) return c.json({ error: "audio (base64) is required" }, 400);
+      audioBuffer = Buffer.from(body.audio, "base64").buffer as ArrayBuffer;
+      mimeType = body.mime_type ?? "audio/webm";
+    }
+
+    const transcript = await transcribeAudio(audioBuffer, mimeType);
+    return c.json({ transcript });
   });
 
   // Streaming assistant endpoint — SSE, one token per event

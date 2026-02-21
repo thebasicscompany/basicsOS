@@ -351,7 +351,7 @@ export const OverlayApp = (): JSX.Element => {
   useEffect(() => {
     if (pill.state === "response" && settingsRef.current.voice.ttsEnabled) {
       const text = pill.responseLines.join(". ");
-      if (text) speak(text, { rate: settingsRef.current.voice.ttsRate });
+      if (text) void speak(text, { rate: settingsRef.current.voice.ttsRate });
     }
   }, [pill.state, pill.responseLines]);
 

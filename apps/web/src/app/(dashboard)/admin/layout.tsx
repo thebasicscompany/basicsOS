@@ -12,6 +12,7 @@ const ADMIN_TABS = [
   { href: "/admin/billing", label: "Billing" },
   { href: "/admin/api-keys", label: "API Keys" },
   { href: "/admin/mcp", label: "MCP" },
+  { href: "/admin/gateway", label: "Gateway" },
 ];
 
 // Next.js App Router requires default exports for layout/page segments.

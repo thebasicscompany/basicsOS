@@ -1,6 +1,7 @@
 #!/bin/bash
-# Basics OS Local Dev Setup
-# Usage: ./scripts/dev-setup.sh
+# Basics OS Local Dev Setup (Mac/Linux)
+# On Windows use: bun run dev:setup
+# Usage: ./scripts/dev-setup.sh  or  bun run dev:setup:bash
 set -euo pipefail
 
 GREEN='\033[0;32m'
@@ -49,6 +50,10 @@ fi
 # ─── Dependencies ────────────────────────────────────────────────────────────
 step "Installing dependencies..."
 bun install
+
+# ─── Build workspace packages ─────────────────────────────────────────────────
+step "Building workspace packages..."
+bun run build --filter='./packages/*' 2>/dev/null || warn "Build failed — try: bun run build --filter=@basicsos/ui"
 
 # ─── Docker services ─────────────────────────────────────────────────────────
 step "Starting PostgreSQL and Redis..."

@@ -2,14 +2,12 @@
 
 import { AppShell } from "@basicsos/ui";
 import { NavClient } from "./NavClient";
-import { CommandPaletteProvider, useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
+import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
 import { RouteRecorder } from "@/components/RouteRecorder";
 
 const DashboardShell = ({ children }: { children: React.ReactNode }): JSX.Element => {
-  const { setOpen } = useCommandPaletteContext();
-
   return (
-    <AppShell variant="rail" sidebar={<NavClient onSearchClick={() => setOpen(true)} />}>
+    <AppShell variant="rail" sidebar={<NavClient />}>
       <RouteRecorder />
       {children}
     </AppShell>

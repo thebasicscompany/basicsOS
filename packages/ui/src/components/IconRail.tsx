@@ -3,11 +3,9 @@
 import { forwardRef } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Search } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./Tooltip.js";
 import { Avatar, AvatarFallback } from "./Avatar.js";
-import { Kbd } from "./Kbd.js";
 
 export interface IconRailItem {
   id: string;
@@ -27,8 +25,6 @@ interface IconRailProps extends HTMLAttributes<HTMLDivElement> {
   header?: ReactNode;
   /** Footer slot (below avatar) */
   footer?: ReactNode;
-  /** Fires when the search icon is clicked (opens command palette) */
-  onSearchClick?: (() => void) | undefined;
   /** User initials for the avatar */
   userInitials?: string | undefined;
   /** Content for avatar dropdown — rendered as children of the avatar button's click handler */
@@ -72,7 +68,6 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
       activeId,
       header,
       footer,
-      onSearchClick,
       userInitials = "A",
       onAvatarClick,
       onNavigate,
@@ -85,7 +80,7 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
       <div
         ref={ref}
         className={cn(
-          "flex h-full w-14 flex-col items-center pt-10 pb-3",
+          "flex h-full w-14 flex-col items-center pt-8 pb-3",
           className,
         )}
         {...props}
@@ -117,18 +112,6 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
 
         {/* Bottom section */}
         <div className="flex flex-col items-center gap-1 border-t border-stone-200 pt-2 px-1.5">
-          {/* Search / Command Palette */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <RailButton onClick={onSearchClick} aria-label="Search">
-                <Search size={20} />
-              </RailButton>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8} className="flex items-center gap-2">
-              Search <Kbd>{navigator?.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K</Kbd>
-            </TooltipContent>
-          </Tooltip>
-
           {/* User avatar */}
           <Tooltip>
             <TooltipTrigger asChild>

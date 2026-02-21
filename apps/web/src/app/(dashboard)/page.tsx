@@ -28,7 +28,9 @@ import {
   X,
   ArrowRight,
   Inbox,
+  Search,
 } from "@basicsos/ui";
+import { useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
 
@@ -66,15 +68,6 @@ const colorForModule = (moduleId: string | undefined): string => {
   const extra = EXTRA_ACCENTS[moduleId];
   if (extra) return `${extra.bg} ${extra.color}`;
   return "bg-stone-100 text-stone-500";
-};
-
-const labelForModule = (moduleId: string | undefined): string => {
-  if (!moduleId) return "Page";
-  const accent = MODULE_ACCENTS[moduleId as ModuleId];
-  if (accent) return accent.label;
-  const extra = EXTRA_ACCENTS[moduleId];
-  if (extra) return extra.label;
-  return moduleId.charAt(0).toUpperCase() + moduleId.slice(1);
 };
 
 const getGreeting = (): string => {
@@ -173,6 +166,7 @@ const AttentionItem = ({
 // Next.js App Router requires default export — framework exception
 const DashboardPage = (): JSX.Element => {
   const { user, isPending } = useAuth();
+  const { setOpen: openSearch } = useCommandPaletteContext();
   const [recentRoutes, setRecentRoutes] = useState<RecentRoute[]>([]);
 
   useEffect(() => {
@@ -311,12 +305,10 @@ const DashboardPage = (): JSX.Element => {
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => {
-            window.location.href = "basicos://activate-overlay";
-          }}
+          onClick={() => openSearch(true)}
         >
-          <Sparkles size={14} />
-          Open Overlay
+          <Search size={14} />
+          Search
         </Button>
       </div>
 

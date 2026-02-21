@@ -31,6 +31,10 @@ Knowledge base · CRM · Tasks · Meetings · AI Assistant · Automations — al
   - [Railway](#railway-recommended)
   - [Docker](#docker)
 - [Developing with Claude Code](#developing-with-claude-code)
+- [Customizing the UI](#customizing-the-ui)
+  - [Company Assets](#company-assets)
+  - [Changing Brand Colors](#changing-brand-colors)
+  - [Adding or Modifying Components](#adding-or-modifying-components)
 - [Tech Stack](#tech-stack)
 - [Contributing](#contributing)
 - [License](#license)
@@ -262,9 +266,13 @@ packages/
 # Development
 bash scripts/dev-setup.sh          # first-time setup (macOS/Linux)
 bun dev                            # start API + web together (recommended)
+bun start                          # start in production mode (requires bun build first)
 bun --filter @basicsos/api dev     # API server only, on :3001
 bun --filter @basicsos/web dev     # web portal only, on :3000
 bun --filter @basicsos/desktop dev # desktop app (requires web on :3000)
+
+# Assets
+bun run assets:sync                # copy assets/ to all apps after replacing your logo
 
 # Database
 bun db:generate                    # generate migration SQL from schema changes
@@ -343,6 +351,31 @@ This loads exactly the right context files for what you're building — no manua
 ## Customizing the UI
 
 Basics OS uses a component-first architecture. Every UI element comes from a shared component library — change it once, it updates across web, desktop, and mobile.
+
+### Company Assets
+
+All brand assets live in one place:
+
+```
+assets/
+  icon.svg    ← your company icon (browser favicon, sidebar logo, app icon)
+```
+
+To white-label the app, replace `assets/icon.svg` with your own logo, then run:
+
+```bash
+bun run assets:sync
+```
+
+This copies your assets to every platform:
+
+| Destination | Used for |
+|---|---|
+| `apps/web/public/icon.svg` | Browser favicon + sidebar logo |
+| `apps/mobile/assets/icon.svg` | Expo app icon |
+| `apps/desktop/resources/icon.svg` | Electron app icon |
+
+The sidebar logo and browser tab icon update immediately on the next build. For dynamic per-tenant branding (logo URL + accent color), see **Admin → Branding** in the web app.
 
 ### How It Works
 

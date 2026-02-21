@@ -21,6 +21,7 @@ const serif = Lora({
 export const metadata: Metadata = {
   title: "Basics OS",
   description: "Company Operating System",
+  icons: { icon: "/icon.svg" },
 };
 
 // Next.js App Router requires default exports for layout/page segments.

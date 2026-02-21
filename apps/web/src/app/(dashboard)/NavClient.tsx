@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { IconRail, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@basicsos/ui";
+import { IconRail, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@basicsos/ui";
 import type { IconRailItem } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
@@ -29,11 +29,7 @@ const NAV_ITEMS: IconRailItem[] = [
   { id: "settings", label: "Settings", href: "/settings", Icon: Settings },
 ];
 
-interface NavClientProps {
-  onSearchClick?: () => void;
-}
-
-export const NavClient = ({ onSearchClick }: NavClientProps): JSX.Element => {
+export const NavClient = (): JSX.Element => {
   const pathname = usePathname();
   const { user } = useAuth();
   const router = useRouter();
@@ -62,9 +58,11 @@ export const NavClient = ({ onSearchClick }: NavClientProps): JSX.Element => {
 
   const brandMark = (
     <Link href="/" aria-label="Home">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground transition-opacity hover:opacity-80">
-        B
-      </div>
+      <img
+        src="/icon.svg"
+        alt="Logo"
+        className="h-8 w-8 rounded-lg transition-opacity hover:opacity-80"
+      />
     </Link>
   );
 
@@ -73,28 +71,23 @@ export const NavClient = ({ onSearchClick }: NavClientProps): JSX.Element => {
       items={visibleItems}
       activeId={activeId}
       header={brandMark}
-      onSearchClick={onSearchClick}
       userInitials={initials}
       onNavigate={(href) => router.push(href)}
       footer={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="mt-1 text-stone-500 hover:text-stone-700 transition-colors" aria-label="More options">
-              <Settings size={16} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="end" sideOffset={8}>
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
-              <Settings size={14} className="mr-2" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void handleSignOut()}>
-              <LogOut size={14} className="mr-2" />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => void handleSignOut()}
+                className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                aria-label="Sign out"
+              >
+                <LogOut size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>Sign out</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       }
     />
   );

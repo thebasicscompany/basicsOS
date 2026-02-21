@@ -25,6 +25,7 @@
     "gen:module": "plop",
     "setup": "bun scripts/setup-wizard.ts",
     "dev:setup": "bash scripts/dev-setup.sh",
+    "assets:sync": "bun scripts/sync-assets.ts",
     "db:generate": "bun --filter @basicsos/db generate"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import { scrypt, randomBytes } from "crypto";
+import { eq } from "drizzle-orm";
 import { db } from "./client.js";
 import {
   tenants,
@@ -17,6 +18,8 @@ import {
   hubLinks,
   automations,
 } from "./schema/index.js";
+
+const DEMO_ADMIN_EMAIL = "admin@acme.example.com";
 
 // Produces hashes compatible with Better Auth's credential provider.
 // Same algorithm: scrypt(NFKC(password), hexSalt, 64) → "hexSalt:hexKey"
@@ -38,6 +41,16 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 const seed = async (): Promise<void> => {
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, DEMO_ADMIN_EMAIL))
+    .limit(1);
+  if (existing.length > 0) {
+    console.warn("Demo data already present (admin@acme.example.com exists). Skipping seed.");
+    return;
+  }
+
   console.warn("Seeding database with demo data...");
 
   const [tenant] = await db

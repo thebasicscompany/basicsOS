@@ -24,7 +24,8 @@
     "db:studio": "bun --filter @basicsos/db studio",
     "gen:module": "plop",
     "setup": "bun scripts/setup-wizard.ts",
-    "dev:setup": "bash scripts/dev-setup.sh",
+    "dev:setup": "bun scripts/dev-setup.ts",
+    "dev:setup:bash": "bash scripts/dev-setup.sh",
     "assets:sync": "bun scripts/sync-assets.ts",
     "db:generate": "bun --filter @basicsos/db generate"
   },

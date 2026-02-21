@@ -31,8 +31,8 @@ const RootLayout = ({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element => (
-  <html lang="en" className={`${sans.variable} ${serif.variable}`}>
-    <body>
+  <html lang="en" className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
+    <body suppressHydrationWarning>
       <TRPCProvider>
         <AuthProvider>
           {children}

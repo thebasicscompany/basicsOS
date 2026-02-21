@@ -17,8 +17,6 @@ Knowledge base · CRM · Tasks · Meetings · AI Assistant · Automations — al
 
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-  - [All platforms (Windows, macOS, Linux)](#all-platforms-windows-macos-linux)
-  - [macOS / Linux (alternative)](#macos--linux-alternative)
 - [What's Included](#whats-included)
 - [Platforms](#platforms)
   - [Web](#web----appsweb)
@@ -65,21 +63,31 @@ Optional (for specific features): Stripe (billing), OAuth providers (Slack, Goog
 
 **Prerequisites:** [Bun](https://bun.sh) · [Node.js 20+](https://nodejs.org/) · [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-### All platforms (Windows, macOS, Linux)
-
 ```bash
 git clone https://github.com/basicos/basicos
 cd basicos
-bun run dev:setup
+bun scripts/create-basicos.ts
 ```
 
-The setup script generates your `.env`, installs dependencies, **builds workspace packages** (so the web app can resolve `@basicsos/ui`, `@basicsos/shared`, etc.), starts Postgres + Redis in Docker, runs migrations, and seeds demo data. Once it's done:
+The interactive setup wizard runs — no prior `bun install` needed. It asks which
+apps you want, then only installs those. Skipping Desktop or Mobile saves
+**200–500 MB** of dependencies.
+
+```
+◆  Which apps do you need?
+│  ◼  Web portal    Next.js — the main UI
+│  ◻  Desktop app   Electron — macOS / Windows / Linux  (~200 MB)
+│  ◻  Mobile app    Expo — iOS & Android  (~500 MB)
+│  ◻  MCP servers   Claude / ChatGPT tool integration
+```
+
+It generates your `.env`, starts Postgres + Redis in Docker, runs migrations,
+and seeds demo data. Once it's done, start the servers:
 
 ```bash
-bun dev
+bun --filter @basicsos/api dev   # API on :3001
+bun --filter @basicsos/web dev   # Web on :3000
 ```
-
-That's it. Both the API (`:3001`) and web app (`:3000`) start together in one terminal.
 
 Open **http://localhost:3000** and sign in with the demo account:
 
@@ -88,24 +96,10 @@ Email:    admin@acme.example.com
 Password: password
 ```
 
-> **Tip:** You can also run them separately if you want their logs in different windows:
+> **Want everything?** To install all apps without prompts:
 > ```bash
-> # Terminal 1
-> bun --filter @basicsos/api dev
->
-> # Terminal 2
-> bun --filter @basicsos/web dev
+> bun run dev:setup
 > ```
-
-### macOS / Linux (alternative)
-
-If you prefer the bash script:
-
-```bash
-bash scripts/dev-setup.sh
-# or
-bun run dev:setup:bash
-```
 
 ---
 

@@ -15,6 +15,7 @@ Knowledge base · CRM · Tasks · Meetings · AI Assistant · Automations — al
 
 ## Table of Contents
 
+- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
   - [macOS / Linux](#macos--linux)
   - [Windows](#windows)
@@ -41,9 +42,28 @@ Knowledge base · CRM · Tasks · Meetings · AI Assistant · Automations — al
 
 ---
 
+## Prerequisites
+
+Install these before running the project:
+
+| Requirement        | Version / notes | Purpose |
+| ------------------ | --------------- | ------- |
+| **[Bun](https://bun.sh)** | 1.2+ (1.1+ minimum) | Package manager and primary runtime for scripts, API, and tooling |
+| **[Node.js](https://nodejs.org/)** | 20+ | Required by Next.js, Electron, and some build tooling |
+| **[Docker](https://www.docker.com/products/docker-desktop/) & Docker Compose** | — | Runs PostgreSQL and Redis for local development |
+| **Git** | — | Clone the repository |
+
+- **Bun** is used for `bun install`, `bun dev`, `bun db:migrate`, and all workspace commands. Install: `curl -fsSL https://bun.sh/install | bash` (macOS/Linux) or see [bun.sh](https://bun.sh).
+- **Node.js** is listed in `engines` and used by the web and desktop apps; Bun can co-exist with Node.
+- **Docker** is required for the default dev setup: the API needs PostgreSQL (with pgvector) and Redis (for BullMQ). Without Docker, you must provide your own `DATABASE_URL` and `REDIS_URL`.
+
+Optional (for specific features): Stripe (billing), OAuth providers (Slack, Google, GitHub), Anthropic/OpenAI API key (AI assistant, summaries). See [Environment Variables](#environment-variables).
+
+---
+
 ## Quick Start
 
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) · [Bun 1.2+](https://bun.sh)
+**Prerequisites:** [Bun](https://bun.sh) · [Node.js 20+](https://nodejs.org/) · [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ### macOS / Linux
 

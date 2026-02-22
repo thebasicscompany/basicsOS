@@ -94,10 +94,10 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
   if (loadingAutomation) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-64 rounded bg-stone-200" />
+        <div className="h-8 w-64 rounded bg-stone-200 dark:bg-stone-700" />
         <div className="grid grid-cols-2 gap-6">
-          <div className="h-32 rounded-lg bg-stone-200" />
-          <div className="h-32 rounded-lg bg-stone-200" />
+          <div className="h-32 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-32 rounded-lg bg-stone-200 dark:bg-stone-700" />
         </div>
       </div>
     );
@@ -105,7 +105,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
 
   if (!automation) {
     return (
-      <div className="text-stone-500 text-sm">Automation not found.</div>
+      <div className="text-stone-500 dark:text-stone-400 text-sm">Automation not found.</div>
     );
   }
 
@@ -133,12 +133,12 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
         {/* Trigger */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-stone-700">Trigger</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Trigger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
               <IconBadge Icon={Zap} size="sm" color="bg-orange-50 text-orange-600" />
-              <span className="text-sm font-medium text-stone-900">
+              <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
                 {triggerConfig?.eventType ?? "No trigger set"}
               </span>
             </div>
@@ -147,10 +147,10 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
                 <SectionLabel>Conditions</SectionLabel>
                 {(triggerConfig.conditions as Array<{ field: string; operator: string; value: unknown }>).map(
                   (c, i) => (
-                    <div key={i} className="text-sm text-stone-600">
-                      <span className="font-mono text-xs bg-stone-100 px-1 rounded">{c.field}</span>
+                    <div key={i} className="text-sm text-stone-600 dark:text-stone-400">
+                      <span className="font-mono text-xs bg-stone-100 dark:bg-stone-800 px-1 rounded">{c.field}</span>
                       {" "}{c.operator}{" "}
-                      <span className="font-mono text-xs bg-stone-100 px-1 rounded">{String(c.value)}</span>
+                      <span className="font-mono text-xs bg-stone-100 dark:bg-stone-800 px-1 rounded">{String(c.value)}</span>
                     </div>
                   ),
                 )}
@@ -162,7 +162,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
         {/* Action Chain */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-stone-700">
+            <CardTitle className="text-sm font-medium text-foreground">
               Actions ({actionChain.length})
             </CardTitle>
             {!editingActions && (
@@ -200,20 +200,20 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
                 </div>
               </div>
             ) : actionChain.length === 0 ? (
-              <p className="text-sm text-stone-400 italic">No actions configured.</p>
+              <p className="text-sm text-stone-400 dark:text-stone-500 italic">No actions configured.</p>
             ) : (
               <div className="space-y-2">
                 {actionChain.map((action, i) => {
                   const meta = ACTION_META[action.type];
                   return (
                     <div key={i} className="flex items-center gap-3">
-                      <span className="text-xs text-stone-400 w-4 text-right">{i + 1}</span>
+                      <span className="text-xs text-stone-400 dark:text-stone-500 w-4 text-right">{i + 1}</span>
                       {meta ? (
                         <IconBadge Icon={meta.Icon} size="sm" color={meta.color} />
                       ) : (
-                        <div className="h-6 w-6 rounded bg-stone-100" />
+                        <div className="h-6 w-6 rounded bg-stone-100 dark:bg-stone-800" />
                       )}
-                      <span className="text-sm text-stone-700">{meta?.label ?? action.type}</span>
+                      <span className="text-sm text-stone-700 dark:text-stone-300">{meta?.label ?? action.type}</span>
                     </div>
                   );
                 })}
@@ -226,7 +226,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
       {/* Run History */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-stone-700">
+          <CardTitle className="text-sm font-medium text-foreground">
             Run History ({runList.length})
           </CardTitle>
         </CardHeader>
@@ -234,13 +234,13 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
           <CardContent>
             <div className="space-y-2 animate-pulse">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-8 rounded bg-stone-100" />
+                <div key={i} className="h-8 rounded bg-stone-100 dark:bg-stone-800" />
               ))}
             </div>
           </CardContent>
         ) : runList.length === 0 ? (
           <CardContent>
-            <p className="text-sm text-stone-400 italic">No runs yet — this automation has not triggered.</p>
+            <p className="text-sm text-stone-400 dark:text-stone-500 italic">No runs yet — this automation has not triggered.</p>
           </CardContent>
         ) : (
           <Table>
@@ -258,8 +258,8 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
                 const result = run.result as RunResult | null;
                 return (
                   <TableRow key={run.id}>
-                    <TableCell className="text-sm text-stone-600">{formatDate(run.startedAt)}</TableCell>
-                    <TableCell className="text-sm text-stone-500">
+                    <TableCell className="text-sm text-stone-600 dark:text-stone-400">{formatDate(run.startedAt)}</TableCell>
+                    <TableCell className="text-sm text-stone-500 dark:text-stone-400">
                       {result?.executionTimeMs != null
                         ? `${result.executionTimeMs}ms`
                         : formatDuration(run.startedAt, run.completedAt)}
@@ -267,7 +267,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
                     <TableCell>
                       <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-stone-500">
+                    <TableCell className="text-sm text-stone-500 dark:text-stone-400">
                       {result?.actionsExecuted ?? "—"}
                     </TableCell>
                     <TableCell className="text-sm text-destructive max-w-xs truncate">

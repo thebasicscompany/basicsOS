@@ -22,30 +22,30 @@ const UsagePage = (): JSX.Element => {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-stone-500">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Requests This Month
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-stone-900">{stats?.requestsThisMonth ?? 0}</p>
+            <p className="text-2xl font-semibold tabular-nums text-foreground">{stats?.requestsThisMonth ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-stone-500">Tokens Used</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tokens Used</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-stone-900">
+            <p className="text-2xl font-semibold tabular-nums text-foreground">
               {(stats?.tokensThisMonth ?? 0).toLocaleString()}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-stone-500">Est. Cost (USD)</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Est. Cost (USD)</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-stone-900">
+            <p className="text-2xl font-semibold tabular-nums text-foreground">
               ${(stats?.estimatedCostUsd ?? 0).toFixed(2)}
             </p>
           </CardContent>
@@ -54,19 +54,20 @@ const UsagePage = (): JSX.Element => {
 
       <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Recent AI Calls</CardTitle>
+          <CardTitle className="text-sm font-medium">Recent AI Calls</CardTitle>
         </CardHeader>
+        <CardContent className="p-0">
         {isLoading ? (
-          <div className="divide-y divide-stone-100">
+          <div className="divide-y divide-border">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div key={i} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-4">
-                  <div className="h-4 w-20 rounded bg-stone-200 animate-pulse" />
-                  <div className="h-3 w-28 rounded bg-stone-200 animate-pulse" />
+                  <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-28 rounded bg-muted animate-pulse" />
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="h-4 w-16 rounded bg-stone-200 animate-pulse" />
-                  <div className="h-3 w-20 rounded bg-stone-200 animate-pulse" />
+                  <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-20 rounded bg-muted animate-pulse" />
                 </div>
               </div>
             ))}
@@ -90,10 +91,10 @@ const UsagePage = (): JSX.Element => {
             <TableBody>
               {stats?.recentCalls.map((call, i) => (
                 <TableRow key={i}>
-                  <TableCell className="text-stone-900">{call.userId ?? "\u2014"}</TableCell>
-                  <TableCell className="text-stone-500">{call.model}</TableCell>
-                  <TableCell className="text-right text-stone-900">{call.tokens}</TableCell>
-                  <TableCell className="text-right text-stone-500">
+                  <TableCell className="text-foreground">{call.userId ?? "\u2014"}</TableCell>
+                  <TableCell className="text-muted-foreground">{call.model}</TableCell>
+                  <TableCell className="text-right text-foreground tabular-nums">{call.tokens}</TableCell>
+                  <TableCell className="text-right text-muted-foreground text-sm">
                     {new Date(call.timestamp).toLocaleString()}
                   </TableCell>
                 </TableRow>
@@ -101,6 +102,7 @@ const UsagePage = (): JSX.Element => {
             </TableBody>
           </Table>
         )}
+        </CardContent>
       </Card>
     </div>
   );

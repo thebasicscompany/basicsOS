@@ -22,7 +22,7 @@ const sizeMap = {
 export const IconBadge = ({
   Icon,
   size = "md",
-  color = "bg-stone-100 text-stone-500",
+  color = "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
   className,
 }: IconBadgeProps): JSX.Element => {
   const s = sizeMap[size];

@@ -45,8 +45,8 @@ export const SummaryCard = ({ summaryJson, isPending }: SummaryCardProps): JSX.E
       </CardHeader>
       <CardContent className="space-y-4">
         {note !== undefined && note.length > 0 && (
-          <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2">
-            <p className="text-xs text-yellow-700">{note}</p>
+          <div className="rounded-sm bg-yellow-50 dark:bg-amber-950/40 border border-yellow-200 dark:border-amber-800 px-3 py-2">
+            <p className="text-xs text-yellow-700 dark:text-amber-200">{note}</p>
           </div>
         )}
 

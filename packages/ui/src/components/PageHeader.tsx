@@ -25,21 +25,21 @@ export const PageHeader = ({
       {backHref && (
         <a
           href={backHref}
-          className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
+          className="text-sm text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
         >
           &larr; {backLabel}
         </a>
       )}
       <h1
         className={cn(
-          "text-2xl font-semibold font-serif tracking-tight text-stone-900",
+          "text-2xl font-semibold font-serif tracking-tight text-stone-900 dark:text-stone-100",
           backHref && "mt-1",
         )}
       >
         {title}
       </h1>
       {description && (
-        <p className="mt-1 text-sm text-stone-500">{description}</p>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{description}</p>
       )}
     </div>
     {action && <div className="shrink-0">{action}</div>}

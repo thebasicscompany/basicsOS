@@ -142,7 +142,7 @@ const NewMeetingPage = (): JSX.Element => {
                   type="file"
                   accept=".mp4,.mp3,.wav,.webm,.m4a"
                   onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-stone-500 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                  className="block w-full text-sm text-stone-500 dark:text-stone-400 file:mr-4 file:rounded-sm file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
                 />
                 {audioFile && (
                   <p className="text-xs text-stone-500">

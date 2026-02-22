@@ -63,16 +63,16 @@ export const AssistantPanel = (): JSX.Element => {
 
       {/* Slide-in panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-lg bg-white shadow-overlay overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-lg bg-white dark:bg-stone-900 shadow-overlay dark:shadow-none dark:ring-1 dark:ring-stone-700 overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
           {/* Header */}
-          <div className="flex items-center gap-2 bg-white px-4 pb-3 pt-3">
-            <span className="font-semibold text-stone-900">AI Assistant</span>
-            <span className="ml-auto text-xs text-stone-500">Powered by Claude</span>
+          <div className="flex items-center gap-2 bg-white dark:bg-stone-900 px-4 pb-3 pt-3 border-b border-stone-200 dark:border-stone-700">
+            <span className="font-semibold text-stone-900 dark:text-stone-100">AI Assistant</span>
+            <span className="ml-auto text-xs text-stone-500 dark:text-stone-400">Powered by Claude</span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setOpen(false)}
-              className="ml-2 h-7 w-7 text-stone-500 hover:text-stone-700"
+              className="ml-2 h-7 w-7 text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
             >
               <X size={16} />
             </Button>

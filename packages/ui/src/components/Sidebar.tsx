@@ -58,7 +58,7 @@ export const Sidebar = ({
         {sections.map((section, si) => (
           <li key={si}>
             {section.label && (
-              <div className="px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-stone-600">
+              <div className="px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-stone-600 dark:text-stone-400">
                 {section.label}
               </div>
             )}
@@ -74,7 +74,7 @@ export const Sidebar = ({
                         "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
                         isActive
                           ? "bg-primary/8 text-primary font-medium"
-                          : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+                          : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100",
                       )}
                     >
                       {IconComp ? (

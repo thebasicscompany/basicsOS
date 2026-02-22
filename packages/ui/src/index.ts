@@ -40,6 +40,15 @@ export {
 export { Avatar, AvatarImage, AvatarFallback } from "./components/Avatar";
 export { Separator } from "./components/Separator";
 export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from "./components/Breadcrumb";
+export {
   ToastProvider,
   ToastViewport,
   Toast,
@@ -120,6 +129,7 @@ export {
   ArrowRight,
   ArrowUp,
   ChevronRight,
+  PanelLeft,
   Plus,
   X,
   LogOut,

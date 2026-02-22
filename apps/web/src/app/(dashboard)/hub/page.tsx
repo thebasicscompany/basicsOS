@@ -97,8 +97,8 @@ const HubPage = (): JSX.Element => {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {(catLinks ?? []).map((link) => (
               <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="block">
-                <Card className="p-4 transition-colors hover:bg-stone-50">
-                  <span className="text-sm font-medium text-stone-900 line-clamp-1">{link.title}</span>
+                <Card className="p-4 transition-colors hover:bg-accent/50">
+                  <span className="text-sm font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{link.title}</span>
                 </Card>
               </a>
             ))}
@@ -120,11 +120,11 @@ const HubPage = (): JSX.Element => {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-200 text-stone-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400">
                     <IconComp size={18} />
                   </div>
                   <div>
-                    <p className="font-medium text-stone-900">{svc.label}</p>
+                    <p className="font-medium text-stone-900 dark:text-stone-100">{svc.label}</p>
                     <div className="mt-0.5">
                       {svc.connected ? (
                         <Badge variant="success">Connected</Badge>

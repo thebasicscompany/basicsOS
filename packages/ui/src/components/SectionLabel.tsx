@@ -15,7 +15,7 @@ export const SectionLabel = ({
 }: SectionLabelProps): JSX.Element => (
   <Tag
     className={cn(
-      "text-xs font-semibold uppercase tracking-widest text-stone-500",
+      "text-xs font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400",
       className,
     )}
     {...props}

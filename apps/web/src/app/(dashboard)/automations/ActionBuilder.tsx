@@ -57,21 +57,21 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
             return (
               <div
                 key={i}
-                className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2"
+                className="flex items-center gap-2 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2"
               >
-                <span className="text-xs text-stone-400 w-4 shrink-0 text-right">{i + 1}</span>
+                <span className="text-xs text-stone-400 dark:text-stone-500 w-4 shrink-0 text-right">{i + 1}</span>
                 {primitive ? (
                   <IconBadge Icon={primitive.Icon} size="sm" color={primitive.color} />
                 ) : (
-                  <div className="h-6 w-6 rounded bg-stone-200 shrink-0" />
+                  <div className="h-6 w-6 rounded bg-stone-200 dark:bg-stone-700 shrink-0" />
                 )}
-                <span className="flex-1 text-sm text-stone-700 truncate">
+                <span className="flex-1 text-sm text-stone-700 dark:text-stone-300 truncate">
                   {primitive ? primitive.summary(action.config) : action.type}
                 </span>
                 <button
                   type="button"
                   onClick={() => handleRemove(i)}
-                  className="shrink-0 text-stone-400 hover:text-stone-600 transition-colors"
+                  className="shrink-0 text-stone-400 dark:text-stone-500 hover:text-stone-600 transition-colors"
                   aria-label="Remove action"
                 >
                   <X size={14} />
@@ -84,20 +84,20 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
 
       {/* Type picker */}
       {pickerState === "picking" && (
-        <div className="rounded-lg border border-stone-200 bg-white p-3 space-y-2">
-          <p className="text-xs font-medium text-stone-500 uppercase tracking-wider">Choose an action type</p>
+        <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+          <p className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Choose an action type</p>
           <div className="grid grid-cols-1 gap-2">
             {ACTION_PRIMITIVES.map((primitive) => (
               <button
                 key={primitive.type}
                 type="button"
                 onClick={() => handlePickType(primitive.type)}
-                className="flex items-center gap-3 rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-left hover:bg-stone-100 transition-colors"
+                className="flex items-center gap-3 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2.5 text-left hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               >
                 <IconBadge Icon={primitive.Icon} size="sm" color={primitive.color} />
                 <div>
-                  <p className="text-sm font-medium text-stone-900">{primitive.label}</p>
-                  <p className="text-xs text-stone-500">{primitive.description}</p>
+                  <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{primitive.label}</p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">{primitive.description}</p>
                 </div>
               </button>
             ))}
@@ -110,10 +110,10 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
 
       {/* Config form */}
       {pickerState === "configuring" && pendingPrimitive && (
-        <div className="rounded-lg border border-stone-200 bg-white p-3 space-y-3">
+        <div className="rounded-lg border border-border bg-card p-3 space-y-3">
           <div className="flex items-center gap-2">
             <IconBadge Icon={pendingPrimitive.Icon} size="sm" color={pendingPrimitive.color} />
-            <p className="text-sm font-medium text-stone-900">{pendingPrimitive.label}</p>
+            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{pendingPrimitive.label}</p>
           </div>
           <pendingPrimitive.Form config={draftConfig} onChange={setDraftConfig} />
           <div className="flex gap-2 pt-1">

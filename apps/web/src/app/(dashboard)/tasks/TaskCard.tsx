@@ -44,13 +44,13 @@ export const TaskCard = ({ task, onStatusChanged }: TaskCardProps): JSX.Element 
       draggable
       onDragStart={handleDragStart}
       onDrop={handleDrop}
-      className="cursor-grab p-3 active:cursor-grabbing transition-colors hover:bg-stone-50"
+      className="cursor-grab p-3 active:cursor-grabbing transition-colors hover:bg-accent/50"
     >
-      <p className="text-sm font-medium text-stone-900">{task.title}</p>
+      <p className="text-sm font-medium text-foreground">{task.title}</p>
       <div className="mt-2 flex items-center gap-2">
         <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
         {task.dueDate !== null && task.dueDate !== undefined && (
-          <span className="text-xs text-stone-500">
+          <span className="text-xs text-muted-foreground">
             Due {new Date(task.dueDate).toLocaleDateString()}
           </span>
         )}

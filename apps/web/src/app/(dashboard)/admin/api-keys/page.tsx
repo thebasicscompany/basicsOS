@@ -104,11 +104,11 @@ const CreateKeyDialog = ({ onCreated }: { onCreated: (key: CreatedKey) => void }
 
 const NewKeyReveal = ({ createdKey, onDismiss }: { createdKey: CreatedKey; onDismiss: () => void }): JSX.Element => (
   <Card className="border border-primary/20 ring-1 ring-primary/10 bg-primary/5 p-5">
-    <p className="text-sm font-medium text-stone-900">
+    <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
       Key created — copy it now. You won&apos;t be able to see it again.
     </p>
-    <div className="mt-3 flex items-center gap-2 rounded-lg bg-white p-3">
-      <code className="flex-1 break-all font-mono text-xs text-stone-700">{createdKey.key}</code>
+    <div className="mt-3 flex items-center gap-2 rounded-lg bg-white dark:bg-stone-800 p-3 ring-1 ring-stone-200 dark:ring-stone-700/50">
+      <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-200">{createdKey.key}</code>
       <CopyButton text={createdKey.key} />
     </div>
     <Button variant="outline" size="sm" className="mt-3" onClick={onDismiss}>

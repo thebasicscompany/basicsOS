@@ -68,11 +68,11 @@ const GatewayPage = (): JSX.Element => {
       <Card className="p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-stone-900">Connection status</p>
-            <p className="mt-0.5 text-xs text-stone-500">
-              Configure via <code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs">BASICOS_API_URL</code>{" "}
+            <p className="text-sm font-medium text-stone-900 dark:text-stone-100">Connection status</p>
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+              Configure via <code className="rounded bg-stone-100 dark:bg-stone-800 px-1 py-0.5 font-mono text-xs">BASICOS_API_URL</code>{" "}
               and{" "}
-              <code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs">BASICOS_API_KEY</code>{" "}
+              <code className="rounded bg-stone-100 dark:bg-stone-800 px-1 py-0.5 font-mono text-xs">BASICOS_API_KEY</code>{" "}
               environment variables.
             </p>
           </div>
@@ -90,8 +90,8 @@ const GatewayPage = (): JSX.Element => {
             {/* Gateway URL */}
             <div>
               <SectionLabel as="p" className="mb-1">Gateway URL</SectionLabel>
-              <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-                <code className="flex-1 break-all font-mono text-xs text-stone-700">{gatewayUrl}</code>
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+                <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-300">{gatewayUrl}</code>
                 <CopyButton text={gatewayUrl} />
               </div>
             </div>
@@ -99,8 +99,8 @@ const GatewayPage = (): JSX.Element => {
             {/* API Key */}
             <div>
               <SectionLabel as="p" className="mb-1">API Key</SectionLabel>
-              <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-                <code className="flex-1 break-all font-mono text-xs text-stone-700">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+                <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-300">
                   {keyVisible && fullKey ? fullKey : keyPrefix ?? "••••••••••••••••••••••••"}
                 </code>
                 <Button
@@ -112,7 +112,7 @@ const GatewayPage = (): JSX.Element => {
                 </Button>
                 {keyVisible && fullKey && <CopyButton text={fullKey} />}
               </div>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
                 Keep this secret. Use it in the <code className="font-mono">Authorization: Bearer</code> header.
               </p>
             </div>
@@ -132,17 +132,17 @@ const GatewayPage = (): JSX.Element => {
 
       {/* What the gateway provides */}
       <Card className="p-5">
-        <h3 className="font-semibold text-stone-900">What&apos;s available</h3>
+        <h3 className="font-semibold text-stone-900 dark:text-stone-100">What&apos;s available</h3>
         <div className="mt-3 grid grid-cols-3 gap-3">
           {[
             { label: "Chat completions", path: "/v1/chat/completions", desc: "Gemini 2.5 via LiteLLM" },
             { label: "Text-to-speech", path: "/v1/audio/speech", desc: "Deepgram aura-2" },
             { label: "Speech-to-text", path: "/v1/audio/transcriptions", desc: "Deepgram nova-2" },
           ].map((item) => (
-            <div key={item.path} className="rounded-lg border border-stone-200 p-3">
-              <p className="text-xs font-medium text-stone-900">{item.label}</p>
-              <code className="mt-0.5 block font-mono text-xs text-stone-500">{item.path}</code>
-              <p className="mt-1 text-xs text-stone-400">{item.desc}</p>
+            <div key={item.path} className="rounded-lg border border-border p-3">
+              <p className="text-xs font-medium text-stone-900 dark:text-stone-100">{item.label}</p>
+              <code className="mt-0.5 block font-mono text-xs text-stone-500 dark:text-stone-400">{item.path}</code>
+              <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -150,7 +150,7 @@ const GatewayPage = (): JSX.Element => {
 
       {/* Developer examples */}
       <div className="space-y-4">
-        <h3 className="font-semibold text-stone-900">Code examples</h3>
+        <h3 className="font-semibold text-stone-900 dark:text-stone-100">Code examples</h3>
 
         <div className="space-y-1">
           <SectionLabel as="p">Text-to-speech</SectionLabel>
@@ -171,8 +171,8 @@ const GatewayPage = (): JSX.Element => {
       {/* Health check */}
       {configured && gatewayUrl && (
         <Card className="p-5">
-          <h3 className="font-semibold text-stone-900">Health check</h3>
-          <p className="mt-1 text-sm text-stone-600">
+          <h3 className="font-semibold text-stone-900 dark:text-stone-100">Health check</h3>
+          <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
             Check that the gateway is reachable and all providers are up.
           </p>
           <CodeBlock

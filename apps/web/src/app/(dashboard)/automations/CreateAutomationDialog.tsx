@@ -166,7 +166,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
-                  <p className="text-xs text-stone-400">
+                  <p className="text-xs text-stone-400 dark:text-stone-500">
                     Mention the trigger (when X happens) and the actions (do Y, then Z).
                   </p>
                 </div>
@@ -183,10 +183,10 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
             ) : (
               parsedSpec && (
                 <>
-                  <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 space-y-3">
+                  <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
                     <div>
                       <SectionLabel className="mb-1">Name</SectionLabel>
-                      <p className="font-medium text-stone-900">{parsedSpec.name}</p>
+                      <p className="font-medium text-stone-900 dark:text-stone-100">{parsedSpec.name}</p>
                     </div>
                     <div>
                       <SectionLabel className="mb-1">Trigger</SectionLabel>
@@ -198,13 +198,13 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
                       </SectionLabel>
                       <div className="space-y-1">
                         {parsedSpec.actionChain.map((action, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm text-stone-700">
-                            <span className="text-stone-400">{i + 1}.</span>
+                          <div key={i} className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+                            <span className="text-stone-400 dark:text-stone-500">{i + 1}.</span>
                             <span>{ACTION_TYPE_LABELS[action.type] ?? action.type}</span>
                           </div>
                         ))}
                         {parsedSpec.actionChain.length === 0 && (
-                          <p className="text-sm text-stone-400 italic">No actions — you can add them after saving.</p>
+                          <p className="text-sm text-stone-400 dark:text-stone-500 italic">No actions — you can add them after saving.</p>
                         )}
                       </div>
                     </div>

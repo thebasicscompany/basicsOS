@@ -52,7 +52,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-200">
+      <div className="flex min-h-screen items-center justify-center bg-stone-200 dark:bg-stone-950">
         <p className="text-stone-500">Validating invite…</p>
       </div>
     );
@@ -60,7 +60,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
 
   if (queryError !== null || data === undefined) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-200">
+      <div className="flex min-h-screen items-center justify-center bg-stone-200 dark:bg-stone-950">
         <p className="text-destructive">
           {queryError?.message ?? "Invalid or expired invite link."}
         </p>
@@ -69,7 +69,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-200">
+    <div className="flex min-h-screen items-center justify-center bg-stone-200 dark:bg-stone-950">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Accept Invite</CardTitle>

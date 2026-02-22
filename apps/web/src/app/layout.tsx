@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Lora } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { TRPCProvider } from "@/providers/TRPCProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { Toaster } from "@basicsos/ui";
@@ -31,14 +32,16 @@ const RootLayout = ({
 }: Readonly<{
   children: React.ReactNode;
 }>): JSX.Element => (
-  <html lang="en" className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
-    <body suppressHydrationWarning>
-      <TRPCProvider>
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
-      </TRPCProvider>
+  <html lang="en" suppressHydrationWarning>
+    <body className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
+      <ThemeProvider>
+        <TRPCProvider>
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </TRPCProvider>
+      </ThemeProvider>
     </body>
   </html>
 );

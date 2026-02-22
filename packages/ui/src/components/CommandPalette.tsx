@@ -37,7 +37,7 @@ export const CommandPalette = ({
       {/* Palette */}
       <Command
         className={cn(
-          "relative w-full max-w-[560px] rounded-lg border border-stone-200 bg-white shadow-lg",
+          "relative w-full max-w-[560px] rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 shadow-lg",
           "animate-in fade-in-0 zoom-in-95 slide-in-from-top-2",
           "flex flex-col overflow-hidden",
         )}
@@ -49,16 +49,16 @@ export const CommandPalette = ({
         }}
       >
         {/* Search input */}
-        <div className="flex items-center border-b border-stone-100 px-3">
-          <Search size={16} className="mr-2 shrink-0 text-stone-400" />
+        <div className="flex items-center border-b border-stone-100 dark:border-stone-700 px-3">
+          <Search size={16} className="mr-2 shrink-0 text-stone-400 dark:text-stone-500" />
           <Command.Input
             placeholder={placeholder}
-            className="flex h-11 w-full bg-transparent text-sm text-stone-900 placeholder:text-stone-400 outline-none"
+            className="flex h-11 w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none"
             autoFocus
           />
           <button
             onClick={() => onOpenChange(false)}
-            className="ml-2 shrink-0 rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+            className="ml-2 shrink-0 rounded-md p-1 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-600 dark:hover:text-stone-300"
             aria-label="Close"
           >
             <X size={14} />
@@ -67,21 +67,21 @@ export const CommandPalette = ({
 
         {/* Command list */}
         <Command.List className="max-h-[340px] overflow-y-auto p-2">
-          <Command.Empty className="py-8 text-center text-sm text-stone-400">
+          <Command.Empty className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
             No results found.
           </Command.Empty>
           {children}
         </Command.List>
 
         {/* Footer hints */}
-        <div className="flex items-center gap-4 border-t border-stone-100 px-3 py-2">
-          <span className="text-[11px] text-stone-400">
+        <div className="flex items-center gap-4 border-t border-stone-100 dark:border-stone-700 px-3 py-2">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">
             <kbd className="font-mono">Enter</kbd> to select
           </span>
-          <span className="text-[11px] text-stone-400">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">
             <kbd className="font-mono">Esc</kbd> to close
           </span>
-          <span className="text-[11px] text-stone-400">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">
             <kbd className="font-mono">&uarr;&darr;</kbd> to navigate
           </span>
         </div>
@@ -102,7 +102,7 @@ interface CommandPaletteGroupProps {
 export const CommandPaletteGroup = ({ heading, children }: CommandPaletteGroupProps): JSX.Element => (
   <Command.Group
     heading={heading}
-    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-stone-400"
+    className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-stone-400 dark:[&_[cmdk-group-heading]]:text-stone-500"
   >
     {children}
   </Command.Group>
@@ -129,18 +129,18 @@ export const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemP
       {...(onSelect ? { onSelect: () => onSelect() } : {})}
       {...(disabled ? { disabled: true } : {})}
       className={cn(
-        "flex h-10 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm text-stone-700",
+        "flex h-10 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm text-stone-700 dark:text-stone-300",
         "select-none",
-        "data-[selected=true]:bg-stone-100 data-[selected=true]:text-stone-900",
+        "data-[selected=true]:bg-stone-100 dark:data-[selected=true]:bg-stone-800 data-[selected=true]:text-stone-900 dark:data-[selected=true]:text-stone-100",
         "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
         className,
       )}
     >
       {icon && <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">{icon}</span>}
       <span className="flex-1 truncate">{children}</span>
-      {description && <span className="text-xs text-stone-400 truncate">{description}</span>}
+      {description && <span className="text-xs text-stone-400 dark:text-stone-500 truncate">{description}</span>}
       {shortcut && (
-        <kbd className="ml-auto inline-flex h-5 items-center rounded border border-stone-200 bg-stone-50 px-1.5 font-mono text-[10px] text-stone-400">
+        <kbd className="ml-auto inline-flex h-5 items-center rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-1.5 font-mono text-[10px] text-stone-400 dark:text-stone-500">
           {shortcut}
         </kbd>
       )}
@@ -150,7 +150,7 @@ export const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemP
 CommandPaletteItem.displayName = "CommandPaletteItem";
 
 export const CommandPaletteEmpty = ({ children }: { children: ReactNode }): JSX.Element => (
-  <Command.Empty className="py-8 text-center text-sm text-stone-400">{children}</Command.Empty>
+  <Command.Empty className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">{children}</Command.Empty>
 );
 
 export const CommandPaletteInput = Command.Input;

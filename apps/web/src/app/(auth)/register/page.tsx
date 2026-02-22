@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { Button, Input, Label } from "@basicsos/ui";
+import { Button, Input, Label, Card, CardContent } from "@basicsos/ui";
 
 // Next.js App Router requires default exports for page segments.
 // This is a framework-mandated exception to the project's named-export rule.
@@ -31,15 +31,16 @@ const RegisterPage = (): JSX.Element => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-200">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-card">
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-full max-w-md p-8">
+        <CardContent className="p-0">
         {/* Brand */}
         <div className="mb-6 flex justify-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
             B
           </div>
         </div>
-        <h1 className="mb-6 text-center text-2xl font-bold text-stone-900">Create account</h1>
+        <h1 className="mb-6 text-center text-2xl font-bold text-foreground">Create account</h1>
         {error !== null && (
           <p className="mb-4 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
@@ -82,13 +83,14 @@ const RegisterPage = (): JSX.Element => {
             {loading ? "Creating account..." : "Create account"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-stone-500">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <a href="/login" className="text-primary hover:underline font-medium">
             Sign in
           </a>
         </p>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

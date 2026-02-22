@@ -260,8 +260,8 @@ const AssistantPage = (): JSX.Element => {
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-16 text-center">
-              <h2 className="text-lg font-semibold font-serif text-stone-700">How can I help?</h2>
-              <p className="max-w-sm text-sm text-stone-500">
+              <h2 className="text-lg font-semibold font-serif text-stone-700 dark:text-stone-300">How can I help?</h2>
+              <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
                 Ask about your company data, find documents, check tasks, review meeting notes, or
                 get answers from your knowledge base.
               </p>
@@ -297,7 +297,7 @@ const AssistantPage = (): JSX.Element => {
                   className={`max-w-[75%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-stone-900 border-l-2 border-primary/20"
+                      : "bg-muted text-stone-900 dark:text-stone-100 border-l-2 border-primary/20"
                   }`}
                 >
                   {msg.content}
@@ -305,7 +305,7 @@ const AssistantPage = (): JSX.Element => {
                     <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground" />
                   )}
                   {msg.streaming && !msg.content && (
-                    <span className="flex items-center gap-1.5 text-stone-500">
+                    <span className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400">
                       <Loader2 size={12} className="animate-spin" /> Thinking...
                     </span>
                   )}
@@ -316,7 +316,7 @@ const AssistantPage = (): JSX.Element => {
                   <button
                     type="button"
                     onClick={() => void speakMessage(msg.id, msg.content)}
-                    className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-white border border-stone-200 text-stone-400 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-stone-700"
+                    className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-stone-700"
                     title={speakingId === msg.id ? "Stop" : "Listen"}
                   >
                     <Volume2

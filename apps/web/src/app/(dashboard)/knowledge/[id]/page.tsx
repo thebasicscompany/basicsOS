@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import {
   Button,
+  Card,
   Input,
   PageHeader,
   addToast,
@@ -154,9 +155,9 @@ const DocumentDetailPage = (): JSX.Element => {
       />
 
       {/* TipTap editor */}
-      <div className="rounded-lg bg-white shadow-card">
+      <Card className="overflow-hidden">
         {/* Toolbar */}
-        <div className="flex gap-0.5 border-b border-stone-100 px-2 py-1.5">
+        <div className="flex gap-0.5 border-b border-border px-2 py-1.5">
           {[
             {
               Icon: Bold,
@@ -216,9 +217,9 @@ const DocumentDetailPage = (): JSX.Element => {
 
         {/* Content */}
         <EditorContent editor={editor} />
-      </div>
+      </Card>
 
-      <p className="mt-3 text-xs text-stone-400 text-right">
+      <p className="mt-3 text-xs text-muted-foreground text-right">
         Auto-saves as you type · Cmd+S to save now
       </p>
     </div>

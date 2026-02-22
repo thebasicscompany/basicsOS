@@ -9,8 +9,10 @@ import type { RecentRoute } from "@/lib/recent-routes";
 import { MODULE_ACCENTS } from "@basicsos/shared";
 import type { ModuleId } from "@basicsos/shared";
 import {
+  cn,
   Card,
   Button,
+  Badge,
   SectionLabel,
   IconBadge,
   EmptyState,
@@ -28,8 +30,9 @@ import {
   X,
   ArrowRight,
   Inbox,
-  Search,
+  DollarSign,
 } from "@basicsos/ui";
+import type { ComponentType, SVGProps } from "react";
 import { useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
@@ -52,6 +55,18 @@ const EXTRA_ACCENTS: Record<string, { label: string; icon: string; color: string
   settings: { label: "Settings", icon: "Settings", color: "text-stone-600", bg: "bg-stone-100" },
 };
 
+/** Dark-mode-aware icon badge colors for recent-work cards (and stat cards). */
+const MODULE_ICON_COLORS: Record<string, string> = {
+  knowledge: "bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400",
+  crm: "bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400",
+  tasks: "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400",
+  meetings: "bg-violet-50 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400",
+  hub: "bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400",
+  assistant: "bg-primary/15 dark:bg-primary/20 text-primary",
+  admin: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400",
+  settings: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400",
+};
+
 const iconForModule = (moduleId: string | undefined): LucideIcon => {
   if (!moduleId) return LayoutDashboard;
   const accent = MODULE_ACCENTS[moduleId as ModuleId];
@@ -62,12 +77,8 @@ const iconForModule = (moduleId: string | undefined): LucideIcon => {
 };
 
 const colorForModule = (moduleId: string | undefined): string => {
-  if (!moduleId) return "bg-stone-100 text-stone-500";
-  const accent = MODULE_ACCENTS[moduleId as ModuleId];
-  if (accent) return `${accent.bg} ${accent.color}`;
-  const extra = EXTRA_ACCENTS[moduleId];
-  if (extra) return `${extra.bg} ${extra.color}`;
-  return "bg-stone-100 text-stone-500";
+  if (!moduleId) return "bg-secondary text-muted-foreground";
+  return MODULE_ICON_COLORS[moduleId] ?? "bg-secondary text-muted-foreground";
 };
 
 const getGreeting = (): string => {
@@ -88,6 +99,37 @@ const relativeTime = (ts: number): string => {
   return `${days}d ago`;
 };
 
+// --- Stat card (reference layout: icon in box, value, label) ---
+function StatCard({
+  title,
+  value,
+  href,
+  Icon,
+  iconColor,
+}: {
+  title: string;
+  value: string;
+  href: string;
+  Icon: LucideIcon;
+  iconColor: string;
+}): JSX.Element {
+  return (
+    <a href={href} className="block">
+      <Card className="p-4 transition-colors hover:bg-accent/50">
+        <div className="flex items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+            <Icon className={cn("size-4", iconColor)} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-semibold tabular-nums leading-tight text-foreground">{value}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{title}</p>
+          </div>
+        </div>
+      </Card>
+    </a>
+  );
+}
+
 // --- Zone 1: Recent Work Card ---
 
 interface RecentWorkCardProps {
@@ -100,16 +142,21 @@ const RecentWorkCard = ({ route, summary }: RecentWorkCardProps): JSX.Element =>
   const color = colorForModule(route.moduleId);
 
   return (
-    <a href={route.path} className="block">
-      <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-stone-50">
-        <IconBadge Icon={Icon} size="sm" color={color} />
+    <a href={route.path} className="block group">
+      <Card className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/50">
+        <IconBadge Icon={Icon} size="md" color={color} className="shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-stone-900">{route.title}</p>
-          <p className="text-xs text-stone-500">
+          <p className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
+            {route.title}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {summary ?? relativeTime(route.timestamp)}
           </p>
         </div>
-        <ArrowRight size={14} className="shrink-0 text-stone-300" />
+        <ArrowRight
+          size={16}
+          className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        />
       </Card>
     </a>
   );
@@ -134,11 +181,11 @@ const AttentionItem = ({
   item: AttentionItemData;
   onDismiss?: (() => void) | undefined;
 }): JSX.Element => (
-  <div className="flex items-center gap-3 py-3">
+  <div className="flex items-center gap-3 py-2.5 first:pt-2 last:pb-2">
     <item.icon size={16} className={`shrink-0 ${item.iconColor}`} />
     <div className="min-w-0 flex-1">
-      <p className="text-sm text-stone-900">{item.title}</p>
-      {item.body && <p className="mt-0.5 line-clamp-1 text-xs text-stone-500">{item.body}</p>}
+      <p className="text-sm font-medium text-foreground">{item.title}</p>
+      {item.body && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.body}</p>}
     </div>
     <div className="flex shrink-0 items-center gap-1">
       <Button variant="ghost" size="sm" asChild>
@@ -151,7 +198,7 @@ const AttentionItem = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-stone-400 hover:text-stone-600"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onDismiss}
         >
           <X size={14} />
@@ -294,78 +341,112 @@ const DashboardPage = (): JSX.Element => {
     dismissMutation.mutate({ id: notifId });
   };
 
+  const taskCount = taskData?.length ?? 0;
+  const contactCount = contactData?.length ?? 0;
+  const dealCount = dealData?.flatMap((s) => s.deals).length ?? 0;
+  const meetingCount = meetingData?.length ?? 0;
+
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Greeting */}
-      <div className="mb-10 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold font-serif tracking-tight text-stone-900">
-          {getGreeting()}, {firstName}
-        </h1>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() => openSearch(true)}
-        >
-          <Search size={14} />
-          Search
-        </Button>
+    <div className="flex flex-col gap-6">
+      {/* Title row — breadcrumb already shows "Dashboard", so only subtitle + badge here */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Overview of your workspace
+        </p>
+        <Badge variant="outline" className="w-fit text-xs text-muted-foreground">
+          Last updated: just now
+        </Badge>
       </div>
 
-      {/* Zone 1: Resume */}
-      <section className="mb-10">
-        <SectionLabel as="h2" className="mb-4">
-          Pick up where you left off
-        </SectionLabel>
+      {/* Stat cards — reference: 4 cards, icon top-left in box, value, label */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Tasks"
+          value={String(taskCount)}
+          href="/tasks"
+          Icon={CheckSquare}
+          iconColor="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Contacts"
+          value={String(contactCount)}
+          href="/crm"
+          Icon={Users}
+          iconColor="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+        />
+        <StatCard
+          title="Deals"
+          value={String(dealCount)}
+          href="/crm?view=pipeline"
+          Icon={DollarSign}
+          iconColor="bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+        />
+        <StatCard
+          title="Meetings"
+          value={String(meetingCount)}
+          href="/meetings"
+          Icon={Video}
+          iconColor="bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+        />
+      </div>
 
-        {visibleRecents.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {visibleRecents.map((route, i) => (
-              <RecentWorkCard
-                key={`${route.path}-${i}`}
-                route={route}
-                summary={summaryForModule(route.moduleId)}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            Icon={LayoutDashboard}
-            heading="Start exploring"
-            description="Navigate to any module from the sidebar and your recent work will appear here."
-            className="py-12"
-          />
-        )}
-      </section>
+      {/* Two-column layout on large screens */}
+      <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
+        {/* Zone 1: Resume */}
+        <section>
+          <SectionLabel as="h2" className="mb-4">
+            Pick up where you left off
+          </SectionLabel>
 
-      {/* Zone 2: Needs Attention */}
-      <section>
-        <SectionLabel as="h2" className="mb-3">
-          Needs attention
-        </SectionLabel>
+          {visibleRecents.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {visibleRecents.map((route, i) => (
+                <RecentWorkCard
+                  key={`${route.path}-${i}`}
+                  route={route}
+                  summary={summaryForModule(route.moduleId)}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              Icon={LayoutDashboard}
+              heading="Start exploring"
+              description="Navigate to any module from the sidebar and your recent work will appear here."
+              className="py-12"
+            />
+          )}
+        </section>
 
-        {isAttentionLoading ? (
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-md bg-stone-100" />
-            ))}
-          </div>
-        ) : attentionItems.length > 0 ? (
-          <Card className="divide-y divide-stone-100 px-4">
-            {attentionItems.map((item) => (
-              <AttentionItem
-                key={item.id}
-                item={item}
-                onDismiss={item.dismissible ? () => handleDismiss(item) : undefined}
-              />
-            ))}
-          </Card>
-        ) : (
-          <p className="py-4 text-sm text-stone-400">
-            All caught up — nothing needs your attention.
-          </p>
-        )}
-      </section>
+        {/* Zone 2: Needs Attention */}
+        <section className="lg:order-none">
+          <SectionLabel as="h2" className="mb-3">
+            Needs attention
+          </SectionLabel>
+
+          {isAttentionLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-12 animate-pulse rounded-sm bg-stone-100 dark:bg-stone-800" />
+              ))}
+            </div>
+          ) : attentionItems.length > 0 ? (
+            <Card className="divide-y divide-border px-4 py-0">
+              {attentionItems.map((item) => (
+                <AttentionItem
+                  key={item.id}
+                  item={item}
+                  onDismiss={item.dismissible ? () => handleDismiss(item) : undefined}
+                />
+              ))}
+            </Card>
+          ) : (
+            <p className="py-4 text-sm text-muted-foreground">
+              All caught up — nothing needs your attention.
+            </p>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

@@ -28,7 +28,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-white text-stone-900 shadow-overlay",
+        default: "bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 shadow-overlay",
         destructive: "bg-destructive text-destructive-foreground shadow-overlay",
         success: "bg-success text-success-foreground shadow-overlay",
       },
@@ -52,7 +52,7 @@ export const ToastAction = forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-stone-200 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-stone-100 focus:outline-none",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-stone-100 dark:hover:bg-stone-700 focus:outline-none",
       className,
     )}
     {...props}
@@ -67,7 +67,7 @@ export const ToastClose = forwardRef<
   <ToastPrimitive.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-stone-500 opacity-0 transition-opacity hover:text-stone-900 focus:opacity-100 focus:outline-none group-hover:opacity-100",
+      "absolute right-2 top-2 rounded-md p-1 text-stone-500 dark:text-stone-400 opacity-0 transition-opacity hover:text-stone-900 dark:hover:text-stone-100 focus:opacity-100 focus:outline-none group-hover:opacity-100",
       className,
     )}
     {...props}

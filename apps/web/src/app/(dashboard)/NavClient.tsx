@@ -20,12 +20,12 @@ import {
 } from "@basicsos/ui";
 
 const NAV_ITEMS: IconRailItem[] = [
-  { id: "knowledge", label: "Knowledge Base", href: "/knowledge", Icon: BookOpen, accentColor: "text-amber-600", accentBg: "bg-amber-50" },
-  { id: "crm", label: "CRM", href: "/crm", Icon: Users, accentColor: "text-blue-600", accentBg: "bg-blue-50" },
-  { id: "tasks", label: "Tasks", href: "/tasks", Icon: CheckSquare, accentColor: "text-emerald-600", accentBg: "bg-emerald-50" },
-  { id: "meetings", label: "Meetings", href: "/meetings", Icon: Video, accentColor: "text-violet-600", accentBg: "bg-violet-50" },
-  { id: "hub", label: "Hub", href: "/hub", Icon: Link2, accentColor: "text-rose-600", accentBg: "bg-rose-50" },
-  { id: "automations", label: "Automations", href: "/automations", Icon: Zap, accentColor: "text-orange-600", accentBg: "bg-orange-50" },
+  { id: "knowledge", label: "Knowledge Base", href: "/knowledge", Icon: BookOpen, accentColor: "text-amber-600 dark:text-amber-400", accentBg: "bg-amber-50 dark:bg-amber-900/30" },
+  { id: "crm", label: "CRM", href: "/crm", Icon: Users, accentColor: "text-blue-600 dark:text-blue-400", accentBg: "bg-blue-50 dark:bg-blue-900/30" },
+  { id: "tasks", label: "Tasks", href: "/tasks", Icon: CheckSquare, accentColor: "text-emerald-600 dark:text-emerald-400", accentBg: "bg-emerald-50 dark:bg-emerald-900/30" },
+  { id: "meetings", label: "Meetings", href: "/meetings", Icon: Video, accentColor: "text-violet-600 dark:text-violet-400", accentBg: "bg-violet-50 dark:bg-violet-900/30" },
+  { id: "hub", label: "Hub", href: "/hub", Icon: Link2, accentColor: "text-rose-600 dark:text-rose-400", accentBg: "bg-rose-50 dark:bg-rose-900/30" },
+  { id: "automations", label: "Automations", href: "/automations", Icon: Zap, accentColor: "text-orange-600 dark:text-orange-400", accentBg: "bg-orange-50 dark:bg-orange-900/30" },
   { id: "assistant", label: "Assistant", href: "/assistant", Icon: Sparkles },
   { id: "admin", label: "Admin", href: "/admin/team", Icon: ShieldCheck },
   { id: "settings", label: "Settings", href: "/settings", Icon: Settings },
@@ -81,7 +81,7 @@ export const NavClient = (): JSX.Element => {
             <TooltipTrigger asChild>
               <button
                 onClick={() => void handleSignOut()}
-                className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 dark:text-stone-500 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200"
                 aria-label="Sign out"
               >
                 <LogOut size={16} />

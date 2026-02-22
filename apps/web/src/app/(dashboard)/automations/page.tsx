@@ -66,12 +66,12 @@ const AutomationsPage = (): JSX.Element => {
       {isLoading ? (
         <Card>
           <CardContent className="p-0">
-            <div className="divide-y divide-stone-100">
+            <div className="divide-y divide-stone-100 dark:divide-stone-800">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse">
-                  <div className="h-4 w-48 rounded bg-stone-200" />
-                  <div className="h-5 w-28 rounded-full bg-stone-200" />
-                  <div className="ml-auto h-5 w-16 rounded bg-stone-200" />
+                  <div className="h-4 w-48 rounded bg-stone-200 dark:bg-stone-700" />
+                  <div className="h-5 w-28 rounded-full bg-stone-200 dark:bg-stone-700" />
+                  <div className="ml-auto h-5 w-16 rounded bg-stone-200 dark:bg-stone-700" />
                 </div>
               ))}
             </div>
@@ -111,20 +111,20 @@ const AutomationsPage = (): JSX.Element => {
                     className="cursor-pointer"
                     onClick={() => router.push(`/automations/${automation.id}`)}
                   >
-                    <TableCell className="font-medium text-stone-900">{automation.name}</TableCell>
+                    <TableCell className="font-medium text-stone-900 dark:text-stone-100">{automation.name}</TableCell>
                     <TableCell>
                       {triggerConfig?.eventType ? (
                         <Badge variant="secondary">{triggerConfig.eventType}</Badge>
                       ) : (
-                        <span className="text-stone-400 text-sm">—</span>
+                        <span className="text-stone-400 dark:text-stone-500 text-sm">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-stone-500 text-sm">
+                    <TableCell className="text-stone-500 dark:text-stone-400 text-sm">
                       {actionChain.length === 0
-                        ? <span className="italic text-stone-400">None</span>
+                        ? <span className="italic text-stone-400 dark:text-stone-500">None</span>
                         : `${actionChain.length} action${actionChain.length !== 1 ? "s" : ""}`}
                     </TableCell>
-                    <TableCell className="text-stone-400 text-sm">
+                    <TableCell className="text-stone-400 dark:text-stone-500 text-sm">
                       {formatRelative(automation.lastRunAt)}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

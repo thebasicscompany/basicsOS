@@ -28,11 +28,11 @@ interface DealCardProps {
 }
 
 export const DealCard = ({ deal }: DealCardProps): JSX.Element => (
-  <Card className="p-3 cursor-pointer transition-colors hover:bg-stone-50">
-    <p className="text-sm font-medium text-stone-900 truncate">{deal.title}</p>
-    <div className="mt-2 flex items-center justify-between gap-1">
-      <Badge variant={STAGE_VARIANT[deal.stage]}>{deal.stage}</Badge>
-      <span className="text-xs font-medium text-stone-600">
+  <Card className="cursor-pointer p-3 transition-colors hover:bg-accent/50">
+    <p className="truncate text-sm font-medium text-foreground">{deal.title}</p>
+    <div className="mt-1.5 flex items-center justify-between gap-2">
+      <Badge variant={STAGE_VARIANT[deal.stage]} className="text-[10px]">{deal.stage}</Badge>
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">
         ${Number(deal.value).toLocaleString()}
       </span>
     </div>

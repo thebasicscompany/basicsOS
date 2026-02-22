@@ -108,21 +108,21 @@ const MeetingsPage = (): JSX.Element => {
         <div className="space-y-3">
           {(meetingList ?? []).map((m) => (
             <a key={m.id} href={`/meetings/${m.id}`} className="block">
-              <Card className="p-5 transition-colors hover:bg-stone-50">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-stone-900 line-clamp-1">{m.title}</h3>
-                      {m.startedAt !== null && (
-                        <p className="mt-1 text-sm text-stone-500">
-                          {new Date(m.startedAt).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                      )}
+              <Card className="p-4 transition-colors hover:bg-accent/50">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-medium text-foreground line-clamp-1">{m.title}</h3>
+                    {m.startedAt !== null && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {new Date(m.startedAt).toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
+                    )}
                   </div>
-                  <Badge variant="success">Completed</Badge>
+                  <Badge variant="success" className="shrink-0">Completed</Badge>
                 </div>
               </Card>
             </a>

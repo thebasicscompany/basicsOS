@@ -140,13 +140,13 @@ const OverlaySettingsTab = (): JSX.Element => {
     <div className="space-y-6">
       {/* Keyboard Shortcuts */}
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-stone-900">Keyboard Shortcuts</h2>
+        <h2 className="mb-4 text-base font-semibold text-foreground">Keyboard Shortcuts</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-stone-500" />
-              <span className="text-sm text-stone-700">AI Assistant</span>
-              <span className="text-xs text-stone-400">(tap / double-tap for continuous)</span>
+              <Sparkles size={14} className="text-muted-foreground" />
+              <span className="text-sm text-foreground">AI Assistant</span>
+              <span className="text-xs text-muted-foreground">(tap / double-tap for continuous)</span>
             </div>
             <div className="flex items-center gap-2">
               {capturingAssistant ? (
@@ -169,8 +169,8 @@ const OverlaySettingsTab = (): JSX.Element => {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PenLine size={14} className="text-stone-500" />
-              <span className="text-sm text-stone-700">Dictation to Paste</span>
+              <PenLine size={14} className="text-muted-foreground" />
+              <span className="text-sm text-foreground">Dictation to Paste</span>
             </div>
             <div className="flex items-center gap-2">
               {capturingDictation ? (
@@ -192,7 +192,7 @@ const OverlaySettingsTab = (): JSX.Element => {
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="double-tap-speed" className="text-sm text-stone-700">Double-tap speed</Label>
+            <Label htmlFor="double-tap-speed" className="text-sm text-foreground">Double-tap speed</Label>
             <select
               id="double-tap-speed"
               value={settings.behavior.doubleTapWindowMs}
@@ -200,7 +200,7 @@ const OverlaySettingsTab = (): JSX.Element => {
                 const updated = { ...settings, behavior: { ...settings.behavior, doubleTapWindowMs: Number(e.target.value) } };
                 save(updated);
               }}
-              className="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-700"
+              className="rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-sm text-foreground"
             >
               <option value={200}>Fast (200ms)</option>
               <option value={400}>Normal (400ms)</option>
@@ -212,12 +212,12 @@ const OverlaySettingsTab = (): JSX.Element => {
 
       {/* Voice */}
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-stone-900">Voice</h2>
+        <h2 className="mb-4 text-base font-semibold text-foreground">Voice</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm text-stone-700">Silence timeout</Label>
-              <p className="text-xs text-stone-400">Auto-stop listening after this silence</p>
+              <Label className="text-sm text-foreground">Silence timeout</Label>
+              <p className="text-xs text-muted-foreground">Auto-stop listening after this silence</p>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -232,14 +232,14 @@ const OverlaySettingsTab = (): JSX.Element => {
                 }}
                 className="w-24"
               />
-              <span className="w-10 text-right text-xs text-stone-500">{settings.voice.silenceTimeoutMs / 1000}s</span>
+              <span className="w-10 text-right text-xs text-muted-foreground">{settings.voice.silenceTimeoutMs / 1000}s</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm text-stone-700">Text-to-speech</Label>
-              <p className="text-xs text-stone-400">Read AI responses aloud</p>
+              <Label className="text-sm text-foreground">Text-to-speech</Label>
+              <p className="text-xs text-muted-foreground">Read AI responses aloud</p>
             </div>
             <Switch
               checked={settings.voice.ttsEnabled}
@@ -252,7 +252,7 @@ const OverlaySettingsTab = (): JSX.Element => {
 
           {settings.voice.ttsEnabled && (
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-stone-700">Speech rate</Label>
+              <Label className="text-sm text-foreground">Speech rate</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="range"
@@ -266,7 +266,7 @@ const OverlaySettingsTab = (): JSX.Element => {
                   }}
                   className="w-24"
                 />
-                <span className="w-10 text-right text-xs text-stone-500">{settings.voice.ttsRate.toFixed(1)}x</span>
+                <span className="w-10 text-right text-xs text-muted-foreground">{settings.voice.ttsRate.toFixed(1)}x</span>
               </div>
             </div>
           )}
@@ -275,12 +275,12 @@ const OverlaySettingsTab = (): JSX.Element => {
 
       {/* Behavior */}
       <Card className="p-6">
-        <h2 className="mb-4 text-base font-semibold text-stone-900">Behavior</h2>
+        <h2 className="mb-4 text-base font-semibold text-foreground">Behavior</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm text-stone-700">Auto-dismiss delay</Label>
-              <p className="text-xs text-stone-400">How long to show AI responses</p>
+              <Label className="text-sm text-foreground">Auto-dismiss delay</Label>
+              <p className="text-xs text-muted-foreground">How long to show AI responses</p>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -295,14 +295,14 @@ const OverlaySettingsTab = (): JSX.Element => {
                 }}
                 className="w-24"
               />
-              <span className="w-10 text-right text-xs text-stone-500">{settings.behavior.autoDismissMs / 1000}s</span>
+              <span className="w-10 text-right text-xs text-muted-foreground">{settings.behavior.autoDismissMs / 1000}s</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm text-stone-700">Show dictation preview</Label>
-              <p className="text-xs text-stone-400">Display live transcript while dictating</p>
+              <Label className="text-sm text-foreground">Show dictation preview</Label>
+              <p className="text-xs text-muted-foreground">Display live transcript while dictating</p>
             </div>
             <Switch
               checked={settings.behavior.showDictationPreview}
@@ -426,20 +426,20 @@ const SettingsPage = (): JSX.Element => {
       <TabsContent value="account">
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="mb-4 text-base font-semibold text-stone-900">Profile</h2>
+            <h2 className="mb-4 text-base font-semibold text-foreground">Profile</h2>
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
               </Avatar>
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-stone-700">{user?.name ?? "\u2014"}</p>
-                <p className="text-sm text-stone-500">{user?.email ?? "\u2014"}</p>
+                <p className="text-sm font-medium text-foreground">{user?.name ?? "\u2014"}</p>
+                <p className="text-sm text-muted-foreground">{user?.email ?? "\u2014"}</p>
               </div>
             </div>
           </Card>
 
           <Card className="p-6">
-            <h2 className="mb-4 text-base font-semibold text-stone-900">Change Password</h2>
+            <h2 className="mb-4 text-base font-semibold text-foreground">Change Password</h2>
             <form onSubmit={(e) => void handlePasswordChange(e)} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="current-password">Current Password</Label>
@@ -474,12 +474,12 @@ const SettingsPage = (): JSX.Element => {
         <div className="space-y-6">
           {/* Tenant ID */}
           <Card className="p-6">
-            <h2 className="mb-1 text-base font-semibold text-stone-900">Your Tenant ID</h2>
-            <p className="mb-4 text-sm text-stone-500">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Your Tenant ID</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
               Copy this into your MCP config to scope queries to your company data.
             </p>
-            <div className="flex items-center gap-2 rounded-lg bg-white shadow-card px-3 py-2">
-              <code className="flex-1 text-xs font-mono text-stone-800 select-all">{tenantId}</code>
+            <div className="flex items-center gap-2 rounded-lg bg-muted border border-border px-3 py-2">
+              <code className="flex-1 text-xs font-mono text-foreground select-all">{tenantId}</code>
               <Button
                 variant="ghost"
                 size="icon"
@@ -494,8 +494,8 @@ const SettingsPage = (): JSX.Element => {
 
           {/* Local / stdio config */}
           <Card className="p-6">
-            <h2 className="mb-1 text-base font-semibold text-stone-900">Local Setup (stdio)</h2>
-            <p className="mb-4 text-sm text-stone-500">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Local Setup (stdio)</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
               Use this when Basics OS is running on the same machine as Claude Desktop.
               Replace the <InlineCode>args</InlineCode> path
               with the actual path to your cloned repo, and update <InlineCode>DATABASE_URL</InlineCode> from your <InlineCode>.env</InlineCode> file.
@@ -505,8 +505,8 @@ const SettingsPage = (): JSX.Element => {
 
           {/* Remote / HTTP config */}
           <Card className="p-6">
-            <h2 className="mb-1 text-base font-semibold text-stone-900">Remote Setup (HTTP)</h2>
-            <p className="mb-4 text-sm text-stone-500">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Remote Setup (HTTP)</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
               Use this when the MCP server is deployed separately. The server must be
               started with <InlineCode>MCP_TRANSPORT=http</InlineCode>.
             </p>
@@ -519,8 +519,8 @@ const SettingsPage = (): JSX.Element => {
       <TabsContent value="desktop">
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="mb-1 text-base font-semibold text-stone-900">Desktop App</h2>
-            <p className="mb-4 text-sm text-stone-500">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Desktop App</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
               The Basics OS desktop app gives you an always-on overlay accessible anywhere.
             </p>
 
@@ -531,22 +531,22 @@ const SettingsPage = (): JSX.Element => {
                 </a>
               </Button>
 
-              <div className="rounded-lg bg-white shadow-card p-4 space-y-2">
-                <h3 className="text-sm font-medium text-stone-700">Keyboard Shortcuts</h3>
-                <p className="text-sm text-stone-500">
+              <div className="rounded-lg bg-muted border border-border p-4 space-y-2">
+                <h3 className="text-sm font-medium text-foreground">Keyboard Shortcuts</h3>
+                <p className="text-sm text-muted-foreground">
                   <Kbd>Ctrl Space</Kbd> — AI assistant (double-tap for continuous listening)
                 </p>
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-muted-foreground">
                   <Kbd>Ctrl Shift Space</Kbd> — Dictation to paste
                 </p>
-                <p className="mt-1 text-xs text-stone-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Customize shortcuts in the Overlay tab.
                 </p>
               </div>
 
-              <div className="rounded-lg bg-white shadow-card p-4 space-y-2">
-                <h3 className="text-sm font-medium text-stone-700">Setup</h3>
-                <ol className="text-sm text-stone-500 space-y-1 list-decimal list-inside">
+              <div className="rounded-lg bg-muted border border-border p-4 space-y-2">
+                <h3 className="text-sm font-medium text-foreground">Setup</h3>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                   <li>Download and install the app above</li>
                   <li>Set <InlineCode>BASICOS_URL=http://localhost:3000</InlineCode> in your environment</li>
                   <li>Launch the app — it runs in your system tray</li>

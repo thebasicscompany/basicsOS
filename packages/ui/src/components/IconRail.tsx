@@ -42,8 +42,8 @@ const RailButton = forwardRef<
     className={cn(
       "relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
       active
-        ? cn(accentBg ?? "bg-primary/10", accentColor ?? "text-primary")
-        : "text-stone-500 hover:bg-stone-100 hover:text-stone-700",
+        ? cn(accentBg ?? "bg-primary/15", accentColor ?? "text-primary")
+        : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200",
       className,
     )}
     {...props}
@@ -111,7 +111,7 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
         </nav>
 
         {/* Bottom section */}
-        <div className="flex flex-col items-center gap-1 border-t border-stone-200 pt-2 px-1.5">
+        <div className="flex flex-col items-center gap-1 border-t border-stone-200 dark:border-stone-800 pt-2 px-1.5">
           {/* User avatar */}
           <Tooltip>
             <TooltipTrigger asChild>

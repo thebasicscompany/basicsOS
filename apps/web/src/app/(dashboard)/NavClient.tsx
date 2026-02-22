@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Settings,
   LogOut,
+  Zap,
 } from "@basicsos/ui";
 
 const NAV_ITEMS: IconRailItem[] = [
@@ -24,6 +25,7 @@ const NAV_ITEMS: IconRailItem[] = [
   { id: "tasks", label: "Tasks", href: "/tasks", Icon: CheckSquare, accentColor: "text-emerald-600", accentBg: "bg-emerald-50" },
   { id: "meetings", label: "Meetings", href: "/meetings", Icon: Video, accentColor: "text-violet-600", accentBg: "bg-violet-50" },
   { id: "hub", label: "Hub", href: "/hub", Icon: Link2, accentColor: "text-rose-600", accentBg: "bg-rose-50" },
+  { id: "automations", label: "Automations", href: "/automations", Icon: Zap, accentColor: "text-orange-600", accentBg: "bg-orange-50" },
   { id: "assistant", label: "Assistant", href: "/assistant", Icon: Sparkles },
   { id: "admin", label: "Admin", href: "/admin/team", Icon: ShieldCheck },
   { id: "settings", label: "Settings", href: "/settings", Icon: Settings },

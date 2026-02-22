@@ -101,6 +101,12 @@ export const automationFailedEvent = baseEventSchema.extend({
   }),
 });
 
+// Automation lifecycle events (creation)
+export const automationCreatedEvent = baseEventSchema.extend({
+  type: z.literal("automation.created"),
+  payload: z.object({ automationId: z.string().uuid() }),
+});
+
 // AI employee events
 export const aiEmployeeStartedEvent = baseEventSchema.extend({
   type: z.literal("ai_employee.started"),
@@ -138,6 +144,7 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   taskCreatedEvent,
   taskCompletedEvent,
   taskAssignedEvent,
+  automationCreatedEvent,
   automationTriggeredEvent,
   automationCompletedEvent,
   automationFailedEvent,

@@ -19,7 +19,13 @@ const apiUrl =
 export const auth = betterAuth({
   secret,
   baseURL: baseUrl,
-  trustedOrigins: [baseUrl, apiUrl],
+  trustedOrigins: [
+    baseUrl,
+    apiUrl,
+    // Allow 127.0.0.1 variants for local dev tools (e.g. Claude Preview)
+    baseUrl.replace("localhost", "127.0.0.1"),
+    apiUrl.replace("localhost", "127.0.0.1"),
+  ],
   advanced: {
     database: {
       // All ID columns are uuid type — tell Better Auth to generate UUIDs

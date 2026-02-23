@@ -1,404 +1,285 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import {
-  Button,
-  Plus,
-  Users,
-  EmptyState,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
-  CardContent,
+  Badge,
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableHead,
   TableCell,
-  Avatar,
-  AvatarFallback,
-  SectionLabel,
-  Input,
-  Badge,
+  EmptyState,
 } from "@basicsos/ui";
-import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
-import { DealCard } from "./DealCard";
-import { CreateContactDialog } from "./CreateContactDialog";
-import { CreateDealDialog } from "./CreateDealDialog";
+import { Users, Building2, Briefcase, BarChart3, Activity } from "@basicsos/ui";
+import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
-import type { DealStage } from "./types";
+const CrmDashboard = (): JSX.Element => {
+  const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
+  const { data: companiesData } = trpc.crm.companies.list.useQuery();
+  const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
 
-const STAGES = ["lead", "qualified", "proposal", "negotiation", "won", "lost"] as const;
+  const byStage = dealsData ?? [];
+  const allDeals = byStage.flatMap((g) => g.deals);
+  const contacts = contactsData ?? [];
+  const companies = companiesData ?? [];
 
-const STAGE_COLORS: Record<string, string> = {
-  lead: "bg-stone-400 dark:bg-stone-500",
-  qualified: "bg-blue-500",
-  proposal: "bg-amber-500",
-  negotiation: "bg-purple-500",
-  won: "bg-emerald-500",
-  lost: "bg-red-500",
+  const stats = useMemo(() => computeStats(contacts, allDeals), [contacts, allDeals]);
+  const analytics = useMemo(() => computeAnalytics(byStage, allDeals), [byStage, allDeals]);
+
+  if (allDeals.length === 0 && contacts.length === 0) {
+    return (
+      <EmptyState
+        Icon={BarChart3}
+        heading="Welcome to your CRM"
+        description="Get started by creating your first contact or deal."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <KpiCards stats={stats} companiesCount={companies.length} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <StageFunnel stageTotals={analytics.stageTotals} maxTotal={analytics.maxTotal} />
+        <WinRateCard winRate={analytics.winRate} wonCount={analytics.wonCount} lostCount={analytics.lostCount} />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {analytics.topDeals.length > 0 && <TopDealsTable deals={analytics.topDeals} />}
+        <RecentActivityCard deals={allDeals} />
+      </div>
+    </div>
+  );
 };
 
-const nameToColor = (name: string): string => {
-  const colors = [
-    "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300",
-    "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300",
-    "bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300",
-    "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
-    "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length] ?? colors[0] ?? "";
-};
+function computeStats(
+  contacts: Array<{ id: string }>,
+  allDeals: Array<{ stage: string; value: string | null }>,
+): { pipelineValue: number; wonValue: number; winRate: number; activeContacts: number } {
+  const active = allDeals.filter((d) => d.stage !== "won" && d.stage !== "lost");
+  const pipelineValue = active.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  const wonDeals = allDeals.filter((d) => d.stage === "won");
+  const wonValue = wonDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  const lostCount = allDeals.filter((d) => d.stage === "lost").length;
+  const closedCount = wonDeals.length + lostCount;
+  const winRate = closedCount > 0 ? Math.round((wonDeals.length / closedCount) * 100) : 0;
+  return { pipelineValue, wonValue, winRate, activeContacts: contacts.length };
+}
 
-const formatCurrency = (value: number): string =>
-  value >= 1_000_000
-    ? `$${(value / 1_000_000).toFixed(1)}M`
-    : value >= 1_000
-      ? `$${(value / 1_000).toFixed(1)}k`
-      : `$${value.toLocaleString()}`;
+function computeAnalytics(
+  byStage: Array<{ stage: string; deals: Array<{ id: string; title: string; stage: string; value: string | null }> }>,
+  allDeals: Array<{ id: string; title: string; stage: string; value: string | null }>,
+): {
+  stageTotals: Array<{ stage: string; count: number; total: number }>;
+  maxTotal: number;
+  winRate: number;
+  wonCount: number;
+  lostCount: number;
+  topDeals: Array<{ id: string; title: string; stage: string; value: string | null }>;
+} {
+  const stageTotals = STAGES.map((stage) => {
+    const deals = byStage.find((g) => g.stage === stage)?.deals ?? [];
+    const total = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+    return { stage, count: deals.length, total };
+  });
+  const maxTotal = Math.max(...stageTotals.map((s) => s.total), 1);
+  const wonCount = stageTotals.find((s) => s.stage === "won")?.count ?? 0;
+  const lostCount = stageTotals.find((s) => s.stage === "lost")?.count ?? 0;
+  const closedCount = wonCount + lostCount;
+  const winRate = closedCount > 0 ? Math.round((wonCount / closedCount) * 100) : 0;
+  const topDeals = [...allDeals].sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0)).slice(0, 10);
+  return { stageTotals, maxTotal, winRate, wonCount, lostCount, topDeals };
+}
 
-function DetailRow({
-  icon: Icon,
-  label,
-  value,
+function KpiCards({
+  stats,
+  companiesCount,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
+  stats: { pipelineValue: number; wonValue: number; winRate: number; activeContacts: number };
+  companiesCount: number;
 }): JSX.Element {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-700">
-        <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
-          {label}
-        </span>
-        <p className="truncate text-sm text-stone-900 dark:text-stone-100">{value}</p>
-      </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatCard label="Pipeline Value" value={formatCurrency(stats.pipelineValue)} icon={Briefcase} />
+      <StatCard label="Won Revenue" value={formatCurrency(stats.wonValue)} icon={Activity} valueClass="text-success" />
+      <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={BarChart3} />
+      <StatCard label="Active Contacts" value={String(stats.activeContacts)} icon={Users} />
     </div>
   );
 }
 
-// Reference layout: title row + pipeline cards + main (list + detail for contacts)
-const CRMPage = (): JSX.Element => {
-  const utils = trpc.useUtils();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const view = (searchParams.get("view") ?? "pipeline") as "pipeline" | "contacts";
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-
-  const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
-  const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
-
-  const stats = useMemo(() => {
-    const contacts = contactsData ?? [];
-    const byStage = dealsData ?? [];
-    const allDeals = byStage.flatMap((g) => g.deals);
-    const pipelineValue = allDeals
-      .filter((d) => d.stage !== "won" && d.stage !== "lost")
-      .reduce((sum, d) => sum + Number(d.value) || 0, 0);
-    const wonValue = allDeals
-      .filter((d) => d.stage === "won")
-      .reduce((sum, d) => sum + Number(d.value) || 0, 0);
-    return {
-      contacts: contacts.length,
-      deals: allDeals.length,
-      pipelineValue,
-      wonValue,
-    };
-  }, [contactsData, dealsData]);
-
-  const filteredContacts = useMemo(() => {
-    const list = contactsData ?? [];
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.email ?? "").toLowerCase().includes(q),
-    );
-  }, [contactsData, searchQuery]);
-
-  const selectedContact =
-    selectedContactId != null
-      ? (contactsData ?? []).find((c) => c.id === selectedContactId)
-      : null;
-
-  const setView = (v: "pipeline" | "contacts"): void => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", v);
-    router.push(`?${params.toString()}`);
-    setSelectedContactId(null);
-  };
-
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  valueClass?: string;
+}): JSX.Element {
   return (
-    <div className="flex flex-col gap-6">
-      {/* Title row — breadcrumb already shows "CRM", so only subtitle + action */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-stone-500 dark:text-stone-400">
-          Manage your contacts and pipeline
-        </p>
-        {view === "contacts" ? (
-          <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus size={16} className="mr-1.5" />
-              Add Contact
-            </Button>
-          </CreateContactDialog>
-        ) : (
-          <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus size={16} className="mr-1.5" />
-              New Deal
-            </Button>
-          </CreateDealDialog>
-        )}
-      </div>
-
-      {/* Pipeline overview — 4 compact stat cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Pipeline value</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{formatCurrency(stats.pipelineValue)}</p>
-            <Badge variant="secondary" className="mt-1.5 inline-flex h-5 text-[10px] px-1.5 py-0">{stats.deals} deals</Badge>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Deals</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{stats.deals}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Contacts</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{stats.contacts}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Won</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-success">{formatCurrency(stats.wonValue)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* View tabs */}
-      <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-        <TabsList>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="contacts">Contacts</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {view === "pipeline" && (
-        <div className="overflow-x-auto -mx-1">
-          <div className="flex gap-4 min-w-max pb-4">
-            {STAGES.map((stage) => {
-              const stageGroup = (dealsData ?? []).find((g) => g.stage === stage);
-              const stageDeals = stageGroup?.deals ?? [];
-              return (
-                <div key={stage} className="w-52 flex-shrink-0">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`}
-                    />
-                    <SectionLabel as="span" className="!mb-0 flex-1">
-                      {stage}
-                    </SectionLabel>
-                    <span className="rounded-full bg-stone-200 dark:bg-stone-700 px-2 py-0.5 text-[10px] font-medium text-stone-600 dark:text-stone-400">
-                      {stageDeals.length}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {stageDeals.length === 0 ? (
-                      <div className="rounded-sm border-2 border-dashed border-stone-200 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/30 py-8 px-4 text-center">
-                        <p className="text-xs text-stone-500 dark:text-stone-400">No deals</p>
-                        <p className="mt-1 text-[10px] text-stone-400 dark:text-stone-500">
-                          Drag or create a deal
-                        </p>
-                      </div>
-                    ) : (
-                      stageDeals.map((deal) => (
-                        <DealCard
-                          key={deal.id}
-                          deal={{
-                            id: deal.id,
-                            title: deal.title,
-                            stage: deal.stage as DealStage,
-                            value: String(deal.value ?? 0),
-                            probability: deal.probability,
-                          }}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+    <Card>
+      <CardContent className="py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex size-7 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-700">
+            <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />
           </div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         </div>
-      )}
-
-      {view === "contacts" &&
-        ((contactsData ?? []).length === 0 ? (
-          <EmptyState
-            Icon={Users}
-            heading="No contacts yet"
-            description="Add your first contact to get started."
-            action={
-              <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
-                <Button>
-                  <Plus size={14} className="mr-1" /> Add Contact
-                </Button>
-              </CreateContactDialog>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Contact list card — reference: search + list */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search
-                      className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-500 dark:text-stone-400"
-                    />
-                    <Input
-                      placeholder="Search contacts..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 border-stone-200 dark:border-stone-600 bg-stone-50 dark:bg-stone-800/50 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex flex-col divide-y divide-border">
-                  {filteredContacts.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedContactId(c.id)}
-                      className={`flex items-center gap-3 px-2 py-2.5 text-left transition-colors rounded-md hover:bg-accent/50 ${
-                        selectedContactId === c.id ? "bg-accent" : ""
-                      }`}
-                    >
-                      <Avatar className="size-8 shrink-0">
-                        <AvatarFallback
-                          className={`text-xs font-medium ${nameToColor(c.name)}`}
-                        >
-                          {c.name[0]?.toUpperCase() ?? "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm font-medium text-foreground">{c.name}</span>
-                        <span className="truncate text-xs text-muted-foreground">{c.email ?? "\u2014"}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contact detail card — reference: avatar, name, details, actions */}
-            {selectedContact ? (
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-foreground">
-                      Contact Details
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-muted-foreground"
-                      onClick={() => router.push(`/crm/${selectedContact.id}`)}
-                      aria-label="Open full profile"
-                    >
-                      <MoreHorizontal size={16} />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <div className="flex flex-col items-center gap-2 border-b border-border pb-4">
-                    <Avatar className="size-12">
-                      <AvatarFallback
-                        className={`text-sm font-semibold ${nameToColor(selectedContact.name)}`}
-                      >
-                        {selectedContact.name[0]?.toUpperCase() ?? "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-center">
-                      <p className="font-medium text-foreground">{selectedContact.name}</p>
-                      <p className="text-xs text-muted-foreground">{selectedContact.email ?? "\u2014"}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <DetailRow
-                      icon={Mail}
-                      label="Email"
-                      value={selectedContact.email ?? "\u2014"}
-                    />
-                    <DetailRow
-                      icon={Phone}
-                      label="Phone"
-                      value={selectedContact.phone ?? "\u2014"}
-                    />
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <a href={`mailto:${selectedContact.email ?? ""}`}>
-                        <Mail size={14} className="mr-1.5" />
-                        Email
-                      </a>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-stone-200 dark:border-stone-700"
-                      asChild
-                    >
-                      <a href={`tel:${selectedContact.phone ?? ""}`}>
-                        <Phone size={14} className="mr-1.5" />
-                        Call
-                      </a>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="flex items-center justify-center min-h-[200px]">
-                <p className="text-sm text-stone-500 dark:text-stone-400">
-                  Select a contact
-                </p>
-              </Card>
-            )}
-          </div>
-        )
-      )}
-    </div>
+        <p className={`mt-2 text-xl font-semibold tabular-nums ${valueClass ?? "text-foreground"}`}>{value}</p>
+      </CardContent>
+    </Card>
   );
-};
+}
 
-const CRMPageWrapper = (): JSX.Element => (
+function StageFunnel({
+  stageTotals,
+  maxTotal,
+}: {
+  stageTotals: Array<{ stage: string; count: number; total: number }>;
+  maxTotal: number;
+}): JSX.Element {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Stage Funnel</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {stageTotals.map((s) => {
+          const widthPct = maxTotal > 0 ? Math.max((s.total / maxTotal) * 100, 2) : 2;
+          const barColor = STAGE_COLORS[s.stage] ?? "bg-stone-400";
+          return (
+            <div key={s.stage} className="flex items-center gap-3">
+              <span className="w-24 text-xs font-medium capitalize text-stone-600 dark:text-stone-400">{s.stage}</span>
+              <div className="flex-1">
+                <div className={`h-6 rounded-sm ${barColor} transition-all`} style={{ width: `${widthPct}%` }} />
+              </div>
+              <span className="w-20 text-right text-xs tabular-nums text-stone-500 dark:text-stone-400">{formatCurrency(s.total)}</span>
+              <span className="w-8 text-right text-[10px] text-stone-400 dark:text-stone-500">{s.count}</span>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function WinRateCard({
+  winRate,
+  wonCount,
+  lostCount,
+}: {
+  winRate: number;
+  wonCount: number;
+  lostCount: number;
+}): JSX.Element {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center justify-center gap-3 py-6">
+        <div className="relative flex size-28 items-center justify-center">
+          <svg viewBox="0 0 100 100" className="size-full -rotate-90">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-stone-200 dark:text-stone-700" />
+            <circle
+              cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8"
+              strokeDasharray={`${winRate * 2.51} ${251 - winRate * 2.51}`}
+              strokeLinecap="round"
+              className="text-primary"
+            />
+          </svg>
+          <span className="absolute text-2xl font-bold tabular-nums text-foreground">{winRate}%</span>
+        </div>
+        <div className="flex gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" /> {wonCount} won</span>
+          <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" /> {lostCount} lost</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopDealsTable({
+  deals,
+}: {
+  deals: Array<{ id: string; title: string; stage: string; value: string | null }>;
+}): JSX.Element {
+  const router = useRouter();
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">Top Deals</CardTitle>
+          <Link href="/crm/deals" className="text-xs text-primary hover:underline">View all</Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Deal</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead className="text-right">Value</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deals.map((d) => (
+              <TableRow key={d.id} className="cursor-pointer hover:bg-accent/50" onClick={() => router.push(`/crm/deals/${d.id}`)}>
+                <TableCell className="font-medium">{d.title}</TableCell>
+                <TableCell><Badge variant="outline" className="capitalize">{d.stage}</Badge></TableCell>
+                <TableCell className="text-right tabular-nums">{formatCurrency(Number(d.value ?? 0))}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentActivityCard({
+  deals,
+}: {
+  deals: Array<{ id: string; title: string; stage: string }>;
+}): JSX.Element {
+  const recentDeals = deals.slice(0, 8);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Recent Deals</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {recentDeals.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No recent deals</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recentDeals.map((d) => (
+              <Link key={d.id} href={`/crm/deals/${d.id}`} className="flex items-center justify-between rounded-md p-2 hover:bg-accent/50 transition-colors">
+                <span className="text-sm font-medium text-foreground truncate">{d.title}</span>
+                <Badge variant="outline" className="capitalize text-[10px] ml-2 shrink-0">{d.stage}</Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const CrmDashboardPage = (): JSX.Element => (
   <Suspense>
-    <CRMPage />
+    <CrmDashboard />
   </Suspense>
 );
 
-export default CRMPageWrapper;
+export default CrmDashboardPage;

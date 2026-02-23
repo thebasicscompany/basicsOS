@@ -69,6 +69,7 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
   DropdownMenuGroup,
@@ -185,4 +186,5 @@ export {
   Flag,
   ExternalLink,
   PenLine,
+  Columns3,
 } from "lucide-react";

@@ -187,6 +187,10 @@ export {
   Flag,
   ExternalLink,
   PenLine,
-  RotateCcw,
+  AlertCircle,
+  ArrowLeft,
   Columns3,
+  FileUp,
+RotateCcw,
+Upload,
 } from "lucide-react";

@@ -18,7 +18,7 @@ import {
   TableCell,
   EmptyState,
 } from "@basicsos/ui";
-import { Users, Building2, Briefcase, BarChart3, Activity, Trash2 } from "@basicsos/ui";
+import { Users, Building2, Briefcase, BarChart3, Activity, Trash2 , Upload } from "@basicsos/ui";
 import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
 const CrmDashboard = (): JSX.Element => {

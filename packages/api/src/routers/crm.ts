@@ -293,6 +293,211 @@ const contactsSubRouter = router({
 
       return { imported: inserted.length };
     }),
+
+  findDuplicates: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const emailDupes = await ctx.db.execute(sql`
+      SELECT c1.id as id1, c1.name as name1, c1.email as email1,
+             c2.id as id2, c2.name as name2, c2.email as email2,
+             'email' as reason
+      FROM contacts c1
+      JOIN contacts c2 ON c1.email = c2.email AND c1.id < c2.id
+      WHERE c1.tenant_id = ${ctx.tenantId}::uuid
+        AND c1.email IS NOT NULL
+        AND c1.deleted_at IS NULL AND c2.deleted_at IS NULL
+      LIMIT 20
+    `);
+
+    const nameDupes = await ctx.db.execute(sql`
+      SELECT c1.id as id1, c1.name as name1, c1.email as email1,
+             c2.id as id2, c2.name as name2, c2.email as email2,
+             'name' as reason
+      FROM contacts c1
+      JOIN contacts c2 ON similarity(c1.name, c2.name) > 0.7 AND c1.id < c2.id
+      WHERE c1.tenant_id = ${ctx.tenantId}::uuid
+        AND c1.deleted_at IS NULL AND c2.deleted_at IS NULL
+      LIMIT 20
+    `);
+
+    return [...(emailDupes.rows as unknown[]), ...(nameDupes.rows as unknown[])] as Array<{
+      id1: string;
+      name1: string;
+      email1: string | null;
+      id2: string;
+      name2: string;
+      email2: string | null;
+      reason: string;
+    }>;
+  }),
+
+  merge: memberProcedure
+    .input(
+      z.object({
+        winnerId: z.string().uuid(),
+        loserId: z.string().uuid(),
+        keepFields: z
+          .object({
+            name: z.enum(["winner", "loser"]).default("winner"),
+            email: z.enum(["winner", "loser"]).default("winner"),
+            phone: z.enum(["winner", "loser"]).default("winner"),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [winner, loser] = await Promise.all([
+        ctx.db
+          .select()
+          .from(contacts)
+          .where(and(eq(contacts.id, input.winnerId), eq(contacts.tenantId, ctx.tenantId)))
+          .then((r) => r[0]),
+        ctx.db
+          .select()
+          .from(contacts)
+          .where(and(eq(contacts.id, input.loserId), eq(contacts.tenantId, ctx.tenantId)))
+          .then((r) => r[0]),
+      ]);
+
+      if (!winner || !loser) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await ctx.db
+        .update(deals)
+        .set({ contactId: input.winnerId })
+        .where(and(eq(deals.contactId, input.loserId), eq(deals.tenantId, ctx.tenantId)));
+
+      const keep = input.keepFields;
+      const patch: { name?: string; email?: string | null; phone?: string | null } = {};
+      if (keep?.name === "loser") patch.name = loser.name;
+      if (keep?.email === "loser") patch.email = loser.email;
+      if (keep?.phone === "loser") patch.phone = loser.phone;
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db
+          .update(contacts)
+          .set({ ...patch, updatedAt: new Date() })
+          .where(eq(contacts.id, input.winnerId));
+      }
+
+      await ctx.db
+        .update(contacts)
+        .set({ deletedAt: new Date() })
+        .where(eq(contacts.id, input.loserId));
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.contact.merged",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { winnerId: input.winnerId, loserId: input.loserId },
+        }),
+      );
+
+      return { merged: true, winnerId: input.winnerId };
+    }),,
+
+  findDuplicates: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+  
+      const emailDupes = await ctx.db.execute(sql`
+        SELECT c1.id as id1, c1.name as name1, c1.email as email1,
+               c2.id as id2, c2.name as name2, c2.email as email2,
+               'email' as reason
+        FROM contacts c1
+        JOIN contacts c2 ON c1.email = c2.email AND c1.id < c2.id
+        WHERE c1.tenant_id = ${ctx.tenantId}::uuid
+          AND c1.email IS NOT NULL
+          AND c1.deleted_at IS NULL AND c2.deleted_at IS NULL
+        LIMIT 20
+      `);
+  
+      const nameDupes = await ctx.db.execute(sql`
+        SELECT c1.id as id1, c1.name as name1, c1.email as email1,
+               c2.id as id2, c2.name as name2, c2.email as email2,
+               'name' as reason
+        FROM contacts c1
+        JOIN contacts c2 ON similarity(c1.name, c2.name) > 0.7 AND c1.id < c2.id
+        WHERE c1.tenant_id = ${ctx.tenantId}::uuid
+          AND c1.deleted_at IS NULL AND c2.deleted_at IS NULL
+        LIMIT 20
+      `);
+  
+      return [...(emailDupes.rows as unknown[]), ...(nameDupes.rows as unknown[])] as Array<{
+        id1: string;
+        name1: string;
+        email1: string | null;
+        id2: string;
+        name2: string;
+        email2: string | null;
+        reason: string;
+      }>;
+    }),
+  
+    merge: memberProcedure
+      .input(
+        z.object({
+          winnerId: z.string().uuid(),
+          loserId: z.string().uuid(),
+          keepFields: z
+            .object({
+              name: z.enum(["winner", "loser"]).default("winner"),
+              email: z.enum(["winner", "loser"]).default("winner"),
+              phone: z.enum(["winner", "loser"]).default("winner"),
+            })
+            .optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const [winner, loser] = await Promise.all([
+          ctx.db
+            .select()
+            .from(contacts)
+            .where(and(eq(contacts.id, input.winnerId), eq(contacts.tenantId, ctx.tenantId)))
+            .then((r) => r[0]),
+          ctx.db
+            .select()
+            .from(contacts)
+            .where(and(eq(contacts.id, input.loserId), eq(contacts.tenantId, ctx.tenantId)))
+            .then((r) => r[0]),
+        ]);
+  
+        if (!winner || !loser) throw new TRPCError({ code: "NOT_FOUND" });
+  
+        await ctx.db
+          .update(deals)
+          .set({ contactId: input.winnerId })
+          .where(and(eq(deals.contactId, input.loserId), eq(deals.tenantId, ctx.tenantId)));
+  
+        const keep = input.keepFields;
+        const patch: { name?: string; email?: string | null; phone?: string | null } = {};
+        if (keep?.name === "loser") patch.name = loser.name;
+        if (keep?.email === "loser") patch.email = loser.email;
+        if (keep?.phone === "loser") patch.phone = loser.phone;
+  
+        if (Object.keys(patch).length > 0) {
+          await ctx.db
+            .update(contacts)
+            .set({ ...patch, updatedAt: new Date() })
+            .where(eq(contacts.id, input.winnerId));
+        }
+  
+        await ctx.db
+          .update(contacts)
+          .set({ deletedAt: new Date() })
+          .where(eq(contacts.id, input.loserId));
+  
+        EventBus.emit(
+          createEvent({
+            type: "crm.contact.merged",
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            payload: { winnerId: input.winnerId, loserId: input.loserId },
+          }),
+        );
+  
+        return { merged: true, winnerId: input.winnerId };
+      }),
+
 });
 
 // ---------------------------------------------------------------------------
@@ -472,6 +677,221 @@ const companiesSubRouter = router({
 
       return { imported: inserted.length };
     }),
+
+  findDuplicates: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const nameDupes = await ctx.db.execute(sql`
+      SELECT co1.id as id1, co1.name as name1, co1.domain as domain1,
+             co2.id as id2, co2.name as name2, co2.domain as domain2,
+             'name' as reason
+      FROM companies co1
+      JOIN companies co2 ON similarity(co1.name, co2.name) > 0.7 AND co1.id < co2.id
+      WHERE co1.tenant_id = ${ctx.tenantId}::uuid
+        AND co1.deleted_at IS NULL AND co2.deleted_at IS NULL
+      LIMIT 20
+    `);
+
+    const domainDupes = await ctx.db.execute(sql`
+      SELECT co1.id as id1, co1.name as name1, co1.domain as domain1,
+             co2.id as id2, co2.name as name2, co2.domain as domain2,
+             'domain' as reason
+      FROM companies co1
+      JOIN companies co2 ON co1.domain = co2.domain AND co1.id < co2.id
+      WHERE co1.tenant_id = ${ctx.tenantId}::uuid
+        AND co1.domain IS NOT NULL
+        AND co1.deleted_at IS NULL AND co2.deleted_at IS NULL
+      LIMIT 20
+    `);
+
+    return [...(nameDupes.rows as unknown[]), ...(domainDupes.rows as unknown[])] as Array<{
+      id1: string;
+      name1: string;
+      domain1: string | null;
+      id2: string;
+      name2: string;
+      domain2: string | null;
+      reason: string;
+    }>;
+  }),
+
+  merge: memberProcedure
+    .input(
+      z.object({
+        winnerId: z.string().uuid(),
+        loserId: z.string().uuid(),
+        keepFields: z
+          .object({
+            name: z.enum(["winner", "loser"]).default("winner"),
+            domain: z.enum(["winner", "loser"]).default("winner"),
+            industry: z.enum(["winner", "loser"]).default("winner"),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [winner, loser] = await Promise.all([
+        ctx.db
+          .select()
+          .from(companies)
+          .where(and(eq(companies.id, input.winnerId), eq(companies.tenantId, ctx.tenantId)))
+          .then((r) => r[0]),
+        ctx.db
+          .select()
+          .from(companies)
+          .where(and(eq(companies.id, input.loserId), eq(companies.tenantId, ctx.tenantId)))
+          .then((r) => r[0]),
+      ]);
+
+      if (!winner || !loser) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await ctx.db
+        .update(contacts)
+        .set({ companyId: input.winnerId })
+        .where(and(eq(contacts.companyId, input.loserId), eq(contacts.tenantId, ctx.tenantId)));
+
+      await ctx.db
+        .update(deals)
+        .set({ companyId: input.winnerId })
+        .where(and(eq(deals.companyId, input.loserId), eq(deals.tenantId, ctx.tenantId)));
+
+      const keep = input.keepFields;
+      const patch: { name?: string; domain?: string | null; industry?: string | null } = {};
+      if (keep?.name === "loser") patch.name = loser.name;
+      if (keep?.domain === "loser") patch.domain = loser.domain;
+      if (keep?.industry === "loser") patch.industry = loser.industry;
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db
+          .update(companies)
+          .set({ ...patch, updatedAt: new Date() })
+          .where(eq(companies.id, input.winnerId));
+      }
+
+      await ctx.db
+        .update(companies)
+        .set({ deletedAt: new Date() })
+        .where(eq(companies.id, input.loserId));
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.company.merged",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { winnerId: input.winnerId, loserId: input.loserId },
+        }),
+      );
+
+      return { merged: true, winnerId: input.winnerId };
+    }),,
+
+  findDuplicates: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+  
+      const nameDupes = await ctx.db.execute(sql`
+        SELECT co1.id as id1, co1.name as name1, co1.domain as domain1,
+               co2.id as id2, co2.name as name2, co2.domain as domain2,
+               'name' as reason
+        FROM companies co1
+        JOIN companies co2 ON similarity(co1.name, co2.name) > 0.7 AND co1.id < co2.id
+        WHERE co1.tenant_id = ${ctx.tenantId}::uuid
+          AND co1.deleted_at IS NULL AND co2.deleted_at IS NULL
+        LIMIT 20
+      `);
+  
+      const domainDupes = await ctx.db.execute(sql`
+        SELECT co1.id as id1, co1.name as name1, co1.domain as domain1,
+               co2.id as id2, co2.name as name2, co2.domain as domain2,
+               'domain' as reason
+        FROM companies co1
+        JOIN companies co2 ON co1.domain = co2.domain AND co1.id < co2.id
+        WHERE co1.tenant_id = ${ctx.tenantId}::uuid
+          AND co1.domain IS NOT NULL
+          AND co1.deleted_at IS NULL AND co2.deleted_at IS NULL
+        LIMIT 20
+      `);
+  
+      return [...(nameDupes.rows as unknown[]), ...(domainDupes.rows as unknown[])] as Array<{
+        id1: string;
+        name1: string;
+        domain1: string | null;
+        id2: string;
+        name2: string;
+        domain2: string | null;
+        reason: string;
+      }>;
+    }),
+  
+    merge: memberProcedure
+      .input(
+        z.object({
+          winnerId: z.string().uuid(),
+          loserId: z.string().uuid(),
+          keepFields: z
+            .object({
+              name: z.enum(["winner", "loser"]).default("winner"),
+              domain: z.enum(["winner", "loser"]).default("winner"),
+              industry: z.enum(["winner", "loser"]).default("winner"),
+            })
+            .optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const [winner, loser] = await Promise.all([
+          ctx.db
+            .select()
+            .from(companies)
+            .where(and(eq(companies.id, input.winnerId), eq(companies.tenantId, ctx.tenantId)))
+            .then((r) => r[0]),
+          ctx.db
+            .select()
+            .from(companies)
+            .where(and(eq(companies.id, input.loserId), eq(companies.tenantId, ctx.tenantId)))
+            .then((r) => r[0]),
+        ]);
+  
+        if (!winner || !loser) throw new TRPCError({ code: "NOT_FOUND" });
+  
+        await ctx.db
+          .update(contacts)
+          .set({ companyId: input.winnerId })
+          .where(and(eq(contacts.companyId, input.loserId), eq(contacts.tenantId, ctx.tenantId)));
+  
+        await ctx.db
+          .update(deals)
+          .set({ companyId: input.winnerId })
+          .where(and(eq(deals.companyId, input.loserId), eq(deals.tenantId, ctx.tenantId)));
+  
+        const keep = input.keepFields;
+        const patch: { name?: string; domain?: string | null; industry?: string | null } = {};
+        if (keep?.name === "loser") patch.name = loser.name;
+        if (keep?.domain === "loser") patch.domain = loser.domain;
+        if (keep?.industry === "loser") patch.industry = loser.industry;
+  
+        if (Object.keys(patch).length > 0) {
+          await ctx.db
+            .update(companies)
+            .set({ ...patch, updatedAt: new Date() })
+            .where(eq(companies.id, input.winnerId));
+        }
+  
+        await ctx.db
+          .update(companies)
+          .set({ deletedAt: new Date() })
+          .where(eq(companies.id, input.loserId));
+  
+        EventBus.emit(
+          createEvent({
+            type: "crm.company.merged",
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            payload: { winnerId: input.winnerId, loserId: input.loserId },
+          }),
+        );
+  
+        return { merged: true, winnerId: input.winnerId };
+      }),
+
 });
 
 // ---------------------------------------------------------------------------

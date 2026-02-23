@@ -13,6 +13,7 @@
     {"idx": 8, "version": "7", "when": 1772100000000, "tag": "0008_crm_notes", "breakpoints": true},
     {"idx": 9, "version": "7", "when": 1772200000000, "tag": "0003_tasks_entity_link", "breakpoints": true},
     {"idx": 10, "version": "7", "when": 1772300000000, "tag": "0003_crm_favorites", "breakpoints": true},
-    {"idx": 11, "version": "7", "when": 1772400000000, "tag": "0010_crm_search", "breakpoints": true}
+    {"idx": 11, "version": "7", "when": 1772400000000, "tag": "0010_crm_search", "breakpoints": true},
+    {"idx": 12, "version": "7", "when": 1772500000000, "tag": "0003_trgm", "breakpoints": true}
   ]
 }

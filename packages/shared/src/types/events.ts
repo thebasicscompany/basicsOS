@@ -75,6 +75,14 @@ export const crmDealRestoredEvent = baseEventSchema.extend({
 export const crmContactsImportedEvent = baseEventSchema.extend({
   type: z.literal("crm.contacts.imported"),
   payload: z.object({ count: z.number() }),
+export const crmContactMergedEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.merged"),
+  payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
+});
+
+export const crmCompanyMergedEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.merged"),
+  payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
 });
 
 // Meeting events
@@ -177,6 +185,8 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   crmDealDeletedEvent,
   crmDealRestoredEvent,
   crmContactsImportedEvent,
+  crmContactMergedEvent,
+  crmCompanyMergedEvent,
   meetingStartedEvent,
   meetingEndedEvent,
   meetingTranscriptFinalizedEvent,

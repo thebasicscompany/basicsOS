@@ -27,7 +27,7 @@ import {
   Input,
   Badge,
 } from "@basicsos/ui";
-import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
+import { Search, Mail, Phone, MoreHorizontal, Trash2 } from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
@@ -149,21 +149,32 @@ const CRMPage = (): JSX.Element => {
         <p className="text-sm text-stone-500 dark:text-stone-400">
           Manage your contacts and pipeline
         </p>
-        {view === "contacts" ? (
-          <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus size={16} className="mr-1.5" />
-              Add Contact
-            </Button>
-          </CreateContactDialog>
-        ) : (
-          <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus size={16} className="mr-1.5" />
-              New Deal
-            </Button>
-          </CreateDealDialog>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-stone-500 dark:text-stone-400"
+            onClick={() => router.push("/crm/trash")}
+          >
+            <Trash2 size={14} className="mr-1.5" />
+            Trash
+          </Button>
+          {view === "contacts" ? (
+            <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus size={16} className="mr-1.5" />
+                Add Contact
+              </Button>
+            </CreateContactDialog>
+          ) : (
+            <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus size={16} className="mr-1.5" />
+                New Deal
+              </Button>
+            </CreateDealDialog>
+          )}
+        </div>
       </div>
 
       {/* Pipeline overview — 4 compact stat cards */}

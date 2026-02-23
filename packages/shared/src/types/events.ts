@@ -44,6 +44,36 @@ export const crmActivityLoggedEvent = baseEventSchema.extend({
   payload: z.object({ activityId: z.string().uuid(), dealId: z.string().uuid() }),
 });
 
+export const crmContactDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.deleted"),
+  payload: z.object({ contactId: z.string().uuid() }),
+});
+
+export const crmContactRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
+export const crmCompanyDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.deleted"),
+  payload: z.object({ companyId: z.string().uuid() }),
+});
+
+export const crmCompanyRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
+export const crmDealDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.deal.deleted"),
+  payload: z.object({ dealId: z.string().uuid() }),
+});
+
+export const crmDealRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.deal.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
 // Meeting events
 export const meetingStartedEvent = baseEventSchema.extend({
   type: z.literal("meeting.started"),
@@ -136,7 +166,13 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   crmDealWonEvent,
   crmDealLostEvent,
   crmContactCreatedEvent,
+  crmContactDeletedEvent,
+  crmContactRestoredEvent,
   crmActivityLoggedEvent,
+  crmCompanyDeletedEvent,
+  crmCompanyRestoredEvent,
+  crmDealDeletedEvent,
+  crmDealRestoredEvent,
   meetingStartedEvent,
   meetingEndedEvent,
   meetingTranscriptFinalizedEvent,

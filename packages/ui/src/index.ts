@@ -185,4 +185,6 @@ export {
   Flag,
   ExternalLink,
   PenLine,
+  Trophy,
+  XCircle,
 } from "lucide-react";

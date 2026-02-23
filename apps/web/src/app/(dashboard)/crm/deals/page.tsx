@@ -17,6 +17,7 @@ import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
 import { CrmBulkActionBar } from "../components/CrmBulkActionBar";
 import { useCrmViewState, applyCrmFilters } from "../hooks/useCrmViewState";
+import type { CrmFilter } from "../hooks/useCrmViewState";
 import { CreateDealDialog } from "../CreateDealDialog";
 import { DealKanbanColumn } from "../DealKanbanColumn";
 import { STAGES, STAGE_COLORS, formatCurrency, exportCsv } from "../utils";
@@ -278,6 +279,40 @@ const DealsPageContent = (): JSX.Element => {
     value: s,
   }));
 
+  const handleApplyView = useCallback(
+    (view: { filters: unknown; sort: unknown; columnVisibility: unknown }) => {
+      // Reconstruct filters from saved payload: { [field]: { operator, value } }
+      const filtersRaw = view.filters as Record<string, unknown>;
+      const newFilters: CrmFilter[] = Object.entries(filtersRaw).map(([field, raw]) => {
+        const entry = raw as Record<string, string>;
+        return {
+          field,
+          operator: (entry.operator ?? "is") as CrmFilter["operator"],
+          value: entry.value ?? "",
+        };
+      });
+      viewState.setFilters(newFilters);
+
+      // Reconstruct sort from saved payload: { field, dir }
+      const sortRaw = view.sort as Record<string, string>;
+      if (sortRaw.field) {
+        viewState.setSortState(sortRaw.field, (sortRaw.dir ?? "asc") as "asc" | "desc");
+      } else {
+        viewState.setSortState("", "asc");
+      }
+
+      // Reconstruct hidden columns from saved payload: { [colKey]: boolean }
+      const colVis = view.columnVisibility as Record<string, boolean>;
+      const hidden = new Set(
+        Object.entries(colVis)
+          .filter(([, visible]) => !visible)
+          .map(([key]) => key),
+      );
+      viewState.setHiddenColumns(hidden);
+    },
+    [viewState],
+  );
+
   if (isLoading) {
     return <DealsTableSkeleton />;
   }
@@ -307,6 +342,8 @@ const DealsPageContent = (): JSX.Element => {
         ]}
         columnDefs={columns.map((c) => ({ key: c.key, label: c.label }))}
         showViewToggle
+        entity="deals"
+        onApplyView={handleApplyView}
       />
       {viewState.viewType === "table" ? (
         <>

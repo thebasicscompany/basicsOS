@@ -22,6 +22,9 @@ export interface CrmViewState {
   addFilter: (filter: CrmFilter) => void;
   removeFilter: (field: string) => void;
   clearFilters: () => void;
+  setFilters: (filters: CrmFilter[]) => void;
+  setSortState: (field: string, dir: "asc" | "desc") => void;
+  setHiddenColumns: (cols: Set<string>) => void;
   setViewType: (v: "table" | "kanban") => void;
   toggleColumn: (key: string) => void;
 }
@@ -111,6 +114,40 @@ export function useCrmViewState(): CrmViewState {
     [updateParams],
   );
 
+  const setFilters = useCallback(
+    (newFilters: CrmFilter[]) =>
+      updateParams((p) => {
+        const keysToDelete: string[] = [];
+        p.forEach((_, key) => { if (key.startsWith("filter_")) keysToDelete.push(key); });
+        keysToDelete.forEach((k) => p.delete(k));
+        newFilters.forEach((f) => p.set(`filter_${f.field}`, `${f.operator}:${f.value}`));
+      }),
+    [updateParams],
+  );
+
+  const setSortState = useCallback(
+    (field: string, dir: "asc" | "desc") =>
+      updateParams((p) => {
+        if (field) {
+          p.set("sort", field);
+          p.set("dir", dir);
+        } else {
+          p.delete("sort");
+          p.delete("dir");
+        }
+      }),
+    [updateParams],
+  );
+
+  const setHiddenColumns = useCallback(
+    (cols: Set<string>) =>
+      updateParams((p) => {
+        if (cols.size === 0) p.delete("hidden");
+        else p.set("hidden", [...cols].join(","));
+      }),
+    [updateParams],
+  );
+
   const setViewType = useCallback(
     (v: "table" | "kanban") => updateParams((p) => p.set("viewType", v)),
     [updateParams],
@@ -128,7 +165,7 @@ export function useCrmViewState(): CrmViewState {
     [updateParams],
   );
 
-  return { search, sort, sortDir, filters, viewType, hiddenColumns, setSearch, setSort, toggleSortDir, addFilter, removeFilter, clearFilters, setViewType, toggleColumn };
+  return { search, sort, sortDir, filters, viewType, hiddenColumns, setSearch, setSort, toggleSortDir, addFilter, removeFilter, clearFilters, setFilters, setSortState, setHiddenColumns, setViewType, toggleColumn };
 }
 
 export function applyCrmFilters<T>(

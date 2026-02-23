@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, boolean, index } from "drizzle-orm/pg-core";
 import { vector } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
 
@@ -99,3 +99,20 @@ export const dealActivityEmbeddings = pgTable("deal_activity_embeddings", {
   chunkIndex: integer("chunk_index").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const crmSavedViews = pgTable(
+  "crm_saved_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    entity: text("entity").notNull(), // 'contacts' | 'companies' | 'deals'
+    name: text("name").notNull(),
+    filters: jsonb("filters").notNull().default({}),
+    sort: jsonb("sort").notNull().default({}),
+    columnVisibility: jsonb("column_visibility").notNull().default({}),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_saved_views_tenant_entity_idx").on(t.tenantId, t.entity)],
+);

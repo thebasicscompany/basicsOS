@@ -31,6 +31,7 @@ import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
+import { FavoritesSection } from "./components/FavoritesSection";
 
 import type { DealStage } from "./types";
 
@@ -194,6 +195,9 @@ const CRMPage = (): JSX.Element => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Favorites */}
+      <FavoritesSection />
 
       {/* View tabs */}
       <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>

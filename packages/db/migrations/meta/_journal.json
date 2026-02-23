@@ -22,6 +22,13 @@
       "when": 1771500000000,
       "tag": "0002_module_config_llm_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771600000000,
+      "tag": "0003_crm_favorites",
+      "breakpoints": true
     }
   ]
 }

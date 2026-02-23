@@ -99,3 +99,21 @@ export const dealActivityEmbeddings = pgTable("deal_activity_embeddings", {
   chunkIndex: integer("chunk_index").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const crmFavorites = pgTable(
+  "crm_favorites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    entity: text("entity").notNull(), // 'contact' | 'company' | 'deal'
+    recordId: uuid("record_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("crm_favorites_user_idx").on(t.tenantId, t.userId),
+    // unique constraint handled at DB level via migration
+  ],
+);

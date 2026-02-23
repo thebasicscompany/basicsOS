@@ -133,6 +133,48 @@ const contactsSubRouter = router({
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
     }),
+
+  import: memberProcedure
+    .input(
+      z.object({
+        rows: z
+          .array(
+            z.object({
+              name: z.string().min(1),
+              email: z.string().email().optional(),
+              phone: z.string().optional(),
+              companyId: z.string().uuid().optional(),
+              customFields: z.record(z.unknown()).optional(),
+            }),
+          )
+          .min(1)
+          .max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const inserted = await ctx.db
+        .insert(contacts)
+        .values(
+          input.rows.map((row) => ({
+            ...row,
+            tenantId: ctx.tenantId,
+            createdBy: ctx.userId,
+            customFields: row.customFields ?? {},
+          })),
+        )
+        .returning({ id: contacts.id });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.contacts.imported",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { count: inserted.length },
+        }),
+      );
+
+      return { imported: inserted.length };
+    }),
 });
 
 // ---------------------------------------------------------------------------
@@ -225,6 +267,37 @@ const companiesSubRouter = router({
 
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
+    }),
+
+  import: memberProcedure
+    .input(
+      z.object({
+        rows: z
+          .array(
+            z.object({
+              name: z.string().min(1),
+              domain: z.string().optional(),
+              industry: z.string().optional(),
+              customFields: z.record(z.unknown()).optional(),
+            }),
+          )
+          .min(1)
+          .max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const inserted = await ctx.db
+        .insert(companies)
+        .values(
+          input.rows.map((row) => ({
+            ...row,
+            tenantId: ctx.tenantId,
+            customFields: row.customFields ?? {},
+          })),
+        )
+        .returning({ id: companies.id });
+
+      return { imported: inserted.length };
     }),
 });
 

@@ -27,7 +27,8 @@ import {
   Input,
   Badge,
 } from "@basicsos/ui";
-import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
+import { Search, Mail, Phone, MoreHorizontal, Upload } from "@basicsos/ui";
+import Link from "next/link";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
@@ -150,12 +151,20 @@ const CRMPage = (): JSX.Element => {
           Manage your contacts and pipeline
         </p>
         {view === "contacts" ? (
-          <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus size={16} className="mr-1.5" />
-              Add Contact
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/crm/import">
+                <Upload size={15} className="mr-1.5" />
+                Import CSV
+              </Link>
             </Button>
-          </CreateContactDialog>
+            <CreateContactDialog onCreated={() => void utils.crm.contacts.list.invalidate()}>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus size={16} className="mr-1.5" />
+                Add Contact
+              </Button>
+            </CreateContactDialog>
+          </div>
         ) : (
           <CreateDealDialog onCreated={() => void utils.crm.deals.listByStage.invalidate()}>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">

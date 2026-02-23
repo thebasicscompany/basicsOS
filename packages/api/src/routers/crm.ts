@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes } from "@basicsos/db";
 import type { DbConnection } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
@@ -1033,6 +1033,76 @@ const auditLogSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+
+const notesSubRouter = router({
+  get: protectedProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const [note] = await ctx.db
+        .select()
+        .from(crmNotes)
+        .where(
+          and(
+            eq(crmNotes.tenantId, ctx.tenantId),
+            eq(crmNotes.entity, input.entity),
+            eq(crmNotes.recordId, input.recordId),
+          ),
+        );
+      return note ?? null;
+    }),
+
+  upsert: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+        content: z.array(z.unknown()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({ id: crmNotes.id })
+        .from(crmNotes)
+        .where(
+          and(
+            eq(crmNotes.tenantId, ctx.tenantId),
+            eq(crmNotes.entity, input.entity),
+            eq(crmNotes.recordId, input.recordId),
+          ),
+        );
+
+      if (existing.length > 0 && existing[0]) {
+        const [updated] = await ctx.db
+          .update(crmNotes)
+          .set({ content: input.content, updatedAt: new Date(), updatedBy: ctx.userId })
+          .where(eq(crmNotes.id, existing[0].id))
+          .returning();
+        return updated;
+      }
+
+      const [created] = await ctx.db
+        .insert(crmNotes)
+        .values({
+          tenantId: ctx.tenantId,
+          entity: input.entity,
+          recordId: input.recordId,
+          content: input.content,
+          updatedBy: ctx.userId,
+        })
+        .returning();
+      return created;
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -1045,4 +1115,5 @@ export const crmRouter = router({
   pipelineStages: pipelineStagesSubRouter,
   savedViews: savedViewsSubRouter,
   auditLog: auditLogSubRouter,
+  notes: notesSubRouter,
 });

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
@@ -437,6 +437,87 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+const buildTsQuery = (q: string): string =>
+  q
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => `${w}:*`)
+    .join(" & ");
+
+const searchSubRouter = router({
+  query: protectedProcedure
+    .input(
+      z.object({
+        q: z.string().min(1).max(200),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const tsQuery = buildTsQuery(input.q);
+
+      const [matchingContacts, matchingCompanies, matchingDeals] = await Promise.all([
+        ctx.db
+          .select({
+            id: contacts.id,
+            name: contacts.name,
+            email: contacts.email,
+          })
+          .from(contacts)
+          .where(
+            and(
+              eq(contacts.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+
+        ctx.db
+          .select({
+            id: companies.id,
+            name: companies.name,
+            domain: companies.domain,
+          })
+          .from(companies)
+          .where(
+            and(
+              eq(companies.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+
+        ctx.db
+          .select({
+            id: deals.id,
+            title: deals.title,
+            stage: deals.stage,
+            value: deals.value,
+          })
+          .from(deals)
+          .where(
+            and(
+              eq(deals.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+      ]);
+
+      return {
+        contacts: matchingContacts.map((r) => ({ ...r, type: "contact" as const })),
+        companies: matchingCompanies.map((r) => ({ ...r, type: "company" as const })),
+        deals: matchingDeals.map((r) => ({ ...r, type: "deal" as const })),
+      };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +526,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  search: searchSubRouter,
 });

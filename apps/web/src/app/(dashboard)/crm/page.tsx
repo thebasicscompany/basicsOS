@@ -31,6 +31,7 @@ import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
+import { CrmGlobalSearch } from "./components/CrmGlobalSearch";
 
 import type { DealStage } from "./types";
 
@@ -165,6 +166,9 @@ const CRMPage = (): JSX.Element => {
           </CreateDealDialog>
         )}
       </div>
+
+      {/* Global CRM search */}
+      <CrmGlobalSearch />
 
       {/* Pipeline overview — 4 compact stat cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

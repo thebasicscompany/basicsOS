@@ -187,4 +187,6 @@ export {
   ExternalLink,
   PenLine,
   Columns3,
+  Bell,
+  AlertCircle,
 } from "lucide-react";

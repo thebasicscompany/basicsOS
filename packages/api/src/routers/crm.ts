@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, lt, notInArray, or } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
@@ -384,6 +384,22 @@ const dealsSubRouter = router({
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
     }),
+
+  listOverdue: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+
+    const now = new Date();
+    return ctx.db
+      .select()
+      .from(deals)
+      .where(
+        and(
+          eq(deals.tenantId, ctx.tenantId),
+          lt(deals.closeDate, now),
+          notInArray(deals.stage, ["won", "lost"]),
+        ),
+      );
+  }),
 });
 
 // ---------------------------------------------------------------------------
@@ -437,6 +453,44 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+const remindersSubRouter = router({
+  create: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+        remindAt: z.string().datetime(),
+        message: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const delay = new Date(input.remindAt).getTime() - Date.now();
+      if (delay < 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder time must be in the future" });
+      }
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.reminder.set",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: {
+            entity: input.entity,
+            recordId: input.recordId,
+            remindAt: input.remindAt,
+            message: input.message,
+          },
+        }),
+      );
+
+      return { scheduled: true, remindAt: input.remindAt };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +499,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  reminders: remindersSubRouter,
 });

@@ -185,4 +185,8 @@ export {
   Flag,
   ExternalLink,
   PenLine,
+  AlertTriangle,
+  GitMerge,
+  ChevronLeft,
+  ArrowLeftRight,
 } from "lucide-react";

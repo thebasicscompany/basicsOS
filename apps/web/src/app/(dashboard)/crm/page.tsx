@@ -31,6 +31,7 @@ import { Search, Mail, Phone, MoreHorizontal } from "@basicsos/ui";
 import { DealCard } from "./DealCard";
 import { CreateContactDialog } from "./CreateContactDialog";
 import { CreateDealDialog } from "./CreateDealDialog";
+import { ContactDuplicatesPanel } from "./components/DuplicatesPanel";
 
 import type { DealStage } from "./types";
 
@@ -251,6 +252,8 @@ const CRMPage = (): JSX.Element => {
           </div>
         </div>
       )}
+
+      {view === "contacts" && <ContactDuplicatesPanel />}
 
       {view === "contacts" &&
         ((contactsData ?? []).length === 0 ? (

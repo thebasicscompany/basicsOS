@@ -4,6 +4,7 @@ import { use } from "react";
 import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
+import { EnrichmentSuggestionBanner } from "../components/EnrichmentSuggestionBanner";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -30,6 +31,8 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
         backLabel="Contacts"
         className="mb-6"
       />
+
+      <EnrichmentSuggestionBanner contactId={contactId} />
 
       <Card className="mb-8">
         <CardHeader>

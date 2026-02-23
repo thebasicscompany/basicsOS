@@ -44,6 +44,11 @@ export const crmActivityLoggedEvent = baseEventSchema.extend({
   payload: z.object({ activityId: z.string().uuid(), dealId: z.string().uuid() }),
 });
 
+export const crmContactLinkedCompanyEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.linked_company"),
+  payload: z.object({ contactId: z.string().uuid(), companyId: z.string().uuid() }),
+});
+
 // Meeting events
 export const meetingStartedEvent = baseEventSchema.extend({
   type: z.literal("meeting.started"),
@@ -137,6 +142,7 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   crmDealLostEvent,
   crmContactCreatedEvent,
   crmActivityLoggedEvent,
+  crmContactLinkedCompanyEvent,
   meetingStartedEvent,
   meetingEndedEvent,
   meetingTranscriptFinalizedEvent,

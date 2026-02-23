@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
-import { addToast } from "@basicsos/ui";
+import { addToast, Sparkles } from "@basicsos/ui";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,15 @@ export const CreateContactDialog = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [companyId, setCompanyId] = useState<string | undefined>(undefined);
+
+  const { data: companiesData } = trpc.crm.companies.list.useQuery(undefined, { enabled: open });
+
+  const emailDomain = email.includes("@") ? email.split("@")[1] : undefined;
+  const suggestedCompany =
+    emailDomain && !companyId
+      ? companiesData?.find((c) => c.domain === emailDomain)
+      : undefined;
 
   const createContact = trpc.crm.contacts.create.useMutation({
     onSuccess: () => {
@@ -37,6 +46,7 @@ export const CreateContactDialog = ({
       setName("");
       setEmail("");
       setPhone("");
+      setCompanyId(undefined);
       onCreated?.();
     },
     onError: (err) => {
@@ -55,6 +65,7 @@ export const CreateContactDialog = ({
       name: name.trim(),
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      companyId,
     });
   };
 
@@ -86,6 +97,44 @@ export const CreateContactDialog = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {suggestedCompany && (
+              <div className="flex items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-xs text-stone-600">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span>
+                  Company{" "}
+                  <span className="font-semibold text-stone-900">{suggestedCompany.name}</span> has
+                  this domain — link it?
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-6 px-2 text-xs"
+                  onClick={() => setCompanyId(suggestedCompany.id)}
+                >
+                  Link
+                </Button>
+              </div>
+            )}
+            {companyId && companiesData && (
+              <div className="flex items-center justify-between rounded-md bg-primary/10 px-3 py-2 text-xs text-stone-700">
+                <span>
+                  Linked to:{" "}
+                  <span className="font-semibold text-stone-900">
+                    {companiesData.find((c) => c.id === companyId)?.name ?? companyId}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setCompanyId(undefined)}
+                >
+                  Remove
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-phone">Phone</Label>

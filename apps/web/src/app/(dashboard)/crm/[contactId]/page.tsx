@@ -4,6 +4,7 @@ import { use } from "react";
 import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
+import { CrmTasksPanel } from "../components/CrmTasksPanel";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -31,7 +32,7 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
         className="mb-6"
       />
 
-      <Card className="mb-8">
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle>Contact Info</CardTitle>
         </CardHeader>
@@ -54,6 +55,8 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
           </dl>
         </CardContent>
       </Card>
+
+      <CrmTasksPanel entityType="contact" entityId={contactId} />
     </div>
   );
 };

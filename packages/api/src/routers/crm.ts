@@ -524,6 +524,62 @@ const contactsSubRouter = router({
         .returning({ id: contacts.id });
       return { updated: updated.length };
     }),
+
+  enrichFromDomain: protectedProcedure
+    .input(z.object({ contactId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const [contact] = await ctx.db
+        .select()
+        .from(contacts)
+        .where(and(eq(contacts.id, input.contactId), eq(contacts.tenantId, ctx.tenantId)));
+
+      if (!contact?.email) return null;
+
+      const emailDomain = contact.email.split("@")[1];
+      if (!emailDomain) return null;
+
+      // Already linked — no suggestion needed
+      if (contact.companyId) return null;
+
+      const matchingCompanies = await ctx.db
+        .select({ id: companies.id, name: companies.name, domain: companies.domain })
+        .from(companies)
+        .where(and(eq(companies.tenantId, ctx.tenantId), eq(companies.domain, emailDomain)))
+        .limit(3);
+
+      if (matchingCompanies.length === 0) return null;
+      return { emailDomain, suggestions: matchingCompanies };
+    }),
+
+  linkToCompany: memberProcedure
+    .input(
+      z.object({
+        contactId: z.string().uuid(),
+        companyId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await ctx.db
+        .update(contacts)
+        .set({ companyId: input.companyId, updatedAt: new Date() })
+        .where(and(eq(contacts.id, input.contactId), eq(contacts.tenantId, ctx.tenantId)))
+        .returning();
+
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.contact.linked_company",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { contactId: input.contactId, companyId: input.companyId },
+        }),
+      );
+
+      return updated;
+    }),
 });
 
 // ---------------------------------------------------------------------------

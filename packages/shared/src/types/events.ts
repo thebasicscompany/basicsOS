@@ -91,6 +91,9 @@ export const crmReminderSetEvent = baseEventSchema.extend({
     remindAt: z.string().datetime(),
     message: z.string().optional(),
   }),
+export const crmContactLinkedCompanyEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.linked_company"),
+  payload: z.object({ contactId: z.string().uuid(), companyId: z.string().uuid() }),
 });
 
 // Meeting events
@@ -196,6 +199,7 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   crmContactMergedEvent,
   crmCompanyMergedEvent,
   crmReminderSetEvent,
+  crmContactLinkedCompanyEvent,
   meetingStartedEvent,
   meetingEndedEvent,
   meetingTranscriptFinalizedEvent,

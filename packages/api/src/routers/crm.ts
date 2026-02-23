@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike, inArray, lt, notInArray, or, isNull, isNotNull, gt, sql } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes, crmFavorites } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes, crmFavorites, customFieldDefs } from "@basicsos/db";
 import type { DbConnection } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
@@ -1510,403 +1510,86 @@ const pipelineStagesSubRouter = router({
       return { ok: true };
     }),
 
-  delete: adminProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .delete(pipelineStages)
-        .where(and(eq(pipelineStages.id, input.id), eq(pipelineStages.tenantId, ctx.tenantId)));
-      return { id: input.id };
-    }),
 });
 
 // ---------------------------------------------------------------------------
-// Saved Views
+// Custom Field Definitions
 // ---------------------------------------------------------------------------
 
-const savedViewsSubRouter = router({
+const customFieldDefsSubRouter = router({
   list: protectedProcedure
-    .input(z.object({ entity: z.enum(["contacts", "companies", "deals"]) }))
+    .input(z.object({ entity: ENTITY_ENUM }))
     .query(async ({ ctx, input }) => {
       if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
       return ctx.db
         .select()
-        .from(crmSavedViews)
+        .from(customFieldDefs)
         .where(
           and(
-            eq(crmSavedViews.tenantId, ctx.tenantId),
-            eq(crmSavedViews.userId, ctx.userId),
-            eq(crmSavedViews.entity, input.entity),
+            eq(customFieldDefs.tenantId, ctx.tenantId),
+            eq(customFieldDefs.entity, input.entity),
           ),
         )
-        .orderBy(crmSavedViews.createdAt);
+        .orderBy(customFieldDefs.position);
     }),
 
-  create: memberProcedure
+  create: adminProcedure
     .input(
       z.object({
-        entity: z.enum(["contacts", "companies", "deals"]),
-        name: z.string().min(1).max(100),
-        filters: z.record(z.unknown()).default({}),
-        sort: z.record(z.unknown()).default({}),
-        columnVisibility: z.record(z.unknown()).default({}),
-        isDefault: z.boolean().default(false),
+        entity: ENTITY_ENUM,
+        key: z
+          .string()
+          .min(1)
+          .max(50)
+          .regex(/^[a-z_]+$/),
+        label: z.string().min(1).max(100),
+        type: FIELD_TYPE_ENUM,
+        options: z.array(z.string()).optional(),
+        required: z.boolean().default(false),
+        position: z.number().int().default(0),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [view] = await ctx.db
-        .insert(crmSavedViews)
-        .values({
-          tenantId: ctx.tenantId,
-          userId: ctx.userId,
-          ...input,
-        })
+      const [def] = await ctx.db
+        .insert(customFieldDefs)
+        .values({ ...input, tenantId: ctx.tenantId })
         .returning();
-      if (!view) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      return view;
+      if (!def) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return def;
     }),
 
-  update: memberProcedure
+  update: adminProcedure
     .input(
       z.object({
         id: z.string().uuid(),
-        name: z.string().min(1).max(100).optional(),
-        filters: z.record(z.unknown()).optional(),
-        sort: z.record(z.unknown()).optional(),
-        columnVisibility: z.record(z.unknown()).optional(),
-        isDefault: z.boolean().optional(),
+        label: z.string().min(1).max(100).optional(),
+        options: z.array(z.string()).optional(),
+        required: z.boolean().optional(),
+        position: z.number().int().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...fields } = input;
       const [updated] = await ctx.db
-        .update(crmSavedViews)
+        .update(customFieldDefs)
         .set(fields)
         .where(
-          and(
-            eq(crmSavedViews.id, id),
-            eq(crmSavedViews.tenantId, ctx.tenantId),
-            eq(crmSavedViews.userId, ctx.userId),
-          ),
+          and(eq(customFieldDefs.id, id), eq(customFieldDefs.tenantId, ctx.tenantId)),
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
       return updated;
     }),
 
-  delete: memberProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
-        .delete(crmSavedViews)
+        .delete(customFieldDefs)
         .where(
-          and(
-            eq(crmSavedViews.id, input.id),
-            eq(crmSavedViews.tenantId, ctx.tenantId),
-            eq(crmSavedViews.userId, ctx.userId),
-          ),
+          and(eq(customFieldDefs.id, input.id), eq(customFieldDefs.tenantId, ctx.tenantId)),
         );
       return { id: input.id };
-    }),
-
-  setDefault: memberProcedure
-    .input(
-      z.object({
-        id: z.string().uuid(),
-        entity: z.enum(["contacts", "companies", "deals"]),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      // Clear existing defaults for this entity+user
-      await ctx.db
-        .update(crmSavedViews)
-        .set({ isDefault: false })
-        .where(
-          and(
-            eq(crmSavedViews.tenantId, ctx.tenantId),
-            eq(crmSavedViews.userId, ctx.userId),
-            eq(crmSavedViews.entity, input.entity),
-          ),
-        );
-      // Set new default
-      const [updated] = await ctx.db
-        .update(crmSavedViews)
-        .set({ isDefault: true })
-        .where(
-          and(
-            eq(crmSavedViews.id, input.id),
-            eq(crmSavedViews.tenantId, ctx.tenantId),
-          ),
-        )
-        .returning();
-      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
-      return updated;
-    }),
-});
-
-// ---------------------------------------------------------------------------
-// Audit Log
-// ---------------------------------------------------------------------------
-
-const auditLogSubRouter = router({
-  list: protectedProcedure
-    .input(
-      z.object({
-        entity: z.enum(["contact", "company", "deal"]),
-        recordId: z.string().uuid(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-      return ctx.db
-        .select()
-        .from(crmAuditLog)
-        .where(
-          and(
-            eq(crmAuditLog.tenantId, ctx.tenantId),
-            eq(crmAuditLog.entity, input.entity),
-            eq(crmAuditLog.recordId, input.recordId),
-          ),
-        )
-        .orderBy(desc(crmAuditLog.changedAt))
-        .limit(100);
-    }),
-});
-
-// ---------------------------------------------------------------------------
-// Notes
-// ---------------------------------------------------------------------------
-
-const notesSubRouter = router({
-  get: protectedProcedure
-    .input(
-      z.object({
-        entity: z.enum(["contact", "company", "deal"]),
-        recordId: z.string().uuid(),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-      const [note] = await ctx.db
-        .select()
-        .from(crmNotes)
-        .where(
-          and(
-            eq(crmNotes.tenantId, ctx.tenantId),
-            eq(crmNotes.entity, input.entity),
-            eq(crmNotes.recordId, input.recordId),
-          ),
-        );
-      return note ?? null;
-    }),
-
-  upsert: memberProcedure
-    .input(
-      z.object({
-        entity: z.enum(["contact", "company", "deal"]),
-        recordId: z.string().uuid(),
-        content: z.array(z.unknown()),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db
-        .select({ id: crmNotes.id })
-        .from(crmNotes)
-        .where(
-          and(
-            eq(crmNotes.tenantId, ctx.tenantId),
-            eq(crmNotes.entity, input.entity),
-            eq(crmNotes.recordId, input.recordId),
-          ),
-        );
-
-      if (existing.length > 0 && existing[0]) {
-        const [updated] = await ctx.db
-          .update(crmNotes)
-          .set({ content: input.content, updatedAt: new Date(), updatedBy: ctx.userId })
-          .where(eq(crmNotes.id, existing[0].id))
-          .returning();
-        return updated;
-      }
-
-      const [created] = await ctx.db
-        .insert(crmNotes)
-        .values({
-          tenantId: ctx.tenantId,
-          entity: input.entity,
-          recordId: input.recordId,
-          content: input.content,
-          updatedBy: ctx.userId,
-        })
-        .returning();
-      return created;
-    }),
-});
-
-// ---------------------------------------------------------------------------
-// Favorites
-// ---------------------------------------------------------------------------
-
-const favoritesSubRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-    return ctx.db
-      .select()
-      .from(crmFavorites)
-      .where(
-        and(
-          eq(crmFavorites.tenantId, ctx.tenantId),
-          eq(crmFavorites.userId, ctx.userId),
-        ),
-      )
-      .orderBy(desc(crmFavorites.createdAt));
-  }),
-
-  toggle: memberProcedure
-    .input(
-      z.object({
-        entity: z.enum(["contact", "company", "deal"]),
-        recordId: z.string().uuid(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.db
-        .select({ id: crmFavorites.id })
-        .from(crmFavorites)
-        .where(
-          and(
-            eq(crmFavorites.tenantId, ctx.tenantId),
-            eq(crmFavorites.userId, ctx.userId),
-            eq(crmFavorites.entity, input.entity),
-            eq(crmFavorites.recordId, input.recordId),
-          ),
-        );
-
-      if (existing.length > 0 && existing[0]) {
-        await ctx.db
-          .delete(crmFavorites)
-          .where(eq(crmFavorites.id, existing[0].id));
-        return { favorited: false };
-      }
-
-      await ctx.db.insert(crmFavorites).values({
-        tenantId: ctx.tenantId,
-        userId: ctx.userId,
-        entity: input.entity,
-        recordId: input.recordId,
-      });
-      return { favorited: true };
-    }),
-});
-
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
-
-const searchSubRouter = router({
-  query: protectedProcedure
-    .input(
-      z.object({
-        q: z.string().min(1).max(200),
-        limit: z.number().int().min(1).max(50).default(20),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
-
-      const tsQuery = buildTsQuery(input.q);
-
-      const [matchingContacts, matchingCompanies, matchingDeals] = await Promise.all([
-        ctx.db
-          .select({
-            id: contacts.id,
-            name: contacts.name,
-            email: contacts.email,
-          })
-          .from(contacts)
-          .where(
-            and(
-              eq(contacts.tenantId, ctx.tenantId),
-              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
-            ),
-          )
-          .limit(input.limit),
-
-        ctx.db
-          .select({
-            id: companies.id,
-            name: companies.name,
-            domain: companies.domain,
-          })
-          .from(companies)
-          .where(
-            and(
-              eq(companies.tenantId, ctx.tenantId),
-              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
-            ),
-          )
-          .limit(input.limit),
-
-        ctx.db
-          .select({
-            id: deals.id,
-            title: deals.title,
-            stage: deals.stage,
-            value: deals.value,
-          })
-          .from(deals)
-          .where(
-            and(
-              eq(deals.tenantId, ctx.tenantId),
-              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
-            ),
-          )
-          .limit(input.limit),
-      ]);
-
-      return {
-        contacts: matchingContacts.map((r) => ({ ...r, type: "contact" as const })),
-        companies: matchingCompanies.map((r) => ({ ...r, type: "company" as const })),
-        deals: matchingDeals.map((r) => ({ ...r, type: "deal" as const })),
-      };
-    }),
-});
-
-// ---------------------------------------------------------------------------
-// Reminders
-// ---------------------------------------------------------------------------
-
-const remindersSubRouter = router({
-  create: memberProcedure
-    .input(
-      z.object({
-        entity: z.enum(["contact", "company", "deal"]),
-        recordId: z.string().uuid(),
-        remindAt: z.string().datetime(),
-        message: z.string().max(500).optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const delay = new Date(input.remindAt).getTime() - Date.now();
-      if (delay < 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder time must be in the future" });
-      }
-
-      EventBus.emit(
-        createEvent({
-          type: "crm.reminder.set",
-          tenantId: ctx.tenantId,
-          userId: ctx.userId,
-          payload: {
-            entity: input.entity,
-            recordId: input.recordId,
-            remindAt: input.remindAt,
-            message: input.message,
-          },
-        }),
-      );
-
-      return { scheduled: true, remindAt: input.remindAt };
     }),
 });
 
@@ -1927,4 +1610,5 @@ export const crmRouter = router({
   favorites: favoritesSubRouter,
   search: searchSubRouter,
   reminders: remindersSubRouter,
+  customFieldDefs: customFieldDefsSubRouter,
 });

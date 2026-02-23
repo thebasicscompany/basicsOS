@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, crmAttachments } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
 // ---------------------------------------------------------------------------
@@ -437,6 +437,117 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Attachments
+// ---------------------------------------------------------------------------
+
+const ENTITY_ENUM = z.enum(["contact", "company", "deal"]);
+
+async function generatePresignedPutUrl(storageKey: string, mimeType: string): Promise<string> {
+  const s3Url = process.env["S3_ENDPOINT"] ?? process.env["AWS_S3_ENDPOINT"];
+  const bucket = process.env["S3_BUCKET"] ?? process.env["AWS_S3_BUCKET"];
+
+  if (!s3Url || !bucket) {
+    return `/api/upload?key=${encodeURIComponent(storageKey)}`;
+  }
+
+  try {
+    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    const s3 = new S3Client({
+      endpoint: s3Url,
+      region: process.env["AWS_REGION"] ?? "us-east-1",
+      credentials: {
+        accessKeyId: process.env["AWS_ACCESS_KEY_ID"] ?? "",
+        secretAccessKey: process.env["AWS_SECRET_ACCESS_KEY"] ?? "",
+      },
+      forcePathStyle: true,
+    });
+    const cmd = new PutObjectCommand({ Bucket: bucket, Key: storageKey, ContentType: mimeType });
+    return await getSignedUrl(s3, cmd, { expiresIn: 300 });
+  } catch {
+    return `/api/upload?key=${encodeURIComponent(storageKey)}`;
+  }
+}
+
+const attachmentsSubRouter = router({
+  list: protectedProcedure
+    .input(
+      z.object({
+        entity: ENTITY_ENUM,
+        recordId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(crmAttachments)
+        .where(
+          and(
+            eq(crmAttachments.tenantId, ctx.tenantId),
+            eq(crmAttachments.entity, input.entity),
+            eq(crmAttachments.recordId, input.recordId),
+          ),
+        )
+        .orderBy(desc(crmAttachments.createdAt));
+    }),
+
+  getUploadUrl: memberProcedure
+    .input(
+      z.object({
+        entity: ENTITY_ENUM,
+        recordId: z.string().uuid(),
+        filename: z.string().min(1).max(255),
+        mimeType: z.string().min(1),
+        sizeBytes: z.number().int().positive().max(50 * 1024 * 1024),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const storageKey = `crm/${ctx.tenantId}/${input.entity}/${input.recordId}/${Date.now()}-${input.filename}`;
+      const uploadUrl = await generatePresignedPutUrl(storageKey, input.mimeType);
+      return { uploadUrl, storageKey };
+    }),
+
+  confirmUpload: memberProcedure
+    .input(
+      z.object({
+        entity: ENTITY_ENUM,
+        recordId: z.string().uuid(),
+        filename: z.string().min(1).max(255),
+        storageKey: z.string().min(1),
+        sizeBytes: z.number().int().positive(),
+        mimeType: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [attachment] = await ctx.db
+        .insert(crmAttachments)
+        .values({
+          tenantId: ctx.tenantId,
+          entity: input.entity,
+          recordId: input.recordId,
+          filename: input.filename,
+          storageKey: input.storageKey,
+          sizeBytes: input.sizeBytes,
+          mimeType: input.mimeType,
+          uploadedBy: ctx.userId,
+        })
+        .returning();
+      if (!attachment) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return attachment;
+    }),
+
+  delete: memberProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(crmAttachments)
+        .where(and(eq(crmAttachments.id, input.id), eq(crmAttachments.tenantId, ctx.tenantId)));
+      return { id: input.id };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +556,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  attachments: attachmentsSubRouter,
 });

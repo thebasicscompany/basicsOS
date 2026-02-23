@@ -185,4 +185,8 @@ export {
   Flag,
   ExternalLink,
   PenLine,
+  File,
+  Image,
+  Paperclip,
+  Upload,
 } from "lucide-react";

@@ -2,6 +2,25 @@ import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index } from "
 import { vector } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
 
+export const crmAttachments = pgTable(
+  "crm_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    filename: text("filename").notNull(),
+    storageKey: text("storage_key").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    mimeType: text("mime_type").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_attachments_record_idx").on(t.tenantId, t.entity, t.recordId)],
+);
+
 export const contacts = pgTable(
   "contacts",
   {

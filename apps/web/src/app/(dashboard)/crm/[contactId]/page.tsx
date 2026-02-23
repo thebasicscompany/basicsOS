@@ -4,6 +4,7 @@ import { use } from "react";
 import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
+import { CrmAttachmentsPanel } from "../components/CrmAttachmentsPanel";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -54,6 +55,8 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
           </dl>
         </CardContent>
       </Card>
+
+      <CrmAttachmentsPanel entity="contact" recordId={contactId} />
     </div>
   );
 };

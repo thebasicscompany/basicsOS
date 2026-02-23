@@ -26,7 +26,7 @@ const CrmDashboard = (): JSX.Element => {
   const { data: companiesData } = trpc.crm.companies.list.useQuery();
   const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
 
-  const byStage = dealsData ?? [];
+ const byStage = dealsData ?? [];
   const allDeals = byStage.flatMap((g) => g.deals);
   const contacts = contactsData ?? [];
   const companies = companiesData ?? [];
@@ -56,8 +56,7 @@ const CrmDashboard = (): JSX.Element => {
         <RecentActivityCard deals={allDeals} />
       </div>
     </div>
-  );
-};
+  );};
 
 function computeStats(
   contacts: Array<{ id: string }>,
@@ -115,7 +114,7 @@ function KpiCards({
   );
 }
 
-function StatCard({
+unction StatCard({
   label,
   value,
   icon: Icon,
@@ -132,8 +131,7 @@ function StatCard({
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-700">
             <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />          </div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-        </div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>        </div>
         <p className={`mt-2 text-xl font-semibold tabular-nums ${valueClass ?? "text-foreground"}`}>{value}</p>
       </CardContent>
     </Card>

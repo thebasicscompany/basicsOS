@@ -1,6 +1,25 @@
-import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, boolean, index } from "drizzle-orm/pg-core";
 import { vector } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
+
+export const pipelineStages = pgTable(
+  "pipeline_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("bg-stone-400"),
+    position: integer("position").notNull().default(0),
+    isWon: boolean("is_won").notNull().default(false),
+    isLost: boolean("is_lost").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("pipeline_stages_tenant_id_idx").on(t.tenantId),
+  ],
+);
 
 export const contacts = pgTable(
   "contacts",
@@ -57,6 +76,7 @@ export const deals = pgTable(
     contactId: uuid("contact_id").references(() => contacts.id),
     title: text("title").notNull(),
     stage: text("stage").notNull().default("lead"),
+    stageId: uuid("stage_id").references(() => pipelineStages.id),
     value: numeric("value", { precision: 12, scale: 2 }).notNull().default("0"),
     probability: integer("probability").notNull().default(50),
     closeDate: timestamp("close_date"),

@@ -36,6 +36,13 @@
       "when": 1771700000000,
       "tag": "0004_soft_deletes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771800000000,
+      "tag": "0005_pipeline_stages",
+      "breakpoints": true
     }
   ]
 }

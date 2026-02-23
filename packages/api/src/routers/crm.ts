@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
 // ---------------------------------------------------------------------------
@@ -501,7 +501,7 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
-// Trash
+/ Trash
 // ---------------------------------------------------------------------------
 
 const trashSubRouter = router({
@@ -629,6 +629,80 @@ const trashSubRouter = router({
           .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)));
       }
 
+// ---------------------------------------------------------------------------
+// Pipeline Stages
+// ---------------------------------------------------------------------------
+
+const pipelineStagesSubRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+    return ctx.db
+      .select()
+      .from(pipelineStages)
+      .where(eq(pipelineStages.tenantId, ctx.tenantId))
+      .orderBy(pipelineStages.position);
+  }),
+
+  create: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(100),
+        color: z.string().default("bg-stone-400"),
+        position: z.number().int().default(0),
+        isWon: z.boolean().default(false),
+        isLost: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [stage] = await ctx.db
+        .insert(pipelineStages)
+        .values({ ...input, tenantId: ctx.tenantId })
+        .returning();
+      if (!stage) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return stage;
+    }),
+
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(100).optional(),
+        color: z.string().optional(),
+        isWon: z.boolean().optional(),
+        isLost: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...fields } = input;
+      const [updated] = await ctx.db
+        .update(pipelineStages)
+        .set(fields)
+        .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenantId, ctx.tenantId)))
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  reorder: adminProcedure
+    .input(z.array(z.object({ id: z.string().uuid(), position: z.number().int() })))
+    .mutation(async ({ ctx, input }) => {
+      await Promise.all(
+        input.map(({ id, position }) =>
+          ctx.db
+            .update(pipelineStages)
+            .set({ position })
+            .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenantId, ctx.tenantId))),
+        ),
+      );
+      return { ok: true };
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(pipelineStages)
+        .where(and(eq(pipelineStages.id, input.id), eq(pipelineStages.tenantId, ctx.tenantId)));
       return { id: input.id };
     }),
 });
@@ -643,4 +717,5 @@ export const crmRouter = router({
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
   trash: trashSubRouter,
+  pipelineStages: pipelineStagesSubRouter,
 });

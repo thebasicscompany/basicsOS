@@ -102,7 +102,7 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
   );
 };
 
-function StageProgressBar({ currentStage }: { currentStage: string }): JSX.Element {
+unction StageProgressBar({ currentStage }: { currentStage: string }): JSX.Element {
   const activeIdx = STAGES.indexOf(currentStage as (typeof STAGES)[number]);
 
   return (
@@ -200,5 +200,6 @@ function DeleteDealButton({
     </>
   );
 }
+
 
 export default DealDetailPage;

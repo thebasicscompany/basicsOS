@@ -1,9 +1,78 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
+import { and, desc, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog } from "@basicsos/db";
+import type { DbConnection } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
+
+// ---------------------------------------------------------------------------
+// Audit log helper
+// ---------------------------------------------------------------------------
+
+async function logAuditChanges(
+  db: DbConnection,
+  tenantId: string,
+  userId: string,
+  entity: string,
+  recordId: string,
+  oldRecord: Record<string, unknown>,
+  newRecord: Record<string, unknown>,
+): Promise<void> {
+  const entries: (typeof crmAuditLog.$inferInsert)[] = [];
+  for (const key of Object.keys(newRecord)) {
+    const oldVal = oldRecord[key];
+    const newVal = newRecord[key];
+    if (oldVal !== newVal) {
+      entries.push({
+        tenantId,
+        entity,
+        recordId,
+        userId,
+        field: key,
+        oldValue: oldVal != null ? String(oldVal) : null,
+        newValue: newVal != null ? String(newVal) : null,
+      });
+    }
+  }
+  if (entries.length > 0) {
+    await db.insert(crmAuditLog).values(entries);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Audit log helper
+// ---------------------------------------------------------------------------
+
+async function logAuditChanges(
+  db: DbConnection,
+  tenantId: string,
+  userId: string,
+  entity: string,
+  recordId: string,
+  oldRecord: Record<string, unknown>,
+  newRecord: Record<string, unknown>,
+): Promise<void> {
+  const entries: (typeof crmAuditLog.$inferInsert)[] = [];
+  for (const key of Object.keys(newRecord)) {
+    const oldVal = oldRecord[key];
+    const newVal = newRecord[key];
+    if (oldVal !== newVal) {
+      entries.push({
+        tenantId,
+        entity,
+        recordId,
+        userId,
+        field: key,
+        oldValue: oldVal != null ? String(oldVal) : null,
+        newValue: newVal != null ? String(newVal) : null,
+      });
+    }
+  }
+  if (entries.length > 0) {
+    await db.insert(crmAuditLog).values(entries);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Contacts
@@ -116,6 +185,13 @@ const contactsSubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...fields } = input;
 
+      const [existing] = await ctx.db
+        .select()
+        .from(contacts)
+        .where(and(eq(contacts.id, id), eq(contacts.tenantId, ctx.tenantId)));
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
       const [updated] = await ctx.db
         .update(contacts)
         .set({
@@ -126,6 +202,30 @@ const contactsSubRouter = router({
         .returning();
 
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const oldRecord: Record<string, unknown> = {
+        name: existing.name,
+        email: existing.email,
+        phone: existing.phone,
+        companyId: existing.companyId,
+      };
+      const newRecord: Record<string, unknown> = {
+        name: updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        companyId: updated.companyId,
+      };
+
+      await logAuditChanges(
+        ctx.db,
+        ctx.tenantId,
+        ctx.userId,
+        "contact",
+        id,
+        oldRecord,
+        newRecord,
+      );
+
       return updated;
     }),
 
@@ -238,6 +338,13 @@ const companiesSubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...fields } = input;
 
+      const [existing] = await ctx.db
+        .select()
+        .from(companies)
+        .where(and(eq(companies.id, id), eq(companies.tenantId, ctx.tenantId)));
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
       const [updated] = await ctx.db
         .update(companies)
         .set({ ...fields, updatedAt: new Date() })
@@ -245,6 +352,28 @@ const companiesSubRouter = router({
         .returning();
 
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const oldRecord: Record<string, unknown> = {
+        name: existing.name,
+        domain: existing.domain,
+        industry: existing.industry,
+      };
+      const newRecord: Record<string, unknown> = {
+        name: updated.name,
+        domain: updated.domain,
+        industry: updated.industry,
+      };
+
+      await logAuditChanges(
+        ctx.db,
+        ctx.tenantId,
+        ctx.userId,
+        "company",
+        id,
+        oldRecord,
+        newRecord,
+      );
+
       return updated;
     }),
 
@@ -370,6 +499,16 @@ const dealsSubRouter = router({
 
       if (!updated) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      await logAuditChanges(
+        ctx.db,
+        ctx.tenantId,
+        ctx.userId,
+        "deal",
+        input.id,
+        { stage: existing.stage },
+        { stage: input.stage },
+      );
+
       EventBus.emit(
         createEvent({
           type: "crm.deal.stage_changed",
@@ -416,6 +555,13 @@ const dealsSubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...fields } = input;
 
+      const [existing] = await ctx.db
+        .select()
+        .from(deals)
+        .where(and(eq(deals.id, id), eq(deals.tenantId, ctx.tenantId)));
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
       const [updated] = await ctx.db
         .update(deals)
         .set({ ...fields, updatedAt: new Date() })
@@ -423,6 +569,32 @@ const dealsSubRouter = router({
         .returning();
 
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const oldRecord: Record<string, unknown> = {
+        title: existing.title,
+        companyId: existing.companyId,
+        contactId: existing.contactId,
+        value: existing.value,
+        probability: existing.probability,
+      };
+      const newRecord: Record<string, unknown> = {
+        title: updated.title,
+        companyId: updated.companyId,
+        contactId: updated.contactId,
+        value: updated.value,
+        probability: updated.probability,
+      };
+
+      await logAuditChanges(
+        ctx.db,
+        ctx.tenantId,
+        ctx.userId,
+        "deal",
+        id,
+        oldRecord,
+        newRecord,
+      );
+
       return updated;
     }),
 
@@ -832,6 +1004,35 @@ const savedViewsSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+
+const auditLogSubRouter = router({
+  list: protectedProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(crmAuditLog)
+        .where(
+          and(
+            eq(crmAuditLog.tenantId, ctx.tenantId),
+            eq(crmAuditLog.entity, input.entity),
+            eq(crmAuditLog.recordId, input.recordId),
+          ),
+        )
+        .orderBy(desc(crmAuditLog.changedAt))
+        .limit(100);
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -843,4 +1044,5 @@ export const crmRouter = router({
   trash: trashSubRouter,
   pipelineStages: pipelineStagesSubRouter,
   savedViews: savedViewsSubRouter,
+  auditLog: auditLogSubRouter,
 });

@@ -117,7 +117,7 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
   );
 };
 
-function CompanyDetailSkeleton(): JSX.Element {
+unction CompanyDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
@@ -186,5 +186,6 @@ function DeleteCompanyButton({
     </>
   );
 }
+
 
 export default CompanyDetailPage;

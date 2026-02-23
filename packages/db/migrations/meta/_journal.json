@@ -50,6 +50,13 @@
       "when": 1771900000000,
       "tag": "0003_saved_views",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772000000000,
+      "tag": "0003_audit_log",
+      "breakpoints": true
     }
   ]
 }

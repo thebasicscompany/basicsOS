@@ -141,6 +141,9 @@ export const dealActivities = pgTable(
     type: text("type").notNull(), // note | email | call | meeting
     content: text("content").notNull(),
     meetingId: uuid("meeting_id"),
+    subject: text("subject"),
+    direction: text("direction"), // 'inbound' | 'outbound'
+    activityDate: timestamp("activity_date"),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),

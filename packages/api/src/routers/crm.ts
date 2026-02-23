@@ -1284,6 +1284,9 @@ const activitiesSubRouter = router({
         type: z.enum(["note", "email", "call", "meeting"]),
         content: z.string().min(1),
         meetingId: z.string().uuid().optional(),
+        subject: z.string().max(500).optional(),
+        direction: z.enum(["inbound", "outbound"]).optional(),
+        activityDate: z.string().datetime().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1294,6 +1297,9 @@ const activitiesSubRouter = router({
           type: input.type,
           content: input.content,
           meetingId: input.meetingId,
+          subject: input.subject,
+          direction: input.direction,
+          activityDate: input.activityDate ? new Date(input.activityDate) : undefined,
           createdBy: ctx.userId,
         })
         .returning();
@@ -1306,6 +1312,44 @@ const activitiesSubRouter = router({
           tenantId: ctx.tenantId,
           userId: ctx.userId,
           payload: { activityId: activity.id, dealId: input.dealId },
+        }),
+      );
+
+      return activity;
+    }),
+
+  logEmail: memberProcedure
+    .input(
+      z.object({
+        dealId: z.string().uuid(),
+        subject: z.string().min(1).max(500),
+        content: z.string().max(2000).default(""),
+        direction: z.enum(["inbound", "outbound"]),
+        activityDate: z.string().datetime().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [activity] = await ctx.db
+        .insert(dealActivities)
+        .values({
+          dealId: input.dealId,
+          type: "email",
+          content: input.content,
+          subject: input.subject,
+          direction: input.direction,
+          activityDate: input.activityDate ? new Date(input.activityDate) : new Date(),
+          createdBy: ctx.userId,
+        })
+        .returning();
+
+      if (!activity) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.activity.logged",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { activityId: activity.id, dealId: input.dealId, type: "email" },
         }),
       );
 

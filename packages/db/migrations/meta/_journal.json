@@ -2,20 +2,117 @@
   "version": "7",
   "dialect": "postgresql",
   "entries": [
-    {"idx": 0, "version": "7", "when": 1771398693725, "tag": "0000_pink_the_order", "breakpoints": true},
-    {"idx": 1, "version": "7", "when": 1771440299196, "tag": "0001_exotic_kulan_gath", "breakpoints": true},
-    {"idx": 2, "version": "7", "when": 1771500000000, "tag": "0002_module_config_llm_usage", "breakpoints": true},
-    {"idx": 3, "version": "7", "when": 1771600000000, "tag": "0003_deals_custom_fields", "breakpoints": true},
-    {"idx": 4, "version": "7", "when": 1771700000000, "tag": "0004_soft_deletes", "breakpoints": true},
-    {"idx": 5, "version": "7", "when": 1771800000000, "tag": "0005_pipeline_stages", "breakpoints": true},
-    {"idx": 6, "version": "7", "when": 1771900000000, "tag": "0003_saved_views", "breakpoints": true},
-    {"idx": 7, "version": "7", "when": 1772000000000, "tag": "0003_audit_log", "breakpoints": true},
-    {"idx": 8, "version": "7", "when": 1772100000000, "tag": "0008_crm_notes", "breakpoints": true},
-    {"idx": 9, "version": "7", "when": 1772200000000, "tag": "0003_tasks_entity_link", "breakpoints": true},
-    {"idx": 10, "version": "7", "when": 1772300000000, "tag": "0003_crm_favorites", "breakpoints": true},
-    {"idx": 11, "version": "7", "when": 1772400000000, "tag": "0010_crm_search", "breakpoints": true},
-    {"idx": 12, "version": "7", "when": 1772500000000, "tag": "0003_trgm", "breakpoints": true},
-    {"idx": 13, "version": "7", "when": 1772600000000, "tag": "0003_custom_field_defs", "breakpoints": true},
-    {"idx": 14, "version": "7", "when": 1772700000000, "tag": "0013_crm_attachments", "breakpoints": true}
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1771398693725,
+      "tag": "0000_pink_the_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771440299196,
+      "tag": "0001_exotic_kulan_gath",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771500000000,
+      "tag": "0002_module_config_llm_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771600000000,
+      "tag": "0003_deals_custom_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771700000000,
+      "tag": "0004_soft_deletes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771800000000,
+      "tag": "0005_pipeline_stages",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771900000000,
+      "tag": "0003_saved_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772000000000,
+      "tag": "0003_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772100000000,
+      "tag": "0008_crm_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1772200000000,
+      "tag": "0003_tasks_entity_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772300000000,
+      "tag": "0003_crm_favorites",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772400000000,
+      "tag": "0010_crm_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772500000000,
+      "tag": "0003_trgm",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772600000000,
+      "tag": "0003_custom_field_defs",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772700000000,
+      "tag": "0013_crm_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1772800000000,
+      "tag": "0014_email_activity_fields",
+      "breakpoints": true
+    }
   ]
 }

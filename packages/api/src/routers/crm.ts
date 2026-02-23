@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes, crmFavorites } from "@basicsos/db";
 import type { DbConnection } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
@@ -1176,6 +1176,62 @@ const notesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Favorites
+// ---------------------------------------------------------------------------
+
+const favoritesSubRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+    return ctx.db
+      .select()
+      .from(crmFavorites)
+      .where(
+        and(
+          eq(crmFavorites.tenantId, ctx.tenantId),
+          eq(crmFavorites.userId, ctx.userId),
+        ),
+      )
+      .orderBy(desc(crmFavorites.createdAt));
+  }),
+
+  toggle: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({ id: crmFavorites.id })
+        .from(crmFavorites)
+        .where(
+          and(
+            eq(crmFavorites.tenantId, ctx.tenantId),
+            eq(crmFavorites.userId, ctx.userId),
+            eq(crmFavorites.entity, input.entity),
+            eq(crmFavorites.recordId, input.recordId),
+          ),
+        );
+
+      if (existing.length > 0 && existing[0]) {
+        await ctx.db
+          .delete(crmFavorites)
+          .where(eq(crmFavorites.id, existing[0].id));
+        return { favorited: false };
+      }
+
+      await ctx.db.insert(crmFavorites).values({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        entity: input.entity,
+        recordId: input.recordId,
+      });
+      return { favorited: true };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -1189,4 +1245,5 @@ export const crmRouter = router({
   savedViews: savedViewsSubRouter,
   auditLog: auditLogSubRouter,
   notes: notesSubRouter,
+  favorites: favoritesSubRouter,
 });

@@ -173,3 +173,20 @@ export const crmNotes = pgTable(
   },
   (t) => [index("crm_notes_record_idx").on(t.tenantId, t.entity, t.recordId)],
 );
+
+export const crmFavorites = pgTable(
+  "crm_favorites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    entity: text("entity").notNull(), // 'contact' | 'company' | 'deal'
+    recordId: uuid("record_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("crm_favorites_user_idx").on(t.tenantId, t.userId),
+  ],
+);

@@ -11,6 +11,7 @@
     {"idx": 6, "version": "7", "when": 1771900000000, "tag": "0003_saved_views", "breakpoints": true},
     {"idx": 7, "version": "7", "when": 1772000000000, "tag": "0003_audit_log", "breakpoints": true},
     {"idx": 8, "version": "7", "when": 1772100000000, "tag": "0008_crm_notes", "breakpoints": true},
-    {"idx": 9, "version": "7", "when": 1772200000000, "tag": "0003_tasks_entity_link", "breakpoints": true}
+    {"idx": 9, "version": "7", "when": 1772200000000, "tag": "0003_tasks_entity_link", "breakpoints": true},
+    {"idx": 10, "version": "7", "when": 1772300000000, "tag": "0003_crm_favorites", "breakpoints": true}
   ]
 }

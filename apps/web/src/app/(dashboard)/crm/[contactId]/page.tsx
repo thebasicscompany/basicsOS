@@ -30,6 +30,7 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
         backHref="/crm?view=contacts"
         backLabel="Contacts"
         className="mb-6"
+        action={<FavoriteButton entity="contact" recordId={contactId} />}
       />
 
       <Card>

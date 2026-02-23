@@ -1485,11 +1485,11 @@ const analyticsSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
-// CRM root router
+// Saved Views
 // ---------------------------------------------------------------------------
 
-
-/ Trash
+// ---------------------------------------------------------------------------
+// Trash
 // ---------------------------------------------------------------------------
 
 const trashSubRouter = router({
@@ -1617,6 +1617,10 @@ const trashSubRouter = router({
           .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)));
       }
 
+      return { id: input.id };
+    }),
+});
+
 // ---------------------------------------------------------------------------
 // Pipeline Stages
 // ---------------------------------------------------------------------------
@@ -1685,11 +1689,401 @@ const pipelineStagesSubRouter = router({
       return { ok: true };
     }),
 
+  delete: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(pipelineStages)
+        .where(and(eq(pipelineStages.id, input.id), eq(pipelineStages.tenantId, ctx.tenantId)));
+      return { id: input.id };
+    }),
 });
 
 // ---------------------------------------------------------------------------
-// Custom Field Definitions
+// Saved Views
 // ---------------------------------------------------------------------------
+
+const savedViewsSubRouter = router({
+  list: protectedProcedure
+    .input(z.object({ entity: z.enum(["contacts", "companies", "deals"]) }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(crmSavedViews)
+        .where(
+          and(
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+            eq(crmSavedViews.entity, input.entity),
+          ),
+        )
+        .orderBy(crmSavedViews.createdAt);
+    }),
+
+  create: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contacts", "companies", "deals"]),
+        name: z.string().min(1).max(100),
+        filters: z.record(z.unknown()).default({}),
+        sort: z.record(z.unknown()).default({}),
+        columnVisibility: z.record(z.unknown()).default({}),
+        isDefault: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [view] = await ctx.db
+        .insert(crmSavedViews)
+        .values({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          ...input,
+        })
+        .returning();
+      if (!view) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return view;
+    }),
+
+  update: memberProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(100).optional(),
+        filters: z.record(z.unknown()).optional(),
+        sort: z.record(z.unknown()).optional(),
+        columnVisibility: z.record(z.unknown()).optional(),
+        isDefault: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...fields } = input;
+      const [updated] = await ctx.db
+        .update(crmSavedViews)
+        .set(fields)
+        .where(
+          and(
+            eq(crmSavedViews.id, id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  delete: memberProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(crmSavedViews)
+        .where(
+          and(
+            eq(crmSavedViews.id, input.id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+          ),
+        );
+      return { id: input.id };
+    }),
+
+  setDefault: memberProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        entity: z.enum(["contacts", "companies", "deals"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Clear existing defaults for this entity+user
+      await ctx.db
+        .update(crmSavedViews)
+        .set({ isDefault: false })
+        .where(
+          and(
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+            eq(crmSavedViews.entity, input.entity),
+          ),
+        );
+      // Set new default
+      const [updated] = await ctx.db
+        .update(crmSavedViews)
+        .set({ isDefault: true })
+        .where(
+          and(
+            eq(crmSavedViews.id, input.id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+});
+
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+
+const auditLogSubRouter = router({
+  list: protectedProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(crmAuditLog)
+        .where(
+          and(
+            eq(crmAuditLog.tenantId, ctx.tenantId),
+            eq(crmAuditLog.entity, input.entity),
+            eq(crmAuditLog.recordId, input.recordId),
+          ),
+        )
+        .orderBy(desc(crmAuditLog.changedAt))
+        .limit(100);
+    }),
+});
+
+// ---------------------------------------------------------------------------
+// Notes (one rich-text note per entity+record, upserted on save)
+// ---------------------------------------------------------------------------
+
+const notesSubRouter = router({
+  get: protectedProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const [note] = await ctx.db
+        .select()
+        .from(crmNotes)
+        .where(
+          and(
+            eq(crmNotes.tenantId, ctx.tenantId),
+            eq(crmNotes.entity, input.entity),
+            eq(crmNotes.recordId, input.recordId),
+          ),
+        );
+      return note ?? null;
+    }),
+
+  upsert: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+        content: z.array(z.unknown()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({ id: crmNotes.id })
+        .from(crmNotes)
+        .where(
+          and(
+            eq(crmNotes.tenantId, ctx.tenantId),
+            eq(crmNotes.entity, input.entity),
+            eq(crmNotes.recordId, input.recordId),
+          ),
+        );
+
+      if (existing.length > 0 && existing[0]) {
+        const [updated] = await ctx.db
+          .update(crmNotes)
+          .set({ content: input.content, updatedAt: new Date(), updatedBy: ctx.userId })
+          .where(eq(crmNotes.id, existing[0].id))
+          .returning();
+        return updated;
+      }
+
+      const [created] = await ctx.db
+        .insert(crmNotes)
+        .values({
+          tenantId: ctx.tenantId,
+          entity: input.entity,
+          recordId: input.recordId,
+          content: input.content,
+          updatedBy: ctx.userId,
+        })
+        .returning();
+      return created;
+    }),
+});
+
+// ---------------------------------------------------------------------------
+// Favorites
+// ---------------------------------------------------------------------------
+
+const favoritesSubRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+    return ctx.db
+      .select()
+      .from(crmFavorites)
+      .where(
+        and(
+          eq(crmFavorites.tenantId, ctx.tenantId),
+          eq(crmFavorites.userId, ctx.userId),
+        ),
+      )
+      .orderBy(desc(crmFavorites.createdAt));
+  }),
+
+  toggle: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({ id: crmFavorites.id })
+        .from(crmFavorites)
+        .where(
+          and(
+            eq(crmFavorites.tenantId, ctx.tenantId),
+            eq(crmFavorites.userId, ctx.userId),
+            eq(crmFavorites.entity, input.entity),
+            eq(crmFavorites.recordId, input.recordId),
+          ),
+        );
+
+      if (existing.length > 0 && existing[0]) {
+        await ctx.db
+          .delete(crmFavorites)
+          .where(eq(crmFavorites.id, existing[0].id));
+        return { favorited: false };
+      }
+
+      await ctx.db.insert(crmFavorites).values({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        entity: input.entity,
+        recordId: input.recordId,
+      });
+      return { favorited: true };
+    }),
+});
+
+const searchSubRouter = router({
+  query: protectedProcedure
+    .input(
+      z.object({
+        q: z.string().min(1).max(200),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const tsQuery = buildTsQuery(input.q);
+
+      const [matchingContacts, matchingCompanies, matchingDeals] = await Promise.all([
+        ctx.db
+          .select({
+            id: contacts.id,
+            name: contacts.name,
+            email: contacts.email,
+          })
+          .from(contacts)
+          .where(
+            and(
+              eq(contacts.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+
+        ctx.db
+          .select({
+            id: companies.id,
+            name: companies.name,
+            domain: companies.domain,
+          })
+          .from(companies)
+          .where(
+            and(
+              eq(companies.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+
+        ctx.db
+          .select({
+            id: deals.id,
+            title: deals.title,
+            stage: deals.stage,
+            value: deals.value,
+          })
+          .from(deals)
+          .where(
+            and(
+              eq(deals.tenantId, ctx.tenantId),
+              sql`search_vector @@ to_tsquery('english', ${tsQuery})`,
+            ),
+          )
+          .limit(input.limit),
+      ]);
+
+      return {
+        contacts: matchingContacts.map((r) => ({ ...r, type: "contact" as const })),
+        companies: matchingCompanies.map((r) => ({ ...r, type: "company" as const })),
+        deals: matchingDeals.map((r) => ({ ...r, type: "deal" as const })),
+      };
+    }),
+});
+
+// ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+const remindersSubRouter = router({
+  create: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+        remindAt: z.string().datetime(),
+        message: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const delay = new Date(input.remindAt).getTime() - Date.now();
+      if (delay < 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder time must be in the future" });
+      }
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.reminder.set",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: {
+            entity: input.entity,
+            recordId: input.recordId,
+            remindAt: input.remindAt,
+            message: input.message,
+          },
+        }),
+      );
+
+      return { scheduled: true, remindAt: input.remindAt };
+    }),
+});
 
 const customFieldDefsSubRouter = router({
   list: protectedProcedure

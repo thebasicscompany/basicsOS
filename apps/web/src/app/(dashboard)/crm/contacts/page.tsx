@@ -13,11 +13,12 @@ import {
   CardContent,
   addToast,
 } from "@basicsos/ui";
-import { Plus, Users, Mail, Phone, Building2, Calendar, Download } from "@basicsos/ui";
+import { Plus, Users, Mail, Phone, Building2, Calendar, Download, Pencil } from "@basicsos/ui";
 import { CrmRecordTable } from "../components/CrmRecordTable";
 import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
 import { CrmBulkActionBar } from "../components/CrmBulkActionBar";
+import { BulkEditDialog } from "../components/BulkEditDialog";
 import { useCrmViewState, applyCrmFilters } from "../hooks/useCrmViewState";
 import { useCustomFieldColumns } from "../hooks/useCustomFieldColumns";
 import { CreateContactDialog } from "../CreateContactDialog";
@@ -40,6 +41,7 @@ const ContactsPageContent = (): JSX.Element => {
   const { data: contactsData, isLoading } = trpc.crm.contacts.list.useQuery({});
   const { data: companiesData } = trpc.crm.companies.list.useQuery();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   const deleteContact = trpc.crm.contacts.delete.useMutation({
     onSuccess: () => {
@@ -261,10 +263,25 @@ const ContactsPageContent = (): JSX.Element => {
         onDelete={handleBulkDelete}
         isDeleting={deleteContact.isPending}
         extraActions={
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExport}>
-            <Download className="size-3" /> Export CSV
-          </Button>
+          <>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setBulkEditOpen(true)}>
+              <Pencil className="size-3" /> Edit Field
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExport}>
+              <Download className="size-3" /> Export CSV
+            </Button>
+          </>
         }
+      />
+      <BulkEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        entity="contact"
+        selectedIds={selectedIds}
+        onSuccess={() => {
+          setSelectedIds([]);
+          void utils.crm.contacts.list.invalidate();
+        }}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, inArray, or } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
@@ -437,6 +437,123 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+const analyticsSubRouter = router({
+  pipeline: protectedProcedure
+    .input(
+      z.object({
+        period: z.enum(["30d", "90d", "365d"]).default("90d"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const periodDays = input.period === "30d" ? 30 : input.period === "90d" ? 90 : 365;
+      const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+      const allDeals = await ctx.db.select().from(deals).where(eq(deals.tenantId, ctx.tenantId));
+
+      // Stage breakdown
+      const stageBreakdown = allDeals.reduce<Record<string, { count: number; value: number }>>(
+        (acc, deal) => {
+          const s = deal.stage;
+          if (!acc[s]) acc[s] = { count: 0, value: 0 };
+          acc[s]!.count += 1;
+          acc[s]!.value += Number(deal.value ?? 0);
+          return acc;
+        },
+        {},
+      );
+
+      // Win/loss rates
+      const wonDeals = allDeals.filter((d) => d.stage === "won");
+      const lostDeals = allDeals.filter((d) => d.stage === "lost");
+      const closedCount = wonDeals.length + lostDeals.length;
+      const winRate = closedCount > 0 ? Math.round((wonDeals.length / closedCount) * 100) : 0;
+
+      // Total pipeline (active deals — not won/lost)
+      const activeDeals = allDeals.filter((d) => d.stage !== "won" && d.stage !== "lost");
+      const totalPipeline = activeDeals.reduce((sum, d) => sum + Number(d.value ?? 0), 0);
+      const avgDealSize =
+        allDeals.length > 0
+          ? allDeals.reduce((sum, d) => sum + Number(d.value ?? 0), 0) / allDeals.length
+          : 0;
+
+      // Deals created per month (last 6 months)
+      const monthlyData: Record<string, { created: number; won: number; value: number }> = {};
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+      allDeals
+        .filter((d) => new Date(d.createdAt) >= sixMonthsAgo)
+        .forEach((deal) => {
+          const month = new Date(deal.createdAt).toISOString().slice(0, 7); // YYYY-MM
+          if (!monthlyData[month]) monthlyData[month] = { created: 0, won: 0, value: 0 };
+          monthlyData[month]!.created += 1;
+          if (deal.stage === "won") {
+            monthlyData[month]!.won += 1;
+            monthlyData[month]!.value += Number(deal.value ?? 0);
+          }
+        });
+
+      // Top companies by deal value
+      const companyTotals: Record<string, { companyId: string; value: number; dealCount: number }> =
+        {};
+      allDeals
+        .filter((d) => d.companyId)
+        .forEach((deal) => {
+          const cid = deal.companyId!;
+          if (!companyTotals[cid]) companyTotals[cid] = { companyId: cid, value: 0, dealCount: 0 };
+          companyTotals[cid]!.value += Number(deal.value ?? 0);
+          companyTotals[cid]!.dealCount += 1;
+        });
+      const topCompanyIds = Object.values(companyTotals)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5)
+        .map((c) => c.companyId);
+
+      let topCompanies: Array<{
+        id: string;
+        name: string;
+        totalValue: number;
+        dealCount: number;
+      }> = [];
+      if (topCompanyIds.length > 0) {
+        const companyRows = await ctx.db
+          .select({ id: companies.id, name: companies.name })
+          .from(companies)
+          .where(and(eq(companies.tenantId, ctx.tenantId), inArray(companies.id, topCompanyIds)));
+        topCompanies = companyRows
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            totalValue: companyTotals[c.id]?.value ?? 0,
+            dealCount: companyTotals[c.id]?.dealCount ?? 0,
+          }))
+          .sort((a, b) => b.totalValue - a.totalValue);
+      }
+
+      return {
+        totalPipeline,
+        avgDealSize,
+        winRate,
+        totalDeals: allDeals.length,
+        wonThisPeriod: allDeals.filter(
+          (d) => d.stage === "won" && new Date(d.updatedAt) >= since,
+        ).length,
+        stageBreakdown: Object.entries(stageBreakdown).map(([stage, data]) => ({
+          stage,
+          ...data,
+        })),
+        monthlyData: Object.entries(monthlyData)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([month, data]) => ({ month, ...data })),
+        topCompanies,
+      };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +562,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  analytics: analyticsSubRouter,
 });

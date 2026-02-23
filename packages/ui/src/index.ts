@@ -185,4 +185,6 @@ export {
   Flag,
   ExternalLink,
   PenLine,
+  TrendingUp,
+  ArrowLeft,
 } from "lucide-react";

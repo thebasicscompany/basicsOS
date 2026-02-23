@@ -183,6 +183,7 @@ export {
   Pause,
   Play,
   Bookmark,
+  BookmarkPlus,
   Flag,
   ExternalLink,
   PenLine,

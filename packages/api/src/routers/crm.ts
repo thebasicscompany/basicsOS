@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities, pipelineStages } from "@basicsos/db";
+import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
 // ---------------------------------------------------------------------------
@@ -708,6 +708,130 @@ const pipelineStagesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Saved Views
+// ---------------------------------------------------------------------------
+
+const savedViewsSubRouter = router({
+  list: protectedProcedure
+    .input(z.object({ entity: z.enum(["contacts", "companies", "deals"]) }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(crmSavedViews)
+        .where(
+          and(
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+            eq(crmSavedViews.entity, input.entity),
+          ),
+        )
+        .orderBy(crmSavedViews.createdAt);
+    }),
+
+  create: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contacts", "companies", "deals"]),
+        name: z.string().min(1).max(100),
+        filters: z.record(z.unknown()).default({}),
+        sort: z.record(z.unknown()).default({}),
+        columnVisibility: z.record(z.unknown()).default({}),
+        isDefault: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [view] = await ctx.db
+        .insert(crmSavedViews)
+        .values({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          ...input,
+        })
+        .returning();
+      if (!view) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return view;
+    }),
+
+  update: memberProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(100).optional(),
+        filters: z.record(z.unknown()).optional(),
+        sort: z.record(z.unknown()).optional(),
+        columnVisibility: z.record(z.unknown()).optional(),
+        isDefault: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...fields } = input;
+      const [updated] = await ctx.db
+        .update(crmSavedViews)
+        .set(fields)
+        .where(
+          and(
+            eq(crmSavedViews.id, id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  delete: memberProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(crmSavedViews)
+        .where(
+          and(
+            eq(crmSavedViews.id, input.id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+          ),
+        );
+      return { id: input.id };
+    }),
+
+  setDefault: memberProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        entity: z.enum(["contacts", "companies", "deals"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Clear existing defaults for this entity+user
+      await ctx.db
+        .update(crmSavedViews)
+        .set({ isDefault: false })
+        .where(
+          and(
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+            eq(crmSavedViews.userId, ctx.userId),
+            eq(crmSavedViews.entity, input.entity),
+          ),
+        );
+      // Set new default
+      const [updated] = await ctx.db
+        .update(crmSavedViews)
+        .set({ isDefault: true })
+        .where(
+          and(
+            eq(crmSavedViews.id, input.id),
+            eq(crmSavedViews.tenantId, ctx.tenantId),
+          ),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -718,4 +842,5 @@ export const crmRouter = router({
   activities: activitiesSubRouter,
   trash: trashSubRouter,
   pipelineStages: pipelineStagesSubRouter,
+  savedViews: savedViewsSubRouter,
 });

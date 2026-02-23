@@ -34,8 +34,10 @@ import { CreateDealDialog } from "./CreateDealDialog";
 
 import type { DealStage } from "./types";
 
+// Fallback stages used when no dynamic pipeline stages are configured by the tenant admin.
 const STAGES = ["lead", "qualified", "proposal", "negotiation", "won", "lost"] as const;
 
+// Fallback colors used when dynamic stages are not yet loaded.
 const STAGE_COLORS: Record<string, string> = {
   lead: "bg-stone-400 dark:bg-stone-500",
   qualified: "bg-blue-500",
@@ -100,16 +102,44 @@ const CRMPage = (): JSX.Element => {
 
   const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
   const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
+  const { data: dynamicStages } = trpc.crm.pipelineStages.list.useQuery();
+
+  // Use dynamic stages when configured, otherwise fall back to the built-in list.
+  const stageNames: readonly string[] =
+    dynamicStages && dynamicStages.length > 0
+      ? dynamicStages.map((s) => s.name.toLowerCase())
+      : STAGES;
+
+  const stageColorFor = (stage: string): string => {
+    if (dynamicStages && dynamicStages.length > 0) {
+      const match = dynamicStages.find((s) => s.name.toLowerCase() === stage.toLowerCase());
+      return match?.color ?? "bg-stone-400";
+    }
+    return STAGE_COLORS[stage] ?? "bg-stone-400";
+  };
 
   const stats = useMemo(() => {
     const contacts = contactsData ?? [];
     const byStage = dealsData ?? [];
     const allDeals = byStage.flatMap((g) => g.deals);
+
+    // Determine which stage names represent "won" or "lost" states.
+    const wonStageNames = new Set<string>(
+      dynamicStages && dynamicStages.length > 0
+        ? dynamicStages.filter((s) => s.isWon).map((s) => s.name.toLowerCase())
+        : ["won"],
+    );
+    const lostStageNames = new Set<string>(
+      dynamicStages && dynamicStages.length > 0
+        ? dynamicStages.filter((s) => s.isLost).map((s) => s.name.toLowerCase())
+        : ["lost"],
+    );
+
     const pipelineValue = allDeals
-      .filter((d) => d.stage !== "won" && d.stage !== "lost")
+      .filter((d) => !wonStageNames.has(d.stage) && !lostStageNames.has(d.stage))
       .reduce((sum, d) => sum + Number(d.value) || 0, 0);
     const wonValue = allDeals
-      .filter((d) => d.stage === "won")
+      .filter((d) => wonStageNames.has(d.stage))
       .reduce((sum, d) => sum + Number(d.value) || 0, 0);
     return {
       contacts: contacts.length,
@@ -117,7 +147,7 @@ const CRMPage = (): JSX.Element => {
       pipelineValue,
       wonValue,
     };
-  }, [contactsData, dealsData]);
+  }, [contactsData, dealsData, dynamicStages]);
 
   const filteredContacts = useMemo(() => {
     const list = contactsData ?? [];
@@ -206,14 +236,14 @@ const CRMPage = (): JSX.Element => {
       {view === "pipeline" && (
         <div className="overflow-x-auto -mx-1">
           <div className="flex gap-4 min-w-max pb-4">
-            {STAGES.map((stage) => {
+            {stageNames.map((stage) => {
               const stageGroup = (dealsData ?? []).find((g) => g.stage === stage);
               const stageDeals = stageGroup?.deals ?? [];
               return (
                 <div key={stage} className="w-52 flex-shrink-0">
                   <div className="mb-3 flex items-center gap-2">
                     <span
-                      className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage] ?? "bg-stone-400"}`}
+                      className={`h-2 w-2 rounded-full ${stageColorFor(stage)}`}
                     />
                     <SectionLabel as="span" className="!mb-0 flex-1">
                       {stage}

@@ -18,7 +18,7 @@ import {
   TableCell,
   EmptyState,
 } from "@basicsos/ui";
-import { Users, Building2, Briefcase, BarChart3, Activity } from "@basicsos/ui";
+import { Users, Building2, Briefcase, BarChart3, Activity, Trash2 } from "@basicsos/ui";
 import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
 const CrmDashboard = (): JSX.Element => {
@@ -127,12 +127,11 @@ function StatCard({
   valueClass?: string;
 }): JSX.Element {
   return (
-    <Card>
+   <Card>
       <CardContent className="py-3">
         <div className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-700">
-            <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />
-          </div>
+            <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />          </div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         </div>
         <p className={`mt-2 text-xl font-semibold tabular-nums ${valueClass ?? "text-foreground"}`}>{value}</p>

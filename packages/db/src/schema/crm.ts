@@ -19,6 +19,7 @@ export const contacts = pgTable(
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     index("contacts_tenant_id_idx").on(t.tenantId),
@@ -40,6 +41,7 @@ export const companies = pgTable(
     customFields: jsonb("custom_fields").notNull().default({}),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [index("companies_tenant_id_idx").on(t.tenantId)],
 );
@@ -63,6 +65,7 @@ export const deals = pgTable(
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     index("deals_tenant_id_idx").on(t.tenantId),

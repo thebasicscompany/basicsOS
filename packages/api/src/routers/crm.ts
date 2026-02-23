@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
-import { router, protectedProcedure, memberProcedure } from "../trpc.js";
+import { and, eq, ilike, or, isNull, isNotNull, gt } from "drizzle-orm";
+import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
@@ -30,12 +30,13 @@ const contactsSubRouter = router({
           search
             ? and(
                 eq(contacts.tenantId, ctx.tenantId),
+                isNull(contacts.deletedAt),
                 or(
                   ilike(contacts.name, `%${search.replace(/[%_\\]/g, "\\$&")}%`),
                   ilike(contacts.email, `%${search.replace(/[%_\\]/g, "\\$&")}%`),
                 ),
               )
-            : eq(contacts.tenantId, ctx.tenantId),
+            : and(eq(contacts.tenantId, ctx.tenantId), isNull(contacts.deletedAt)),
         )
         .limit(limit);
 
@@ -51,7 +52,13 @@ const contactsSubRouter = router({
       const [contact] = await ctx.db
         .select()
         .from(contacts)
-        .where(and(eq(contacts.id, input.id), eq(contacts.tenantId, ctx.tenantId)));
+        .where(
+          and(
+            eq(contacts.id, input.id),
+            eq(contacts.tenantId, ctx.tenantId),
+            isNull(contacts.deletedAt),
+          ),
+        );
 
       if (!contact) throw new TRPCError({ code: "NOT_FOUND" });
       return contact;
@@ -125,13 +132,24 @@ const contactsSubRouter = router({
   delete: memberProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const [deleted] = await ctx.db
-        .delete(contacts)
+      const [updated] = await ctx.db
+        .update(contacts)
+        .set({ deletedAt: new Date() })
         .where(and(eq(contacts.id, input.id), eq(contacts.tenantId, ctx.tenantId)))
         .returning({ id: contacts.id });
 
-      if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
-      return { id: deleted.id };
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.contact.deleted",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { contactId: input.id },
+        }),
+      );
+
+      return { id: updated.id };
     }),
 });
 
@@ -143,7 +161,10 @@ const companiesSubRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
-    return ctx.db.select().from(companies).where(eq(companies.tenantId, ctx.tenantId));
+    return ctx.db
+      .select()
+      .from(companies)
+      .where(and(eq(companies.tenantId, ctx.tenantId), isNull(companies.deletedAt)));
   }),
 
   get: protectedProcedure
@@ -155,14 +176,26 @@ const companiesSubRouter = router({
       const [company] = await ctx.db
         .select()
         .from(companies)
-        .where(and(eq(companies.id, input.id), eq(companies.tenantId, ctx.tenantId)));
+        .where(
+          and(
+            eq(companies.id, input.id),
+            eq(companies.tenantId, ctx.tenantId),
+            isNull(companies.deletedAt),
+          ),
+        );
 
       if (!company) throw new TRPCError({ code: "NOT_FOUND" });
 
       const linkedContacts = await ctx.db
         .select()
         .from(contacts)
-        .where(and(eq(contacts.companyId, input.id), eq(contacts.tenantId, ctx.tenantId)));
+        .where(
+          and(
+            eq(contacts.companyId, input.id),
+            eq(contacts.tenantId, ctx.tenantId),
+            isNull(contacts.deletedAt),
+          ),
+        );
 
       return { ...company, contacts: linkedContacts };
     }),
@@ -218,13 +251,24 @@ const companiesSubRouter = router({
   delete: memberProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const [deleted] = await ctx.db
-        .delete(companies)
+      const [updated] = await ctx.db
+        .update(companies)
+        .set({ deletedAt: new Date() })
         .where(and(eq(companies.id, input.id), eq(companies.tenantId, ctx.tenantId)))
         .returning({ id: companies.id });
 
-      if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
-      return { id: deleted.id };
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.company.deleted",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { companyId: input.id },
+        }),
+      );
+
+      return { id: updated.id };
     }),
 });
 
@@ -236,7 +280,10 @@ const dealsSubRouter = router({
   listByStage: protectedProcedure.query(async ({ ctx }) => {
     if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
 
-    const rows = await ctx.db.select().from(deals).where(eq(deals.tenantId, ctx.tenantId));
+    const rows = await ctx.db
+      .select()
+      .from(deals)
+      .where(and(eq(deals.tenantId, ctx.tenantId), isNull(deals.deletedAt)));
 
     const grouped: Record<string, typeof rows> = {};
     for (const deal of rows) {
@@ -257,7 +304,13 @@ const dealsSubRouter = router({
       const [deal] = await ctx.db
         .select()
         .from(deals)
-        .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)));
+        .where(
+          and(
+            eq(deals.id, input.id),
+            eq(deals.tenantId, ctx.tenantId),
+            isNull(deals.deletedAt),
+          ),
+        );
 
       if (!deal) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -376,13 +429,24 @@ const dealsSubRouter = router({
   delete: memberProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const [deleted] = await ctx.db
-        .delete(deals)
+      const [updated] = await ctx.db
+        .update(deals)
+        .set({ deletedAt: new Date() })
         .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)))
         .returning({ id: deals.id });
 
-      if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
-      return { id: deleted.id };
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.deal.deleted",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { dealId: input.id },
+        }),
+      );
+
+      return { id: updated.id };
     }),
 });
 
@@ -437,6 +501,139 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Trash
+// ---------------------------------------------------------------------------
+
+const trashSubRouter = router({
+  list: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [deletedContacts, deletedCompanies, deletedDeals] = await Promise.all([
+      ctx.db
+        .select()
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.tenantId, ctx.tenantId),
+            isNotNull(contacts.deletedAt),
+            gt(contacts.deletedAt, cutoff),
+          ),
+        ),
+      ctx.db
+        .select()
+        .from(companies)
+        .where(
+          and(
+            eq(companies.tenantId, ctx.tenantId),
+            isNotNull(companies.deletedAt),
+            gt(companies.deletedAt, cutoff),
+          ),
+        ),
+      ctx.db
+        .select()
+        .from(deals)
+        .where(
+          and(
+            eq(deals.tenantId, ctx.tenantId),
+            isNotNull(deals.deletedAt),
+            gt(deals.deletedAt, cutoff),
+          ),
+        ),
+    ]);
+
+    return {
+      contacts: deletedContacts,
+      companies: deletedCompanies,
+      deals: deletedDeals,
+    };
+  }),
+
+  restore: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        id: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.entity === "contact") {
+        await ctx.db
+          .update(contacts)
+          .set({ deletedAt: null })
+          .where(and(eq(contacts.id, input.id), eq(contacts.tenantId, ctx.tenantId)));
+      } else if (input.entity === "company") {
+        await ctx.db
+          .update(companies)
+          .set({ deletedAt: null })
+          .where(and(eq(companies.id, input.id), eq(companies.tenantId, ctx.tenantId)));
+      } else {
+        await ctx.db
+          .update(deals)
+          .set({ deletedAt: null })
+          .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)));
+      }
+
+      if (input.entity === "contact") {
+        EventBus.emit(
+          createEvent({
+            type: "crm.contact.restored",
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            payload: { id: input.id },
+          }),
+        );
+      } else if (input.entity === "company") {
+        EventBus.emit(
+          createEvent({
+            type: "crm.company.restored",
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            payload: { id: input.id },
+          }),
+        );
+      } else {
+        EventBus.emit(
+          createEvent({
+            type: "crm.deal.restored",
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            payload: { id: input.id },
+          }),
+        );
+      }
+
+      return { id: input.id };
+    }),
+
+  purge: adminProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        id: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.entity === "contact") {
+        await ctx.db
+          .delete(contacts)
+          .where(and(eq(contacts.id, input.id), eq(contacts.tenantId, ctx.tenantId)));
+      } else if (input.entity === "company") {
+        await ctx.db
+          .delete(companies)
+          .where(and(eq(companies.id, input.id), eq(companies.tenantId, ctx.tenantId)));
+      } else {
+        await ctx.db
+          .delete(deals)
+          .where(and(eq(deals.id, input.id), eq(deals.tenantId, ctx.tenantId)));
+      }
+
+      return { id: input.id };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +642,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  trash: trashSubRouter,
 });

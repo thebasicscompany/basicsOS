@@ -651,6 +651,16 @@ const companiesSubRouter = router({
         .returning();
 
       if (!company) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.company.created",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: { companyId: company.id },
+        }),
+      );
+
       return company;
     }),
 

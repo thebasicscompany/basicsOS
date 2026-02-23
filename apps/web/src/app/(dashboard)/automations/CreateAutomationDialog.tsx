@@ -21,28 +21,24 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
   Badge,
   addToast,
   Sparkles,
   Plus,
   SectionLabel,
+  Briefcase,
+  Trophy,
+  XCircle,
+  Users,
+  Building2,
+  ArrowRight,
 } from "@basicsos/ui";
 import type { InsertAutomation } from "@basicsos/shared";
 import { ActionBuilder } from "./ActionBuilder";
 import type { ActionConfig } from "./action-primitives/index";
-
-const TRIGGER_EVENT_TYPES = [
-  { value: "task.created", label: "Task Created" },
-  { value: "task.completed", label: "Task Completed" },
-  { value: "task.assigned", label: "Task Assigned" },
-  { value: "crm.deal.stage_changed", label: "Deal Stage Changed" },
-  { value: "crm.deal.won", label: "Deal Won" },
-  { value: "crm.deal.lost", label: "Deal Lost" },
-  { value: "crm.contact.created", label: "Contact Created" },
-  { value: "meeting.ended", label: "Meeting Ended" },
-  { value: "meeting.summary.generated", label: "Meeting Summary Ready" },
-  { value: "document.created", label: "Document Created" },
-];
+import { getTriggerLabel } from "./trigger-meta";
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   create_task: "Create Task",
@@ -72,6 +68,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
   // Manual tab state
   const [manualName, setManualName] = useState("");
   const [manualEventType, setManualEventType] = useState("");
+  const [manualStageFilter, setManualStageFilter] = useState("");
   const [manualActions, setManualActions] = useState<Array<{ type: string; config: ActionConfig }>>([]);
 
   const parseFromDescription = trpc.automations.parseFromDescription.useMutation({
@@ -114,6 +111,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
     setAiStep("input");
     setManualName("");
     setManualEventType("");
+    setManualStageFilter("");
     setManualActions([]);
     onOpenChange(false);
   };
@@ -130,9 +128,13 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
 
   const handleSaveManual = (): void => {
     if (!manualName.trim() || !manualEventType) return;
+    const conditions: Array<{ field: string; operator: "eq" | "neq" | "gt" | "lt" | "contains"; value: string | number | boolean }> =
+      manualEventType === "crm.deal.stage_changed" && manualStageFilter.trim()
+        ? [{ field: "toStage", operator: "eq", value: manualStageFilter.trim() }]
+        : [];
     createManual.mutate({
       name: manualName.trim(),
-      triggerConfig: { eventType: manualEventType, conditions: [] },
+      triggerConfig: { eventType: manualEventType, conditions },
       actionChain: manualActions as Array<{ type: "create_task" | "call_webhook" | "run_ai_prompt" | "send_email" | "update_crm" | "post_slack"; config: Record<string, unknown> }>,
       enabled: true,
     });
@@ -190,7 +192,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
                     </div>
                     <div>
                       <SectionLabel className="mb-1">Trigger</SectionLabel>
-                      <Badge variant="secondary">{parsedSpec.triggerConfig.eventType}</Badge>
+                      <Badge variant="secondary">{getTriggerLabel(parsedSpec.triggerConfig.eventType)}</Badge>
                     </div>
                     <div>
                       <SectionLabel className="mb-1">
@@ -238,17 +240,76 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
             </div>
             <div className="space-y-1.5">
               <Label>Trigger Event</Label>
-              <Select value={manualEventType} onValueChange={setManualEventType}>
+              <Select value={manualEventType} onValueChange={(v) => { setManualEventType(v); setManualStageFilter(""); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a trigger…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TRIGGER_EVENT_TYPES.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel className="flex items-center gap-1.5">
+                      <Briefcase size={12} /> CRM
+                    </SelectLabel>
+                    <SelectItem value="crm.deal.stage_changed">
+                      <span className="flex items-center gap-2">
+                        <ArrowRight size={14} className="text-stone-400" /> Deal Stage Changed
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="crm.deal.won">
+                      <span className="flex items-center gap-2">
+                        <Trophy size={14} className="text-stone-400" /> Deal Won
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="crm.deal.lost">
+                      <span className="flex items-center gap-2">
+                        <XCircle size={14} className="text-stone-400" /> Deal Lost
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="crm.contact.created">
+                      <span className="flex items-center gap-2">
+                        <Users size={14} className="text-stone-400" /> Contact Created
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="crm.company.created">
+                      <span className="flex items-center gap-2">
+                        <Building2 size={14} className="text-stone-400" /> Company Created
+                      </span>
+                    </SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Tasks</SelectLabel>
+                    <SelectItem value="task.created">Task Created</SelectItem>
+                    <SelectItem value="task.completed">Task Completed</SelectItem>
+                    <SelectItem value="task.assigned">Task Assigned</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Meetings</SelectLabel>
+                    <SelectItem value="meeting.ended">Meeting Ended</SelectItem>
+                    <SelectItem value="meeting.summary.generated">Meeting Summary Ready</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Documents</SelectLabel>
+                    <SelectItem value="document.created">Document Created</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Stage filter — shown only when crm.deal.stage_changed is selected */}
+            {manualEventType === "crm.deal.stage_changed" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="stage-filter">When stage changes to (optional)</Label>
+                <Input
+                  id="stage-filter"
+                  placeholder="e.g. won, proposal, qualified…"
+                  value={manualStageFilter}
+                  onChange={(e) => setManualStageFilter(e.target.value)}
+                />
+                <p className="text-xs text-stone-400 dark:text-stone-500">
+                  Leave blank to trigger on any stage change.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Actions</Label>
               <ActionBuilder actions={manualActions} onChange={setManualActions} />

@@ -29,6 +29,7 @@ import {
 } from "@basicsos/ui";
 import { ActionBuilder } from "../ActionBuilder";
 import type { ActionConfig } from "../action-primitives/index";
+import { getTriggerLabel } from "../trigger-meta";
 
 // Derive icon type from an actual import so it stays structurally compatible with Lucide exports.
 type LucideIconType = typeof CheckSquare;
@@ -139,7 +140,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
             <div className="flex items-center gap-2">
               <IconBadge Icon={Zap} size="sm" color="bg-orange-50 text-orange-600" />
               <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
-                {triggerConfig?.eventType ?? "No trigger set"}
+                {triggerConfig?.eventType ? getTriggerLabel(triggerConfig.eventType) : "No trigger set"}
               </span>
             </div>
             {Array.isArray(triggerConfig?.conditions) && triggerConfig.conditions.length > 0 && (

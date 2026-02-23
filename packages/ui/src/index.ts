@@ -201,5 +201,7 @@ export {
   Paperclip,
   RotateCcw,
   TrendingUp,
+  Trophy,
   Upload,
+  XCircle,
 } from "lucide-react";

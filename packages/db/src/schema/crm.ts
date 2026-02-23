@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index, boolean } from "drizzle-orm/pg-core";
 import { vector } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
 
@@ -99,3 +99,26 @@ export const dealActivityEmbeddings = pgTable("deal_activity_embeddings", {
   chunkIndex: integer("chunk_index").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Custom Field Definitions
+// ---------------------------------------------------------------------------
+
+export const customFieldDefs = pgTable(
+  "custom_field_defs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(), // 'contacts' | 'companies' | 'deals'
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    type: text("type").notNull(), // 'text'|'number'|'date'|'boolean'|'select'|'multi_select'|'url'|'phone'
+    options: jsonb("options"), // string[] for select/multi_select
+    required: boolean("required").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("custom_field_defs_tenant_entity_idx").on(t.tenantId, t.entity)],
+);

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, ilike, or } from "drizzle-orm";
-import { router, protectedProcedure, memberProcedure } from "../trpc.js";
-import { contacts, companies, deals, dealActivities } from "@basicsos/db";
+import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
+import { contacts, companies, deals, dealActivities, customFieldDefs } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
 
 // ---------------------------------------------------------------------------
@@ -437,6 +437,100 @@ const activitiesSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Custom Field Definitions
+// ---------------------------------------------------------------------------
+
+const FIELD_TYPE_ENUM = z.enum([
+  "text",
+  "number",
+  "date",
+  "boolean",
+  "select",
+  "multi_select",
+  "url",
+  "phone",
+]);
+
+const ENTITY_ENUM = z.enum(["contacts", "companies", "deals"]);
+
+const customFieldDefsSubRouter = router({
+  list: protectedProcedure
+    .input(z.object({ entity: ENTITY_ENUM }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(customFieldDefs)
+        .where(
+          and(
+            eq(customFieldDefs.tenantId, ctx.tenantId),
+            eq(customFieldDefs.entity, input.entity),
+          ),
+        )
+        .orderBy(customFieldDefs.position);
+    }),
+
+  create: adminProcedure
+    .input(
+      z.object({
+        entity: ENTITY_ENUM,
+        key: z
+          .string()
+          .min(1)
+          .max(50)
+          .regex(/^[a-z_]+$/),
+        label: z.string().min(1).max(100),
+        type: FIELD_TYPE_ENUM,
+        options: z.array(z.string()).optional(),
+        required: z.boolean().default(false),
+        position: z.number().int().default(0),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [def] = await ctx.db
+        .insert(customFieldDefs)
+        .values({ ...input, tenantId: ctx.tenantId })
+        .returning();
+      if (!def) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return def;
+    }),
+
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        label: z.string().min(1).max(100).optional(),
+        options: z.array(z.string()).optional(),
+        required: z.boolean().optional(),
+        position: z.number().int().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...fields } = input;
+      const [updated] = await ctx.db
+        .update(customFieldDefs)
+        .set(fields)
+        .where(
+          and(eq(customFieldDefs.id, id), eq(customFieldDefs.tenantId, ctx.tenantId)),
+        )
+        .returning();
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      return updated;
+    }),
+
+  delete: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(customFieldDefs)
+        .where(
+          and(eq(customFieldDefs.id, input.id), eq(customFieldDefs.tenantId, ctx.tenantId)),
+        );
+      return { id: input.id };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -445,4 +539,5 @@ export const crmRouter = router({
   companies: companiesSubRouter,
   deals: dealsSubRouter,
   activities: activitiesSubRouter,
+  customFieldDefs: customFieldDefsSubRouter,
 });

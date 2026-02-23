@@ -59,5 +59,8 @@
   "engines": {
     "node": ">=20.0.0",
     "bun": ">=1.1.0"
+  },
+  "dependencies": {
+    "recharts": "^3.7.0"
   }
 }

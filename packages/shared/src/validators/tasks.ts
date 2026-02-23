@@ -11,6 +11,8 @@ export const insertTaskSchema = z.object({
   labels: z.array(z.string()).default([]),
   sourceType: z.enum(["meeting", "automation", "ai-employee"]).optional(),
   sourceId: z.string().uuid().optional(),
+  relatedEntityType: z.enum(["contact", "company", "deal"]).optional(),
+  relatedEntityId: z.string().uuid().optional(),
   createdBy: z.string().uuid(),
 });
 

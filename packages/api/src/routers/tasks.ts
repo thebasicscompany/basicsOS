@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, lt, ne, isNotNull } from "drizzle-orm";
+import { and, eq, lt, ne, isNotNull, desc } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { tasks } from "@basicsos/db";
 import { insertTaskSchema, updateTaskSchema } from "@basicsos/shared";
@@ -144,6 +144,28 @@ export const tasksRouter = router({
       }
 
       return { success: true };
+    }),
+
+  listByEntity: protectedProcedure
+    .input(
+      z.object({
+        entityType: z.enum(["contact", "company", "deal"]),
+        entityId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return ctx.db
+        .select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.tenantId, ctx.tenantId),
+            eq(tasks.relatedEntityType, input.entityType),
+            eq(tasks.relatedEntityId, input.entityId),
+          ),
+        )
+        .orderBy(desc(tasks.createdAt));
     }),
 
   getOverdue: protectedProcedure.query(async ({ ctx }) => {

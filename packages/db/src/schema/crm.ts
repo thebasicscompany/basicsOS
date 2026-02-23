@@ -99,3 +99,19 @@ export const dealActivityEmbeddings = pgTable("deal_activity_embeddings", {
   chunkIndex: integer("chunk_index").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const crmNotes = pgTable(
+  "crm_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    content: jsonb("content").notNull().default([]),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedBy: text("updated_by").notNull(),
+  },
+  (t) => [index("crm_notes_record_idx").on(t.tenantId, t.entity, t.recordId)],
+);

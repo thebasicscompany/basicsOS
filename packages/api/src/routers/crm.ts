@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, ilike, or, isNull, isNotNull, gt, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, notInArray, or, isNull, isNotNull, gt, sql } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure, adminProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities, pipelineStages, crmSavedViews, crmAuditLog, crmNotes, crmFavorites } from "@basicsos/db";
 import type { DbConnection } from "@basicsos/db";
@@ -1113,6 +1113,22 @@ const dealsSubRouter = router({
 
       return { id: updated.id };
     }),
+
+  listOverdue: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.tenantId) throw new TRPCError({ code: "UNAUTHORIZED", message: "No tenant context" });
+
+    const now = new Date();
+    return ctx.db
+      .select()
+      .from(deals)
+      .where(
+        and(
+          eq(deals.tenantId, ctx.tenantId),
+          lt(deals.closeDate, now),
+          notInArray(deals.stage, ["won", "lost"]),
+        ),
+      );
+  }),
 });
 
 // ---------------------------------------------------------------------------
@@ -1725,6 +1741,44 @@ const searchSubRouter = router({
 });
 
 // ---------------------------------------------------------------------------
+// Reminders
+// ---------------------------------------------------------------------------
+
+const remindersSubRouter = router({
+  create: memberProcedure
+    .input(
+      z.object({
+        entity: z.enum(["contact", "company", "deal"]),
+        recordId: z.string().uuid(),
+        remindAt: z.string().datetime(),
+        message: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const delay = new Date(input.remindAt).getTime() - Date.now();
+      if (delay < 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder time must be in the future" });
+      }
+
+      EventBus.emit(
+        createEvent({
+          type: "crm.reminder.set",
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          payload: {
+            entity: input.entity,
+            recordId: input.recordId,
+            remindAt: input.remindAt,
+            message: input.message,
+          },
+        }),
+      );
+
+      return { scheduled: true, remindAt: input.remindAt };
+    }),
+});
+
+// ---------------------------------------------------------------------------
 // CRM root router
 // ---------------------------------------------------------------------------
 
@@ -1740,4 +1794,5 @@ export const crmRouter = router({
   notes: notesSubRouter,
   favorites: favoritesSubRouter,
   search: searchSubRouter,
+  reminders: remindersSubRouter,
 });

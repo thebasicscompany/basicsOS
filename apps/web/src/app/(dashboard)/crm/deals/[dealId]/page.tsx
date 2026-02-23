@@ -16,8 +16,9 @@ import {
   DialogFooter,
   addToast,
   cn,
+  Input,
 } from "@basicsos/ui";
-import { Building2, Users, Calendar, DollarSign, BarChart3, Activity, Trash2 } from "@basicsos/ui";
+import { Building2, Users, Calendar, DollarSign, BarChart3, Activity, Trash2, Bell } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { DealActivitiesPanel } from "./DealActivitiesPanel";
@@ -80,6 +81,7 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
         backLabel="Deals"
         action={
           <div className="flex gap-2">
+            <SetReminderButton dealId={deal.id} />
             <EditDealDialog deal={deal} onUpdated={() => void utils.crm.deals.get.invalidate({ id: dealId })}>
               <Button variant="outline" size="sm">Edit</Button>
             </EditDealDialog>
@@ -157,6 +159,88 @@ function DealDetailSkeleton(): JSX.Element {
         </Card>
       </div>
     </div>
+  );
+}
+
+function SetReminderButton({ dealId }: { dealId: string }): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const [remindAt, setRemindAt] = useState("");
+  const [message, setMessage] = useState("");
+
+  const createReminder = trpc.crm.reminders.create.useMutation({
+    onSuccess: () => {
+      addToast({ title: "Reminder set", variant: "success" });
+      setOpen(false);
+      setRemindAt("");
+      setMessage("");
+    },
+    onError: (err) => {
+      addToast({ title: "Failed to set reminder", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (): void => {
+    if (!remindAt) return;
+    createReminder.mutate({
+      entity: "deal",
+      recordId: dealId,
+      remindAt: new Date(remindAt).toISOString(),
+      message: message.trim() || undefined,
+    });
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Bell size={14} className="mr-1" /> Set Reminder
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Reminder</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="remind-at">
+                Remind at
+              </label>
+              <Input
+                id="remind-at"
+                type="datetime-local"
+                value={remindAt}
+                onChange={(e) => setRemindAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground" htmlFor="reminder-message">
+                Message (optional)
+              </label>
+              <textarea
+                id="reminder-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Add a note for this reminder..."
+                maxLength={500}
+                rows={3}
+                className="w-full rounded-md border border-stone-200 bg-background px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ring dark:border-stone-700"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!remindAt || createReminder.isPending}
+            >
+              {createReminder.isPending ? "Saving..." : "Set Reminder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -11,7 +11,7 @@ import {
   CardContent,
   addToast,
 } from "@basicsos/ui";
-import { Plus, Briefcase, Activity, DollarSign, BarChart3, Users, Building2, Calendar, Download, ChevronDown } from "@basicsos/ui";
+import { Plus, Briefcase, Activity, DollarSign, BarChart3, Users, Building2, Calendar, Download, ChevronDown, AlertCircle } from "@basicsos/ui";
 import { CrmRecordTable } from "../components/CrmRecordTable";
 import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
@@ -111,6 +111,14 @@ const DealsPageContent = (): JSX.Element => {
           if (field === "contact") return (contactMap.get(row.contactId ?? "") ?? "").toLowerCase();
           if (field === "company") return (companyMap.get(row.companyId ?? "") ?? "").toLowerCase();
           if (field === "closeDate") return row.closeDate ? new Date(row.closeDate).getTime() : 0;
+          if (field === "overdue") {
+            const isOverdue =
+              !!row.closeDate &&
+              new Date(row.closeDate) < new Date() &&
+              row.stage !== "won" &&
+              row.stage !== "lost";
+            return isOverdue ? "true" : "false";
+          }
           return "";
         },
       ),
@@ -226,12 +234,25 @@ const DealsPageContent = (): JSX.Element => {
         icon: Calendar,
         sortable: true,
         sortValue: (r: FlatDeal) => (r.closeDate ? new Date(r.closeDate).getTime() : 0),
-        render: (r: FlatDeal) =>
-          r.closeDate ? (
-            <span className="text-xs text-muted-foreground">{new Date(r.closeDate).toLocaleDateString()}</span>
-          ) : (
-            <span className="text-muted-foreground">{"\u2014"}</span>
-          ),
+        render: (r: FlatDeal) => {
+          if (!r.closeDate) return <span className="text-muted-foreground">{"\u2014"}</span>;
+          const isOverdue =
+            new Date(r.closeDate) < new Date() &&
+            r.stage !== "won" &&
+            r.stage !== "lost";
+          return (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                {new Date(r.closeDate).toLocaleDateString()}
+              </span>
+              {isOverdue && (
+                <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                  Overdue
+                </Badge>
+              )}
+            </div>
+          );
+        },
       },
     ],
     [contactMap, companyMap, handleEdit],
@@ -327,6 +348,31 @@ const DealsPageContent = (): JSX.Element => {
           </CreateDealDialog>
         }
       />
+      {overdueCount > 0 && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant={isOverdueFilterActive ? "destructive" : "outline"}
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            onClick={() => {
+              if (isOverdueFilterActive) {
+                viewState.removeFilter("overdue");
+              } else {
+                viewState.addFilter({ field: "overdue", operator: "is", value: "true" });
+              }
+            }}
+          >
+            <AlertCircle className="size-3" />
+            Overdue
+            <Badge
+              variant={isOverdueFilterActive ? "outline" : "destructive"}
+              className="ml-0.5 h-4 px-1 text-[10px] py-0"
+            >
+              {overdueCount}
+            </Badge>
+          </Button>
+        </div>
+      )}
       <CrmViewBar
         viewState={viewState}
         filterDefs={[

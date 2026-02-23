@@ -191,10 +191,12 @@ export {
   ArrowLeftRight,
   ChevronLeft,
   Columns3,
-  FileUp,
+  AlertCircle,
   GitMerge,
 AlertCircle,
 AlertTriangle,
+Bell,
+FileUp,
 RotateCcw,
 Upload,
 } from "lucide-react";

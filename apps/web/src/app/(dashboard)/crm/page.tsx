@@ -25,6 +25,7 @@ const CrmDashboard = (): JSX.Element => {
   const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
   const { data: companiesData } = trpc.crm.companies.list.useQuery();
   const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
+  const { data: overdueDeals } = trpc.crm.deals.listOverdue.useQuery();
 
  const byStage = dealsData ?? [];
   const allDeals = byStage.flatMap((g) => g.deals);
@@ -47,6 +48,9 @@ const CrmDashboard = (): JSX.Element => {
   return (
     <div className="flex flex-col gap-6">
       <KpiCards stats={stats} companiesCount={companies.length} />
+      {(overdueDeals ?? []).length > 0 && (
+        <OverdueDealsCard deals={overdueDeals ?? []} />
+      )}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <StageFunnel stageTotals={analytics.stageTotals} maxTotal={analytics.maxTotal} />
         <WinRateCard winRate={analytics.winRate} wonCount={analytics.wonCount} lostCount={analytics.lostCount} />
@@ -235,6 +239,64 @@ function TopDealsTable({
                 <TableCell className="font-medium">{d.title}</TableCell>
                 <TableCell><Badge variant="outline" className="capitalize">{d.stage}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums">{formatCurrency(Number(d.value ?? 0))}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OverdueDealsCard({
+  deals,
+}: {
+  deals: Array<{ id: string; title: string; stage: string; value: string; closeDate: Date | null }>;
+}): JSX.Element {
+  const router = useRouter();
+  return (
+    <Card className="border-destructive/40">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-destructive" />
+            <CardTitle className="text-sm font-medium text-destructive">Overdue Deals</CardTitle>
+            <Badge variant="destructive" className="h-5 px-1.5 text-[10px] py-0">
+              {deals.length}
+            </Badge>
+          </div>
+          <Link href="/crm/deals" className="text-xs text-primary hover:underline">
+            View all
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Deal</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Close Date</TableHead>
+              <TableHead className="text-right">Value</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deals.map((d) => (
+              <TableRow
+                key={d.id}
+                className="cursor-pointer hover:bg-accent/50"
+                onClick={() => router.push(`/crm/deals/${d.id}`)}
+              >
+                <TableCell className="font-medium">{d.title}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="capitalize">{d.stage}</Badge>
+                </TableCell>
+                <TableCell className="text-destructive text-xs">
+                  {d.closeDate ? new Date(d.closeDate).toLocaleDateString() : "\u2014"}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatCurrency(Number(d.value ?? 0))}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

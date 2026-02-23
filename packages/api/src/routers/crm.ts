@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, inArray, or } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { contacts, companies, deals, dealActivities } from "@basicsos/db";
 import { EventBus, createEvent } from "../events/bus.js";
@@ -133,6 +133,32 @@ const contactsSubRouter = router({
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
     }),
+
+  bulkUpdate: memberProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(1).max(200),
+        patch: z.object({
+          name: z.string().min(1).max(255).optional(),
+          email: z.string().email().optional().nullable(),
+          phone: z.string().optional().nullable(),
+          companyId: z.string().uuid().optional().nullable(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.db
+        .update(contacts)
+        .set({ ...input.patch, updatedAt: new Date() })
+        .where(
+          and(
+            eq(contacts.tenantId, ctx.tenantId),
+            inArray(contacts.id, input.ids),
+          ),
+        )
+        .returning({ id: contacts.id });
+      return { updated: updated.length };
+    }),
 });
 
 // ---------------------------------------------------------------------------
@@ -225,6 +251,31 @@ const companiesSubRouter = router({
 
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
+    }),
+
+  bulkUpdate: memberProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(1).max(200),
+        patch: z.object({
+          name: z.string().min(1).max(255).optional(),
+          domain: z.string().optional().nullable(),
+          industry: z.string().optional().nullable(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.db
+        .update(companies)
+        .set({ ...input.patch, updatedAt: new Date() })
+        .where(
+          and(
+            eq(companies.tenantId, ctx.tenantId),
+            inArray(companies.id, input.ids),
+          ),
+        )
+        .returning({ id: companies.id });
+      return { updated: updated.length };
     }),
 });
 
@@ -383,6 +434,31 @@ const dealsSubRouter = router({
 
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return { id: deleted.id };
+    }),
+
+  bulkUpdate: memberProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()).min(1).max(200),
+        patch: z.object({
+          stage: z.string().optional(),
+          value: z.string().optional(),
+          probability: z.number().int().min(0).max(100).optional(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await ctx.db
+        .update(deals)
+        .set({ ...input.patch, updatedAt: new Date() })
+        .where(
+          and(
+            eq(deals.tenantId, ctx.tenantId),
+            inArray(deals.id, input.ids),
+          ),
+        )
+        .returning({ id: deals.id });
+      return { updated: updated.length };
     }),
 });
 

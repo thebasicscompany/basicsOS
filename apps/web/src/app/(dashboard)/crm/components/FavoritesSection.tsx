@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType } from "react";
+import type { FC } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import {
@@ -30,10 +30,11 @@ const ENTITY_HREF: Record<FavoriteEntity, (id: string) => string> = {
   deal: (id) => `/crm/deals/${id}`,
 };
 
-const ENTITY_ICON: Record<FavoriteEntity, ComponentType<{ size?: number; className?: string }>> = {
-  contact: Users,
-  company: Building2,
-  deal: Briefcase,
+type IconComponent = FC<{ size?: number; className?: string }>;
+const ENTITY_ICON: Record<FavoriteEntity, IconComponent> = {
+  contact: Users as unknown as IconComponent,
+  company: Building2 as unknown as IconComponent,
+  deal: Briefcase as unknown as IconComponent,
 };
 
 const MAX_PER_ENTITY = 5;
@@ -43,7 +44,7 @@ interface FavoriteItem {
   id: string;
   entity: string;
   recordId: string;
-  createdAt: Date;
+  createdAt: Date | string;
 }
 
 const groupByEntity = (

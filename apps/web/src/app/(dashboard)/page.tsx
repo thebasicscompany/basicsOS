@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { ComponentType, SVGProps } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { readRecentRoutes } from "@/lib/recent-routes";

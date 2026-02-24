@@ -1,87 +1,132 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Input, Label } from "@basicsos/ui";
-import { Plus, X } from "@basicsos/ui";
+import { trpc } from "@/lib/trpc";
+import {
+  Input,
+  Label,
+  Switch,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@basicsos/ui";
 
 interface CustomFieldsEditorProps {
+  entity: "contacts" | "companies" | "deals";
   value: Record<string, unknown>;
   onChange: (fields: Record<string, unknown>) => void;
 }
 
 export const CustomFieldsEditor = ({
+  entity,
   value,
   onChange,
-}: CustomFieldsEditorProps): JSX.Element => {
-  const [newKey, setNewKey] = useState("");
-  const [newValue, setNewValue] = useState("");
+}: CustomFieldsEditorProps): JSX.Element | null => {
+  const { data: defs = [] } = trpc.crm.customFieldDefs.list.useQuery({ entity });
 
-  const entries = Object.entries(value);
-
-  const addField = (): void => {
-    const key = newKey.trim();
-    if (!key) return;
-    onChange({ ...value, [key]: newValue });
-    setNewKey("");
-    setNewValue("");
-  };
-
-  const removeField = (key: string): void => {
-    const next = { ...value };
-    delete next[key];
-    onChange(next);
-  };
-
-  const updateFieldValue = (key: string, val: string): void => {
-    onChange({ ...value, [key]: val });
-  };
+  if (defs.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label>Custom Fields</Label>
-      {entries.map(([key, val]) => (
-        <div key={key} className="flex items-center gap-2">
-          <Input value={key} disabled className="w-32 text-xs" />
-          <Input
-            value={String(val ?? "")}
-            onChange={(e) => updateFieldValue(key, e.target.value)}
-            className="flex-1 text-xs"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            onClick={() => removeField(key)}
-          >
-            <X size={14} />
-          </Button>
-        </div>
-      ))}
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder="Key"
-          value={newKey}
-          onChange={(e) => setNewKey(e.target.value)}
-          className="w-32 text-xs"
-        />
-        <Input
-          placeholder="Value"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          className="flex-1 text-xs"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7 shrink-0"
-          onClick={addField}
-          disabled={!newKey.trim()}
-        >
-          <Plus size={14} />
-        </Button>
-      </div>
+    <div className="flex flex-col gap-3">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Custom Fields
+      </Label>
+      {defs.map((def) => {
+        const currentValue = value[def.key];
+        const options: string[] = Array.isArray(def.options) ? (def.options as string[]) : [];
+
+        if (def.type === "boolean") {
+          return (
+            <div key={def.key} className="flex items-center justify-between gap-2">
+              <Label htmlFor={`cf-${def.key}`} className="text-sm cursor-pointer">
+                {def.label}
+              </Label>
+              <Switch
+                id={`cf-${def.key}`}
+                checked={!!currentValue}
+                onCheckedChange={(checked) => onChange({ ...value, [def.key]: checked })}
+              />
+            </div>
+          );
+        }
+
+        if (def.type === "select") {
+          return (
+            <div key={def.key} className="flex flex-col gap-1.5">
+              <Label htmlFor={`cf-${def.key}`} className="text-sm">
+                {def.label}
+              </Label>
+              <Select
+                value={typeof currentValue === "string" ? currentValue : ""}
+                onValueChange={(v) => onChange({ ...value, [def.key]: v })}
+              >
+                <SelectTrigger id={`cf-${def.key}`}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {options.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        }
+
+        if (def.type === "multi_select") {
+          const selected = Array.isArray(currentValue) ? (currentValue as string[]) : [];
+          return (
+            <div key={def.key} className="flex flex-col gap-1.5">
+              <Label className="text-sm">{def.label}</Label>
+              <div className="flex flex-col gap-1">
+                {options.map((opt) => (
+                  <div key={opt} className="flex items-center gap-2">
+                    <Switch
+                      id={`cf-${def.key}-${opt}`}
+                      checked={selected.includes(opt)}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...selected, opt]
+                          : selected.filter((s) => s !== opt);
+                        onChange({ ...value, [def.key]: next });
+                      }}
+                    />
+                    <Label htmlFor={`cf-${def.key}-${opt}`} className="text-sm cursor-pointer">
+                      {opt}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        const inputType =
+          def.type === "number"
+            ? "number"
+            : def.type === "date"
+              ? "date"
+              : "text";
+
+        return (
+          <div key={def.key} className="flex flex-col gap-1.5">
+            <Label htmlFor={`cf-${def.key}`} className="text-sm">
+              {def.label}
+            </Label>
+            <Input
+              id={`cf-${def.key}`}
+              type={inputType}
+              value={currentValue != null ? String(currentValue) : ""}
+              onChange={(e) => onChange({ ...value, [def.key]: e.target.value })}
+              placeholder={def.label}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 };

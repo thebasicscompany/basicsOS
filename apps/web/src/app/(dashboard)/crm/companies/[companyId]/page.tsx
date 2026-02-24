@@ -9,8 +9,6 @@ import {
   CardContent,
   Button,
   Badge,
-  Avatar,
-  AvatarFallback,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -22,8 +20,12 @@ import { Globe, Briefcase, Calendar, Users, Trash2 } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { CrmRelatedList } from "../../components/CrmRelatedList";
+import { CrmCustomFieldsSection } from "../../components/CrmCustomFieldsSection";
+import { CrmActivityTabs } from "../../components/CrmActivityTabs";
 import { EditCompanyDialog } from "../../EditCompanyDialog";
-import { nameToColor, formatCurrency } from "../../utils";
+import { formatCurrency } from "../../utils";
+import { FavoriteButton } from "../../components/FavoriteButton";
+import { CompanyDuplicatesPanel } from "../../components/DuplicatesPanel";
 
 interface CompanyDetailPageProps {
   params: Promise<{ companyId: string }>;
@@ -81,6 +83,7 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
         backLabel="Companies"
         action={
           <div className="flex gap-2">
+            <FavoriteButton entity="company" recordId={company.id} />
             <EditCompanyDialog company={company} onUpdated={() => void utils.crm.companies.get.invalidate({ id: companyId })}>
               <Button variant="outline" size="sm">Edit</Button>
             </EditCompanyDialog>
@@ -88,13 +91,24 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
           </div>
         }
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <CrmSummaryCard
-          name={company.name}
-          subtitle={company.domain ?? company.industry ?? undefined}
-        />
-        <div className="lg:col-span-2 flex flex-col gap-6">
+      <CompanyDuplicatesPanel />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+        {/* Left: activity tabs */}
+        <div className="flex flex-col gap-6">
+          <CrmActivityTabs entity="company" recordId={companyId} />
+        </div>
+
+        {/* Right: details panel */}
+        <div className="flex flex-col gap-4">
+          <CrmSummaryCard
+            name={company.name}
+            subtitle={company.domain ?? company.industry ?? undefined}
+          />
           <CrmFieldGrid title="Details" fields={fields} />
+          <CrmCustomFieldsSection
+            entity="companies"
+            customFields={(company.customFields as Record<string, unknown>) ?? {}}
+          />
           <CrmRelatedList
             title="Contacts"
             count={company.contacts.length}
@@ -117,30 +131,25 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
   );
 };
 
-unction CompanyDetailSkeleton(): JSX.Element {
+function CompanyDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <Card>
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center gap-3">
-              <div className="size-16 animate-pulse rounded-full bg-stone-200 dark:bg-stone-700" />
-              <div className="h-5 w-32 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
+          <CardContent className="py-6">
+            <div className="h-24 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-6">
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-5 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
+              ))}
             </div>
           </CardContent>
         </Card>
-        <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="py-6">
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-5 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
@@ -186,6 +195,5 @@ function DeleteCompanyButton({
     </>
   );
 }
-
 
 export default CompanyDetailPage;

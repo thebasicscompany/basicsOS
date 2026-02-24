@@ -23,6 +23,21 @@ export const pipelineStages = pgTable(
 
 export const crmAuditLog = pgTable(
   "crm_audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    userId: text("user_id").notNull(),
+    field: text("field").notNull(),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    changedAt: timestamp("changed_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_audit_record_idx").on(t.entity, t.recordId, t.changedAt)],
+);
 
 export const crmAttachments = pgTable(
   "crm_attachments",
@@ -42,21 +57,6 @@ export const crmAttachments = pgTable(
   },
   (t) => [index("crm_attachments_record_idx").on(t.tenantId, t.entity, t.recordId)],
 );
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id, { onDelete: "cascade" }),
-    entity: text("entity").notNull(),
-    recordId: uuid("record_id").notNull(),
-    userId: text("user_id").notNull(),
-    field: text("field").notNull(),
-    oldValue: text("old_value"),
-    newValue: text("new_value"),
-    changedAt: timestamp("changed_at").notNull().defaultNow(),
-  },
-  (t) => [index("crm_audit_record_idx").on(t.entity, t.recordId, t.changedAt)],
-
 
 export const contacts = pgTable(
   "contacts",
@@ -117,6 +117,7 @@ export const deals = pgTable(
     value: numeric("value", { precision: 12, scale: 2 }).notNull().default("0"),
     probability: integer("probability").notNull().default(50),
     closeDate: timestamp("close_date"),
+    customFields: jsonb("custom_fields").notNull().default({}),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -211,6 +212,7 @@ export const crmFavorites = pgTable(
   (t) => [
     index("crm_favorites_user_idx").on(t.tenantId, t.userId),
   ],
+);
 
 export const customFieldDefs = pgTable(
   "custom_field_defs",

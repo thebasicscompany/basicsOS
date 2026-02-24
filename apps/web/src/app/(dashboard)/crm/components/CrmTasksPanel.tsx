@@ -29,7 +29,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: "bg-red-100 text-red-700",
 };
 
-const formatDueDate = (date: Date | null | undefined): string | null => {
+const formatDueDate = (date: Date | string | null | undefined): string | null => {
   if (!date) return null;
   return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };

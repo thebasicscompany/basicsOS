@@ -18,7 +18,7 @@ import {
   TableCell,
   EmptyState,
 } from "@basicsos/ui";
-import { Users, Building2, Briefcase, BarChart3, Activity, Trash2 , Upload } from "@basicsos/ui";
+import { Users, Building2, Briefcase, BarChart3, Activity, Trash2, Upload, AlertCircle, DollarSign, TrendingUp, Settings } from "@basicsos/ui";
 import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
 const CrmDashboard = (): JSX.Element => {
@@ -59,8 +59,40 @@ const CrmDashboard = (): JSX.Element => {
         {analytics.topDeals.length > 0 && <TopDealsTable deals={analytics.topDeals} />}
         <RecentActivityCard deals={allDeals} />
       </div>
+      <CrmQuickLinks />
     </div>
   );};
+
+const QUICK_LINKS = [
+  { href: "/crm/analytics", label: "Analytics", icon: TrendingUp },
+  { href: "/crm/import", label: "Import", icon: Upload },
+  { href: "/crm/trash", label: "Trash", icon: Trash2 },
+  { href: "/crm/settings/stages", label: "Pipeline Stages", icon: Settings },
+  { href: "/crm/settings/fields", label: "Custom Fields", icon: Settings },
+] as const;
+
+function CrmQuickLinks(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">More</p>
+      <div className="flex flex-wrap gap-3">
+        {QUICK_LINKS.map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center gap-2 rounded-lg border border-stone-200 bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent dark:border-stone-700"
+            >
+              <Icon size={14} className="shrink-0 text-muted-foreground" />
+              {link.label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function computeStats(
   contacts: Array<{ id: string }>,
@@ -118,7 +150,7 @@ function KpiCards({
   );
 }
 
-unction StatCard({
+function StatCard({
   label,
   value,
   icon: Icon,
@@ -251,7 +283,7 @@ function TopDealsTable({
 function OverdueDealsCard({
   deals,
 }: {
-  deals: Array<{ id: string; title: string; stage: string; value: string; closeDate: Date | null }>;
+  deals: Array<{ id: string; title: string; stage: string; value: string; closeDate: Date | string | null }>;
 }): JSX.Element {
   const router = useRouter();
   return (

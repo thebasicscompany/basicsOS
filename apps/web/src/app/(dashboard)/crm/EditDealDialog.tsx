@@ -22,6 +22,7 @@ import {
 } from "@basicsos/ui";
 
 import type { DealStage } from "./types";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface EditDealDialogProps {
   children: React.ReactNode;
@@ -33,6 +34,7 @@ interface EditDealDialogProps {
     probability: number | null;
     companyId: string | null;
     contactId: string | null;
+    customFields?: unknown;
   };
   onUpdated?: () => void;
 }
@@ -43,6 +45,9 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
   const [value, setValue] = useState(deal.value ?? "0");
   const [stage, setStage] = useState<DealStage>(deal.stage as DealStage);
   const [probability, setProbability] = useState(String(deal.probability ?? 50));
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>(
+    (deal.customFields as Record<string, unknown>) ?? {},
+  );
 
   useEffect(() => {
     if (open) {
@@ -50,6 +55,7 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
       setValue(deal.value ?? "0");
       setStage(deal.stage as DealStage);
       setProbability(String(deal.probability ?? 50));
+      setCustomFields((deal.customFields as Record<string, unknown>) ?? {});
     }
   }, [open, deal]);
 
@@ -86,6 +92,7 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
       probability: Number(probability) || 50,
       companyId: companyId || undefined,
       contactId: contactId || undefined,
+      customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
     });
   };
 
@@ -149,6 +156,7 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
               </SelectContent>
             </Select>
           </div>
+          <CustomFieldsEditor entity="deals" value={customFields} onChange={setCustomFields} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={updateDeal.isPending}>

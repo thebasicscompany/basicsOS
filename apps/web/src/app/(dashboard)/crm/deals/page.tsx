@@ -11,7 +11,7 @@ import {
   CardContent,
   addToast,
 } from "@basicsos/ui";
-import { Plus, Briefcase, Activity, DollarSign, BarChart3, Users, Building2, Calendar, Download, ChevronDown, AlertCircle } from "@basicsos/ui";
+import { Plus, Briefcase, Activity, DollarSign, BarChart3, Users, Building2, Calendar, Download, ChevronDown, AlertCircle, Pencil } from "@basicsos/ui";
 import { CrmRecordTable } from "../components/CrmRecordTable";
 import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
@@ -19,6 +19,7 @@ import { CrmBulkActionBar } from "../components/CrmBulkActionBar";
 import { BulkEditDialog } from "../components/BulkEditDialog";
 import { useCrmViewState, applyCrmFilters } from "../hooks/useCrmViewState";
 import type { CrmFilter } from "../hooks/useCrmViewState";
+import { useCustomFieldColumns } from "../hooks/useCustomFieldColumns";
 import { CreateDealDialog } from "../CreateDealDialog";
 import { DealKanbanColumn } from "../DealKanbanColumn";
 import { STAGES, STAGE_COLORS, formatCurrency, exportCsv } from "../utils";
@@ -39,6 +40,7 @@ interface FlatDeal {
   contactId: string | null;
   companyId: string | null;
   closeDate: Date | string | null;
+  customFields?: Record<string, unknown> | null;
 }
 
 const DealsPageContent = (): JSX.Element => {
@@ -137,7 +139,7 @@ const DealsPageContent = (): JSX.Element => {
       if (field === "title") payload.title = value;
       else if (field === "value") payload.value = value;
       else if (field === "probability") payload.probability = Number(value);
-      updateDeal.mutate(payload as Parameters<typeof updateDeal.mutate>[0]);
+      updateDeal.mutate(payload as unknown as Parameters<typeof updateDeal.mutate>[0]);
     },
     [updateStage, updateDeal],
   );
@@ -260,6 +262,21 @@ const DealsPageContent = (): JSX.Element => {
     [contactMap, companyMap, handleEdit],
   );
 
+  const handleCustomFieldEdit = useCallback(
+    (id: string, key: string, value: unknown) => {
+      const deal = filtered.find((d) => d.id === id);
+      const merged = { ...(deal?.customFields ?? {}), [key]: value };
+      updateDeal.mutate({ id, customFields: merged } as Parameters<typeof updateDeal.mutate>[0]);
+    },
+    [filtered, updateDeal],
+  );
+
+  const customFieldColumns = useCustomFieldColumns<FlatDeal>("deals", handleCustomFieldEdit);
+  const allColumns = useMemo(
+    () => [...columns, ...customFieldColumns],
+    [columns, customFieldColumns],
+  );
+
   const handleBulkDelete = useCallback(() => {
     Promise.all(selectedIds.map((id) => deleteDeal.mutateAsync({ id }))).then(() => {
       setSelectedIds([]);
@@ -336,6 +353,11 @@ const DealsPageContent = (): JSX.Element => {
     [viewState],
   );
 
+  const overdueCount = filtered.filter(
+    (d) => d.closeDate && new Date(d.closeDate) < new Date() && d.stage !== "won" && d.stage !== "lost",
+  ).length;
+  const isOverdueFilterActive = viewState.filters.some((f) => f.field === "overdue");
+
   if (isLoading) {
     return <DealsTableSkeleton />;
   }
@@ -388,7 +410,7 @@ const DealsPageContent = (): JSX.Element => {
           { field: "probability", label: "Probability" },
           { field: "closeDate", label: "Close Date" },
         ]}
-        columnDefs={columns.map((c) => ({ key: c.key, label: c.label }))}
+        columnDefs={allColumns.map((c) => ({ key: c.key, label: c.label }))}
         showViewToggle
         entity="deals"
         onApplyView={handleApplyView}
@@ -397,14 +419,17 @@ const DealsPageContent = (): JSX.Element => {
         <>
           <CrmRecordTable
             data={filtered}
-            columns={columns}
+            columns={allColumns}
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`/crm/deals/${r.id}`)}
             onSelectionChange={setSelectedIds}
             hiddenColumns={viewState.hiddenColumns}
+            onToggleColumn={viewState.toggleColumn}
             sort={viewState.sort}
             sortDir={viewState.sortDir}
             onSort={viewState.setSort}
+            entity="deals"
+            onFieldCreated={() => void utils.crm.deals.listByStage.invalidate()}
             contextMenuItems={(r) => [
               { label: "View details", onClick: () => router.push(`/crm/deals/${r.id}`) },
               { label: "Delete", onClick: () => deleteDeal.mutate({ id: r.id }), destructive: true },

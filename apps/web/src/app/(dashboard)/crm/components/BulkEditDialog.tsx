@@ -179,7 +179,7 @@ export function BulkEditDialog({
 
     if (entity === "deal") {
       const field = selectedField as DealField;
-      const patch: { stage?: string; value?: string; probability?: number } =
+      const patch: { stage?: string | undefined; value?: string | undefined; probability?: number | undefined } =
         field === "stage" ? { stage: selectValue || undefined }
         : field === "value" ? { value: numberValue || undefined }
         : field === "probability" ? { probability: numberValue ? Number(numberValue) : undefined }

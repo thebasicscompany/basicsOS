@@ -21,9 +21,12 @@ import {
 import { Building2, Users, Calendar, DollarSign, BarChart3, Activity, Trash2, Bell } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
+import { CrmCustomFieldsSection } from "../../components/CrmCustomFieldsSection";
+import { CrmActivityTabs } from "../../components/CrmActivityTabs";
 import { DealActivitiesPanel } from "./DealActivitiesPanel";
 import { EditDealDialog } from "../../EditDealDialog";
 import { STAGES, STAGE_COLORS, formatCurrency } from "../../utils";
+import { FavoriteButton } from "../../components/FavoriteButton";
 
 interface DealDetailPageProps {
   params: Promise<{ dealId: string }>;
@@ -81,6 +84,7 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
         backLabel="Deals"
         action={
           <div className="flex gap-2">
+            <FavoriteButton entity="deal" recordId={deal.id} />
             <SetReminderButton dealId={deal.id} />
             <EditDealDialog deal={deal} onUpdated={() => void utils.crm.deals.get.invalidate({ id: dealId })}>
               <Button variant="outline" size="sm">Edit</Button>
@@ -90,21 +94,31 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
         }
       />
       <StageProgressBar currentStage={deal.stage} />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <CrmSummaryCard
-          name={deal.title}
-          subtitleNode={subtitleNode}
-        />
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          <CrmFieldGrid title="Details" fields={fields} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+        {/* Left: activities + activity tabs */}
+        <div className="flex flex-col gap-6">
           <DealActivitiesPanel dealId={dealId} activities={deal.activities} />
+          <CrmActivityTabs entity="deal" recordId={dealId} />
+        </div>
+
+        {/* Right: details panel */}
+        <div className="flex flex-col gap-4">
+          <CrmSummaryCard
+            name={deal.title}
+            subtitleNode={subtitleNode}
+          />
+          <CrmFieldGrid title="Details" fields={fields} />
+          <CrmCustomFieldsSection
+            entity="deals"
+            customFields={(deal.customFields as Record<string, unknown>) ?? {}}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-unction StageProgressBar({ currentStage }: { currentStage: string }): JSX.Element {
+function StageProgressBar({ currentStage }: { currentStage: string }): JSX.Element {
   const activeIdx = STAGES.indexOf(currentStage as (typeof STAGES)[number]);
 
   return (
@@ -142,7 +156,7 @@ function DealDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <Card>
           <CardContent className="py-6">
             <div className="space-y-3">
@@ -284,6 +298,5 @@ function DeleteDealButton({
     </>
   );
 }
-
 
 export default DealDetailPage;

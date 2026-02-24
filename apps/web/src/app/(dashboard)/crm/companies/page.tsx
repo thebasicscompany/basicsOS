@@ -188,7 +188,16 @@ const CompaniesPageContent = (): JSX.Element => {
     [contactCountMap, handleEdit],
   );
 
-  const customFieldColumns = useCustomFieldColumns(companies);
+  const handleCustomFieldEdit = useCallback(
+    (id: string, key: string, value: unknown) => {
+      const company = companies.find((c) => c.id === id);
+      const merged = { ...(company?.customFields ?? {}), [key]: value };
+      updateCompany.mutate({ id, customFields: merged });
+    },
+    [companies, updateCompany],
+  );
+
+  const customFieldColumns = useCustomFieldColumns<Company>("companies", handleCustomFieldEdit);
   const allColumns = useMemo(
     () => [...columns, ...customFieldColumns],
     [columns, customFieldColumns],
@@ -254,9 +263,12 @@ const CompaniesPageContent = (): JSX.Element => {
         onRowClick={(r) => router.push(`/crm/companies/${r.id}`)}
         onSelectionChange={setSelectedIds}
         hiddenColumns={viewState.hiddenColumns}
+        onToggleColumn={viewState.toggleColumn}
         sort={viewState.sort}
         sortDir={viewState.sortDir}
         onSort={viewState.setSort}
+        entity="companies"
+        onFieldCreated={() => void utils.crm.companies.list.invalidate()}
         contextMenuItems={(r) => [
           { label: "View details", onClick: () => router.push(`/crm/companies/${r.id}`) },
           { label: "Copy domain", onClick: () => { if (r.domain) void navigator.clipboard.writeText(r.domain); } },

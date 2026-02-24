@@ -73,7 +73,7 @@ interface StatCardProps {
   label: string;
   value: string;
   sub?: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string | undefined }>;
   iconColor: string;
 }
 

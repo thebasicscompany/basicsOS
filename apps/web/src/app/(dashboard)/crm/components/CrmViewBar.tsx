@@ -80,7 +80,7 @@ export function CrmViewBar({
         )}
         {entity !== undefined && (
           <>
-            <SavedViewsDropdown entity={entity} onApplyView={onApplyView} />
+            <SavedViewsDropdown entity={entity} {...(onApplyView ? { onApplyView } : {})} />
             <SaveViewDialog entity={entity} viewState={viewState} columnDefs={columnDefs} />
           </>
         )}
@@ -269,15 +269,17 @@ function FieldsDropdown({
   hiddenColumns: Set<string>;
   onToggle: (key: string) => void;
 }): JSX.Element {
+  const [open, setOpen] = useState(false);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-          <Columns3 className="size-3" /> Fields <ChevronDown className="size-3" />
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" id="crm-columns-btn">
+          <Columns3 className="size-3" /> Columns <ChevronDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <DropdownMenuLabel>Add / remove columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {columns.map((col) => (
           <DropdownMenuCheckboxItem

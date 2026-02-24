@@ -117,7 +117,7 @@ export const EditContactDialog = ({
               </SelectContent>
             </Select>
           </div>
-          <CustomFieldsEditor value={customFields} onChange={setCustomFields} />
+          <CustomFieldsEditor entity="contacts" value={customFields} onChange={setCustomFields} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={updateContact.isPending}>

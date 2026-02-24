@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
 import { CrmHistoryPanel } from "../components/CrmHistoryPanel";
+import { FavoriteButton } from "../components/FavoriteButton";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;

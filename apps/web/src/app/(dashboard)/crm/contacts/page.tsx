@@ -174,7 +174,16 @@ const ContactsPageContent = (): JSX.Element => {
     [companyMap, handleEdit],
   );
 
-  const customFieldColumns = useCustomFieldColumns(contacts);
+  const handleCustomFieldEdit = useCallback(
+    (id: string, key: string, value: unknown) => {
+      const contact = contacts.find((c) => c.id === id);
+      const merged = { ...(contact?.customFields ?? {}), [key]: value };
+      updateContact.mutate({ id, customFields: merged });
+    },
+    [contacts, updateContact],
+  );
+
+  const customFieldColumns = useCustomFieldColumns<Contact>("contacts", handleCustomFieldEdit);
   const allColumns = useMemo(
     () => [...columns, ...customFieldColumns],
     [columns, customFieldColumns],
@@ -238,9 +247,12 @@ const ContactsPageContent = (): JSX.Element => {
         onRowClick={(r) => router.push(`/crm/contacts/${r.id}`)}
         onSelectionChange={setSelectedIds}
         hiddenColumns={viewState.hiddenColumns}
+        onToggleColumn={viewState.toggleColumn}
         sort={viewState.sort}
         sortDir={viewState.sortDir}
         onSort={viewState.setSort}
+        entity="contacts"
+        onFieldCreated={() => void utils.crm.contacts.list.invalidate()}
         contextMenuItems={(r) => [
           { label: "View details", onClick: () => router.push(`/crm/contacts/${r.id}`) },
           { label: "Copy email", onClick: () => { if (r.email) void navigator.clipboard.writeText(r.email); } },

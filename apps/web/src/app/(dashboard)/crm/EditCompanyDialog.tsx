@@ -88,7 +88,7 @@ export const EditCompanyDialog = ({
             <Label htmlFor="edit-company-industry">Industry</Label>
             <Input id="edit-company-industry" placeholder="Technology" value={industry} onChange={(e) => setIndustry(e.target.value)} />
           </div>
-          <CustomFieldsEditor value={customFields} onChange={setCustomFields} />
+          <CustomFieldsEditor entity="companies" value={customFields} onChange={setCustomFields} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={updateCompany.isPending}>

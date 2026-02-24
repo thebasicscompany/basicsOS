@@ -20,7 +20,7 @@ import {
 } from "@basicsos/ui";
 
 interface CrmAttachmentsPanelProps {
-  entity: "contact" | "company" | "deal";
+  entity: "contacts" | "companies" | "deals";
   recordId: string;
 }
 
@@ -30,7 +30,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getFileIcon(mimeType: string): React.ComponentType<{ className?: string }> {
+function getFileIcon(mimeType: string): React.ComponentType<{ className?: string | undefined }> {
   if (mimeType.startsWith("image/")) return Image;
   if (mimeType === "application/pdf") return FileText;
   return File;

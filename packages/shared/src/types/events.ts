@@ -77,9 +77,13 @@ export const crmDealDeletedEvent = baseEventSchema.extend({
 export const crmDealRestoredEvent = baseEventSchema.extend({
   type: z.literal("crm.deal.restored"),
   payload: z.object({ id: z.string().uuid() }),
+});
+
 export const crmContactsImportedEvent = baseEventSchema.extend({
   type: z.literal("crm.contacts.imported"),
   payload: z.object({ count: z.number() }),
+});
+
 export const crmContactMergedEvent = baseEventSchema.extend({
   type: z.literal("crm.contact.merged"),
   payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
@@ -88,6 +92,8 @@ export const crmContactMergedEvent = baseEventSchema.extend({
 export const crmCompanyMergedEvent = baseEventSchema.extend({
   type: z.literal("crm.company.merged"),
   payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
+});
+
 export const crmReminderSetEvent = baseEventSchema.extend({
   type: z.literal("crm.reminder.set"),
   payload: z.object({
@@ -96,6 +102,8 @@ export const crmReminderSetEvent = baseEventSchema.extend({
     remindAt: z.string().datetime(),
     message: z.string().optional(),
   }),
+});
+
 export const crmContactLinkedCompanyEvent = baseEventSchema.extend({
   type: z.literal("crm.contact.linked_company"),
   payload: z.object({ contactId: z.string().uuid(), companyId: z.string().uuid() }),

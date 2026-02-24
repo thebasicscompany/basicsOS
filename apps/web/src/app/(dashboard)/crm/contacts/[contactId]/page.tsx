@@ -20,8 +20,12 @@ import { Mail, Phone, Building2, Trash2, Calendar } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { CrmRelatedList } from "../../components/CrmRelatedList";
+import { CrmCustomFieldsSection } from "../../components/CrmCustomFieldsSection";
+import { CrmActivityTabs } from "../../components/CrmActivityTabs";
 import { EditContactDialog } from "../../EditContactDialog";
 import { formatCurrency } from "../../utils";
+import { FavoriteButton } from "../../components/FavoriteButton";
+import { EnrichmentSuggestionBanner } from "../../components/EnrichmentSuggestionBanner";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -80,6 +84,7 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
         backLabel="People"
         action={
           <div className="flex gap-2">
+            <FavoriteButton entity="contact" recordId={contact.id} />
             <EditContactDialog contact={contact} onUpdated={invalidate}>
               <Button variant="outline" size="sm">Edit</Button>
             </EditContactDialog>
@@ -87,17 +92,28 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
           </div>
         }
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <CrmSummaryCard
-          name={contact.name}
-          subtitle={contact.email ?? undefined}
-          showEmailAction={!!contact.email}
-          showCallAction={!!contact.phone}
-          email={contact.email}
-          phone={contact.phone}
-        />
-        <div className="lg:col-span-2 flex flex-col gap-6">
+      <EnrichmentSuggestionBanner contactId={contactId} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+        {/* Left: activity tabs */}
+        <div className="flex flex-col gap-6">
+          <CrmActivityTabs entity="contact" recordId={contactId} />
+        </div>
+
+        {/* Right: details panel */}
+        <div className="flex flex-col gap-4">
+          <CrmSummaryCard
+            name={contact.name}
+            subtitle={contact.email ?? undefined}
+            showEmailAction={!!contact.email}
+            showCallAction={!!contact.phone}
+            email={contact.email}
+            phone={contact.phone}
+          />
           <CrmFieldGrid title="Details" fields={fields} />
+          <CrmCustomFieldsSection
+            entity="contacts"
+            customFields={(contact.customFields as Record<string, unknown>) ?? {}}
+          />
           <CrmRelatedList
             title="Deals"
             count={contactDeals.length}
@@ -116,7 +132,12 @@ function ContactDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+        <Card>
+          <CardContent className="py-8">
+            <div className="h-24 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="py-8">
             <div className="flex flex-col items-center gap-3">
@@ -125,13 +146,6 @@ function ContactDetailSkeleton(): JSX.Element {
             </div>
           </CardContent>
         </Card>
-        <div className="lg:col-span-2">
-          <Card>
-            <CardContent className="py-6">
-              <div className="h-24 animate-pulse rounded bg-stone-200 dark:bg-stone-700" />
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button, Plus, CheckSquare, EmptyState, addToast, PageHeader } from "@basicsos/ui";
+import { Button, Plus, CheckSquare, EmptyState, addToast, PageHeader, Card } from "@basicsos/ui";
 import { KanbanColumn } from "./KanbanColumn";
 import { CreateTaskDialog } from "./CreateTaskDialog";
 import type { TaskStatus, Task } from "./types";

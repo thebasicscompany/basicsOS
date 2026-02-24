@@ -18,14 +18,17 @@ const MODULE_ICONS: Record<string, { Icon: LucideIcon }> = {
 
 // Next.js App Router requires default export — framework exception
 const ModulesPage = (): JSX.Element => {
+  const utils = trpc.useUtils();
   const { data: modules, isLoading } = trpc.modules.list.useQuery();
 
   const setEnabled = trpc.modules.setEnabled.useMutation({
-    onSuccess: (data) =>
+    onSuccess: (data) => {
+      void utils.modules.list.invalidate();
       addToast({
         title: `${data.moduleName} ${data.enabled ? "enabled" : "disabled"}`,
         variant: "success",
-      }),
+      });
+    },
     onError: (err) =>
       addToast({ title: "Error", description: err.message, variant: "destructive" }),
   });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { ComponentType, SVGProps } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { readRecentRoutes } from "@/lib/recent-routes";
@@ -142,22 +141,14 @@ const RecentWorkCard = ({ route, summary }: RecentWorkCardProps): JSX.Element =>
   const color = colorForModule(route.moduleId);
 
   return (
-    <a href={route.path} className="block group">
-      <Card className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/50">
-        <IconBadge Icon={Icon} size="md" color={color} className="shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground group-hover:text-foreground">
-            {route.title}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {summary ?? relativeTime(route.timestamp)}
-          </p>
-        </div>
-        <ArrowRight
-          size={16}
-          className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-        />
-      </Card>
+    <a
+      href={route.path}
+      className={cn(
+        "group flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent/50",
+      )}
+    >
+      <Icon size={15} className={cn("shrink-0", color.split(" ").filter((c) => c.startsWith("text-")).join(" "))} />
+      <span className="truncate font-medium text-foreground">{route.title}</span>
     </a>
   );
 };
@@ -399,7 +390,7 @@ const DashboardPage = (): JSX.Element => {
           </SectionLabel>
 
           {visibleRecents.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-wrap gap-2">
               {visibleRecents.map((route, i) => (
                 <RecentWorkCard
                   key={`${route.path}-${i}`}

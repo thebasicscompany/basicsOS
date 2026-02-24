@@ -17,6 +17,8 @@ export const tasks = pgTable(
     labels: jsonb("labels").notNull().default([]),
     sourceType: text("source_type"), // meeting | automation | ai-employee | null
     sourceId: uuid("source_id"),
+    relatedEntityType: text("related_entity_type"), // 'contact' | 'company' | 'deal'
+    relatedEntityId: uuid("related_entity_id"),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -28,5 +30,6 @@ export const tasks = pgTable(
     index("tasks_status_idx").on(t.status),
     index("tasks_assignee_id_idx").on(t.assigneeId),
     index("tasks_due_date_idx").on(t.dueDate),
+    index("tasks_entity_idx").on(t.relatedEntityType, t.relatedEntityId),
   ],
 );

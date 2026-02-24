@@ -320,18 +320,15 @@ docker-compose -f docker-compose.prod.yml up  # prod: full stack
 
 Basics OS is built for AI-assisted development. The repo ships with Claude Code skills and agents that can navigate the codebase, scaffold full modules, write tests, and review changes.
 
-**Start any task with:**
+**First time?** Run `/onboard` — it installs dependencies, configures your database, and gives you a full tour of the codebase.
 
-```
-/navigate-codebase
-```
-
-This loads exactly the right context files for what you're building — no manual searching.
+**Returning dev?** Start any task with `/navigate-codebase` — it loads exactly the right context files for what you're building.
 
 ### Skills
 
 | Command              | What it does                                               |
 | -------------------- | ---------------------------------------------------------- |
+| `/onboard`           | First-time setup wizard + full codebase tour               |
 | `/navigate-codebase` | Load context for any task                                  |
 | `/new-module`        | Scaffold schema + router + UI + tests for a new module     |
 | `/add-field`         | Add a column with migration, validator, and router updates |

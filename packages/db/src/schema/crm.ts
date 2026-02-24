@@ -1,6 +1,62 @@
-import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, numeric, integer, boolean, index } from "drizzle-orm/pg-core";
 import { vector } from "drizzle-orm/pg-core";
 import { users, tenants } from "./tenants";
+
+export const pipelineStages = pgTable(
+  "pipeline_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("bg-stone-400"),
+    position: integer("position").notNull().default(0),
+    isWon: boolean("is_won").notNull().default(false),
+    isLost: boolean("is_lost").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("pipeline_stages_tenant_id_idx").on(t.tenantId),
+  ],
+);
+
+export const crmAuditLog = pgTable(
+  "crm_audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    userId: text("user_id").notNull(),
+    field: text("field").notNull(),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    changedAt: timestamp("changed_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_audit_record_idx").on(t.entity, t.recordId, t.changedAt)],
+);
+
+export const crmAttachments = pgTable(
+  "crm_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    filename: text("filename").notNull(),
+    storageKey: text("storage_key").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    mimeType: text("mime_type").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_attachments_record_idx").on(t.tenantId, t.entity, t.recordId)],
+);
 
 export const contacts = pgTable(
   "contacts",
@@ -19,6 +75,7 @@ export const contacts = pgTable(
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     index("contacts_tenant_id_idx").on(t.tenantId),
@@ -40,6 +97,7 @@ export const companies = pgTable(
     customFields: jsonb("custom_fields").notNull().default({}),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [index("companies_tenant_id_idx").on(t.tenantId)],
 );
@@ -55,14 +113,17 @@ export const deals = pgTable(
     contactId: uuid("contact_id").references(() => contacts.id),
     title: text("title").notNull(),
     stage: text("stage").notNull().default("lead"),
+    stageId: uuid("stage_id").references(() => pipelineStages.id),
     value: numeric("value", { precision: 12, scale: 2 }).notNull().default("0"),
     probability: integer("probability").notNull().default(50),
     closeDate: timestamp("close_date"),
+    customFields: jsonb("custom_fields").notNull().default({}),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     index("deals_tenant_id_idx").on(t.tenantId),
@@ -81,6 +142,9 @@ export const dealActivities = pgTable(
     type: text("type").notNull(), // note | email | call | meeting
     content: text("content").notNull(),
     meetingId: uuid("meeting_id"),
+    subject: text("subject"),
+    direction: text("direction"), // 'inbound' | 'outbound'
+    activityDate: timestamp("activity_date"),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id),
@@ -99,3 +163,72 @@ export const dealActivityEmbeddings = pgTable("deal_activity_embeddings", {
   chunkIndex: integer("chunk_index").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const crmSavedViews = pgTable(
+  "crm_saved_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    entity: text("entity").notNull(), // 'contacts' | 'companies' | 'deals'
+    name: text("name").notNull(),
+    filters: jsonb("filters").notNull().default({}),
+    sort: jsonb("sort").notNull().default({}),
+    columnVisibility: jsonb("column_visibility").notNull().default({}),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("crm_saved_views_tenant_entity_idx").on(t.tenantId, t.entity)],
+);
+
+export const crmNotes = pgTable(
+  "crm_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(),
+    recordId: uuid("record_id").notNull(),
+    content: jsonb("content").notNull().default([]),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedBy: text("updated_by").notNull(),
+  },
+  (t) => [index("crm_notes_record_idx").on(t.tenantId, t.entity, t.recordId)],
+);
+
+export const crmFavorites = pgTable(
+  "crm_favorites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    entity: text("entity").notNull(), // 'contact' | 'company' | 'deal'
+    recordId: uuid("record_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("crm_favorites_user_idx").on(t.tenantId, t.userId),
+  ],
+);
+
+export const customFieldDefs = pgTable(
+  "custom_field_defs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    entity: text("entity").notNull(), // 'contacts' | 'companies' | 'deals'
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    type: text("type").notNull(), // 'text'|'number'|'date'|'boolean'|'select'|'multi_select'|'url'|'phone'
+    options: jsonb("options"), // string[] for select/multi_select
+    required: boolean("required").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("custom_field_defs_tenant_entity_idx").on(t.tenantId, t.entity)],
+);

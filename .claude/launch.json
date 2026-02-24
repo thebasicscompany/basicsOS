@@ -1,0 +1,47 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "API",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "src/dev.ts"],
+      "port": 3001,
+      "cwd": "packages/api"
+    },
+    {
+      "name": "Web",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "apps/web"
+    },
+    {
+      "name": "Desktop",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "apps/desktop"
+    },
+    {
+      "name": "Mobile",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8081,
+      "cwd": "apps/mobile"
+    },
+    {
+      "name": "MCP Company",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "src/index.ts"],
+      "port": 4000,
+      "cwd": "apps/mcp/company"
+    },
+    {
+      "name": "MCP Engineer",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "src/index.ts"],
+      "port": null,
+      "cwd": "apps/mcp/engineer"
+    }
+  ]
+}

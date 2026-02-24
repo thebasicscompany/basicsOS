@@ -39,9 +39,74 @@ export const crmContactCreatedEvent = baseEventSchema.extend({
   payload: z.object({ contactId: z.string().uuid() }),
 });
 
+export const crmCompanyCreatedEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.created"),
+  payload: z.object({ companyId: z.string().uuid() }),
+});
+
 export const crmActivityLoggedEvent = baseEventSchema.extend({
   type: z.literal("crm.activity.logged"),
   payload: z.object({ activityId: z.string().uuid(), dealId: z.string().uuid() }),
+});
+
+export const crmContactDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.deleted"),
+  payload: z.object({ contactId: z.string().uuid() }),
+});
+
+export const crmContactRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
+export const crmCompanyDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.deleted"),
+  payload: z.object({ companyId: z.string().uuid() }),
+});
+
+export const crmCompanyRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
+export const crmDealDeletedEvent = baseEventSchema.extend({
+  type: z.literal("crm.deal.deleted"),
+  payload: z.object({ dealId: z.string().uuid() }),
+});
+
+export const crmDealRestoredEvent = baseEventSchema.extend({
+  type: z.literal("crm.deal.restored"),
+  payload: z.object({ id: z.string().uuid() }),
+});
+
+export const crmContactsImportedEvent = baseEventSchema.extend({
+  type: z.literal("crm.contacts.imported"),
+  payload: z.object({ count: z.number() }),
+});
+
+export const crmContactMergedEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.merged"),
+  payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
+});
+
+export const crmCompanyMergedEvent = baseEventSchema.extend({
+  type: z.literal("crm.company.merged"),
+  payload: z.object({ winnerId: z.string().uuid(), loserId: z.string().uuid() }),
+});
+
+export const crmReminderSetEvent = baseEventSchema.extend({
+  type: z.literal("crm.reminder.set"),
+  payload: z.object({
+    entity: z.enum(["contact", "company", "deal"]),
+    recordId: z.string().uuid(),
+    remindAt: z.string().datetime(),
+    message: z.string().optional(),
+  }),
+});
+
+export const crmContactLinkedCompanyEvent = baseEventSchema.extend({
+  type: z.literal("crm.contact.linked_company"),
+  payload: z.object({ contactId: z.string().uuid(), companyId: z.string().uuid() }),
 });
 
 // Meeting events
@@ -136,7 +201,19 @@ export const BasicsOSEventSchema = z.discriminatedUnion("type", [
   crmDealWonEvent,
   crmDealLostEvent,
   crmContactCreatedEvent,
+crmContactDeletedEvent,
+  crmContactRestoredEvent,
+crmCompanyCreatedEvent,
   crmActivityLoggedEvent,
+  crmCompanyDeletedEvent,
+  crmCompanyRestoredEvent,
+  crmDealDeletedEvent,
+  crmDealRestoredEvent,
+  crmContactsImportedEvent,
+  crmContactMergedEvent,
+  crmCompanyMergedEvent,
+  crmReminderSetEvent,
+  crmContactLinkedCompanyEvent,
   meetingStartedEvent,
   meetingEndedEvent,
   meetingTranscriptFinalizedEvent,

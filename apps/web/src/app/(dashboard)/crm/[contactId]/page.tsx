@@ -4,6 +4,8 @@ import { use } from "react";
 import { trpc } from "@/lib/trpc";
 import { notFound } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, PageHeader } from "@basicsos/ui";
+import { CrmHistoryPanel } from "../components/CrmHistoryPanel";
+import { FavoriteButton } from "../components/FavoriteButton";
 
 interface ContactDetailPageProps {
   params: Promise<{ contactId: string }>;
@@ -23,15 +25,16 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={contact?.name ?? "Contact"}
         backHref="/crm?view=contacts"
         backLabel="Contacts"
         className="mb-6"
+        action={<FavoriteButton entity="contact" recordId={contactId} />}
       />
 
-      <Card className="mb-8">
+      <Card>
         <CardHeader>
           <CardTitle>Contact Info</CardTitle>
         </CardHeader>
@@ -54,6 +57,8 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
           </dl>
         </CardContent>
       </Card>
+
+      <CrmHistoryPanel entity="contact" recordId={contactId} />
     </div>
   );
 };

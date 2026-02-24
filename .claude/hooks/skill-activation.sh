@@ -32,6 +32,11 @@ if echo "$PROMPT" | grep -qiE "bug|error|fail|broke|crash|exception|stack.?trace
   HINTS="$HINTS\nMANDATORY: Use the 'debugger' agent for this task."
 fi
 
+# Onboard skill triggers
+if echo "$PROMPT" | grep -qiE "onboard|first.?time|getting.?started|just.?cloned|new.?dev|fresh.?clone|setup.*repo|how.*(start|begin|setup)|after.*clone"; then
+  HINTS="$HINTS\nMANDATORY: Load the 'onboard' skill for this task."
+fi
+
 if [ -n "$HINTS" ]; then
   echo -e "$HINTS"
 fi

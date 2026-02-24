@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Badge, Card } from "@basicsos/ui";
 import type { DealStage } from "./types";
 
@@ -27,14 +28,30 @@ interface DealCardProps {
   deal: Deal;
 }
 
-export const DealCard = ({ deal }: DealCardProps): JSX.Element => (
-  <Card className="cursor-pointer p-3 transition-colors hover:bg-accent/50">
-    <p className="truncate text-sm font-medium text-foreground">{deal.title}</p>
-    <div className="mt-1.5 flex items-center justify-between gap-2">
-      <Badge variant={STAGE_VARIANT[deal.stage]} className="text-[10px]">{deal.stage}</Badge>
-      <span className="text-xs font-medium tabular-nums text-muted-foreground">
-        ${Number(deal.value).toLocaleString()}
-      </span>
-    </div>
-  </Card>
-);
+export const DealCard = ({ deal }: DealCardProps): JSX.Element => {
+  const router = useRouter();
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.dataTransfer.setData("dealId", deal.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  return (
+    <Card
+      draggable
+      onDragStart={handleDragStart}
+      onClick={() => router.push(`/crm/deals/${deal.id}`)}
+      className="cursor-grab p-3 active:cursor-grabbing transition-colors hover:bg-accent/50"
+    >
+      <p className="truncate text-sm font-medium text-foreground">{deal.title}</p>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <Badge variant={STAGE_VARIANT[deal.stage]} className="text-[10px]">
+          {deal.stage}
+        </Badge>
+        <span className="text-xs font-medium tabular-nums text-muted-foreground">
+          ${Number(deal.value).toLocaleString()}
+        </span>
+      </div>
+    </Card>
+  );
+};

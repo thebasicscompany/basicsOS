@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
-import { addToast } from "@basicsos/ui";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +13,12 @@ import {
   Button,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  addToast,
 } from "@basicsos/ui";
 
 interface CreateContactDialogProps {
@@ -29,6 +34,9 @@ export const CreateContactDialog = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [companyId, setCompanyId] = useState("");
+
+  const { data: companiesList } = trpc.crm.companies.list.useQuery(undefined, { enabled: open });
 
   const createContact = trpc.crm.contacts.create.useMutation({
     onSuccess: () => {
@@ -37,14 +45,11 @@ export const CreateContactDialog = ({
       setName("");
       setEmail("");
       setPhone("");
+      setCompanyId("");
       onCreated?.();
     },
     onError: (err) => {
-      addToast({
-        title: "Failed to create contact",
-        description: err.message,
-        variant: "destructive",
-      });
+      addToast({ title: "Failed to create contact", description: err.message, variant: "destructive" });
     },
   });
 
@@ -55,6 +60,7 @@ export const CreateContactDialog = ({
       name: name.trim(),
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      companyId: companyId && companyId !== "none" ? companyId : undefined,
     });
   };
 
@@ -68,41 +74,32 @@ export const CreateContactDialog = ({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-name">Name</Label>
-            <Input
-              id="contact-name"
-              placeholder="Full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
+            <Input id="contact-name" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-email">Email</Label>
-            <Input
-              id="contact-email"
-              type="email"
-              placeholder="email@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input id="contact-email" type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-phone">Phone</Label>
-            <Input
-              id="contact-phone"
-              type="tel"
-              placeholder="+1 555 000 0000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
+            <Input id="contact-phone" type="tel" placeholder="+1 555 000 0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Company</Label>
+            <Select value={companyId} onValueChange={setCompanyId}>
+              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {(companiesList ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={createContact.isPending}>
-              {createContact.isPending ? "Creating…" : "Create Contact"}
+              {createContact.isPending ? "Creating..." : "Create Contact"}
             </Button>
           </DialogFooter>
         </form>

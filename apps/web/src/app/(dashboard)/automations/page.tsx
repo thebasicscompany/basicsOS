@@ -22,6 +22,7 @@ import {
   addToast,
 } from "@basicsos/ui";
 import { CreateAutomationDialog } from "./CreateAutomationDialog";
+import { getTriggerLabel } from "./trigger-meta";
 
 const formatRelative = (date: Date | string | null): string => {
   if (!date) return "—";
@@ -114,7 +115,7 @@ const AutomationsPage = (): JSX.Element => {
                     <TableCell className="font-medium text-stone-900 dark:text-stone-100">{automation.name}</TableCell>
                     <TableCell>
                       {triggerConfig?.eventType ? (
-                        <Badge variant="secondary">{triggerConfig.eventType}</Badge>
+                        <Badge variant="secondary">{getTriggerLabel(triggerConfig.eventType)}</Badge>
                       ) : (
                         <span className="text-stone-400 dark:text-stone-500 text-sm">—</span>
                       )}

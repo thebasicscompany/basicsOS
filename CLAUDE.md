@@ -2,7 +2,8 @@
 
 Basics OS is an open-source company operating system — knowledge base, CRM, task manager, meeting intelligence, AI assistant, automations — all connected to one database, accessible from web, desktop, mobile, and MCP.
 
-> **First step for any task:** Run [`/navigate-codebase`](/.claude/skills/navigate-codebase/SKILL.md) to load the right context files.
+> **New here?** Run [`/onboard`](/.claude/skills/onboard/SKILL.md) for guided setup and a full tour.
+> **Returning dev?** Run [`/navigate-codebase`](/.claude/skills/navigate-codebase/SKILL.md) to load the right context files.
 
 ## Repo Structure
 
@@ -141,6 +142,7 @@ const mutate = trpc.myModule.create.useMutation({
 
 | Task | Skill |
 |------|-------|
+| First-time setup + tour | `/onboard` |
 | Orient / find context | `/navigate-codebase` |
 | Add a field | `@.claude/skills/add-field` |
 | Add a tRPC endpoint | `@.claude/skills/new-api-endpoint` |

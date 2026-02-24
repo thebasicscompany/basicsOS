@@ -3,10 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "description": "BasicOS — Open-source company operating system",
-  "workspaces": [
+  "_workspacesAll": [
     "apps/*",
     "apps/mcp/*",
     "packages/*"
+  ],
+  "workspaces": [
+    "packages/*",
+    "apps/web",
+    "apps/desktop"
   ],
   "scripts": {
     "dev": "turbo run dev",
@@ -54,5 +59,8 @@
   "engines": {
     "node": ">=20.0.0",
     "bun": ">=1.1.0"
+  },
+  "dependencies": {
+    "recharts": "^3.7.0"
   }
 }

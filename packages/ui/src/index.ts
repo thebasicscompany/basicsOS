@@ -204,5 +204,7 @@ export {
   UploadSimple,
   XCircle,
   ToggleLeft,
+  Sun,
+  Moon,
 } from "./icons.js";
 export type { IconComponent } from "./icons.js";

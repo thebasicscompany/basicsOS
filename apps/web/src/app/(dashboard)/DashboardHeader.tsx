@@ -1,15 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
-  Button,
-  Separator,
-  SidebarIcon,
   Breadcrumb,
   BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbPage,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+  MagnifyingGlass,
+  Sun,
+  Moon,
 } from "@basicsos/ui";
+import { useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
 
 const PATH_LABELS: Record<string, string> = {
   "/": "Dashboard",
@@ -34,30 +41,21 @@ function getBreadcrumbLabel(pathname: string): string {
   return "Dashboard";
 }
 
-interface DashboardHeaderProps {
-  sidebarCollapsed: boolean;
-  onToggleSidebar: () => void;
-}
-
-export function DashboardHeader({
-  sidebarCollapsed,
-  onToggleSidebar,
-}: DashboardHeaderProps): JSX.Element {
+export function DashboardHeader(): JSX.Element {
   const pathname = usePathname();
   const label = getBreadcrumbLabel(pathname);
+  const { setOpen: openSearch } = useCommandPaletteContext();
+  const { setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="-ml-1 size-7 text-muted-foreground"
-        onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        <SidebarIcon size={18} className={sidebarCollapsed ? "rotate-180" : ""} />
-      </Button>
-      <Separator orientation="vertical" className="h-4 bg-border" />
+    <header className="flex h-12 shrink-0 items-center px-4">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -65,6 +63,40 @@ export function DashboardHeader({
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      <div className="ml-auto flex items-center gap-1">
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => openSearch(true)}
+                className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                aria-label="Search"
+              >
+                <MagnifyingGlass size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              Search <span className="ml-1 font-mono text-[10px]">/</span>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark ? <Moon size={16} /> : <Sun size={16} />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              {isDark ? "Light mode" : "Dark mode"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </header>
   );
 }

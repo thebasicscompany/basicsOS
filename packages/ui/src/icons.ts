@@ -24,7 +24,7 @@ export {
   ArrowUp,
   CaretRight,
   CaretLeft,
-  Sidebar as SidebarIcon,
+  SidebarSimpleIcon as SidebarIcon,
   Plus,
   X,
   SignOut,
@@ -97,6 +97,8 @@ export {
   UploadSimple,
   XCircle,
   ToggleLeft,
+  Sun,
+  Moon,
 } from "@phosphor-icons/react";
 
 export type { Icon as IconComponent } from "@phosphor-icons/react";

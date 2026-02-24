@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardHeader } from "./DashboardHeader";
-import { NavClient } from "./NavClient";
 import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
 import { RouteRecorder } from "@/components/RouteRecorder";
 import { cn } from "@basicsos/ui";
@@ -13,21 +12,14 @@ const DashboardShell = ({ children }: { children: React.ReactNode }): JSX.Elemen
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar: transparent on canvas — no border, no separate bg */}
-      {sidebarCollapsed ? (
-        <div className="flex h-full shrink-0 flex-col">
-          <NavClient />
-        </div>
-      ) : (
-        <DashboardSidebar />
-      )}
+      <DashboardSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
 
       {/* Right side: canvas controls + paper surface */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <DashboardHeader
-          sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
-        />
+        <DashboardHeader />
 
         {/* Paper wrapper: padding creates gap between paper and window edges */}
         <div className="flex-1 overflow-hidden pr-3 pb-3">

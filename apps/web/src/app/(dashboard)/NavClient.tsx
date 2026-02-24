@@ -17,6 +17,7 @@ import {
   Gear,
   SignOut,
   Lightning,
+  CaretRight,
 } from "@basicsos/ui";
 
 const NAV_ITEMS: IconRailItem[] = [
@@ -31,7 +32,7 @@ const NAV_ITEMS: IconRailItem[] = [
   { id: "settings", label: "Settings", href: "/settings", Icon: Gear },
 ];
 
-export const NavClient = (): JSX.Element => {
+export const NavClient = ({ onExpand }: { onExpand: () => void }): JSX.Element => {
   const pathname = usePathname();
   const { user } = useAuth();
   const router = useRouter();
@@ -77,6 +78,18 @@ export const NavClient = (): JSX.Element => {
       onNavigate={(href) => router.push(href)}
       footer={
         <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onExpand}
+                className="mt-1 flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                aria-label="Expand sidebar"
+              >
+                <CaretRight size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>Expand sidebar</TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <button

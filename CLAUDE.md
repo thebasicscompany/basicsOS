@@ -80,13 +80,11 @@ export const tasksRouter = router({
 
 ### Radius
 
-| `rounded-md` | buttons, inputs, badges | `rounded-lg` | cards, dialogs, toasts |
-|---------------|------------------------|---------------|------------------------|
-| `rounded-xl` | AppShell panels | `rounded-full` | pills only |
+Use **`rounded-sm`** everywhere for buttons, inputs, badges, cards, dialogs, toasts, panels, and dropdowns. Use **`rounded-full`** only for pills and circular elements (e.g. avatars, status dots, switch thumb). Use **`rounded-none`** only when intentional (e.g. underline tabs).
 
 ### Icons
 
-All from `lucide-react` / `lucide-react-native`. Import re-exports from `@basicsos/ui`. Never use emoji as icons.
+All from Phosphor (web/desktop: `@phosphor-icons/react` via `@basicsos/ui`; mobile: `lucide-react-native` until migrated). Import icon re-exports from `@basicsos/ui`. Never use emoji as icons.
 
 ## Component-First Rules (MANDATORY)
 
@@ -201,5 +199,5 @@ For detailed docs on specific areas, read the relevant context file:
 - No raw HTML when `@basicsos/ui` component exists (`<button>`, `<table>`, `<input>`, styled `<div>`)
 - No duplicated UI patterns — extract to `packages/ui/`
 - No hardcoded hex/borderRadius in mobile — use tokens
-- No emoji as icons — use Lucide
+- No emoji as icons — use Phosphor (from `@basicsos/ui`) on web/desktop
 - Desktop overlay must use `@basicsos/ui` components

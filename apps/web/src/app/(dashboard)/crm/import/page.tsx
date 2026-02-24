@@ -26,10 +26,9 @@ import {
   SelectItem,
   PageHeader,
   addToast,
-  Loader2,
+  CircleNotch,
   Upload,
-  FileUp,
-  AlertCircle,
+  WarningCircle,
   ArrowLeft,
   CheckCircle,
 } from "@basicsos/ui";
@@ -135,7 +134,7 @@ function StepUpload({ entityType, onEntityTypeChange, onFileParsed }: StepUpload
         role="button"
         tabIndex={0}
         aria-label="Drop CSV file here or click to browse"
-        className={`flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed p-12 transition-colors cursor-pointer ${
+        className={`flex flex-col items-center justify-center gap-4 rounded-sm border-2 border-dashed p-12 transition-colors cursor-pointer ${
           dragOver
             ? "border-primary bg-primary/5"
             : "border-stone-300 dark:border-stone-600 hover:border-stone-400 dark:hover:border-stone-500"
@@ -146,8 +145,8 @@ function StepUpload({ entityType, onEntityTypeChange, onFileParsed }: StepUpload
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") inputRef.current?.click(); }}
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800">
-          <FileUp className="size-7 text-stone-500 dark:text-stone-400" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-800">
+          <Upload className="size-7 text-stone-500 dark:text-stone-400" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
@@ -167,8 +166,8 @@ function StepUpload({ entityType, onEntityTypeChange, onFileParsed }: StepUpload
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-sm bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <WarningCircle className="size-4 shrink-0" />
           {error}
         </div>
       )}
@@ -240,8 +239,8 @@ function StepMapColumns({
       </div>
 
       {!nameIsMapped && (
-        <div className="flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-sm bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <WarningCircle className="size-4 shrink-0" />
           Map at least one column to <strong className="ml-1">Name</strong> before continuing.
         </div>
       )}
@@ -352,7 +351,7 @@ function StepPreview({
         <Button onClick={onImport} disabled={isImporting}>
           {isImporting ? (
             <>
-              <Loader2 className="mr-1.5 size-4 animate-spin" />
+              <CircleNotch className="mr-1.5 size-4 animate-spin" />
               Importing…
             </>
           ) : (
@@ -386,7 +385,7 @@ function StepResults({ entityType, importedCount, error }: StepResultsProps): JS
     return (
       <div className="flex flex-col items-center gap-6 py-8 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-          <AlertCircle className="size-8 text-red-600 dark:text-red-400" />
+          <WarningCircle className="size-8 text-red-600 dark:text-red-400" />
         </div>
         <div>
           <p className="text-base font-semibold text-stone-900 dark:text-stone-100">Import failed</p>
@@ -402,7 +401,7 @@ function StepResults({ entityType, importedCount, error }: StepResultsProps): JS
   if (importedCount === null) {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
-        <Loader2 className="size-8 animate-spin text-stone-400" />
+        <CircleNotch className="size-8 animate-spin text-stone-400" />
         <p className="text-sm text-stone-500 dark:text-stone-400">Importing records…</p>
       </div>
     );

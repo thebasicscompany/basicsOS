@@ -12,13 +12,13 @@ import {
   Input,
   PageHeader,
   addToast,
-  Bold,
-  Italic,
-  Heading1,
-  Heading2,
+  TextB,
+  TextItalic,
+  TextHOne,
+  TextHTwo,
   List,
-  ListOrdered,
-  Code2,
+  ListNumbers,
+  Code,
 } from "@basicsos/ui";
 
 const AUTOSAVE_MS = 1500;
@@ -117,9 +117,9 @@ const DocumentDetailPage = (): JSX.Element => {
   if (isLoading || !doc) {
     return (
       <div className="max-w-4xl mx-auto p-4 space-y-4 animate-pulse">
-        <div className="h-4 w-24 rounded bg-stone-200" />
-        <div className="h-10 w-2/3 rounded bg-stone-200" />
-        <div className="h-96 rounded-xl bg-stone-100" />
+        <div className="h-4 w-24 rounded bg-muted" />
+        <div className="h-10 w-2/3 rounded bg-muted" />
+        <div className="h-96 rounded-sm bg-muted/60" />
       </div>
     );
   }
@@ -137,7 +137,7 @@ const DocumentDetailPage = (): JSX.Element => {
         className="mb-6"
         action={
           <div className="flex items-center gap-3">
-            <span className="text-xs text-stone-500">{statusText}</span>
+            <span className="text-xs text-muted-foreground">{statusText}</span>
             <Button onClick={() => save()} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -150,7 +150,7 @@ const DocumentDetailPage = (): JSX.Element => {
         value={localTitle}
         onChange={(e) => setLocalTitle(e.target.value)}
         onBlur={(e) => save(e.target.value)}
-        className="w-full text-4xl font-bold text-stone-900 border-none bg-transparent mb-4 placeholder-stone-300 shadow-none h-auto p-0"
+        className="w-full text-4xl font-bold text-foreground border-none bg-transparent mb-4 placeholder:text-muted-foreground/40 shadow-none h-auto p-0"
         placeholder="Untitled Document"
       />
 
@@ -160,19 +160,19 @@ const DocumentDetailPage = (): JSX.Element => {
         <div className="flex gap-0.5 border-b border-border px-2 py-1.5">
           {[
             {
-              Icon: Bold,
+              Icon: TextB,
               title: "Bold",
               action: () => editor?.chain().focus().toggleBold().run(),
               active: () => editor?.isActive("bold") ?? false,
             },
             {
-              Icon: Italic,
+              Icon: TextItalic,
               title: "Italic",
               action: () => editor?.chain().focus().toggleItalic().run(),
               active: () => editor?.isActive("italic") ?? false,
             },
             {
-              Icon: Heading1,
+              Icon: TextHOne,
               title: "Heading 1",
               action: () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
               active: () => editor?.isActive("heading", { level: 1 }) ?? false,
@@ -190,13 +190,13 @@ const DocumentDetailPage = (): JSX.Element => {
               active: () => editor?.isActive("bulletList") ?? false,
             },
             {
-              Icon: ListOrdered,
+              Icon: ListNumbers,
               title: "Ordered list",
               action: () => editor?.chain().focus().toggleOrderedList().run(),
               active: () => editor?.isActive("orderedList") ?? false,
             },
             {
-              Icon: Code2,
+              Icon: Code,
               title: "Code block",
               action: () => editor?.chain().focus().toggleCodeBlock().run(),
               active: () => editor?.isActive("codeBlock") ?? false,
@@ -208,7 +208,7 @@ const DocumentDetailPage = (): JSX.Element => {
               size="icon"
               title={btn.title}
               onClick={btn.action}
-              className={btn.active() ? "bg-stone-200" : ""}
+              className={btn.active() ? "bg-accent text-accent-foreground" : ""}
             >
               <btn.Icon size={16} />
             </Button>

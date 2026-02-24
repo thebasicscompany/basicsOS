@@ -23,11 +23,11 @@ import {
   DialogTitle,
   DialogFooter,
   addToast,
-  Trash2,
-  RotateCcw,
+  Trash,
+  ArrowCounterClockwise,
   Users,
-  Building2,
-  DollarSign,
+  Buildings,
+  CurrencyDollar,
 } from "@basicsos/ui";
 
 type EntityType = "contact" | "company" | "deal";
@@ -183,7 +183,7 @@ export default function TrashPage(): JSX.Element {
                           onClick={() => handleRestore("contact", contact.id)}
                           disabled={restoreMutation.isPending}
                         >
-                          <RotateCcw size={14} className="mr-1.5" />
+                          <ArrowCounterClockwise size={14} className="mr-1.5" />
                           Restore
                         </Button>
                         <Button
@@ -194,7 +194,7 @@ export default function TrashPage(): JSX.Element {
                             setPurgeTarget({ entity: "contact", id: contact.id, name: contact.name })
                           }
                         >
-                          <Trash2 size={14} className="mr-1.5" />
+                          <Trash size={14} className="mr-1.5" />
                           Delete
                         </Button>
                       </div>
@@ -211,7 +211,7 @@ export default function TrashPage(): JSX.Element {
             <p className="text-sm text-stone-500 dark:text-stone-400">Loading...</p>
           ) : deletedCompanies.length === 0 ? (
             <EmptyState
-              Icon={Building2}
+              Icon={Buildings}
               heading="No deleted companies"
               description="Companies you delete will appear here for 30 days."
             />
@@ -243,7 +243,7 @@ export default function TrashPage(): JSX.Element {
                           onClick={() => handleRestore("company", company.id)}
                           disabled={restoreMutation.isPending}
                         >
-                          <RotateCcw size={14} className="mr-1.5" />
+                          <ArrowCounterClockwise size={14} className="mr-1.5" />
                           Restore
                         </Button>
                         <Button
@@ -258,7 +258,7 @@ export default function TrashPage(): JSX.Element {
                             })
                           }
                         >
-                          <Trash2 size={14} className="mr-1.5" />
+                          <Trash size={14} className="mr-1.5" />
                           Delete
                         </Button>
                       </div>
@@ -275,7 +275,7 @@ export default function TrashPage(): JSX.Element {
             <p className="text-sm text-stone-500 dark:text-stone-400">Loading...</p>
           ) : deletedDeals.length === 0 ? (
             <EmptyState
-              Icon={DollarSign}
+              Icon={CurrencyDollar}
               heading="No deleted deals"
               description="Deals you delete will appear here for 30 days."
             />
@@ -309,7 +309,7 @@ export default function TrashPage(): JSX.Element {
                           onClick={() => handleRestore("deal", deal.id)}
                           disabled={restoreMutation.isPending}
                         >
-                          <RotateCcw size={14} className="mr-1.5" />
+                          <ArrowCounterClockwise size={14} className="mr-1.5" />
                           Restore
                         </Button>
                         <Button
@@ -320,7 +320,7 @@ export default function TrashPage(): JSX.Element {
                             setPurgeTarget({ entity: "deal", id: deal.id, name: deal.title })
                           }
                         >
-                          <Trash2 size={14} className="mr-1.5" />
+                          <Trash size={14} className="mr-1.5" />
                           Delete
                         </Button>
                       </div>
@@ -352,7 +352,7 @@ export default function TrashPage(): JSX.Element {
               onClick={handlePurgeConfirm}
               disabled={purgeMutation.isPending}
             >
-              <Trash2 size={14} className="mr-1.5" />
+              <Trash size={14} className="mr-1.5" />
               Delete permanently
             </Button>
           </DialogFooter>

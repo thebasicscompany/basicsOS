@@ -11,7 +11,7 @@ import {
   SectionLabel,
   Star,
   Users,
-  Building2,
+  Buildings,
   Briefcase,
   EmptyState,
 } from "@basicsos/ui";
@@ -33,7 +33,7 @@ const ENTITY_HREF: Record<FavoriteEntity, (id: string) => string> = {
 type IconComponent = FC<{ size?: number; className?: string }>;
 const ENTITY_ICON: Record<FavoriteEntity, IconComponent> = {
   contact: Users as unknown as IconComponent,
-  company: Building2 as unknown as IconComponent,
+  company: Buildings as unknown as IconComponent,
   deal: Briefcase as unknown as IconComponent,
 };
 
@@ -112,7 +112,7 @@ export const FavoritesSection = (): JSX.Element => {
                     <li key={fav.id}>
                       <Link
                         href={ENTITY_HREF[entity](fav.recordId)}
-                        className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-stone-700 dark:text-stone-300 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100"
+                        className="flex items-center gap-2 rounded-sm px-2 py-1 text-sm text-stone-700 dark:text-stone-300 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100"
                       >
                         <Icon size={13} className="shrink-0 text-stone-400" />
                         <span className="truncate font-mono text-xs text-stone-500 dark:text-stone-400">

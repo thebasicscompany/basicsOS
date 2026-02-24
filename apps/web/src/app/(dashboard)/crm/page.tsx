@@ -18,7 +18,7 @@ import {
   TableCell,
   EmptyState,
 } from "@basicsos/ui";
-import { Users, Building2, Briefcase, BarChart3, Activity, Trash2, Upload, AlertCircle, DollarSign, TrendingUp, Settings } from "@basicsos/ui";
+import { Users, Briefcase, ChartBar, Pulse, Trash, Upload, WarningCircle, CurrencyDollar, TrendUp, Gear } from "@basicsos/ui";
 import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
 const CrmDashboard = (): JSX.Element => {
@@ -38,7 +38,7 @@ const CrmDashboard = (): JSX.Element => {
   if (allDeals.length === 0 && contacts.length === 0) {
     return (
       <EmptyState
-        Icon={BarChart3}
+        Icon={ChartBar}
         heading="Welcome to your CRM"
         description="Get started by creating your first contact or deal."
       />
@@ -66,9 +66,9 @@ const CrmDashboard = (): JSX.Element => {
 const QUICK_LINKS = [
   { href: "/crm/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/crm/import", label: "Import", icon: Upload },
-  { href: "/crm/trash", label: "Trash", icon: Trash2 },
-  { href: "/crm/settings/stages", label: "Pipeline Stages", icon: Settings },
-  { href: "/crm/settings/fields", label: "Custom Fields", icon: Settings },
+  { href: "/crm/trash", label: "Trash", icon: Trash },
+  { href: "/crm/settings/stages", label: "Pipeline Stages", icon: Gear },
+  { href: "/crm/settings/fields", label: "Custom Fields", icon: Gear },
 ] as const;
 
 function CrmQuickLinks(): JSX.Element {
@@ -82,7 +82,7 @@ function CrmQuickLinks(): JSX.Element {
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center gap-2 rounded-lg border border-stone-200 bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent dark:border-stone-700"
+              className="flex items-center gap-2 rounded-sm border border-stone-200 bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent dark:border-stone-700"
             >
               <Icon size={14} className="shrink-0 text-muted-foreground" />
               {link.label}
@@ -144,7 +144,7 @@ function KpiCards({
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard label="Pipeline Value" value={formatCurrency(stats.pipelineValue)} icon={Briefcase} />
       <StatCard label="Won Revenue" value={formatCurrency(stats.wonValue)} icon={Activity} valueClass="text-success" />
-      <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={BarChart3} />
+      <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={ChartBar} />
       <StatCard label="Active Contacts" value={String(stats.activeContacts)} icon={Users} />
     </div>
   );
@@ -165,7 +165,7 @@ function StatCard({
    <Card>
       <CardContent className="py-3">
         <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-700">
+          <div className="flex size-7 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-700">
             <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />          </div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>        </div>
         <p className={`mt-2 text-xl font-semibold tabular-nums ${valueClass ?? "text-foreground"}`}>{value}</p>
@@ -291,7 +291,7 @@ function OverdueDealsCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-destructive" />
+            <WarningCircle className="size-4 text-destructive" />
             <CardTitle className="text-sm font-medium text-destructive">Overdue Deals</CardTitle>
             <Badge variant="destructive" className="h-5 px-1.5 text-[10px] py-0">
               {deals.length}
@@ -355,7 +355,7 @@ function RecentActivityCard({
         ) : (
           <div className="flex flex-col gap-2">
             {recentDeals.map((d) => (
-              <Link key={d.id} href={`/crm/deals/${d.id}`} className="flex items-center justify-between rounded-md p-2 hover:bg-accent/50 transition-colors">
+              <Link key={d.id} href={`/crm/deals/${d.id}`} className="flex items-center justify-between rounded-sm p-2 hover:bg-accent/50 transition-colors">
                 <span className="text-sm font-medium text-foreground truncate">{d.title}</span>
                 <Badge variant="outline" className="capitalize text-[10px] ml-2 shrink-0">{d.stage}</Badge>
               </Link>

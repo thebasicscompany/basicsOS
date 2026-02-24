@@ -21,7 +21,7 @@ import {
   addToast,
   cn,
 } from "@basicsos/ui";
-import { Search, ChevronDown, List, Square, Columns3, Bookmark, BookmarkPlus, Trash2 } from "@basicsos/ui";
+import { MagnifyingGlass, CaretDown, List, Square, Columns, Bookmark, BookmarkSimple, Trash } from "@basicsos/ui";
 import { CrmFilterChip } from "./CrmFilterChip";
 import { CrmSortChip } from "./CrmSortChip";
 import type { CrmFilter, CrmViewState } from "../hooks/useCrmViewState";
@@ -111,7 +111,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
 
   return (
     <div className="relative w-64">
-      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}
         placeholder="Search... ( / )"
@@ -148,7 +148,7 @@ function FilterDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-          Filter <ChevronDown className="size-3" />
+          Filter <CaretDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56 p-2">
@@ -211,7 +211,7 @@ function SortDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-          Sort <ChevronDown className="size-3" />
+          Sort <CaretDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
@@ -233,12 +233,12 @@ function ViewToggle({
   onChange: (v: "table" | "kanban") => void;
 }): JSX.Element {
   return (
-    <div className="flex items-center rounded-md border border-stone-200 dark:border-stone-700">
+    <div className="flex items-center rounded-sm border border-stone-200 dark:border-stone-700">
       <button
         type="button"
         onClick={() => onChange("table")}
         className={cn(
-          "flex items-center justify-center size-8 rounded-l-md transition-colors",
+          "flex items-center justify-center size-8 rounded-l-sm transition-colors",
           viewType === "table" ? "bg-stone-100 dark:bg-stone-700 text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
         aria-label="Table view"
@@ -249,7 +249,7 @@ function ViewToggle({
         type="button"
         onClick={() => onChange("kanban")}
         className={cn(
-          "flex items-center justify-center size-8 rounded-r-md transition-colors",
+          "flex items-center justify-center size-8 rounded-r-sm transition-colors",
           viewType === "kanban" ? "bg-stone-100 dark:bg-stone-700 text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
         aria-label="Kanban view"
@@ -275,7 +275,7 @@ function FieldsDropdown({
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1" id="crm-columns-btn">
-          <Columns3 className="size-3" /> Columns <ChevronDown className="size-3" />
+          <Columns className="size-3" /> Columns <CaretDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
@@ -317,7 +317,7 @@ function SavedViewsDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-          <Bookmark className="size-3" /> Views <ChevronDown className="size-3" />
+          <Bookmark className="size-3" /> Views <CaretDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
@@ -358,7 +358,7 @@ function SavedViewsDropdown({
                 }}
                 aria-label={`Delete "${view.name}"`}
               >
-                <Trash2 className="size-3" />
+                <Trash className="size-3" />
               </button>
             </div>
           ))

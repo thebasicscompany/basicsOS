@@ -9,7 +9,7 @@ import {
   CardTitle,
   Button,
   Badge,
-  AlertTriangle,
+  Warning,
   GitMerge,
   X,
   cn,
@@ -43,7 +43,7 @@ export const ContactDuplicatesPanel = (): JSX.Element | null => {
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+              <Warning size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
               <CardTitle className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                 {dupes.length} potential duplicate contact{dupes.length !== 1 ? "s" : ""} found
               </CardTitle>
@@ -63,7 +63,7 @@ export const ContactDuplicatesPanel = (): JSX.Element | null => {
           {dupes.map((pair) => (
             <div
               key={`${pair.id1}-${pair.id2}`}
-              className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-white px-3 py-2 dark:border-amber-900/40 dark:bg-stone-900/40"
+              className="flex items-center justify-between gap-3 rounded-sm border border-amber-200 bg-white px-3 py-2 dark:border-amber-900/40 dark:bg-stone-900/40"
             >
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Badge
@@ -133,7 +133,7 @@ export const CompanyDuplicatesPanel = (): JSX.Element | null => {
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+              <Warning size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
               <CardTitle className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                 {dupes.length} potential duplicate {dupes.length !== 1 ? "companies" : "company"} found
               </CardTitle>
@@ -153,7 +153,7 @@ export const CompanyDuplicatesPanel = (): JSX.Element | null => {
           {dupes.map((pair) => (
             <div
               key={`${pair.id1}-${pair.id2}`}
-              className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-white px-3 py-2 dark:border-amber-900/40 dark:bg-stone-900/40"
+              className="flex items-center justify-between gap-3 rounded-sm border border-amber-200 bg-white px-3 py-2 dark:border-amber-900/40 dark:bg-stone-900/40"
             >
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <Badge

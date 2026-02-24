@@ -12,10 +12,10 @@ import {
   Users,
   CheckSquare,
   Video,
-  Link2,
-  Sparkles,
+  Link,
+  Sparkle,
   ShieldCheck,
-  Settings,
+  Gear,
   Plus,
 } from "@basicsos/ui";
 import { useAuth } from "./AuthProvider";
@@ -40,9 +40,9 @@ const NAV_COMMANDS = [
   { label: "CRM", href: "/crm", Icon: Users, color: "text-blue-600" },
   { label: "Tasks", href: "/tasks", Icon: CheckSquare, color: "text-emerald-600" },
   { label: "Meetings", href: "/meetings", Icon: Video, color: "text-violet-600" },
-  { label: "Hub", href: "/hub", Icon: Link2, color: "text-rose-600" },
-  { label: "Assistant", href: "/assistant", Icon: Sparkles, color: "text-primary" },
-  { label: "Settings", href: "/settings", Icon: Settings, color: "text-stone-500" },
+  { label: "Hub", href: "/hub", Icon: Link, color: "text-rose-600" },
+  { label: "Assistant", href: "/assistant", Icon: Sparkle, color: "text-primary" },
+  { label: "Settings", href: "/settings", Icon: Gear, color: "text-stone-500" },
 ] as const;
 
 const CREATE_COMMANDS = [

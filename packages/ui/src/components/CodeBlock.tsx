@@ -37,7 +37,7 @@ export const CodeBlock = ({ label, code, className }: CodeBlockProps): JSX.Eleme
           </Button>
         </div>
       </div>
-      <pre className="overflow-x-auto rounded-lg bg-stone-900 p-4 text-xs text-stone-100 whitespace-pre-wrap break-all">
+      <pre className="overflow-x-auto rounded-sm bg-stone-900 p-4 text-xs text-stone-100 whitespace-pre-wrap break-all">
         {code}
       </pre>
     </div>

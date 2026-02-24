@@ -29,8 +29,8 @@ import {
   PageHeader,
   SectionLabel,
   addToast,
-  Trash2,
-  Edit3,
+  Trash,
+  PencilSimple,
   Plus,
   Hash,
 } from "@basicsos/ui";
@@ -253,7 +253,7 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
                     onClick={() => openEdit(def)}
                     aria-label="Edit field"
                   >
-                    <Edit3 size={13} />
+                    <PencilSimple size={13} />
                   </Button>
                   <Button
                     variant="ghost"
@@ -262,7 +262,7 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
                     onClick={() => setDeleteId(def.id)}
                     aria-label="Delete field"
                   >
-                    <Trash2 size={13} />
+                    <Trash size={13} />
                   </Button>
                 </div>
               </CardContent>

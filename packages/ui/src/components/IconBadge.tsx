@@ -1,11 +1,9 @@
-import type { ComponentType, SVGProps } from "react";
+import type { IconComponent } from "../icons.js";
 import { cn } from "../lib/utils.js";
 
-type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
-
 interface IconBadgeProps {
-  /** Lucide icon component. */
-  Icon: LucideIcon;
+  /** Icon component (e.g. Phosphor icon from @basicsos/ui). */
+  Icon: IconComponent;
   /** Size variant. */
   size?: "sm" | "md" | "lg";
   /** Tailwind bg + text color classes (e.g. `"bg-violet-50 text-violet-600"`). Defaults to stone. */
@@ -29,7 +27,7 @@ export const IconBadge = ({
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-lg",
+        "flex items-center justify-center rounded-sm",
         s.container,
         color,
         className,

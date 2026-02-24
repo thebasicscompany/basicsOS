@@ -19,13 +19,13 @@ import {
   IconBadge,
   SectionLabel,
   addToast,
-  Zap,
+  Lightning,
   CheckSquare,
   Globe,
-  Sparkles,
-  Mail,
+  Sparkle,
+  Envelope,
   Users,
-  MessageSquare,
+  ChatCircle,
 } from "@basicsos/ui";
 import { ActionBuilder } from "../ActionBuilder";
 import type { ActionConfig } from "../action-primitives/index";
@@ -37,10 +37,10 @@ type LucideIconType = typeof CheckSquare;
 const ACTION_META: Record<string, { label: string; Icon: LucideIconType; color: string }> = {
   create_task:   { label: "Create Task",    Icon: CheckSquare, color: "bg-emerald-50 text-emerald-600" },
   call_webhook:  { label: "Call Webhook",   Icon: Globe,       color: "bg-blue-50 text-blue-600" },
-  run_ai_prompt: { label: "Run AI Prompt",  Icon: Sparkles,    color: "bg-violet-50 text-violet-600" },
+  run_ai_prompt: { label: "Run AI Prompt",  Icon: Sparkle,    color: "bg-violet-50 text-violet-600" },
   update_crm:    { label: "Update CRM",     Icon: Users,       color: "bg-sky-50 text-sky-600" },
-  send_email:    { label: "Send Email",     Icon: Mail,        color: "bg-amber-50 text-amber-600" },
-  post_slack:    { label: "Post to Slack",  Icon: MessageSquare, color: "bg-rose-50 text-rose-600" },
+  send_email:    { label: "Send Email",     Icon: Envelope,        color: "bg-amber-50 text-amber-600" },
+  post_slack:    { label: "Post to Slack",  Icon: ChatCircle, color: "bg-rose-50 text-rose-600" },
 };
 
 const formatDate = (date: Date | string | null): string => {
@@ -97,8 +97,8 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
       <div className="space-y-6 animate-pulse">
         <div className="h-8 w-64 rounded bg-stone-200 dark:bg-stone-700" />
         <div className="grid grid-cols-2 gap-6">
-          <div className="h-32 rounded-lg bg-stone-200 dark:bg-stone-700" />
-          <div className="h-32 rounded-lg bg-stone-200 dark:bg-stone-700" />
+          <div className="h-32 rounded-sm bg-stone-200 dark:bg-stone-700" />
+          <div className="h-32 rounded-sm bg-stone-200 dark:bg-stone-700" />
         </div>
       </div>
     );
@@ -138,7 +138,7 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
-              <IconBadge Icon={Zap} size="sm" color="bg-orange-50 text-orange-600" />
+              <IconBadge Icon={Lightning} size="sm" color="bg-orange-50 text-orange-600" />
               <span className="text-sm font-medium text-stone-900 dark:text-stone-100">
                 {triggerConfig?.eventType ? getTriggerLabel(triggerConfig.eventType) : "No trigger set"}
               </span>

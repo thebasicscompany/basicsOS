@@ -7,7 +7,7 @@ import { trpc } from "@/lib/trpc";
 import {
   Button, Badge, PageHeader, Card, Avatar, AvatarFallback, EmptyState, Users,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  addToast, Trash2,
+  addToast, Trash,
 } from "@basicsos/ui";
 import { InviteMemberDialog } from "./InviteMemberDialog";
 import type { UserRole } from "@basicsos/shared";
@@ -65,7 +65,7 @@ const TeamPage = (): JSX.Element => {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-stone-500">Loading\u2026</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
         ) : members.length === 0 ? (
           <EmptyState
             Icon={Users}
@@ -73,7 +73,7 @@ const TeamPage = (): JSX.Element => {
             description="Invite team members using the button above to start collaborating."
           />
         ) : (
-          <div className="divide-y divide-stone-100">
+          <div className="divide-y divide-border">
             {members.map((member) => {
               const isSelf = member.id === me?.userId;
               return (
@@ -86,12 +86,12 @@ const TeamPage = (): JSX.Element => {
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-stone-900">{member.name}</span>
+                        <span className="font-medium text-foreground">{member.name}</span>
                         {isSelf && (
-                          <span className="text-xs text-stone-500">(you)</span>
+                          <span className="text-xs text-muted-foreground">(you)</span>
                         )}
                       </div>
-                      <p className="text-sm text-stone-500">{member.email}</p>
+                      <p className="text-sm text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
 
@@ -129,7 +129,7 @@ const TeamPage = (): JSX.Element => {
                             removeUser.mutate({ userId: member.id });
                         }}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        <Trash className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     )}
                   </div>

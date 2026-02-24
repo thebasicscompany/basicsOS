@@ -17,13 +17,13 @@ import {
   SelectValue,
   addToast,
 } from "@basicsos/ui";
-import { MessageSquare, Mail, Phone, Video } from "@basicsos/ui";
+import { ChatCircle, Envelope, Phone, Video } from "@basicsos/ui";
 
 type ActivityType = "note" | "email" | "call" | "meeting";
 
 const ACTIVITY_ICON: Record<ActivityType, React.ElementType> = {
-  note: MessageSquare,
-  email: Mail,
+  note: ChatCircle,
+  email: Envelope,
   call: Phone,
   meeting: Video,
 };
@@ -107,10 +107,10 @@ function ActivityTimeline({
   return (
     <div className="flex flex-col gap-3">
       {activities.map((a) => {
-        const Icon = ACTIVITY_ICON[a.type as ActivityType] ?? MessageSquare;
+        const Icon = ACTIVITY_ICON[a.type as ActivityType] ?? ChatCircle;
         return (
           <div key={a.id} className="flex gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-700">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-700">
               <Icon className="size-3.5 text-stone-500 dark:text-stone-400" />
             </div>
             <div className="min-w-0 flex-1">

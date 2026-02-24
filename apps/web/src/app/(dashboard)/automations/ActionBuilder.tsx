@@ -57,7 +57,7 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
             return (
               <div
                 key={i}
-                className="flex items-center gap-2 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2"
+                className="flex items-center gap-2 rounded-sm border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2"
               >
                 <span className="text-xs text-stone-400 dark:text-stone-500 w-4 shrink-0 text-right">{i + 1}</span>
                 {primitive ? (
@@ -84,7 +84,7 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
 
       {/* Type picker */}
       {pickerState === "picking" && (
-        <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+        <div className="rounded-sm border border-border bg-card p-3 space-y-2">
           <p className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Choose an action type</p>
           <div className="grid grid-cols-1 gap-2">
             {ACTION_PRIMITIVES.map((primitive) => (
@@ -92,7 +92,7 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
                 key={primitive.type}
                 type="button"
                 onClick={() => handlePickType(primitive.type)}
-                className="flex items-center gap-3 rounded-md border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2.5 text-left hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                className="flex items-center gap-3 rounded-sm border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 px-3 py-2.5 text-left hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               >
                 <IconBadge Icon={primitive.Icon} size="sm" color={primitive.color} />
                 <div>
@@ -110,7 +110,7 @@ export const ActionBuilder = ({ actions, onChange }: Props): JSX.Element => {
 
       {/* Config form */}
       {pickerState === "configuring" && pendingPrimitive && (
-        <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-3 space-y-3">
           <div className="flex items-center gap-2">
             <IconBadge Icon={pendingPrimitive.Icon} size="sm" color={pendingPrimitive.color} />
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{pendingPrimitive.label}</p>

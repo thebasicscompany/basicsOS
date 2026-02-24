@@ -7,15 +7,18 @@ import {
   EmptyState,
   Input,
   cn,
-  ChevronUp,
-  ChevronDown,
+  CaretUp,
+  CaretDown,
   Plus,
   Check,
-  Search,
+  MagnifyingGlass,
   Hash,
   Calendar,
   List,
   Phone,
+  Envelope,
+  Link,
+  ToggleLeft,
 } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 import { addToast } from "@basicsos/ui";
@@ -34,20 +37,21 @@ export interface ColumnDef<T> {
   width?: string;
   align?: "left" | "right";
   editable?: boolean;
-  editType?: "text" | "select" | "multi_select" | "number" | "date" | "boolean" | "url" | "phone" | undefined;
+  editType?: "text" | "select" | "multi_select" | "number" | "date" | "boolean" | "url" | "phone" | "email" | undefined;
   editOptions?: Array<{ label: string; value: string }> | undefined;
   onEdit?: ((rowId: string, value: string) => void) | undefined;
 }
 
 const FIELD_TYPES = [
-  { value: "text", label: "Text", icon: Search },
+  { value: "text", label: "Text", icon: MagnifyingGlass },
   { value: "number", label: "Number", icon: Hash },
   { value: "date", label: "Date", icon: Calendar },
-  { value: "boolean", label: "Checkbox", icon: Check },
+  { value: "boolean", label: "Checkbox", icon: ToggleLeft },
   { value: "select", label: "Select", icon: List },
   { value: "multi_select", label: "Multi-select", icon: List },
-  { value: "url", label: "URL", icon: ChevronDown },
+  { value: "url", label: "URL", icon: Link },
   { value: "phone", label: "Phone", icon: Phone },
+  { value: "email", label: "Email", icon: Envelope },
 ] as const;
 
 type FieldType = typeof FIELD_TYPES[number]["value"];
@@ -104,10 +108,22 @@ function AddColumnPopover({
     createField.mutate({ entity, key: labelToKey(label), label, type: newFieldType });
   };
 
+  const calcPos = (width: number, height: number): { top: number; left: number } => {
+    if (!btnRef.current) return { top: 0, left: 0 };
+    const rect = btnRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const spaceBelow = vh - rect.bottom;
+    const top = spaceBelow >= height || spaceBelow >= rect.top
+      ? rect.bottom + 4
+      : Math.max(4, rect.top - height - 4);
+    const left = Math.max(4, Math.min(rect.left, vw - width - 8));
+    return { top, left };
+  };
+
   const openPanel = (): void => {
     if (!btnRef.current) return;
-    const rect = btnRef.current.getBoundingClientRect();
-    setPanelPos({ top: rect.bottom + 4, left: rect.left });
+    setPanelPos(calcPos(224, 320));
     setOpen(true);
     setCreating(false);
     setSearch("");
@@ -138,18 +154,18 @@ function AddColumnPopover({
     !creating ? (
       <div
         ref={panelRef}
-        className="fixed z-[9999] w-56 rounded-lg border border-stone-200 bg-white shadow-xl dark:border-stone-700 dark:bg-stone-900"
+        className="fixed z-[9999] w-56 rounded-sm border border-border bg-popover shadow-xl"
         style={{ top: panelPos.top, left: panelPos.left }}
       >
         {/* Search */}
-        <div className="flex items-center gap-1.5 border-b border-stone-100 px-2 py-1.5 dark:border-stone-800">
-          <Search className="size-3.5 shrink-0 text-stone-400" />
+        <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+          <MagnifyingGlass className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             autoFocus
             placeholder="Search attributes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent text-xs outline-none placeholder:text-stone-400 dark:text-stone-100"
+            className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground text-foreground"
           />
         </div>
 
@@ -162,13 +178,13 @@ function AddColumnPopover({
                 key={col.key}
                 type="button"
                 onClick={() => onToggle(col.key)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent"
               >
                 <span className={cn(
                   "flex size-3.5 shrink-0 items-center justify-center rounded border transition-colors",
                   visible
-                    ? "border-indigo-500 bg-indigo-500 text-white"
-                    : "border-stone-300 dark:border-stone-600",
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input",
                 )}>
                   {visible && <Check className="size-2.5" />}
                 </span>
@@ -177,18 +193,18 @@ function AddColumnPopover({
             );
           })}
           {filtered.length === 0 && (
-            <p className="px-3 py-2 text-xs text-stone-400">No attributes found</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">No attributes found</p>
           )}
         </div>
 
         {/* Divider + Create */}
-        <div className="border-t border-stone-100 py-1 dark:border-stone-800">
+        <div className="border-t border-border py-1">
           <button
             type="button"
-            onClick={() => { setCreating(true); setSearch(""); }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
+            onClick={() => { setPanelPos(calcPos(256, 400)); setCreating(true); setSearch(""); }}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
           >
-            <Plus className="size-3.5 shrink-0 text-stone-400" />
+            <Plus className="size-3.5 shrink-0 text-muted-foreground" />
             <span>Create new field</span>
           </button>
         </div>
@@ -196,15 +212,15 @@ function AddColumnPopover({
     ) : (
       <div
         ref={panelRef}
-        className="fixed z-[9999] w-64 rounded-lg border border-stone-200 bg-white shadow-xl dark:border-stone-700 dark:bg-stone-900"
+        className="fixed z-[9999] w-64 rounded-sm border border-border bg-popover shadow-xl"
         style={{ top: panelPos.top, left: panelPos.left }}
       >
-        <div className="border-b border-stone-100 px-3 py-2 dark:border-stone-800">
-          <p className="text-xs font-medium text-stone-600 dark:text-stone-300">Create field</p>
+        <div className="border-b border-border px-3 py-2">
+          <p className="text-xs font-medium text-foreground">Create field</p>
         </div>
         <div className="flex flex-col gap-3 p-3">
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-stone-500 dark:text-stone-400">Name</label>
+            <label className="text-[11px] font-medium text-muted-foreground">Name</label>
             <Input
               autoFocus
               placeholder="Field name..."
@@ -215,7 +231,7 @@ function AddColumnPopover({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-stone-500 dark:text-stone-400">Type</label>
+            <label className="text-[11px] font-medium text-muted-foreground">Type</label>
             <div className="grid grid-cols-2 gap-1">
               {FIELD_TYPES.map((ft) => {
                 const Icon = ft.icon;
@@ -225,10 +241,10 @@ function AddColumnPopover({
                     type="button"
                     onClick={() => setNewFieldType(ft.value)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors",
+                      "flex items-center gap-1.5 rounded-sm border px-2 py-1.5 text-xs transition-colors",
                       newFieldType === ft.value
-                        ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                        : "border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800",
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-border hover:bg-accent",
                     )}
                   >
                     <Icon className="size-3 shrink-0" />
@@ -239,11 +255,11 @@ function AddColumnPopover({
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-stone-100 px-3 py-2 dark:border-stone-800">
+        <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
           <button
             type="button"
-            onClick={() => setCreating(false)}
-            className="rounded-md px-2 py-1 text-xs text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800"
+            onClick={() => { setPanelPos(calcPos(224, 320)); setCreating(false); }}
+            className="rounded-sm px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
           >
             Back
           </button>
@@ -251,7 +267,7 @@ function AddColumnPopover({
             type="button"
             disabled={!newFieldName.trim() || createField.isPending}
             onClick={handleCreate}
-            className="rounded-md bg-indigo-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-indigo-600 disabled:opacity-50"
+            className="rounded-sm bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {createField.isPending ? "Creating..." : "Create"}
           </button>
@@ -266,7 +282,7 @@ function AddColumnPopover({
         ref={btnRef}
         type="button"
         onClick={openPanel}
-        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+        className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <Plus className="size-3" />
         Add column
@@ -356,15 +372,13 @@ export function CrmRecordTable<T>({
 
   const toggleSelection = useCallback(
     (id: string) => {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        onSelectionChange?.([...next]);
-        return next;
-      });
+      const next = new Set(selectedIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      setSelectedIds(next);
+      onSelectionChange?.([...next]);
     },
-    [onSelectionChange],
+    [selectedIds, onSelectionChange],
   );
 
   const toggleAll = useCallback(() => {
@@ -574,7 +588,7 @@ export function CrmRecordTable<T>({
 
   if (data.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-stone-500">
+      <p className="py-8 text-center text-sm text-muted-foreground">
         {emptyHeading ?? "No records found"}
       </p>
     );
@@ -603,12 +617,12 @@ export function CrmRecordTable<T>({
     >
       <table className="w-full border-collapse text-[13px]">
         {/* Sticky header */}
-        <thead className="sticky top-0 z-20 bg-white dark:bg-stone-950">
+        <thead className="sticky top-0 z-20 bg-background">
           <tr>
             {/* Checkbox header */}
             {onSelectionChange && (
               <th
-                className="w-9 border-b border-stone-100 px-2 py-0 dark:border-stone-800"
+                className="w-9 border-b border-border px-2 py-0"
                 style={{ width: 36 }}
               >
                 <div className="flex h-9 items-center justify-center">
@@ -616,7 +630,7 @@ export function CrmRecordTable<T>({
                     type="checkbox"
                     checked={selectedIds.size === data.length && data.length > 0}
                     onChange={toggleAll}
-                    className="size-3.5 rounded border-stone-300 accent-indigo-500 dark:border-stone-600"
+                    className="size-3.5 rounded border-input accent-primary"
                   />
                 </div>
               </th>
@@ -632,8 +646,8 @@ export function CrmRecordTable<T>({
                 <th
                   key={col.key}
                   className={cn(
-                    "border-b border-stone-100 px-3 py-0 text-left dark:border-stone-800",
-                    isFirst && "sticky left-0 z-10 bg-white dark:bg-stone-950",
+                    "border-b border-border px-3 py-0 text-left",
+                    isFirst && "sticky left-0 z-10 bg-background",
                     col.sortable && onSort && "cursor-pointer select-none",
                   )}
                   style={isFirst ? { minWidth: 220, width: 220 } : col.width ? { width: col.width } : undefined}
@@ -641,16 +655,16 @@ export function CrmRecordTable<T>({
                 >
                   <div
                     className={cn(
-                      "flex h-9 items-center gap-1.5 text-xs font-medium text-stone-500",
+                      "flex h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground",
                       col.align === "right" && "justify-end",
                     )}
                   >
-                    {Icon && <Icon className="size-3.5 shrink-0 text-stone-400" />}
+                    {Icon && <Icon className="size-3.5 shrink-0 text-muted-foreground" />}
                     <span>{col.label}</span>
                     {col.sortable && isActive && (
                       sortDir === "asc"
-                        ? <ChevronUp className="size-3 shrink-0 text-stone-500" />
-                        : <ChevronDown className="size-3 shrink-0 text-stone-500" />
+                        ? <ChevronUp className="size-3 shrink-0 text-muted-foreground" />
+                        : <CaretDown className="size-3 shrink-0 text-muted-foreground" />
                     )}
                   </div>
                 </th>
@@ -658,7 +672,7 @@ export function CrmRecordTable<T>({
             })}
 
             {/* Add column — inline popover */}
-            <th className="border-b border-stone-100 px-2 py-0 dark:border-stone-800">
+            <th className="border-b border-border px-2 py-0">
               <div className="flex h-9 items-center">
                 {entity && onToggleColumn ? (
                   <AddColumnPopover
@@ -669,7 +683,7 @@ export function CrmRecordTable<T>({
                     onFieldCreated={onFieldCreated ?? (() => undefined)}
                   />
                 ) : (
-                  <span className="flex items-center gap-1 px-2 py-1 text-xs text-stone-300 dark:text-stone-600">
+                  <span className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground/40">
                     <Plus className="size-3" />
                     Add column
                   </span>
@@ -689,10 +703,10 @@ export function CrmRecordTable<T>({
               <tr
                 key={rowId}
                 className={cn(
-                  "group border-b border-stone-100 transition-colors dark:border-stone-800",
+                  "group border-b border-border transition-colors",
                   isRowSelected
-                    ? "bg-indigo-50/60 dark:bg-indigo-950/30"
-                    : "hover:bg-stone-50 dark:hover:bg-stone-900",
+                    ? "bg-primary/5"
+                    : "hover:bg-accent/50",
                 )}
                 onContextMenu={(e) => {
                   if (!contextMenuItems) return;
@@ -713,7 +727,7 @@ export function CrmRecordTable<T>({
                         checked={isRowSelected}
                         onChange={() => toggleSelection(rowId)}
                         className={cn(
-                          "size-3.5 rounded border-stone-300 accent-indigo-500 transition-opacity dark:border-stone-600",
+                          "size-3.5 rounded border-input accent-primary transition-opacity",
                           isRowSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                         )}
                       />
@@ -740,8 +754,8 @@ export function CrmRecordTable<T>({
                         "px-3 py-0",
                         isFirst && "sticky left-0 z-10",
                         isFirst && (isRowSelected
-                          ? "bg-indigo-50/60 dark:bg-indigo-950/30"
-                          : "bg-white group-hover:bg-stone-50 dark:bg-stone-950 dark:group-hover:bg-stone-900"),
+                          ? "bg-primary/5"
+                          : "bg-background group-hover:bg-accent/50"),
                         col.align === "right" && "text-right",
                         isFirst && onRowClick && "cursor-pointer",
                         !isFirst && isEditable && !isCellEditing && "cursor-text",
@@ -767,9 +781,9 @@ export function CrmRecordTable<T>({
                         className={cn(
                           "flex h-9 items-center",
                           col.align === "right" && "justify-end",
-                          !isFirst && isEditable && !isCellEditing && "rounded ring-inset transition-shadow hover:ring-1 hover:ring-stone-200 dark:hover:ring-stone-700",
-                          !isFirst && isEditable && isCellSelected && !isCellEditing && "ring-2 ring-indigo-400",
-                          !isFirst && isEditable && isCellEditing && "ring-2 ring-indigo-400/40",
+                          !isFirst && isEditable && !isCellEditing && "rounded ring-inset transition-shadow hover:ring-1 hover:ring-border",
+                          !isFirst && isEditable && isCellSelected && !isCellEditing && "ring-2 ring-primary",
+                          !isFirst && isEditable && isCellEditing && "ring-2 ring-primary/40",
                         )}
                       >
                         {col.render(row)}
@@ -790,7 +804,7 @@ export function CrmRecordTable<T>({
           <tr>
             {onSelectionChange && <td className="py-0" style={{ width: 36 }} />}
             <td className="px-3 py-1.5" colSpan={1}>
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-muted-foreground">
                 {data.length} {data.length === 1 ? "record" : "records"}
               </span>
             </td>
@@ -813,7 +827,7 @@ export function CrmRecordTable<T>({
               width: Math.max(portalRect.width, 200),
               zIndex: 9999,
             }}
-            className="rounded-md border-2 border-indigo-400 shadow-lg bg-white dark:bg-stone-900"
+            className="rounded-sm border-2 border-primary shadow-lg bg-card"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <CellEditor
@@ -832,7 +846,7 @@ export function CrmRecordTable<T>({
       {/* Context menu */}
       {ctxMenu && contextMenuItems && (
         <div
-          className="fixed z-50 min-w-[160px] rounded-lg border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-700 dark:bg-stone-900"
+          className="fixed z-50 min-w-[160px] rounded-sm border border-border bg-popover p-1 shadow-lg"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
         >
           {contextMenuItems(ctxMenu.row).map((item) => (
@@ -840,7 +854,7 @@ export function CrmRecordTable<T>({
               key={item.label}
               type="button"
               className={cn(
-                "flex w-full items-center rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-stone-100 dark:hover:bg-stone-800",
+                "flex w-full items-center rounded-sm px-2 py-1.5 text-[13px] transition-colors hover:bg-accent",
                 item.destructive && "text-red-600 dark:text-red-400",
               )}
               onClick={() => {
@@ -913,8 +927,8 @@ const CellEditor = forwardRef(function CellEditor<T>(
           className={cn(
             "flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors",
             isTrue
-              ? "bg-indigo-500 text-white"
-              : "bg-stone-100 text-stone-600 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-stone-800 dark:text-stone-300",
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
           )}
         >
           <Check className="size-3" />
@@ -927,8 +941,8 @@ const CellEditor = forwardRef(function CellEditor<T>(
           className={cn(
             "flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors",
             !isTrue
-              ? "bg-stone-500 text-white"
-              : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300",
+              ? "bg-secondary text-secondary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80",
           )}
           onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
         >
@@ -952,7 +966,7 @@ const CellEditor = forwardRef(function CellEditor<T>(
           if (e.key === "Escape") onCancel();
         }}
         autoFocus
-        className="w-full rounded-sm border-0 bg-transparent px-2 py-1.5 text-[13px] outline-none dark:text-stone-100"
+        className="w-full rounded-sm border-0 bg-transparent px-2 py-1.5 text-[13px] text-foreground outline-none"
       >
         <option value="">— none —</option>
         {col.editOptions.map((opt) => (
@@ -981,13 +995,13 @@ const CellEditor = forwardRef(function CellEditor<T>(
               key={opt.value}
               type="button"
               onClick={toggle}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800"
+              className="flex items-center gap-2 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-accent"
             >
               <span className={cn(
                 "flex size-3.5 shrink-0 items-center justify-center rounded border transition-colors",
                 isChecked
-                  ? "border-indigo-500 bg-indigo-500 text-white"
-                  : "border-stone-300 dark:border-stone-600",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input",
               )}>
                 {isChecked && <Check className="size-2.5" />}
               </span>
@@ -995,18 +1009,18 @@ const CellEditor = forwardRef(function CellEditor<T>(
             </button>
           );
         })}
-        <div className="flex justify-end gap-1 border-t border-stone-100 px-2 py-1.5 dark:border-stone-800">
+        <div className="flex justify-end gap-1 border-t border-border px-2 py-1.5">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded px-2 py-0.5 text-xs text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800"
+            className="rounded px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={() => onCommit(multiSelectedRef.current.join(","))}
-            className="rounded bg-indigo-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-indigo-600"
+            className="rounded bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             Apply
           </button>
@@ -1015,10 +1029,13 @@ const CellEditor = forwardRef(function CellEditor<T>(
     );
   }
 
-  // Text, number, date, url, phone
+  // Text, number, date, url, phone, email
   const inputType =
     col.editType === "number" ? "number" :
-    col.editType === "date" ? "date" : "text";
+    col.editType === "date" ? "date" :
+    col.editType === "url" ? "url" :
+    col.editType === "email" ? "email" :
+    col.editType === "phone" ? "tel" : "text";
 
   // When opened via printable key, seed value = initialKey and cursor at end
   const defaultValue = initialKey !== undefined ? initialKey : seedValue;

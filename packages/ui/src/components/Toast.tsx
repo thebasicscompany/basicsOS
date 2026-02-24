@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
-import { X } from "lucide-react";
+import { X } from "../icons.js";
 import { cn } from "../lib/utils.js";
 
 export const ToastProvider = ToastPrimitive.Provider;
@@ -24,7 +24,7 @@ export const ToastViewport = forwardRef<
 ToastViewport.displayName = ToastPrimitive.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between overflow-hidden rounded-lg p-4 transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between overflow-hidden rounded-sm p-4 transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
@@ -52,7 +52,7 @@ export const ToastAction = forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-stone-200 dark:border-stone-700 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-stone-100 dark:hover:bg-stone-700 focus:outline-none",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-stone-200 dark:border-stone-700 bg-transparent px-3 text-sm font-medium transition-colors hover:bg-stone-100 dark:hover:bg-stone-700 focus:outline-none",
       className,
     )}
     {...props}
@@ -67,7 +67,7 @@ export const ToastClose = forwardRef<
   <ToastPrimitive.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-stone-500 dark:text-stone-400 opacity-0 transition-opacity hover:text-stone-900 dark:hover:text-stone-100 focus:opacity-100 focus:outline-none group-hover:opacity-100",
+      "absolute right-2 top-2 rounded-sm p-1 text-stone-500 dark:text-stone-400 opacity-0 transition-opacity hover:text-stone-900 dark:hover:text-stone-100 focus:opacity-100 focus:outline-none group-hover:opacity-100",
       className,
     )}
     {...props}

@@ -27,7 +27,7 @@ const AdminLayout = ({
   return (
     <div>
       <header className="mb-6">
-        <h2 className="text-2xl font-semibold font-serif tracking-tight text-stone-900 dark:text-stone-100">Admin Panel</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Admin Panel</h2>
         <Tabs value={pathname} className="mt-3">
           <TabsList variant="underline" className="w-full overflow-x-auto">
             {ADMIN_TABS.map((tab) => (

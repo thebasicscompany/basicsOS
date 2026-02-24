@@ -17,7 +17,7 @@ import {
   Switch,
   EmptyState,
   PageHeader,
-  Zap,
+  Lightning,
   Plus,
   addToast,
 } from "@basicsos/ui";
@@ -80,7 +80,7 @@ const AutomationsPage = (): JSX.Element => {
         </Card>
       ) : automationList.length === 0 ? (
         <EmptyState
-          Icon={Zap}
+          Icon={Lightning}
           heading="No automations yet"
           description="Describe what you want to automate in plain English, or build one step by step."
           action={

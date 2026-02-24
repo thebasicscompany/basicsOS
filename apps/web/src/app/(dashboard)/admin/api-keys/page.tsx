@@ -8,7 +8,7 @@ import {
   Button, Badge, Input, Label,
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
   addToast, PageHeader, Card, CodeBlock, InlineCode,
-  Copy, Trash2, Plus, Check,
+  Copy, Trash, Plus, Check,
 } from "@basicsos/ui";
 
 type CreatedKey = { id: string; name: string; key: string; keyPrefix: string };
@@ -107,7 +107,7 @@ const NewKeyReveal = ({ createdKey, onDismiss }: { createdKey: CreatedKey; onDis
     <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
       Key created — copy it now. You won&apos;t be able to see it again.
     </p>
-    <div className="mt-3 flex items-center gap-2 rounded-lg bg-white dark:bg-stone-800 p-3 ring-1 ring-stone-200 dark:ring-stone-700/50">
+    <div className="mt-3 flex items-center gap-2 rounded-sm bg-white dark:bg-stone-800 p-3 ring-1 ring-stone-200 dark:ring-stone-700/50">
       <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-200">{createdKey.key}</code>
       <CopyButton text={createdKey.key} />
     </div>
@@ -200,7 +200,7 @@ const ApiKeysPage = (): JSX.Element => {
                         deleteKey.mutate({ id: key.id });
                     }}
                   >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    <Trash className="h-3.5 w-3.5 text-destructive" />
                   </Button>
                 </div>
               </div>

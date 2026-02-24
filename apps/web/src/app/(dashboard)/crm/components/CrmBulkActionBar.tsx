@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@basicsos/ui";
-import { Trash2 } from "@basicsos/ui";
+import { Trash } from "@basicsos/ui";
 
 interface CrmBulkActionBarProps {
   selectedCount: number;
@@ -36,7 +36,7 @@ export function CrmBulkActionBar({
 
   return (
     <>
-      <div className="sticky bottom-4 z-10 mx-auto flex w-fit items-center gap-3 rounded-lg border border-stone-200 bg-paper px-4 py-2.5 shadow-lg dark:border-stone-700">
+      <div className="sticky bottom-4 z-10 mx-auto flex w-fit items-center gap-3 rounded-sm border border-stone-200 bg-paper px-4 py-2.5 shadow-lg dark:border-stone-700">
         <span className="text-sm font-medium text-foreground">{selectedCount} selected</span>
         <div className="flex items-center gap-1 text-xs">
           {selectedCount < totalCount && (
@@ -47,7 +47,7 @@ export function CrmBulkActionBar({
         <div className="h-4 w-px bg-border" />
         {extraActions}
         <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => setConfirmOpen(true)}>
-          <Trash2 className="size-3" /> Delete
+          <Trash className="size-3" /> Delete
         </Button>
       </div>
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

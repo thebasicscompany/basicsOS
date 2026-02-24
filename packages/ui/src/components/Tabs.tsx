@@ -22,7 +22,7 @@ const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, TabsListProps
         ref={ref}
         className={cn(
           variant === "pill" &&
-            "inline-flex h-9 items-center justify-center rounded-lg bg-stone-100 dark:bg-stone-800 p-1 text-stone-500 dark:text-stone-400",
+            "inline-flex h-9 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-800 p-1 text-stone-500 dark:text-stone-400",
           variant === "underline" &&
             "inline-flex items-center border-b border-stone-100 dark:border-stone-700 bg-transparent gap-0 text-stone-500 dark:text-stone-400",
           className,
@@ -44,7 +44,7 @@ const TabsTrigger = forwardRef<
       ref={ref}
       className={cn(
         variant === "pill" &&
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white dark:data-[state=active]:bg-stone-700 data-[state=active]:text-stone-900 dark:data-[state=active]:text-stone-100 data-[state=active]:shadow-card",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white dark:data-[state=active]:bg-stone-700 data-[state=active]:text-stone-900 dark:data-[state=active]:text-stone-100 data-[state=active]:shadow-card",
         variant === "underline" &&
           "inline-flex items-center justify-center whitespace-nowrap px-3 pb-2.5 pt-2 text-sm font-medium transition-colors border-b-2 border-transparent rounded-none bg-transparent shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary hover:text-stone-700 dark:hover:text-stone-300",
         className,

@@ -11,10 +11,10 @@ import {
   CardHeader,
   CardTitle,
   Button,
-  Bold,
-  Italic,
+  TextB,
+  TextItalic,
   List,
-  ListOrdered,
+  ListNumbers,
 } from "@basicsos/ui";
 
 const AUTOSAVE_MS = 1000;
@@ -87,19 +87,19 @@ export function CrmNotesPanel({ entity, recordId }: CrmNotesPanelProps): JSX.Ele
       </CardHeader>
       <CardContent className="pt-0">
         {isLoading ? (
-          <div className="h-24 animate-pulse rounded-md bg-stone-100" />
+          <div className="h-24 animate-pulse rounded-sm bg-stone-100" />
         ) : (
           <Card className="overflow-hidden border border-stone-200">
             <div className="flex gap-0.5 border-b border-stone-200 px-2 py-1">
               {[
                 {
-                  Icon: Bold,
+                  Icon: TextB,
                   title: "Bold",
                   action: () => editor?.chain().focus().toggleBold().run(),
                   active: () => editor?.isActive("bold") ?? false,
                 },
                 {
-                  Icon: Italic,
+                  Icon: TextItalic,
                   title: "Italic",
                   action: () => editor?.chain().focus().toggleItalic().run(),
                   active: () => editor?.isActive("italic") ?? false,
@@ -111,7 +111,7 @@ export function CrmNotesPanel({ entity, recordId }: CrmNotesPanelProps): JSX.Ele
                   active: () => editor?.isActive("bulletList") ?? false,
                 },
                 {
-                  Icon: ListOrdered,
+                  Icon: ListNumbers,
                   title: "Ordered list",
                   action: () => editor?.chain().focus().toggleOrderedList().run(),
                   active: () => editor?.isActive("orderedList") ?? false,

@@ -4,7 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { TRPCProvider } from "@/providers/TRPCProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
-import { Toaster } from "@basicsos/ui";
+import { ToasterClient } from "@/components/ToasterClient";
 
 const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -38,7 +38,7 @@ const RootLayout = ({
         <TRPCProvider>
           <AuthProvider>
             {children}
-            <Toaster />
+            <ToasterClient />
           </AuthProvider>
         </TRPCProvider>
       </ThemeProvider>

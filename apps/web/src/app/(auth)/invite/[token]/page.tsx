@@ -79,7 +79,7 @@ const InvitePage = ({ params }: InvitePageProps): JSX.Element => {
         </CardHeader>
         <CardContent>
           {error !== null && (
-            <p className="mb-4 rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p className="mb-4 rounded-sm bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
           <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
             <div className="space-y-1.5">

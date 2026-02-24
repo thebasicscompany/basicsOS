@@ -224,7 +224,7 @@ export const customFieldDefs = pgTable(
     entity: text("entity").notNull(), // 'contacts' | 'companies' | 'deals'
     key: text("key").notNull(),
     label: text("label").notNull(),
-    type: text("type").notNull(), // 'text'|'number'|'date'|'boolean'|'select'|'multi_select'|'url'|'phone'
+    type: text("type").notNull(), // 'text'|'number'|'date'|'boolean'|'select'|'multi_select'|'url'|'phone'|'email'
     options: jsonb("options"), // string[] for select/multi_select
     required: boolean("required").notNull().default(false),
     position: integer("position").notNull().default(0),

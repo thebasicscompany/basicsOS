@@ -43,10 +43,10 @@ const BrandingPage = (): JSX.Element => {
             {[1, 2, 3].map((i) => (
               <div key={i} className="space-y-1.5">
                 <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
-                <div className="h-9 w-full rounded-md bg-stone-200 animate-pulse" />
+                <div className="h-9 w-full rounded-sm bg-stone-200 animate-pulse" />
               </div>
             ))}
-            <div className="h-9 w-28 rounded-md bg-stone-200 animate-pulse" />
+            <div className="h-9 w-28 rounded-sm bg-stone-200 animate-pulse" />
           </Card>
         </div>
       </div>
@@ -100,7 +100,7 @@ const BrandingPage = (): JSX.Element => {
                   type="color"
                   value={accentColor}
                   onChange={(e) => setAccentColor(e.target.value)}
-                  className="h-9 w-14 cursor-pointer rounded-lg border border-stone-200"
+                  className="h-9 w-14 cursor-pointer rounded-sm border border-stone-200"
                 />
               </div>
               <p className="text-xs text-stone-500">Hex format: #rrggbb. Applied to sidebar and primary buttons.</p>
@@ -115,7 +115,7 @@ const BrandingPage = (): JSX.Element => {
         {/* Live preview */}
         <div>
           <SectionLabel as="h2" className="mb-3">Preview</SectionLabel>
-          <div className="rounded-lg border border-stone-200 overflow-hidden">
+          <div className="rounded-sm border border-stone-200 overflow-hidden">
             {/* Mini sidebar preview */}
             <div
               className="flex h-64 flex-col border-r bg-stone-200"
@@ -126,10 +126,10 @@ const BrandingPage = (): JSX.Element => {
                 style={{ borderBottomColor: `${accentColor}20` }}
               >
                 {logoUrl ? (
-                  <img src={logoUrl} alt="logo" className="h-7 w-7 rounded-lg object-contain" />
+                  <img src={logoUrl} alt="logo" className="h-7 w-7 rounded-sm object-contain" />
                 ) : (
                   <div
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold text-white"
+                    className="flex h-7 w-7 items-center justify-center rounded-sm text-sm font-bold text-white"
                     style={{ backgroundColor: accentColor }}
                   >
                     {(name || "B")[0]?.toUpperCase()}
@@ -150,7 +150,7 @@ const BrandingPage = (): JSX.Element => {
                 </div>
               ))}
               <div
-                className="mx-3 mt-1 rounded-lg px-2 py-1 text-xs font-medium text-white"
+                className="mx-3 mt-1 rounded-sm px-2 py-1 text-xs font-medium text-white"
                 style={{ backgroundColor: accentColor }}
               >
                 + New Item

@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import type { ReactNode } from "react";
 import { Command } from "cmdk";
-import { Search, X } from "lucide-react";
+import { MagnifyingGlass, X } from "../icons.js";
 import { cn } from "../lib/utils.js";
 
 /* -------------------------------------------------------------------------- */
@@ -37,7 +37,7 @@ export const CommandPalette = ({
       {/* Palette */}
       <Command
         className={cn(
-          "relative w-full max-w-[560px] rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 shadow-lg",
+          "relative w-full max-w-[560px] rounded-sm border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 shadow-lg",
           "animate-in fade-in-0 zoom-in-95 slide-in-from-top-2",
           "flex flex-col overflow-hidden",
         )}
@@ -50,7 +50,7 @@ export const CommandPalette = ({
       >
         {/* Search input */}
         <div className="flex items-center border-b border-stone-100 dark:border-stone-700 px-3">
-          <Search size={16} className="mr-2 shrink-0 text-stone-400 dark:text-stone-500" />
+          <MagnifyingGlass size={16} className="mr-2 shrink-0 text-stone-400 dark:text-stone-500" />
           <Command.Input
             placeholder={placeholder}
             className="flex h-11 w-full bg-transparent text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none"
@@ -58,7 +58,7 @@ export const CommandPalette = ({
           />
           <button
             onClick={() => onOpenChange(false)}
-            className="ml-2 shrink-0 rounded-md p-1 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-600 dark:hover:text-stone-300"
+            className="ml-2 shrink-0 rounded-sm p-1 text-stone-400 dark:text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-600 dark:hover:text-stone-300"
             aria-label="Close"
           >
             <X size={14} />
@@ -129,7 +129,7 @@ export const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemP
       {...(onSelect ? { onSelect: () => onSelect() } : {})}
       {...(disabled ? { disabled: true } : {})}
       className={cn(
-        "flex h-10 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm text-stone-700 dark:text-stone-300",
+        "flex h-10 cursor-pointer items-center gap-2.5 rounded-sm px-2 text-sm text-stone-700 dark:text-stone-300",
         "select-none",
         "data-[selected=true]:bg-stone-100 dark:data-[selected=true]:bg-stone-800 data-[selected=true]:text-stone-900 dark:data-[selected=true]:text-stone-100",
         "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",

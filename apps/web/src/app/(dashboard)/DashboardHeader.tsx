@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   Button,
   Separator,
-  PanelLeft,
+  SidebarIcon,
   Breadcrumb,
   BreadcrumbList,
   BreadcrumbItem,
@@ -55,7 +55,7 @@ export function DashboardHeader({
         onClick={onToggleSidebar}
         aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        <PanelLeft size={18} className={sidebarCollapsed ? "rotate-180" : ""} />
+        <SidebarIcon size={18} className={sidebarCollapsed ? "rotate-180" : ""} />
       </Button>
       <Separator orientation="vertical" className="h-4 bg-border" />
       <Breadcrumb>

@@ -13,7 +13,7 @@ import {
   SectionLabel,
   Copy,
   Check,
-  Loader2,
+  CircleNotch,
 } from "@basicsos/ui";
 
 const CopyButton = ({ text, label = "Copy" }: { text: string; label?: string }): JSX.Element => {
@@ -77,7 +77,7 @@ const GatewayPage = (): JSX.Element => {
             </p>
           </div>
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-stone-400" />
+            <CircleNotch className="h-4 w-4 animate-spin text-stone-400" />
           ) : (
             <Badge variant={configured ? "success" : "secondary"}>
               {configured ? "Connected" : "Not configured"}
@@ -90,7 +90,7 @@ const GatewayPage = (): JSX.Element => {
             {/* Gateway URL */}
             <div>
               <SectionLabel as="p" className="mb-1">Gateway URL</SectionLabel>
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+              <div className="flex items-center gap-2 rounded-sm border border-border bg-muted px-3 py-2">
                 <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-300">{gatewayUrl}</code>
                 <CopyButton text={gatewayUrl} />
               </div>
@@ -99,7 +99,7 @@ const GatewayPage = (): JSX.Element => {
             {/* API Key */}
             <div>
               <SectionLabel as="p" className="mb-1">API Key</SectionLabel>
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+              <div className="flex items-center gap-2 rounded-sm border border-border bg-muted px-3 py-2">
                 <code className="flex-1 break-all font-mono text-xs text-stone-700 dark:text-stone-300">
                   {keyVisible && fullKey ? fullKey : keyPrefix ?? "••••••••••••••••••••••••"}
                 </code>
@@ -120,7 +120,7 @@ const GatewayPage = (): JSX.Element => {
         )}
 
         {!configured && !isLoading && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div className="mt-4 rounded-sm border border-amber-200 bg-amber-50 p-3">
             <p className="text-sm text-amber-800">
               Add <code className="font-mono">BASICOS_API_URL</code> and{" "}
               <code className="font-mono">BASICOS_API_KEY</code> to your <code className="font-mono">.env</code> and
@@ -139,7 +139,7 @@ const GatewayPage = (): JSX.Element => {
             { label: "Text-to-speech", path: "/v1/audio/speech", desc: "Deepgram aura-2" },
             { label: "Speech-to-text", path: "/v1/audio/transcriptions", desc: "Deepgram nova-2" },
           ].map((item) => (
-            <div key={item.path} className="rounded-lg border border-border p-3">
+            <div key={item.path} className="rounded-sm border border-border p-3">
               <p className="text-xs font-medium text-stone-900 dark:text-stone-100">{item.label}</p>
               <code className="mt-0.5 block font-mono text-xs text-stone-500 dark:text-stone-400">{item.path}</code>
               <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">{item.desc}</p>

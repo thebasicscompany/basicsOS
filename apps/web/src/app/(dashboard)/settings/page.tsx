@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Button, Input, Label, Download, addToast, Copy, Check, Switch,
+  Button, Input, Label, DownloadSimple, addToast, Copy, Check, Switch,
   Tabs, TabsList, TabsTrigger, TabsContent, PageHeader, Kbd,
   Card, CodeBlock, Avatar, AvatarFallback, InlineCode,
-  Sparkles, PenLine,
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+  Sparkle, PencilLine,
 } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
@@ -144,7 +145,7 @@ const OverlaySettingsTab = (): JSX.Element => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-muted-foreground" />
+              <Sparkle size={14} className="text-muted-foreground" />
               <span className="text-sm text-foreground">AI Assistant</span>
               <span className="text-xs text-muted-foreground">(tap / double-tap for continuous)</span>
             </div>
@@ -192,20 +193,23 @@ const OverlaySettingsTab = (): JSX.Element => {
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="double-tap-speed" className="text-sm text-foreground">Double-tap speed</Label>
-            <select
-              id="double-tap-speed"
-              value={settings.behavior.doubleTapWindowMs}
-              onChange={(e) => {
-                const updated = { ...settings, behavior: { ...settings.behavior, doubleTapWindowMs: Number(e.target.value) } };
+            <Label className="text-sm text-foreground">Double-tap speed</Label>
+            <Select
+              value={String(settings.behavior.doubleTapWindowMs)}
+              onValueChange={(v) => {
+                const updated = { ...settings, behavior: { ...settings.behavior, doubleTapWindowMs: Number(v) } };
                 save(updated);
               }}
-              className="rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-sm text-foreground"
             >
-              <option value={200}>Fast (200ms)</option>
-              <option value={400}>Normal (400ms)</option>
-              <option value={800}>Slow (800ms)</option>
-            </select>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="200">Fast (200ms)</SelectItem>
+                <SelectItem value="400">Normal (400ms)</SelectItem>
+                <SelectItem value="800">Slow (800ms)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </Card>
@@ -478,7 +482,7 @@ const SettingsPage = (): JSX.Element => {
             <p className="mb-4 text-sm text-muted-foreground">
               Copy this into your MCP config to scope queries to your company data.
             </p>
-            <div className="flex items-center gap-2 rounded-lg bg-muted border border-border px-3 py-2">
+            <div className="flex items-center gap-2 rounded-sm bg-muted border border-border px-3 py-2">
               <code className="flex-1 text-xs font-mono text-foreground select-all">{tenantId}</code>
               <Button
                 variant="ghost"
@@ -527,11 +531,11 @@ const SettingsPage = (): JSX.Element => {
             <div className="space-y-4">
               <Button asChild>
                 <a href="/api/desktop">
-                  <Download size={14} className="mr-1" /> Download Desktop App
+                  <DownloadSimple size={14} className="mr-1" /> Download Desktop App
                 </a>
               </Button>
 
-              <div className="rounded-lg bg-muted border border-border p-4 space-y-2">
+              <div className="rounded-sm bg-muted border border-border p-4 space-y-2">
                 <h3 className="text-sm font-medium text-foreground">Keyboard Shortcuts</h3>
                 <p className="text-sm text-muted-foreground">
                   <Kbd>Ctrl Space</Kbd> — AI assistant (double-tap for continuous listening)
@@ -544,7 +548,7 @@ const SettingsPage = (): JSX.Element => {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-muted border border-border p-4 space-y-2">
+              <div className="rounded-sm bg-muted border border-border p-4 space-y-2">
                 <h3 className="text-sm font-medium text-foreground">Setup</h3>
                 <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                   <li>Download and install the app above</li>

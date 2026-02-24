@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, ChevronUp, ChevronDown, X } from "@basicsos/ui";
+import { Badge, CaretUp, CaretDown, X } from "@basicsos/ui";
 
 interface CrmSortChipProps {
   field: string;
@@ -10,7 +10,7 @@ interface CrmSortChipProps {
 }
 
 export function CrmSortChip({ field, direction, onToggle, onRemove }: CrmSortChipProps): JSX.Element {
-  const Arrow = direction === "asc" ? ChevronUp : ChevronDown;
+  const Arrow = direction === "asc" ? CaretUp : CaretDown;
   return (
     <Badge variant="secondary" className="inline-flex items-center gap-1 px-2 py-0.5 text-xs">
       <button type="button" onClick={onToggle} className="inline-flex items-center gap-1 hover:text-foreground">

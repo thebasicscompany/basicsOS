@@ -11,7 +11,7 @@ import {
   CardContent,
   addToast,
 } from "@basicsos/ui";
-import { Plus, Briefcase, Activity, DollarSign, BarChart3, Users, Building2, Calendar, Download, ChevronDown, AlertCircle, Pencil } from "@basicsos/ui";
+import { Plus, Briefcase, Pulse, CurrencyDollar, ChartBar, Users, Buildings, Calendar, DownloadSimple, CaretDown, WarningCircle, Pencil } from "@basicsos/ui";
 import { CrmRecordTable } from "../components/CrmRecordTable";
 import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
@@ -160,7 +160,7 @@ const DealsPageContent = (): JSX.Element => {
       {
         key: "stage",
         label: "Stage",
-        icon: Activity,
+        icon: Pulse,
         sortable: true,
         sortValue: (r: FlatDeal) => STAGES.indexOf(r.stage as DealStage),
         render: (r: FlatDeal) => {
@@ -180,7 +180,7 @@ const DealsPageContent = (): JSX.Element => {
       {
         key: "value",
         label: "Value",
-        icon: DollarSign,
+        icon: CurrencyDollar,
         sortable: true,
         sortValue: (r: FlatDeal) => Number(r.value ?? 0),
         align: "right",
@@ -194,7 +194,7 @@ const DealsPageContent = (): JSX.Element => {
       {
         key: "probability",
         label: "Prob.",
-        icon: BarChart3,
+        icon: ChartBar,
         sortable: true,
         sortValue: (r: FlatDeal) => r.probability ?? 0,
         render: (r: FlatDeal) => <span className="text-sm tabular-nums">{r.probability ?? 50}%</span>,
@@ -220,7 +220,7 @@ const DealsPageContent = (): JSX.Element => {
       {
         key: "company",
         label: "Company",
-        icon: Building2,
+        icon: Buildings,
         sortable: true,
         sortValue: (r: FlatDeal) => (companyMap.get(r.companyId ?? "") ?? "").toLowerCase(),
         render: (r: FlatDeal) => {
@@ -386,7 +386,7 @@ const DealsPageContent = (): JSX.Element => {
               }
             }}
           >
-            <AlertCircle className="size-3" />
+            <WarningCircle className="size-3" />
             Overdue
             <Badge
               variant={isOverdueFilterActive ? "outline" : "destructive"}
@@ -455,7 +455,7 @@ const DealsPageContent = (): JSX.Element => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                      Move to <ChevronDown className="size-3" />
+                      Move to <CaretDown className="size-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
@@ -470,7 +470,7 @@ const DealsPageContent = (): JSX.Element => {
                   <Pencil className="size-3" /> Edit Field
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExport}>
-                  <Download className="size-3" /> Export CSV
+                  <DownloadSimple className="size-3" /> Export CSV
                 </Button>
               </>
             }

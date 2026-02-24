@@ -21,10 +21,10 @@ import {
   EmptyState,
   addToast,
   cn,
-  Settings,
+  Gear,
   Plus,
   Pencil,
-  Trash2,
+  Trash,
 } from "@basicsos/ui";
 
 const COLOR_OPTIONS = [
@@ -151,7 +151,7 @@ const StageDialog = ({ mode, initial, trigger, onDone }: StageDialogProps): JSX.
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-md border border-stone-200 dark:border-stone-700 p-3">
+          <div className="flex flex-col gap-3 rounded-sm border border-stone-200 dark:border-stone-700 p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-stone-900 dark:text-stone-100">Mark as Won</p>
@@ -282,7 +282,7 @@ const PipelineStagesPage = (): JSX.Element => {
 
       {!isLoading && stages.length === 0 ? (
         <EmptyState
-          Icon={Settings}
+          Icon={Gear}
           heading="No custom stages yet"
           description="Add custom pipeline stages to replace the default Lead / Qualified / Proposal set."
           action={
@@ -353,7 +353,7 @@ const PipelineStagesPage = (): JSX.Element => {
                         className="size-8 text-destructive hover:text-destructive"
                         aria-label="Delete stage"
                       >
-                        <Trash2 size={14} />
+                        <Trash size={14} />
                       </Button>
                     }
                   />

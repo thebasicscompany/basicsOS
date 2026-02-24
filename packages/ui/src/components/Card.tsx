@@ -2,13 +2,13 @@ import { forwardRef } from "react";
 import type { HTMLAttributes } from "react";
 import { cn } from "../lib/utils.js";
 
-/** Standard card: bg-card, border-border, rounded-xl. Tighter default padding; use className="p-6" for a roomier block. */
+/** Standard card: bg-card, border-border, rounded-sm. Tighter default padding; use className="p-6" for a roomier block. */
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-4 rounded-xl border border-border py-4 shadow-sm",
+        "bg-card text-card-foreground flex flex-col gap-4 rounded-sm border border-border py-4 shadow-sm",
         className,
       )}
       {...props}

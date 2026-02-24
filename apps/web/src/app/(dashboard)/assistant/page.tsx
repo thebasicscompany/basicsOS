@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Loader2, Mic, MicOff, Volume2, Button, Textarea, PageHeader, Card } from "@basicsos/ui";
+import { ArrowUp, CircleNotch, Microphone, MicrophoneSlash, SpeakerHigh, Button, Textarea, PageHeader, Card } from "@basicsos/ui";
 
 type Message = {
   id: string;
@@ -260,8 +260,8 @@ const AssistantPage = (): JSX.Element => {
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center gap-3 pt-16 text-center">
-              <h2 className="text-lg font-semibold font-serif text-stone-700 dark:text-stone-300">How can I help?</h2>
-              <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+              <h2 className="text-lg font-semibold text-foreground">How can I help?</h2>
+              <p className="max-w-sm text-sm text-muted-foreground">
                 Ask about your company data, find documents, check tasks, review meeting notes, or
                 get answers from your knowledge base.
               </p>
@@ -294,10 +294,10 @@ const AssistantPage = (): JSX.Element => {
             >
               <div className="group relative">
                 <div
-                  className={`max-w-[75%] rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[75%] rounded-sm px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-stone-900 dark:text-stone-100 border-l-2 border-primary/20"
+                      : "bg-muted text-foreground border-l-2 border-primary/20"
                   }`}
                 >
                   {msg.content}
@@ -305,8 +305,8 @@ const AssistantPage = (): JSX.Element => {
                     <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground" />
                   )}
                   {msg.streaming && !msg.content && (
-                    <span className="flex items-center gap-1.5 text-stone-500 dark:text-stone-400">
-                      <Loader2 size={12} className="animate-spin" /> Thinking...
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <CircleNotch size={12} className="animate-spin" /> Thinking...
                     </span>
                   )}
                 </div>
@@ -316,10 +316,10 @@ const AssistantPage = (): JSX.Element => {
                   <button
                     type="button"
                     onClick={() => void speakMessage(msg.id, msg.content)}
-                    className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-stone-700"
+                    className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-card border border-border text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-foreground"
                     title={speakingId === msg.id ? "Stop" : "Listen"}
                   >
-                    <Volume2
+                    <SpeakerHigh
                       size={11}
                       className={speakingId === msg.id ? "text-primary" : ""}
                     />
@@ -345,7 +345,7 @@ const AssistantPage = (): JSX.Element => {
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             rows={2}
             disabled={isStreaming}
-            className="flex-1 resize-none rounded-xl bg-muted min-h-0"
+            className="flex-1 resize-none rounded-sm bg-muted min-h-0"
           />
 
           {/* Mic button — only shown when Web Speech API is available */}
@@ -357,7 +357,7 @@ const AssistantPage = (): JSX.Element => {
               onClick={handleMicClick}
               title={isListening ? "Stop listening" : "Voice input"}
             >
-              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+              {isListening ? <MicrophoneSlash size={16} /> : <Microphone size={16} />}
             </Button>
           )}
 

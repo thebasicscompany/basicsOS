@@ -1859,7 +1859,7 @@ const remindersSubRouter = router({
 // ---------------------------------------------------------------------------
 
 const ENTITY_ENUM = z.enum(["contacts", "companies", "deals"]);
-const FIELD_TYPE_ENUM = z.enum(["text", "number", "date", "boolean", "select", "multi_select", "url", "phone"]);
+const FIELD_TYPE_ENUM = z.enum(["text", "number", "date", "boolean", "select", "multi_select", "url", "phone", "email"]);
 
 const customFieldDefsSubRouter = router({
   list: protectedProcedure

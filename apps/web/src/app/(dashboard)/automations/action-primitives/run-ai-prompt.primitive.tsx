@@ -1,6 +1,6 @@
 "use client";
 
-import { Label, Textarea, Sparkles } from "@basicsos/ui";
+import { Label, Textarea, Sparkle } from "@basicsos/ui";
 import type { ActionConfig, ActionPrimitive } from "./types";
 
 const Form = ({ config, onChange }: { config: ActionConfig; onChange: (c: ActionConfig) => void }): JSX.Element => (
@@ -33,7 +33,7 @@ export const runAiPromptPrimitive: ActionPrimitive = {
   type: "run_ai_prompt",
   label: "Run AI Prompt",
   description: "Send a prompt to the AI and capture the response",
-  Icon: Sparkles,
+  Icon: Sparkle,
   color: "bg-violet-50 text-violet-600",
   defaultConfig: { prompt: "", systemContext: "" },
   Form,

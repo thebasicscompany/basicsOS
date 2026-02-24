@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, BookOpen, Users, CheckSquare, Video, Link2, Sparkles, Volume2, VolumeX, Check, Download, CodeBlock, Card, CardContent } from "@basicsos/ui";
+import { Button, BookOpen, Users, CheckSquare, Video, Link, Sparkle, SpeakerHigh, SpeakerSlash, Check, DownloadSimple, CodeBlock, Card, CardContent } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import type { ComponentType, SVGProps } from "react";
 
@@ -27,11 +27,11 @@ const CLAUDE_CONFIG = `{
 // Tip: find your Tenant ID in Settings → MCP Connection`;
 
 const STEPS: { id: number; title: string; Icon: LucideIcon }[] = [
-  { id: 0, title: "Welcome", Icon: Sparkles },
+  { id: 0, title: "Welcome", Icon: Sparkle },
   { id: 1, title: "Your Profile", Icon: Users },
   { id: 2, title: "Tour", Icon: BookOpen },
-  { id: 3, title: "Connect AI", Icon: Sparkles },
-  { id: 4, title: "Desktop App", Icon: Download },
+  { id: 3, title: "Connect AI", Icon: Sparkle },
+  { id: 4, title: "Desktop App", Icon: DownloadSimple },
 ];
 
 const NARRATION: string[] = [
@@ -47,8 +47,8 @@ const MODULES: { Icon: LucideIcon; name: string; desc: string }[] = [
   { Icon: Users, name: "CRM", desc: "Contacts, companies, and deals" },
   { Icon: CheckSquare, name: "Tasks", desc: "Track work with a kanban board" },
   { Icon: Video, name: "Meetings", desc: "AI-powered meeting summaries" },
-  { Icon: Link2, name: "Hub", desc: "Links, integrations, and tools" },
-  { Icon: Sparkles, name: "AI Assistant", desc: "Ask questions about company data" },
+  { Icon: Link, name: "Hub", desc: "Links, integrations, and tools" },
+  { Icon: Sparkle, name: "AI Assistant", desc: "Ask questions about company data" },
 ];
 
 const isTTSSupported = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -142,7 +142,7 @@ const OnboardingPage = (): JSX.Element => {
             onClick={() => setTtsEnabled((v) => !v)}
             className="ml-auto h-8 w-8 text-stone-500 hover:text-stone-700"
           >
-            {ttsEnabled ? <Volume2 size={18} className={isSpeaking ? "text-primary" : ""} /> : <VolumeX size={18} />}
+            {ttsEnabled ? <SpeakerHigh size={18} className={isSpeaking ? "text-primary" : ""} /> : <SpeakerSlash size={18} />}
           </Button>
         )}
       </div>
@@ -153,8 +153,8 @@ const OnboardingPage = (): JSX.Element => {
         {step === 0 && (
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
-                <Sparkles size={32} />
+              <div className="flex h-16 w-16 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
+                <Sparkle size={32} />
               </div>
             </div>
             <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Welcome to Basics OS</h1>
@@ -168,12 +168,12 @@ const OnboardingPage = (): JSX.Element => {
         {step === 1 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
+<div className="flex h-10 w-10 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
               <Users size={20} />
               </div>
               <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">Your Profile</h2>
             </div>
-            <div className="rounded-lg bg-white dark:bg-stone-800 p-4 ring-1 ring-stone-200 dark:ring-stone-700/50">
+            <div className="rounded-sm bg-white dark:bg-stone-800 p-4 ring-1 ring-stone-200 dark:ring-stone-700/50">
               <p className="text-sm font-medium text-stone-700 dark:text-stone-300">{user?.name ?? "\u2014"}</p>
               <p className="text-sm text-stone-500 dark:text-stone-400">{user?.email ?? "\u2014"}</p>
             </div>
@@ -186,7 +186,7 @@ const OnboardingPage = (): JSX.Element => {
         {step === 2 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
+<div className="flex h-10 w-10 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
               <BookOpen size={20} />
               </div>
               <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">Module Tour</h2>
@@ -194,8 +194,8 @@ const OnboardingPage = (): JSX.Element => {
             <p className="text-sm text-stone-500 dark:text-stone-400">Basics OS includes these built-in modules:</p>
             <div className="grid grid-cols-2 gap-3">
               {MODULES.map((m) => (
-                <div key={m.name} className="rounded-lg bg-white dark:bg-stone-800 p-3 ring-1 ring-stone-200 dark:ring-stone-700/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
+                <div key={m.name} className="rounded-sm bg-white dark:bg-stone-800 p-3 ring-1 ring-stone-200 dark:ring-stone-700/50">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400">
                     <m.Icon size={16} />
                   </div>
                   <div className="mt-2 text-sm font-medium text-stone-800 dark:text-stone-200">{m.name}</div>
@@ -209,8 +209,8 @@ const OnboardingPage = (): JSX.Element => {
         {step === 3 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-200 text-stone-500">
-                <Sparkles size={20} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-stone-200 text-stone-500">
+                <Sparkle size={20} />
               </div>
               <h2 className="text-xl font-bold text-stone-900">Connect AI Tools</h2>
             </div>
@@ -228,8 +228,8 @@ const OnboardingPage = (): JSX.Element => {
         {step === 4 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-200 text-stone-500">
-                <Download size={20} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-stone-200 text-stone-500">
+                <DownloadSimple size={20} />
               </div>
               <h2 className="text-xl font-bold text-stone-900">Desktop App</h2>
             </div>
@@ -242,7 +242,7 @@ const OnboardingPage = (): JSX.Element => {
             </p>
             <Button asChild>
               <a href="/api/desktop">
-                <Download size={14} className="mr-1" /> Download Desktop App
+                <DownloadSimple size={14} className="mr-1" /> Download Desktop App
               </a>
             </Button>
             <p className="text-sm text-stone-500">

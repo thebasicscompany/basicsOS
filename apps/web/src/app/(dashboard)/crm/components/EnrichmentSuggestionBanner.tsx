@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, Button, Badge, Sparkles, X, addToast } from "@basicsos/ui";
+import { Card, CardContent, Button, Badge, Sparkle, X, addToast } from "@basicsos/ui";
 
 interface EnrichmentSuggestionBannerProps {
   contactId: string;
@@ -42,7 +42,7 @@ export const EnrichmentSuggestionBanner = ({
   return (
     <Card className="mb-6 border-primary/30 bg-primary/5">
       <CardContent className="flex items-center gap-3 py-3">
-        <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+        <Sparkle className="h-4 w-4 shrink-0 text-primary" />
         <div className="flex flex-1 flex-wrap items-center gap-2 text-sm text-stone-700">
           <span>Suggested company:</span>
           <span className="font-semibold text-stone-900">{primarySuggestion.name}</span>

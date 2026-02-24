@@ -2,7 +2,7 @@
 
 import { forwardRef } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { IconComponent } from "../icons.js";
 import { cn } from "../lib/utils.js";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./Tooltip.js";
 import { Avatar, AvatarFallback } from "./Avatar.js";
@@ -11,7 +11,7 @@ export interface IconRailItem {
   id: string;
   label: string;
   href: string;
-  Icon: LucideIcon;
+  Icon: IconComponent;
   /** Active icon color class, e.g. "text-amber-600" */
   accentColor?: string;
   /** Active background class, e.g. "bg-amber-50" */
@@ -40,7 +40,7 @@ const RailButton = forwardRef<
   <button
     ref={ref}
     className={cn(
-      "relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+      "relative flex h-10 w-10 items-center justify-center rounded-sm transition-colors",
       active
         ? cn(accentBg ?? "bg-primary/15", accentColor ?? "text-primary")
         : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-700 dark:hover:text-stone-200",
@@ -89,7 +89,7 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
         {header && <div className="mb-3">{header}</div>}
 
         {/* Module icons */}
-        <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto px-1.5">
+        <nav className="flex flex-1 flex-col items-center gap-1 overflow-y-auto px-1.5 scrollbar-thin">
           {items.map((item) => (
             <Tooltip key={item.id}>
               <TooltipTrigger asChild>

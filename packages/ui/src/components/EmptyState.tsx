@@ -27,7 +27,7 @@ export const EmptyState = ({
   >
     <div
       className={cn(
-        "flex h-12 w-12 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400 mb-4",
+        "flex h-12 w-12 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400 mb-4",
         iconClassName,
       )}
     >

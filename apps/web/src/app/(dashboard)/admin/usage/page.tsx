@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import {
   Card, CardContent, CardHeader, CardTitle, PageHeader,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-  EmptyState, BarChart3,
+  EmptyState, ChartBar,
 } from "@basicsos/ui";
 
 // Next.js App Router requires default export — framework exception
@@ -74,7 +74,7 @@ const UsagePage = (): JSX.Element => {
           </div>
         ) : (stats?.recentCalls.length ?? 0) === 0 ? (
           <EmptyState
-            Icon={BarChart3}
+            Icon={ChartBar}
             heading="No data yet"
             description="AI usage will appear here once your team starts using AI features."
           />

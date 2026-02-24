@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { addToast, Switch, PageHeader, Card, BookOpen, Users, CheckSquare, Video, Link2, Bot, Zap } from "@basicsos/ui";
+import { addToast, Switch, PageHeader, Card, BookOpen, Users, CheckSquare, Video, Link, Robot, Lightning } from "@basicsos/ui";
 import type { ComponentType, SVGProps } from "react";
 
 type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
@@ -11,9 +11,9 @@ const MODULE_ICONS: Record<string, { Icon: LucideIcon }> = {
   crm: { Icon: Users },
   tasks: { Icon: CheckSquare },
   meetings: { Icon: Video },
-  hub: { Icon: Link2 },
-  "ai-employees": { Icon: Bot },
-  automations: { Icon: Zap },
+  hub: { Icon: Link },
+  "ai-employees": { Icon: Robot },
+  automations: { Icon: Lightning },
 };
 
 // Next.js App Router requires default export — framework exception
@@ -44,7 +44,7 @@ const ModulesPage = (): JSX.Element => {
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between px-6 py-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-9 w-9 rounded-lg bg-stone-200 animate-pulse" />
+                  <div className="h-9 w-9 rounded-sm bg-stone-200 animate-pulse" />
                   <div className="space-y-2">
                     <div className="h-4 w-24 rounded bg-stone-200 animate-pulse" />
                     <div className="h-3 w-40 rounded bg-stone-200 animate-pulse" />
@@ -62,7 +62,7 @@ const ModulesPage = (): JSX.Element => {
                   {(() => {
                     const ModuleIcon = MODULE_ICONS[module.name]?.Icon ?? BookOpen;
                     return (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-200 text-stone-500">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-stone-200 text-stone-500">
                         <ModuleIcon size={16} />
                       </div>
                     );

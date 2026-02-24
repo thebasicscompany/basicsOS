@@ -16,7 +16,7 @@ import {
   DialogFooter,
   addToast,
 } from "@basicsos/ui";
-import { Globe, Briefcase, Calendar, Users, Trash2 } from "@basicsos/ui";
+import { Globe, Briefcase, Calendar, Users, Trash } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { CrmRelatedList } from "../../components/CrmRelatedList";
@@ -134,7 +134,7 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
 function CompanyDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
+      <div className="h-8 w-48 animate-pulse rounded-sm bg-stone-200 dark:bg-stone-700" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <Card>
           <CardContent className="py-6">
@@ -176,7 +176,7 @@ function DeleteCompanyButton({
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Trash2 size={14} className="mr-1" /> Delete
+        <Trash size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

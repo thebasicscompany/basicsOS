@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Badge, ExternalLink, Phone } from "@basicsos/ui";
+import { Badge, ArrowSquareOut, Phone } from "@basicsos/ui";
 
 interface CrmCustomFieldsSectionProps {
   entity: "contacts" | "companies" | "deals";
@@ -67,7 +67,7 @@ function formatValue(
         className="flex items-center gap-1 text-sm text-primary hover:underline"
       >
         {href.replace(/^https?:\/\//, "").slice(0, 30)}
-        <ExternalLink size={12} />
+        <ArrowSquareOut size={12} />
       </a>
     );
   }

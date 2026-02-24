@@ -23,7 +23,7 @@ export const SidebarPanel = forwardRef<HTMLDivElement, SidebarPanelProps>(
       {...props}
     >
       {header && <div className="px-4 py-4">{header}</div>}
-      <div className="flex-1 overflow-y-auto">{children}</div>
+      <div className="flex-1 overflow-y-auto scrollbar-thin">{children}</div>
       {footer && (
         <div className="px-4 pt-4 pb-3">{footer}</div>
       )}

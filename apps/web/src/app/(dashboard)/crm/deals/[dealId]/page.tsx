@@ -18,7 +18,7 @@ import {
   cn,
   Input,
 } from "@basicsos/ui";
-import { Building2, Users, Calendar, DollarSign, BarChart3, Activity, Trash2, Bell } from "@basicsos/ui";
+import { Buildings, Users, Calendar, CurrencyDollar, ChartBar, Pulse, Trash, Bell } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { CrmCustomFieldsSection } from "../../components/CrmCustomFieldsSection";
@@ -54,9 +54,9 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
   }
 
   const fields = [
-    { icon: DollarSign, label: "Value", value: formatCurrency(Number(deal.value ?? 0)) },
-    { icon: BarChart3, label: "Probability", value: `${deal.probability ?? 50}%` },
-    { icon: Activity, label: "Stage", value: deal.stage.charAt(0).toUpperCase() + deal.stage.slice(1) },
+    { icon: CurrencyDollar, label: "Value", value: formatCurrency(Number(deal.value ?? 0)) },
+    { icon: ChartBar, label: "Probability", value: `${deal.probability ?? 50}%` },
+    { icon: Pulse, label: "Stage", value: deal.stage.charAt(0).toUpperCase() + deal.stage.slice(1) },
     ...(deal.closeDate
       ? [{ icon: Calendar, label: "Close Date", value: new Date(deal.closeDate).toLocaleDateString() }]
       : []),
@@ -64,7 +64,7 @@ const DealDetailPage = ({ params }: DealDetailPageProps): JSX.Element => {
       ? [{ icon: Users, label: "Contact", value: contactData.name, href: `/crm/contacts/${contactData.id}` }]
       : []),
     ...(companyData
-      ? [{ icon: Building2, label: "Company", value: companyData.name, href: `/crm/companies/${companyData.id}` }]
+      ? [{ icon: Buildings, label: "Company", value: companyData.name, href: `/crm/companies/${companyData.id}` }]
       : []),
   ];
 
@@ -155,7 +155,7 @@ function StageProgressBar({ currentStage }: { currentStage: string }): JSX.Eleme
 function DealDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
+      <div className="h-8 w-48 animate-pulse rounded-sm bg-stone-200 dark:bg-stone-700" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <Card>
           <CardContent className="py-6">
@@ -237,7 +237,7 @@ function SetReminderButton({ dealId }: { dealId: string }): JSX.Element {
                 placeholder="Add a note for this reminder..."
                 maxLength={500}
                 rows={3}
-                className="w-full rounded-md border border-stone-200 bg-background px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ring dark:border-stone-700"
+                className="w-full rounded-sm border border-stone-200 bg-background px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-ring dark:border-stone-700"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ function DeleteDealButton({
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Trash2 size={14} className="mr-1" /> Delete
+        <Trash size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

@@ -45,7 +45,7 @@ export const AppShell = forwardRef<HTMLDivElement, AppShellProps>(
         {sidebar}
         <main
           className={cn(
-            "flex-1 overflow-y-auto rounded-xl bg-stone-100 dark:bg-stone-900",
+            "flex-1 overflow-y-auto rounded-sm bg-stone-100 dark:bg-stone-900",
             contentPadding,
           )}
         >

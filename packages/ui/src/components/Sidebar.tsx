@@ -71,7 +71,7 @@ export const Sidebar = ({
                     <a
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                        "flex items-center gap-3 rounded-sm px-3 py-1.5 text-sm transition-colors",
                         isActive
                           ? "bg-primary/8 text-primary font-medium"
                           : "text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100",

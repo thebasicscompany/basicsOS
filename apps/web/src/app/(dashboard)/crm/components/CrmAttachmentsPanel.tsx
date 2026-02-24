@@ -164,7 +164,7 @@ export function CrmAttachmentsPanel({ entity, recordId }: CrmAttachmentsPanelPro
             {uploadingFiles.map((f) => (
               <div
                 key={f.name}
-                className="flex items-center gap-2 rounded-md bg-stone-100 px-3 py-2 text-xs text-stone-600"
+                className="flex items-center gap-2 rounded-sm bg-stone-100 px-3 py-2 text-xs text-stone-600"
               >
                 <Upload size={12} className="animate-pulse shrink-0" />
                 <span className="truncate flex-1">{f.name}</span>
@@ -184,7 +184,7 @@ export function CrmAttachmentsPanel({ entity, recordId }: CrmAttachmentsPanelPro
           <div
             onDrop={onDrop}
             onDragOver={onDragOver}
-            className="rounded-lg border-2 border-dashed border-stone-200 py-8 text-center"
+            className="rounded-sm border-2 border-dashed border-stone-200 py-8 text-center"
           >
             <EmptyState
               Icon={Paperclip}
@@ -211,9 +211,9 @@ export function CrmAttachmentsPanel({ entity, recordId }: CrmAttachmentsPanelPro
               return (
                 <div
                   key={attachment.id}
-                  className="group flex items-center gap-3 rounded-md px-2 py-2 hover:bg-stone-50"
+                  className="group flex items-center gap-3 rounded-sm px-2 py-2 hover:bg-stone-50"
                 >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-stone-100">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-stone-100">
                     <FileIcon className="size-4 text-stone-500" />
                   </div>
                   <div className="min-w-0 flex-1">

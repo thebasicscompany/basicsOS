@@ -15,7 +15,7 @@ import {
   addToast,
   cn,
   GitMerge,
-  Mail,
+  Envelope,
   Globe,
 } from "@basicsos/ui";
 
@@ -94,7 +94,7 @@ function FieldSelector({
           type="button"
           onClick={() => onChange(field, "winner")}
           className={cn(
-            "flex-1 rounded-md border px-2 py-1.5 text-left text-xs transition-colors",
+            "flex-1 rounded-sm border px-2 py-1.5 text-left text-xs transition-colors",
             choice === "winner"
               ? "border-primary bg-primary/10 text-stone-900 dark:text-stone-100"
               : "border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:border-stone-300",
@@ -106,7 +106,7 @@ function FieldSelector({
           type="button"
           onClick={() => onChange(field, "loser")}
           className={cn(
-            "flex-1 rounded-md border px-2 py-1.5 text-left text-xs transition-colors",
+            "flex-1 rounded-sm border px-2 py-1.5 text-left text-xs transition-colors",
             choice === "loser"
               ? "border-primary bg-primary/10 text-stone-900 dark:text-stone-100"
               : "border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:border-stone-300",
@@ -200,7 +200,7 @@ function MergeContactDialog({
                   type="button"
                   onClick={() => setWinnerId(rec.id)}
                   className={cn(
-                    "rounded-lg border p-3 text-left transition-colors",
+                    "rounded-sm border p-3 text-left transition-colors",
                     winnerId === rec.id
                       ? "border-primary bg-primary/5"
                       : "border-stone-200 dark:border-stone-700 hover:border-stone-300",
@@ -211,7 +211,7 @@ function MergeContactDialog({
                   </p>
                   {rec.email !== null && rec.email !== undefined && (
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
-                      <Mail size={10} />
+                      <Envelope size={10} />
                       {rec.email}
                     </p>
                   )}
@@ -359,7 +359,7 @@ function MergeCompanyDialog({
                   type="button"
                   onClick={() => setWinnerId(rec.id)}
                   className={cn(
-                    "rounded-lg border p-3 text-left transition-colors",
+                    "rounded-sm border p-3 text-left transition-colors",
                     winnerId === rec.id
                       ? "border-primary bg-primary/5"
                       : "border-stone-200 dark:border-stone-700 hover:border-stone-300",

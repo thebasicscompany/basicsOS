@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, EmptyState, MessageSquare } from "@basicsos/ui";
+import { Card, EmptyState, ChatCircle } from "@basicsos/ui";
 
 interface TranscriptChunk {
   id: string;
@@ -24,7 +24,7 @@ export const TranscriptDisplay = ({ chunks }: TranscriptDisplayProps): JSX.Eleme
   if (chunks.length === 0) {
     return (
       <EmptyState
-        Icon={MessageSquare}
+        Icon={ChatCircle}
         heading="No transcript"
         description="No transcript available"
       />

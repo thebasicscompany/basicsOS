@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   // correctly and UI changes don't require a separate dist rebuild.
   transpilePackages: ["@basicsos/ui", "@basicsos/shared", "@basicsos/auth", "@basicsos/db"],
   experimental: {
-    optimizePackageImports: ["@phosphor-icons/react", "lucide-react"],
+    optimizePackageImports: ["@phosphor-icons/react"],
   },
 };
 

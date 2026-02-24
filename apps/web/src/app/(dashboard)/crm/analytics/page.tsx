@@ -31,10 +31,10 @@ import {
   TableHead,
   TableCell,
   EmptyState,
-  BarChart3,
-  TrendingUp,
-  DollarSign,
-  Activity,
+  ChartBar,
+  TrendUp,
+  CurrencyDollar,
+  Pulse,
 } from "@basicsos/ui";
 
 type Period = "30d" | "90d" | "365d";
@@ -92,7 +92,7 @@ const StatCard = ({ label, value, sub, icon: Icon, iconColor }: StatCardProps): 
             <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">{sub}</p>
           )}
         </div>
-        <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${iconColor}`}>
+        <div className={`flex size-9 shrink-0 items-center justify-center rounded-sm ${iconColor}`}>
           <Icon className="size-4" />
         </div>
       </div>
@@ -119,7 +119,7 @@ const StageFunnel = ({ stageBreakdown }: StageFunnelProps): JSX.Element => {
   if (chartData.length === 0) {
     return (
       <EmptyState
-        Icon={BarChart3}
+        Icon={ChartBar}
         heading="No stage data"
         description="Create deals to see stage breakdown."
       />
@@ -182,7 +182,7 @@ const MonthlyChart = ({ monthlyData }: MonthlyChartProps): JSX.Element => {
   if (chartData.length === 0) {
     return (
       <EmptyState
-        Icon={Activity}
+        Icon={Pulse}
         heading="No monthly data"
         description="Deals will appear here as they are created."
       />
@@ -260,7 +260,7 @@ const StageValueChart = ({ stageBreakdown }: StageValueChartProps): JSX.Element 
   if (chartData.length === 0) {
     return (
       <EmptyState
-        Icon={DollarSign}
+        Icon={CurrencyDollar}
         heading="No value data"
         description="Add deal values to see pipeline breakdown."
       />
@@ -344,28 +344,28 @@ const AnalyticsPage = (): JSX.Element => {
           label="Total Pipeline"
           value={isLoading ? "—" : formatCurrency(data?.totalPipeline ?? 0)}
           sub="Active deals only"
-          icon={DollarSign}
-          iconColor="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+          icon={CurrencyDollar}
+          iconColor="bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
         />
         <StatCard
           label="Win Rate"
           value={isLoading ? "—" : `${data?.winRate ?? 0}%`}
           sub="Of closed deals"
-          icon={TrendingUp}
+          icon={TrendUp}
           iconColor="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
         />
         <StatCard
           label={`Won (${PERIOD_LABELS[period]})`}
           value={isLoading ? "—" : String(data?.wonThisPeriod ?? 0)}
           sub="Deals closed won"
-          icon={BarChart3}
+          icon={ChartBar}
           iconColor="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
         />
         <StatCard
           label="Avg Deal Size"
           value={isLoading ? "—" : formatCurrency(data?.avgDealSize ?? 0)}
           sub={`Across ${data?.totalDeals ?? 0} deals`}
-          icon={Activity}
+          icon={Pulse}
           iconColor="bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
         />
       </div>

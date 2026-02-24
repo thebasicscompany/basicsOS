@@ -13,7 +13,7 @@ import {
   CardContent,
   addToast,
 } from "@basicsos/ui";
-import { Plus, Users, Mail, Phone, Building2, Calendar, Download, Pencil } from "@basicsos/ui";
+import { Plus, Users, Envelope, Phone, Buildings, Calendar, DownloadSimple, Pencil } from "@basicsos/ui";
 import { CrmRecordTable } from "../components/CrmRecordTable";
 import type { ColumnDef } from "../components/CrmRecordTable";
 import { CrmViewBar } from "../components/CrmViewBar";
@@ -119,7 +119,7 @@ const ContactsPageContent = (): JSX.Element => {
       {
         key: "email",
         label: "Email",
-        icon: Mail,
+        icon: Envelope,
         sortable: true,
         sortValue: (r: Contact) => (r.email ?? "").toLowerCase(),
         render: (r: Contact) =>
@@ -148,7 +148,7 @@ const ContactsPageContent = (): JSX.Element => {
       {
         key: "company",
         label: "Company",
-        icon: Building2,
+        icon: Buildings,
         sortable: true,
         sortValue: (r: Contact) => (companyMap.get(r.companyId ?? "") ?? "").toLowerCase(),
         render: (r: Contact) => {
@@ -280,7 +280,7 @@ const ContactsPageContent = (): JSX.Element => {
               <Pencil className="size-3" /> Edit Field
             </Button>
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExport}>
-              <Download className="size-3" /> Export CSV
+              <DownloadSimple className="size-3" /> Export CSV
             </Button>
           </>
         }

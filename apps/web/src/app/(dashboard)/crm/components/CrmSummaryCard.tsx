@@ -8,7 +8,7 @@ import {
   Button,
   Separator,
 } from "@basicsos/ui";
-import { Mail, Phone, Pencil, Trash2 } from "@basicsos/ui";
+import { Envelope, Phone, Pencil, Trash } from "@basicsos/ui";
 import { nameToColor } from "../utils";
 
 interface CrmSummaryCardProps {
@@ -55,7 +55,7 @@ export function CrmSummaryCard({
         <div className="flex flex-wrap items-center gap-2">
           {showEmailAction && email && (
             <Button variant="outline" size="sm" asChild>
-              <a href={`mailto:${email}`}><Mail size={14} className="mr-1.5" /> Email</a>
+              <a href={`mailto:${email}`}><Envelope size={14} className="mr-1.5" /> Email</a>
             </Button>
           )}
           {showCallAction && phone && (
@@ -66,7 +66,7 @@ export function CrmSummaryCard({
           {editTrigger}
           {onDelete && (
             <Button variant="outline" size="sm" onClick={onDelete}>
-              <Trash2 size={14} className="mr-1.5" /> Delete
+              <Trash size={14} className="mr-1.5" /> Delete
             </Button>
           )}
         </div>

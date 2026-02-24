@@ -55,7 +55,7 @@ export const CrmHistoryPanel = ({ entity, recordId }: CrmHistoryPanelProps): JSX
           <ul className="flex flex-col divide-y divide-stone-100 dark:divide-stone-800">
             {entries.map((entry) => (
               <li key={entry.id} className="flex items-start gap-3 py-3">
-                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-stone-100 dark:bg-stone-800">
+                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm bg-stone-100 dark:bg-stone-800">
                   <Clock className="size-3.5 text-stone-500 dark:text-stone-400" />
                 </div>
                 <div className="min-w-0 flex-1">

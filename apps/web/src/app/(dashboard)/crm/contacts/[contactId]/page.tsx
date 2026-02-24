@@ -16,7 +16,7 @@ import {
   DialogFooter,
   addToast,
 } from "@basicsos/ui";
-import { Mail, Phone, Building2, Trash2, Calendar } from "@basicsos/ui";
+import { Envelope, Phone, Buildings, Trash, Calendar } from "@basicsos/ui";
 import { CrmSummaryCard } from "../../components/CrmSummaryCard";
 import { CrmFieldGrid } from "../../components/CrmFieldGrid";
 import { CrmRelatedList } from "../../components/CrmRelatedList";
@@ -58,10 +58,10 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
   };
 
   const fields = [
-    { icon: Mail, label: "Email", value: contact.email ?? "\u2014" },
+    { icon: Envelope, label: "Email", value: contact.email ?? "\u2014" },
     { icon: Phone, label: "Phone", value: contact.phone ?? "\u2014" },
     ...(company
-      ? [{ icon: Building2, label: "Company", value: company.name, href: `/crm/companies/${company.id}` }]
+      ? [{ icon: Buildings, label: "Company", value: company.name, href: `/crm/companies/${company.id}` }]
       : []),
     { icon: Calendar, label: "Created", value: new Date(contact.createdAt).toLocaleDateString() },
   ];
@@ -131,7 +131,7 @@ const ContactDetailPage = ({ params }: ContactDetailPageProps): JSX.Element => {
 function ContactDetailSkeleton(): JSX.Element {
   return (
     <div className="flex flex-col gap-6">
-      <div className="h-8 w-48 animate-pulse rounded-md bg-stone-200 dark:bg-stone-700" />
+      <div className="h-8 w-48 animate-pulse rounded-sm bg-stone-200 dark:bg-stone-700" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <Card>
           <CardContent className="py-8">
@@ -172,7 +172,7 @@ function DeleteContactButton({
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Trash2 size={14} className="mr-1" /> Delete
+        <Trash size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

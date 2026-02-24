@@ -19,32 +19,31 @@ import {
   Users,
   CheckSquare,
   Video,
-  Link2,
-  Sparkles,
-  Settings,
+  Link,
+  Sparkle,
+  Gear,
   ShieldCheck,
-  LayoutDashboard,
+  SquaresFour,
   Clock,
-  Bot,
+  Robot,
   X,
-  ArrowRight,
-  Inbox,
-  DollarSign,
+  Tray,
+  CurrencyDollar,
 } from "@basicsos/ui";
 import type { ComponentType, SVGProps } from "react";
 import { useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
 
-type LucideIcon = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>;
 
-// Map MODULE_ACCENTS string icon names to actual Lucide components
-const ICON_MAP: Record<string, LucideIcon> = {
+// Map MODULE_ACCENTS string icon names to Phosphor icon components
+const ICON_MAP: Record<string, IconComponent> = {
   BookOpen,
   Users,
   CheckSquare,
   Video,
-  Link2,
-  Sparkles,
-  Settings,
+  Link,
+  Sparkle,
+  Settings: Gear,
   ShieldCheck,
 };
 
@@ -66,13 +65,13 @@ const MODULE_ICON_COLORS: Record<string, string> = {
   settings: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400",
 };
 
-const iconForModule = (moduleId: string | undefined): LucideIcon => {
-  if (!moduleId) return LayoutDashboard;
+const iconForModule = (moduleId: string | undefined): IconComponent => {
+  if (!moduleId) return SquaresFour;
   const accent = MODULE_ACCENTS[moduleId as ModuleId];
-  if (accent) return ICON_MAP[accent.icon] ?? LayoutDashboard;
+  if (accent) return ICON_MAP[accent.icon] ?? SquaresFour;
   const extra = EXTRA_ACCENTS[moduleId];
-  if (extra) return ICON_MAP[extra.icon] ?? LayoutDashboard;
-  return LayoutDashboard;
+  if (extra) return ICON_MAP[extra.icon] ?? SquaresFour;
+  return SquaresFour;
 };
 
 const colorForModule = (moduleId: string | undefined): string => {
@@ -116,8 +115,8 @@ function StatCard({
     <a href={href} className="block">
       <Card className="p-4 transition-colors hover:bg-accent/50">
         <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-            <Icon className={cn("size-4", iconColor)} />
+          <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-sm", iconColor)}>
+            <Icon className="size-4" />
           </div>
           <div className="min-w-0">
             <p className="text-xl font-semibold tabular-nums leading-tight text-foreground">{value}</p>
@@ -144,7 +143,7 @@ const RecentWorkCard = ({ route, summary }: RecentWorkCardProps): JSX.Element =>
     <a
       href={route.path}
       className={cn(
-        "group flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent/50",
+        "group flex items-center gap-2.5 rounded-sm border border-border px-3 py-2 text-sm transition-colors hover:bg-accent/50",
       )}
     >
       <Icon size={15} className={cn("shrink-0", color.split(" ").filter((c) => c.startsWith("text-")).join(" "))} />
@@ -180,10 +179,7 @@ const AttentionItem = ({
     </div>
     <div className="flex shrink-0 items-center gap-1">
       <Button variant="ghost" size="sm" asChild>
-        <a href={item.actionHref}>
-          View
-          <ArrowRight size={12} className="ml-1" />
-        </a>
+        <a href={item.actionHref}>View</a>
       </Button>
       {item.dismissible && onDismiss && (
         <Button
@@ -289,7 +285,7 @@ const DashboardPage = (): JSX.Element => {
   for (const n of unreadNotifications.slice(0, 5)) {
     attentionItems.push({
       id: `notif-${n.id}`,
-      icon: Inbox,
+      icon: Tray,
       iconColor: "text-blue-500",
       title: n.title,
       body: n.body ?? undefined,
@@ -339,11 +335,16 @@ const DashboardPage = (): JSX.Element => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Title row — breadcrumb already shows "Dashboard", so only subtitle + badge here */}
+      {/* Greeting row */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Overview of your workspace
-        </p>
+        <div>
+          <h1 className="text-2xl font-semibold font-serif tracking-tight text-foreground">
+            {getGreeting()}{firstName ? `, ${firstName}` : ""}.
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Overview of your workspace
+          </p>
+        </div>
         <Badge variant="outline" className="w-fit text-xs text-muted-foreground">
           Last updated: just now
         </Badge>
@@ -369,7 +370,7 @@ const DashboardPage = (): JSX.Element => {
           title="Deals"
           value={String(dealCount)}
           href="/crm?view=pipeline"
-          Icon={DollarSign}
+          Icon={CurrencyDollar}
           iconColor="bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
         />
         <StatCard
@@ -401,7 +402,7 @@ const DashboardPage = (): JSX.Element => {
             </div>
           ) : (
             <EmptyState
-              Icon={LayoutDashboard}
+              Icon={SquaresFour}
               heading="Start exploring"
               description="Navigate to any module from the sidebar and your recent work will appear here."
               className="py-12"
@@ -418,7 +419,7 @@ const DashboardPage = (): JSX.Element => {
           {isAttentionLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="h-12 animate-pulse rounded-sm bg-stone-100 dark:bg-stone-800" />
+                <div key={i} className="h-12 animate-pulse rounded-sm bg-muted" />
               ))}
             </div>
           ) : attentionItems.length > 0 ? (

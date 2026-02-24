@@ -6,10 +6,10 @@ import { trpc } from "@/lib/trpc";
 import {
   Badge,
   Briefcase,
-  Building2,
+  Buildings,
   Input,
-  Loader2,
-  Search,
+  CircleNotch,
+  MagnifyingGlass,
   Users,
   cn,
 } from "@basicsos/ui";
@@ -69,7 +69,7 @@ function useDebounce(value: string, delayMs: number): string {
 function ContactRow({ result }: { result: ContactResult }): JSX.Element {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/30">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-blue-50 dark:bg-blue-900/30">
         <Users className="size-3.5 text-blue-600 dark:text-blue-400" />
       </div>
       <div className="min-w-0 flex-1">
@@ -87,8 +87,8 @@ function ContactRow({ result }: { result: ContactResult }): JSX.Element {
 function CompanyRow({ result }: { result: CompanyResult }): JSX.Element {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 dark:bg-emerald-900/30">
-        <Building2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-emerald-50 dark:bg-emerald-900/30">
+        <Buildings className="size-3.5 text-emerald-600 dark:text-emerald-400" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
@@ -105,7 +105,7 @@ function CompanyRow({ result }: { result: CompanyResult }): JSX.Element {
 function DealRow({ result }: { result: DealResult }): JSX.Element {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-violet-50 dark:bg-violet-900/30">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-violet-50 dark:bg-violet-900/30">
         <Briefcase className="size-3.5 text-violet-600 dark:text-violet-400" />
       </div>
       <div className="min-w-0 flex-1">
@@ -242,7 +242,7 @@ export function CrmGlobalSearch(): JSX.Element {
   return (
     <div ref={containerRef} className="relative w-full max-w-md">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
+        <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400 dark:text-stone-500" />
         <Input
           ref={inputRef}
           placeholder="Search contacts, companies, deals..."
@@ -262,7 +262,7 @@ export function CrmGlobalSearch(): JSX.Element {
           role="combobox"
         />
         {isFetching && (
-          <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-stone-400" />
+          <CircleNotch className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-stone-400" />
         )}
       </div>
 
@@ -270,7 +270,7 @@ export function CrmGlobalSearch(): JSX.Element {
         <div
           id="crm-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-900"
+          className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-sm border border-stone-200 bg-white shadow-lg dark:border-stone-700 dark:bg-stone-900"
         >
           {hasNoResults && (
             <div className="px-4 py-6 text-center">

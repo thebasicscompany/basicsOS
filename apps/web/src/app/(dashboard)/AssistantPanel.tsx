@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, ArrowUp, Loader2, Button, Textarea, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@basicsos/ui";
+import { Sparkle, X, ArrowUp, CircleNotch, Button, Textarea, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 
 type Message = {
@@ -54,7 +54,7 @@ export const AssistantPanel = (): JSX.Element => {
               className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-overlay"
               aria-label="Toggle AI Assistant"
             >
-              {open ? <X size={20} /> : <Sparkles size={20} />}
+              {open ? <X size={20} /> : <Sparkle size={20} />}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">AI Assistant</TooltipContent>
@@ -63,16 +63,16 @@ export const AssistantPanel = (): JSX.Element => {
 
       {/* Slide-in panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-lg bg-white dark:bg-stone-900 shadow-overlay dark:shadow-none dark:ring-1 dark:ring-stone-700 overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
+        <div className="fixed bottom-24 right-6 z-50 flex w-96 flex-col rounded-sm bg-card border border-border shadow-overlay overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
           {/* Header */}
-          <div className="flex items-center gap-2 bg-white dark:bg-stone-900 px-4 pb-3 pt-3 border-b border-stone-200 dark:border-stone-700">
-            <span className="font-semibold text-stone-900 dark:text-stone-100">AI Assistant</span>
-            <span className="ml-auto text-xs text-stone-500 dark:text-stone-400">Powered by Claude</span>
+          <div className="flex items-center gap-2 px-4 pb-3 pt-3 border-b border-border">
+            <span className="font-semibold text-foreground">AI Assistant</span>
+            <span className="ml-auto text-xs text-muted-foreground">Powered by Claude</span>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setOpen(false)}
-              className="ml-2 h-7 w-7 text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+              className="ml-2 h-7 w-7 text-muted-foreground"
             >
               <X size={16} />
             </Button>
@@ -81,26 +81,26 @@ export const AssistantPanel = (): JSX.Element => {
           {/* Messages */}
           <div className="flex h-80 flex-col gap-3 overflow-y-auto p-4">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center gap-2 pt-8 text-center text-sm text-stone-500">
+              <div className="flex flex-col items-center gap-2 pt-8 text-center text-sm text-muted-foreground">
                 <p>Ask about your company data, tasks, meetings, and more.</p>
               </div>
             )}
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-sm px-3 py-2 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "self-end bg-primary text-primary-foreground"
-                    : "self-start bg-muted text-stone-900"
+                    : "self-start bg-muted text-foreground"
                 }`}
               >
                 {msg.content}
               </div>
             ))}
             {chatMutation.isPending && (
-              <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-stone-500">
+              <div className="self-start rounded-sm bg-muted px-3 py-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" /> Thinking...
+                  <CircleNotch size={12} className="animate-spin" /> Thinking...
                 </span>
               </div>
             )}
@@ -120,7 +120,7 @@ export const AssistantPanel = (): JSX.Element => {
               }}
               placeholder="Ask anything... (Enter to send)"
               rows={1}
-              className="flex-1 resize-none rounded-xl bg-muted min-h-0"
+              className="flex-1 resize-none rounded-sm bg-muted min-h-0"
             />
             <Button type="submit" disabled={!input.trim() || chatMutation.isPending} size="icon">
               <ArrowUp size={16} />

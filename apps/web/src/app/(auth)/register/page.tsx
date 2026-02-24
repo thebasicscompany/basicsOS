@@ -36,13 +36,13 @@ const RegisterPage = (): JSX.Element => {
         <CardContent className="p-0">
         {/* Brand */}
         <div className="mb-6 flex justify-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary text-lg font-bold text-primary-foreground">
             B
           </div>
         </div>
         <h1 className="mb-6 text-center text-2xl font-bold text-foreground">Create account</h1>
         {error !== null && (
-          <p className="mb-4 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
+          <p className="mb-4 rounded-sm bg-destructive/5 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</p>
         )}
         <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
           <div className="space-y-1.5">

@@ -54,9 +54,9 @@ export const KanbanColumn = ({
       className={`flex-1 min-w-0 rounded-sm transition-colors ${isDragOver ? "bg-primary/5" : ""}`}
     >
       <div className={`mb-3 border-t-2 pt-3 ${COLUMN_ACCENT[status]}`}>
-        <h2 className="font-semibold text-stone-700 dark:text-stone-300">
+        <h2 className="font-semibold text-foreground">
           {label}{" "}
-          <span className="ml-1 text-sm font-normal text-stone-500 dark:text-stone-400">({tasks.length})</span>
+          <span className="ml-1 text-sm font-normal text-muted-foreground">({tasks.length})</span>
         </h2>
       </div>
       <div className="flex flex-col gap-2">
@@ -64,7 +64,7 @@ export const KanbanColumn = ({
           <TaskCard key={task.id} task={task} {...(onStatusChanged ? { onStatusChanged } : {})} />
         ))}
         {tasks.length === 0 && (
-          <div className="rounded-sm border-2 border-dashed border-stone-200 dark:border-stone-700 p-4 text-center text-xs text-stone-500 dark:text-stone-400">
+          <div className="rounded-sm border-2 border-dashed border-border p-4 text-center text-xs text-muted-foreground">
             Drop tasks here
           </div>
         )}

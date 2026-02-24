@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardContent, EmptyState, Sparkles } from "@basicsos/ui";
+import { Card, CardHeader, CardTitle, CardContent, EmptyState, Sparkle } from "@basicsos/ui";
 
 interface SummaryJson {
   decisions?: string[];
@@ -29,7 +29,7 @@ export const SummaryCard = ({ summaryJson, isPending }: SummaryCardProps): JSX.E
   if (!summaryJson) {
     return (
       <EmptyState
-        Icon={Sparkles}
+        Icon={Sparkle}
         heading="No summary available"
         description="No summary available yet."
       />

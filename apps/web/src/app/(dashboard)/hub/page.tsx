@@ -3,13 +3,13 @@
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
-import { Button, Badge, Plus, Link2, MessageSquare, HardDrive, Github, EmptyState, addToast, PageHeader, Card, SectionLabel } from "@basicsos/ui";
+import { Button, Badge, Plus, Link, ChatCircle, HardDrive, GithubLogo, EmptyState, addToast, PageHeader, Card, SectionLabel } from "@basicsos/ui";
 import { AddLinkDialog } from "./AddLinkDialog";
 
 const SERVICE_ICONS: Record<string, React.ElementType> = {
-  slack: MessageSquare,
+  slack: ChatCircle,
   "google-drive": HardDrive,
-  github: Github,
+  github: GithubLogo,
 };
 
 // Next.js App Router requires default export — framework exception.
@@ -76,7 +76,7 @@ const HubPage = (): JSX.Element => {
 
       {Object.entries(byCategory).length === 0 && (
         <EmptyState
-          Icon={Link2}
+          Icon={Link}
           heading="No links yet"
           description="Add your first link to organize your team's tools and resources."
           action={
@@ -98,7 +98,7 @@ const HubPage = (): JSX.Element => {
             {(catLinks ?? []).map((link) => (
               <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="block">
                 <Card className="p-4 transition-colors hover:bg-accent/50">
-                  <span className="text-sm font-medium text-stone-900 dark:text-stone-100 line-clamp-1">{link.title}</span>
+                  <span className="text-sm font-medium text-foreground line-clamp-1">{link.title}</span>
                 </Card>
               </a>
             ))}
@@ -111,7 +111,7 @@ const HubPage = (): JSX.Element => {
         <SectionLabel as="h2" className="mb-4">Integrations</SectionLabel>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(integrations ?? []).map((svc) => {
-            const IconComp = SERVICE_ICONS[svc.service] ?? Link2;
+            const IconComp = SERVICE_ICONS[svc.service] ?? Link;
             return (
               <Card
                 key={svc.service}
@@ -120,11 +120,11 @@ const HubPage = (): JSX.Element => {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400">
                     <IconComp size={18} />
                   </div>
                   <div>
-                    <p className="font-medium text-stone-900 dark:text-stone-100">{svc.label}</p>
+                    <p className="font-medium text-foreground">{svc.label}</p>
                     <div className="mt-0.5">
                       {svc.connected ? (
                         <Badge variant="success">Connected</Badge>

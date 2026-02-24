@@ -25,14 +25,13 @@ import {
   SelectLabel,
   Badge,
   addToast,
-  Sparkles,
-  Plus,
+  Sparkle,
   SectionLabel,
   Briefcase,
   Trophy,
   XCircle,
   Users,
-  Building2,
+  Buildings,
   ArrowRight,
 } from "@basicsos/ui";
 import type { InsertAutomation } from "@basicsos/shared";
@@ -150,7 +149,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
         <Tabs defaultValue="ai">
           <TabsList className="w-full">
             <TabsTrigger value="ai" className="flex-1">
-              <Sparkles size={14} className="mr-1.5" /> Describe it
+              <Sparkle size={14} className="mr-1.5" /> Describe it
             </TabsTrigger>
             <TabsTrigger value="manual" className="flex-1">Manual</TabsTrigger>
           </TabsList>
@@ -185,7 +184,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
             ) : (
               parsedSpec && (
                 <>
-                  <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
+                  <div className="rounded-sm border border-border bg-muted p-4 space-y-3">
                     <div>
                       <SectionLabel className="mb-1">Name</SectionLabel>
                       <p className="font-medium text-stone-900 dark:text-stone-100">{parsedSpec.name}</p>
@@ -271,7 +270,7 @@ export const CreateAutomationDialog = ({ open, onOpenChange, onCreated }: Props)
                     </SelectItem>
                     <SelectItem value="crm.company.created">
                       <span className="flex items-center gap-2">
-                        <Building2 size={14} className="text-stone-400" /> Company Created
+                        <Buildings size={14} className="text-stone-400" /> Company Created
                       </span>
                     </SelectItem>
                   </SelectGroup>

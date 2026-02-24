@@ -47,7 +47,28 @@ const seed = async (): Promise<void> => {
     .where(eq(users.email, DEMO_ADMIN_EMAIL))
     .limit(1);
   if (existing.length > 0) {
-    console.warn("Demo data already present (admin@acme.example.com exists). Skipping seed.");
+    console.warn("Demo data already present. Checking for missing credentials...");
+    const admin = existing[0]!;
+    const demoUsers = await db
+      .select()
+      .from(users)
+      .where(eq(users.tenantId, admin.tenantId));
+    const existingAccounts = await db
+      .select({ userId: accounts.userId })
+      .from(accounts);
+    const accountUserIds = new Set(existingAccounts.map((a) => a.userId));
+    const passwordHash = await hashPassword("password");
+    for (const user of demoUsers) {
+      if (!accountUserIds.has(user.id)) {
+        console.warn(`  Creating missing credential for ${user.email}`);
+        await db.insert(accounts).values({
+          accountId: user.id,
+          providerId: "credential",
+          userId: user.id,
+          password: passwordHash,
+        });
+      }
+    }
     return;
   }
 

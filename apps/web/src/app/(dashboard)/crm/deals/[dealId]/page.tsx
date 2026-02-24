@@ -266,9 +266,11 @@ function DeleteDealButton({
   router: ReturnType<typeof useRouter>;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
+  const utils = trpc.useUtils();
   const deleteDeal = trpc.crm.deals.delete.useMutation({
     onSuccess: () => {
       addToast({ title: "Deal deleted", variant: "success" });
+      void utils.crm.deals.listByStage.invalidate();
       router.push("/crm/deals");
     },
     onError: (err) => {

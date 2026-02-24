@@ -159,9 +159,11 @@ function DeleteContactButton({
   router: ReturnType<typeof useRouter>;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
+  const utils = trpc.useUtils();
   const deleteContact = trpc.crm.contacts.delete.useMutation({
     onSuccess: () => {
       addToast({ title: "Contact deleted", variant: "success" });
+      void utils.crm.contacts.list.invalidate();
       router.push("/crm/contacts");
     },
     onError: (err) => {

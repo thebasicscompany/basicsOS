@@ -163,9 +163,11 @@ function DeleteCompanyButton({
   router: ReturnType<typeof useRouter>;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
+  const utils = trpc.useUtils();
   const deleteCompany = trpc.crm.companies.delete.useMutation({
     onSuccess: () => {
       addToast({ title: "Company deleted", variant: "success" });
+      void utils.crm.companies.list.invalidate();
       router.push("/crm/companies");
     },
     onError: (err) => {

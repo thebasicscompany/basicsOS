@@ -64,7 +64,7 @@ export const CreateCompanyDialog = ({
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setNameError(""); }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>New Company</DialogTitle>
         </DialogHeader>

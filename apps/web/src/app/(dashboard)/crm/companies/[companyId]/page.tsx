@@ -25,7 +25,7 @@ import { CrmActivityTabs } from "../../components/CrmActivityTabs";
 import { EditCompanyDialog } from "../../EditCompanyDialog";
 import { formatCurrency } from "../../utils";
 import { FavoriteButton } from "../../components/FavoriteButton";
-import { CompanyDuplicatesPanel } from "../../components/DuplicatesPanel";
+
 
 interface CompanyDetailPageProps {
   params: Promise<{ companyId: string }>;
@@ -91,7 +91,6 @@ const CompanyDetailPage = ({ params }: CompanyDetailPageProps): JSX.Element => {
           </div>
         }
       />
-      <CompanyDuplicatesPanel />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         {/* Left: activity tabs */}
         <div className="flex flex-col gap-6">
@@ -181,7 +180,7 @@ function DeleteCompanyButton({
         <Trash2 size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Delete Company</DialogTitle>
           </DialogHeader>

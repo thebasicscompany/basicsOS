@@ -211,7 +211,7 @@ export function BulkEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             Edit {selectedIds.length} record{selectedIds.length !== 1 ? "s" : ""}

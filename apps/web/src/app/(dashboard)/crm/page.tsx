@@ -22,18 +22,22 @@ import { Users, Building2, Briefcase, BarChart3, Activity, Trash2, Upload, Alert
 import { STAGES, STAGE_COLORS, formatCurrency } from "./utils";
 
 const CrmDashboard = (): JSX.Element => {
-  const { data: contactsData } = trpc.crm.contacts.list.useQuery({});
+  const { data: contactsData, isLoading: contactsLoading } = trpc.crm.contacts.list.useQuery({});
   const { data: companiesData } = trpc.crm.companies.list.useQuery();
-  const { data: dealsData } = trpc.crm.deals.listByStage.useQuery();
+  const { data: dealsData, isLoading: dealsLoading } = trpc.crm.deals.listByStage.useQuery();
   const { data: overdueDeals } = trpc.crm.deals.listOverdue.useQuery();
 
- const byStage = dealsData ?? [];
+  const byStage = dealsData ?? [];
   const allDeals = byStage.flatMap((g) => g.deals);
   const contacts = contactsData ?? [];
   const companies = companiesData ?? [];
 
   const stats = useMemo(() => computeStats(contacts, allDeals), [contacts, allDeals]);
   const analytics = useMemo(() => computeAnalytics(byStage, allDeals), [byStage, allDeals]);
+
+  if (contactsLoading || dealsLoading) {
+    return <CrmDashboardSkeleton />;
+  }
 
   if (allDeals.length === 0 && contacts.length === 0) {
     return (
@@ -62,6 +66,47 @@ const CrmDashboard = (): JSX.Element => {
       <CrmQuickLinks />
     </div>
   );};
+
+function CrmDashboardSkeleton(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="py-3">
+              <div className="flex items-center gap-2">
+                <div className="size-7 animate-pulse rounded-md bg-stone-100 dark:bg-stone-700" />
+                <div className="h-3 w-24 animate-pulse rounded bg-stone-100 dark:bg-stone-700" />
+              </div>
+              <div className="mt-2 h-6 w-20 animate-pulse rounded bg-stone-100 dark:bg-stone-700" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-3 w-24 animate-pulse rounded bg-stone-100 dark:bg-stone-700" />
+                  <div className="h-6 flex-1 animate-pulse rounded-sm bg-stone-100 dark:bg-stone-700" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-stone-100 dark:bg-stone-700" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-6">
+            <div className="size-28 animate-pulse rounded-full bg-stone-100 dark:bg-stone-700" />
+            <div className="h-3 w-24 animate-pulse rounded bg-stone-100 dark:bg-stone-700" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 const QUICK_LINKS = [
   { href: "/crm/analytics", label: "Analytics", icon: TrendingUp },

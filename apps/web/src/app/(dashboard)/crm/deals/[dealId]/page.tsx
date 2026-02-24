@@ -209,7 +209,7 @@ function SetReminderButton({ dealId }: { dealId: string }): JSX.Element {
         <Bell size={14} className="mr-1" /> Set Reminder
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Set Reminder</DialogTitle>
           </DialogHeader>
@@ -284,7 +284,7 @@ function DeleteDealButton({
         <Trash2 size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Delete Deal</DialogTitle>
           </DialogHeader>

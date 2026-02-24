@@ -77,7 +77,7 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setTitleError(""); }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>New Deal</DialogTitle>
         </DialogHeader>

@@ -434,7 +434,7 @@ function SaveViewDialog({
         <BookmarkPlus className="size-3" /> Save View
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="sm:max-w-xs" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Save View</DialogTitle>
           </DialogHeader>

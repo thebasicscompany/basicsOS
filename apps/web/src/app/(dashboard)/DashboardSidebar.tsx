@@ -71,7 +71,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
 export function DashboardSidebar(): JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isPending } = useAuth();
   const { setOpen: openSearch } = useCommandPaletteContext();
 
   const isCrmActive = pathname.startsWith("/crm");
@@ -119,9 +119,13 @@ export function DashboardSidebar(): JSX.Element {
           <span className="text-sm font-medium text-sidebar-foreground truncate">
             {user?.name ?? "User"}
           </span>
-          <span className="text-xs text-muted-foreground capitalize">
-            {user?.role ?? "member"}
-          </span>
+          {isPending ? (
+            <span className="mt-0.5 h-3 w-10 rounded bg-stone-200 dark:bg-stone-700 animate-pulse inline-block" />
+          ) : (
+            <span className="text-xs text-muted-foreground capitalize">
+              {user?.role ?? "member"}
+            </span>
+          )}
         </div>
         <TooltipProvider delayDuration={200}>
           <Tooltip>

@@ -51,7 +51,7 @@ export function CrmBulkActionBar({
         </Button>
       </div>
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Delete {selectedCount} record{selectedCount !== 1 ? "s" : ""}?</DialogTitle>
           </DialogHeader>

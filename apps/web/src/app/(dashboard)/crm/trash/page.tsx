@@ -335,7 +335,7 @@ export default function TrashPage(): JSX.Element {
 
       {/* Purge confirmation dialog */}
       <Dialog open={purgeTarget !== null} onOpenChange={(open) => !open && setPurgeTarget(null)}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Permanently delete?</DialogTitle>
           </DialogHeader>

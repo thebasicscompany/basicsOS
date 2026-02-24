@@ -177,7 +177,7 @@ function DeleteContactButton({
         <Trash2 size={14} className="mr-1" /> Delete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Delete Contact</DialogTitle>
           </DialogHeader>

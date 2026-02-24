@@ -99,7 +99,7 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Edit Deal</DialogTitle>
         </DialogHeader>
@@ -134,10 +134,10 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Company</Label>
-            <Select value={companyId} onValueChange={setCompanyId}>
+            <Select value={companyId || "__none__"} onValueChange={(v) => setCompanyId(v === "__none__" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {(companiesList ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
@@ -146,10 +146,10 @@ export const EditDealDialog = ({ children, deal, onUpdated }: EditDealDialogProp
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Contact</Label>
-            <Select value={contactId} onValueChange={setContactId}>
+            <Select value={contactId || "__none__"} onValueChange={(v) => setContactId(v === "__none__" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="__none__">None</SelectItem>
                 {(contactsList ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}

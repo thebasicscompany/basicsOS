@@ -58,14 +58,14 @@ export const CustomFieldsEditor = ({
                 {def.label}
               </Label>
               <Select
-                value={typeof currentValue === "string" ? currentValue : ""}
-                onValueChange={(v) => onChange({ ...value, [def.key]: v })}
+                value={typeof currentValue === "string" && currentValue !== "" ? currentValue : "__none__"}
+                onValueChange={(v) => onChange({ ...value, [def.key]: v === "__none__" ? "" : v })}
               >
                 <SelectTrigger id={`cf-${def.key}`}>
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {options.map((opt) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}

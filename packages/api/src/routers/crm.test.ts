@@ -10,6 +10,13 @@ vi.mock("@basicsos/db", () => ({
   companies: {},
   deals: {},
   dealActivities: {},
+  pipelineStages: {},
+  crmSavedViews: {},
+  crmAuditLog: { $inferInsert: {} },
+  crmNotes: {},
+  crmFavorites: {},
+  customFieldDefs: {},
+  crmAttachments: {},
   db: {},
   users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
   sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
@@ -125,9 +132,13 @@ describe("crm.deals.updateStage", () => {
     const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
     const updateMock = vi.fn(() => ({ set: updateSetMock }));
 
+    const insertValuesMock = vi.fn().mockResolvedValue(undefined);
+    const insertMock = vi.fn(() => ({ values: insertValuesMock }));
+
     const dbMock = {
       select: selectChain.select,
       update: updateMock,
+      insert: insertMock,
       execute: vi.fn().mockResolvedValue(undefined),
       transaction: vi.fn(),
     };
@@ -171,9 +182,13 @@ describe("crm.deals.updateStage", () => {
     const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
     const updateMock = vi.fn(() => ({ set: updateSetMock }));
 
+    const insertValuesMock = vi.fn().mockResolvedValue(undefined);
+    const insertMock = vi.fn(() => ({ values: insertValuesMock }));
+
     const dbMock = {
       select: selectChain.select,
       update: updateMock,
+      insert: insertMock,
       execute: vi.fn().mockResolvedValue(undefined),
       transaction: vi.fn(),
     };

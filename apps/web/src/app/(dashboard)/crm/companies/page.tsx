@@ -20,6 +20,7 @@ import { CrmViewBar } from "../components/CrmViewBar";
 import { CrmBulkActionBar } from "../components/CrmBulkActionBar";
 import { BulkEditDialog } from "../components/BulkEditDialog";
 import { useCrmViewState, applyCrmFilters } from "../hooks/useCrmViewState";
+import type { CrmFilter } from "../hooks/useCrmViewState";
 import { useCustomFieldColumns } from "../hooks/useCustomFieldColumns";
 import { CreateCompanyDialog } from "../CreateCompanyDialog";
 import { nameToColor, exportCsv } from "../utils";
@@ -219,6 +220,37 @@ const CompaniesPageContent = (): JSX.Element => {
     );
   }, [filtered, selectedIds, contactCountMap]);
 
+  const handleApplyView = useCallback(
+    (view: { filters: unknown; sort: unknown; columnVisibility: unknown }) => {
+      const filtersRaw = view.filters as Record<string, unknown>;
+      const newFilters: CrmFilter[] = Object.entries(filtersRaw).map(([field, raw]) => {
+        const entry = raw as Record<string, string>;
+        return {
+          field,
+          operator: (entry.operator ?? "is") as CrmFilter["operator"],
+          value: entry.value ?? "",
+        };
+      });
+      viewState.setFilters(newFilters);
+
+      const sortRaw = view.sort as Record<string, string>;
+      if (sortRaw.field) {
+        viewState.setSortState(sortRaw.field, (sortRaw.dir ?? "asc") as "asc" | "desc");
+      } else {
+        viewState.setSortState("", "asc");
+      }
+
+      const colVis = view.columnVisibility as Record<string, boolean>;
+      const hidden = new Set(
+        Object.entries(colVis)
+          .filter(([, visible]) => !visible)
+          .map(([key]) => key),
+      );
+      viewState.setHiddenColumns(hidden);
+    },
+    [viewState],
+  );
+
   if (isLoading) {
     return <CompaniesTableSkeleton />;
   }
@@ -248,6 +280,8 @@ const CompaniesPageContent = (): JSX.Element => {
           { field: "createdAt", label: "Created" },
         ]}
         columnDefs={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+        entity="companies"
+        onApplyView={handleApplyView}
       />
       <CrmRecordTable
         data={filtered}

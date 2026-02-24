@@ -127,18 +127,11 @@ const CompaniesPageContent = (): JSX.Element => {
         sortValue: (r: Company) => (r.domain ?? "").toLowerCase(),
         render: (r: Company) =>
           r.domain ? (
-            <a
-              href={`https://${r.domain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {r.domain}
-            </a>
+            <span className="text-sm text-foreground">{r.domain}</span>
           ) : (
             <span className="text-muted-foreground">{"\u2014"}</span>
           ),
+        editValue: (r: Company) => r.domain ?? "",
         editable: true,
         editType: "text",
         onEdit: (id: string, value: string) => handleEdit(id, "domain", value),
@@ -262,6 +255,7 @@ const CompaniesPageContent = (): JSX.Element => {
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/crm/companies/${r.id}`)}
         onSelectionChange={setSelectedIds}
+        externalSelectedIds={selectedIds}
         hiddenColumns={viewState.hiddenColumns}
         onToggleColumn={viewState.toggleColumn}
         sort={viewState.sort}

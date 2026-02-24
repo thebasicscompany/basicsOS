@@ -296,6 +296,7 @@ interface CrmRecordTableProps<T> {
   emptyAction?: React.ReactNode | undefined;
   entity?: "contacts" | "companies" | "deals" | undefined;
   onFieldCreated?: (() => void) | undefined;
+  externalSelectedIds?: string[];
 }
 
 interface SelectedCell {
@@ -328,12 +329,20 @@ export function CrmRecordTable<T>({
   emptyAction,
   entity,
   onFieldCreated,
+  externalSelectedIds,
 }: CrmRecordTableProps<T>): JSX.Element {
   const columns = hiddenColumns?.size
     ? allColumns.filter((col) => !hiddenColumns.has(col.key))
     : allColumns;
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Sync external selection state (e.g. when parent calls setSelectedIds([]))
+  useEffect(() => {
+    if (externalSelectedIds === undefined) return;
+    setSelectedIds(new Set(externalSelectedIds));
+  }, [externalSelectedIds]);
+
   // Stage 1: cell is selected (highlighted ring, no editor open)
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   // Stage 2: cell is actively being edited (portal editor open)
@@ -712,6 +721,7 @@ export function CrmRecordTable<T>({
                         type="checkbox"
                         checked={isRowSelected}
                         onChange={() => toggleSelection(rowId)}
+                        onClick={(e) => e.stopPropagation()}
                         className={cn(
                           "size-3.5 rounded border-stone-300 accent-indigo-500 transition-opacity dark:border-stone-600",
                           isRowSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100",

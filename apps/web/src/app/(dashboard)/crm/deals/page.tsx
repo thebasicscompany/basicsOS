@@ -423,6 +423,7 @@ const DealsPageContent = (): JSX.Element => {
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`/crm/deals/${r.id}`)}
             onSelectionChange={setSelectedIds}
+            externalSelectedIds={selectedIds}
             hiddenColumns={viewState.hiddenColumns}
             onToggleColumn={viewState.toggleColumn}
             sort={viewState.sort}

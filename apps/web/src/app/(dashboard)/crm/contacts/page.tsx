@@ -124,12 +124,11 @@ const ContactsPageContent = (): JSX.Element => {
         sortValue: (r: Contact) => (r.email ?? "").toLowerCase(),
         render: (r: Contact) =>
           r.email ? (
-            <a href={`mailto:${r.email}`} className="text-sm text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-              {r.email}
-            </a>
+            <span className="text-sm text-foreground">{r.email}</span>
           ) : (
             <span className="text-muted-foreground">{"\u2014"}</span>
           ),
+        editValue: (r: Contact) => r.email ?? "",
         editable: true,
         editType: "text",
         onEdit: (id: string, value: string) => handleEdit(id, "email", value),
@@ -141,6 +140,7 @@ const ContactsPageContent = (): JSX.Element => {
         sortable: true,
         sortValue: (r: Contact) => r.phone ?? "",
         render: (r: Contact) => <span className="text-sm">{r.phone ?? "\u2014"}</span>,
+        editValue: (r: Contact) => r.phone ?? "",
         editable: true,
         editType: "text",
         onEdit: (id: string, value: string) => handleEdit(id, "phone", value),
@@ -246,6 +246,7 @@ const ContactsPageContent = (): JSX.Element => {
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/crm/contacts/${r.id}`)}
         onSelectionChange={setSelectedIds}
+        externalSelectedIds={selectedIds}
         hiddenColumns={viewState.hiddenColumns}
         onToggleColumn={viewState.toggleColumn}
         sort={viewState.sort}

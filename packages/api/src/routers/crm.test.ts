@@ -1,39 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { TRPCContext } from "../context.js";
-
-// ---------------------------------------------------------------------------
-// Mocks — declared before any import that would trigger the real modules
-// ---------------------------------------------------------------------------
-
-vi.mock("@basicsos/db", () => ({
-  contacts: {},
-  companies: {},
-  deals: {},
-  dealActivities: {},
-  pipelineStages: {},
-  crmSavedViews: {},
-  crmAuditLog: { $inferInsert: {} },
-  crmNotes: {},
-  crmFavorites: {},
-  customFieldDefs: {},
-  crmAttachments: {},
-  db: {},
-  users: { id: "id", name: "name", email: "email", role: "role", tenantId: "tenantId", onboardedAt: "onboardedAt", createdAt: "createdAt" },
-  sessions: { id: "id", userId: "userId", token: "token", expiresAt: "expiresAt" },
-  accounts: { id: "id", userId: "userId", providerId: "providerId", accountId: "accountId" },
-  verifications: { id: "id", identifier: "identifier", value: "value", expiresAt: "expiresAt" },
-  tenants: { id: "id", name: "name", slug: "slug", createdAt: "createdAt" },
-  invites: { id: "id", tenantId: "tenantId", email: "email", role: "role", token: "token", acceptedAt: "acceptedAt", expiresAt: "expiresAt", createdAt: "createdAt" },
-}));
-
-vi.mock("../events/bus.js", () => ({
-  EventBus: { emit: vi.fn() },
-  createEvent: vi.fn((e: Record<string, unknown>) => ({
-    ...e,
-    id: "evt-id",
-    createdAt: new Date(),
-  })),
-}));
+import { router } from "../trpc.js";
+import { EventBus, createEvent } from "../events/bus.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,8 +21,6 @@ const buildCtx = (overrides: Partial<TRPCContext> = {}): TRPCContext => ({
   ...overrides,
 });
 
-import { router } from "../trpc.js";
-
 // ---------------------------------------------------------------------------
 // Build a chainable Drizzle-like query mock
 // A Drizzle select chain: db.select().from(table).where(cond) returns a
@@ -63,11 +29,9 @@ import { router } from "../trpc.js";
 // ---------------------------------------------------------------------------
 
 function makeSelectChain(rows: unknown[]) {
-  // The final "thenable" object that resolves when awaited
   const thenable = {
     then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
       Promise.resolve(rows).then(resolve, reject),
-    // Support .limit() at the end of the chain too
     limit: vi.fn(() => Promise.resolve(rows)),
   };
 
@@ -87,7 +51,6 @@ describe("crm.contacts.list", () => {
     const testRouter = router({ crm: crmRouter });
 
     const chain = makeSelectChain([]);
-    // .list calls .limit() after .where() — wire limit to resolve []
     chain.thenable.limit.mockResolvedValue([]);
 
     const dbMock = { select: chain.select, execute: vi.fn().mockResolvedValue(undefined), transaction: vi.fn() };
@@ -105,12 +68,14 @@ describe("crm.contacts.list", () => {
 });
 
 describe("crm.deals.updateStage", () => {
+  let emitSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    emitSpy = vi.spyOn(EventBus, "emit");
+    EventBus.removeAllListeners();
   });
 
   it("emits crm.deal.stage_changed event", async () => {
-    const { EventBus, createEvent } = await import("../events/bus.js");
     const { crmRouter } = await import("./crm.js");
     const testRouter = router({ crm: crmRouter });
 
@@ -123,10 +88,8 @@ describe("crm.deals.updateStage", () => {
     };
     const updatedDeal = { ...existingDeal, stage: "qualified" };
 
-    // Select mock: first call returns [existingDeal], subsequent calls don't matter
     const selectChain = makeSelectChain([existingDeal]);
 
-    // Update mock: db.update(table).set({}).where({}).returning() => [updatedDeal]
     const returningMock = vi.fn().mockResolvedValue([updatedDeal]);
     const updateWhereMock = vi.fn(() => ({ returning: returningMock }));
     const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
@@ -150,19 +113,12 @@ describe("crm.deals.updateStage", () => {
     const caller = testRouter.createCaller(ctx);
     await caller.crm.deals.updateStage({ id: DEAL_ID, stage: "qualified" });
 
-    expect(EventBus.emit).toHaveBeenCalled();
-    expect(createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "crm.deal.stage_changed" }),
-    );
-
-    const firstEmit = (EventBus.emit as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
-      | { type: string }
-      | undefined;
-    expect(firstEmit?.type).toBe("crm.deal.stage_changed");
+    expect(emitSpy).toHaveBeenCalled();
+    const firstEvent = emitSpy.mock.calls[0]?.[0] as { type: string } | undefined;
+    expect(firstEvent?.type).toBe("crm.deal.stage_changed");
   });
 
   it("emits crm.deal.won when stage is 'won'", async () => {
-    const { EventBus, createEvent } = await import("../events/bus.js");
     const { crmRouter } = await import("./crm.js");
     const testRouter = router({ crm: crmRouter });
 
@@ -200,11 +156,8 @@ describe("crm.deals.updateStage", () => {
     const caller = testRouter.createCaller(ctx);
     await caller.crm.deals.updateStage({ id: DEAL_ID, stage: "won" });
 
-    const allCalls = (EventBus.emit as ReturnType<typeof vi.fn>).mock.calls;
-    const emittedTypes = allCalls.map((c) => (c[0] as { type: string }).type);
-
+    const emittedTypes = emitSpy.mock.calls.map((c) => (c[0] as { type: string }).type);
     expect(emittedTypes).toContain("crm.deal.stage_changed");
     expect(emittedTypes).toContain("crm.deal.won");
-    expect(createEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "crm.deal.won" }));
   });
 });

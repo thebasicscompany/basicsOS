@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
   addToast,
+  FieldError,
 } from "@basicsos/ui";
 
 interface CreateContactDialogProps {
@@ -35,6 +36,7 @@ export const CreateContactDialog = ({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [companyId, setCompanyId] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const { data: companiesList } = trpc.crm.companies.list.useQuery(undefined, { enabled: open });
 
@@ -46,6 +48,7 @@ export const CreateContactDialog = ({
       setEmail("");
       setPhone("");
       setCompanyId("");
+      setNameError("");
       onCreated?.();
     },
     onError: (err) => {
@@ -55,7 +58,11 @@ export const CreateContactDialog = ({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError("Name is required");
+      return;
+    }
+    setNameError("");
     createContact.mutate({
       name: name.trim(),
       email: email.trim() || undefined,
@@ -65,7 +72,7 @@ export const CreateContactDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setNameError(""); }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -74,7 +81,8 @@ export const CreateContactDialog = ({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-name">Name</Label>
-            <Input id="contact-name" placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+            <Input id="contact-name" placeholder="Full name" value={name} onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }} autoFocus />
+            <FieldError message={nameError} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-email">Email</Label>

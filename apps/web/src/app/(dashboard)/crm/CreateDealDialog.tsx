@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
   addToast,
+  FieldError,
 } from "@basicsos/ui";
 
 import type { DealStage } from "./types";
@@ -35,6 +36,7 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
   const [stage, setStage] = useState<DealStage>("lead");
   const [companyId, setCompanyId] = useState("none");
   const [contactId, setContactId] = useState("none");
+  const [titleError, setTitleError] = useState("");
 
   const { data: companiesList } = trpc.crm.companies.list.useQuery(undefined, { enabled: open });
   const { data: contactsList } = trpc.crm.contacts.list.useQuery({}, { enabled: open });
@@ -48,6 +50,7 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
       setStage("lead");
       setCompanyId("none");
       setContactId("none");
+      setTitleError("");
       onCreated?.();
     },
     onError: (err) => {
@@ -57,7 +60,11 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setTitleError("Title is required");
+      return;
+    }
+    setTitleError("");
     createDeal.mutate({
       title: title.trim(),
       value: value || "0",
@@ -68,7 +75,7 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setTitleError(""); }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -77,7 +84,8 @@ export const CreateDealDialog = ({ children, onCreated }: CreateDealDialogProps)
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="deal-title">Title</Label>
-            <Input id="deal-title" placeholder="Deal name" value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus />
+            <Input id="deal-title" placeholder="Deal name" value={title} onChange={(e) => { setTitle(e.target.value); if (titleError) setTitleError(""); }} autoFocus />
+            <FieldError message={titleError} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="deal-value">Value ($)</Label>

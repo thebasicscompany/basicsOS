@@ -14,6 +14,7 @@ import {
   Input,
   Label,
   addToast,
+  FieldError,
 } from "@basicsos/ui";
 
 interface CreateCompanyDialogProps {
@@ -29,6 +30,7 @@ export const CreateCompanyDialog = ({
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [industry, setIndustry] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const createCompany = trpc.crm.companies.create.useMutation({
     onSuccess: () => {
@@ -37,6 +39,7 @@ export const CreateCompanyDialog = ({
       setName("");
       setDomain("");
       setIndustry("");
+      setNameError("");
       onCreated?.();
     },
     onError: (err) => {
@@ -46,7 +49,11 @@ export const CreateCompanyDialog = ({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError("Name is required");
+      return;
+    }
+    setNameError("");
     createCompany.mutate({
       name: name.trim(),
       domain: domain.trim() || undefined,
@@ -55,7 +62,7 @@ export const CreateCompanyDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setNameError(""); }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -64,7 +71,8 @@ export const CreateCompanyDialog = ({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="company-name">Name</Label>
-            <Input id="company-name" placeholder="Company name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+            <Input id="company-name" placeholder="Company name" value={name} onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }} autoFocus />
+            <FieldError message={nameError} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="company-domain">Domain</Label>

@@ -61,6 +61,7 @@ export { Toaster } from "./components/Toaster.js";
 export { useToast, addToast, dismissToast } from "./hooks/useToast.js";
 export type { Toast as ToastType, ToastVariant } from "./hooks/useToast.js";
 export { EmptyState } from "./components/EmptyState.js";
+export { FieldError } from "./components/FieldError.js";
 export { Textarea } from "./components/Textarea.js";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/Tabs.js";
 export { Switch } from "./components/Switch.js";

@@ -2,16 +2,31 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../trpc.js";
-import { invites, pushTokens, users } from "@basicsos/db";
+import { invites, pushTokens, tenants, users } from "@basicsos/db";
 import { insertInviteSchema } from "@basicsos/shared";
 import { sendInviteEmail } from "../lib/email.js";
 
 export const authRouter = router({
-  me: protectedProcedure.query(({ ctx }) => ({
-    userId: ctx.userId,
-    tenantId: ctx.tenantId ?? null,
-    role: ctx.role,
-  })),
+  me: protectedProcedure.query(async ({ ctx }) => {
+    let tenantName: string | null = null;
+    let accentColor: string | null = null;
+    if (ctx.tenantId) {
+      // Direct lookup by PK — RLS cannot filter the tenants table itself
+      const [t] = await ctx.db
+        .select({ name: tenants.name, accentColor: tenants.accentColor })
+        .from(tenants)
+        .where(eq(tenants.id, ctx.tenantId));
+      tenantName = t?.name ?? null;
+      accentColor = t?.accentColor ?? null;
+    }
+    return {
+      userId: ctx.userId,
+      tenantId: ctx.tenantId ?? null,
+      role: ctx.role,
+      tenantName,
+      accentColor,
+    };
+  }),
 
   sendInvite: adminProcedure
     .input(insertInviteSchema.pick({ email: true, role: true }))
@@ -67,7 +82,7 @@ export const authRouter = router({
         console.error("[sendInvite] Email delivery failed:", err);
       });
 
-      return { inviteId: invite.id };
+      return { inviteId: invite.id, inviteUrl };
     }),
 
   validateInvite: publicProcedure

@@ -33,6 +33,7 @@ import {
 } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
+import { trpc } from "@/lib/trpc";
 import { useCommandPaletteContext } from "@/providers/CommandPaletteProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@basicsos/ui";
@@ -72,6 +73,7 @@ export function DashboardSidebar(): JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isPending } = useAuth();
+  const { data: me } = trpc.auth.me.useQuery();
   const { setOpen: openSearch } = useCommandPaletteContext();
 
   const isCrmActive = pathname.startsWith("/crm");
@@ -101,7 +103,7 @@ export function DashboardSidebar(): JSX.Element {
       </Link>
       <div className="flex flex-col min-w-0">
         <span className="text-sm font-semibold text-sidebar-foreground truncate">
-          Basics OS
+          {me?.tenantName ?? "Basics OS"}
         </span>
         <span className="text-xs text-muted-foreground">Workspace</span>
       </div>

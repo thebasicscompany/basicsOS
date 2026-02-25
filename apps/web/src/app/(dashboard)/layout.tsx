@@ -6,6 +6,7 @@ import { DashboardHeader } from "./DashboardHeader";
 import { NavClient } from "./NavClient";
 import { CommandPaletteProvider } from "@/providers/CommandPaletteProvider";
 import { RouteRecorder } from "@/components/RouteRecorder";
+import { BrandingStyle } from "@/components/BrandingStyle";
 import { cn } from "@basicsos/ui";
 
 const DashboardShell = ({ children }: { children: React.ReactNode }): JSX.Element => {
@@ -38,6 +39,7 @@ const DashboardShell = ({ children }: { children: React.ReactNode }): JSX.Elemen
       </div>
 
       <RouteRecorder />
+      <BrandingStyle />
     </div>
   );
 };

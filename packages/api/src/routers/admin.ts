@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { desc, eq, sql, sum } from "drizzle-orm";
+import { and, desc, eq, isNull, sql, sum } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "../trpc.js";
-import { tenants, llmUsageLogs, auditLog, users } from "@basicsos/db";
+import { tenants, llmUsageLogs, auditLog, users, invites } from "@basicsos/db";
 
 export const adminRouter = router({
   getBranding: adminProcedure.query(async ({ ctx }) => {
@@ -196,5 +196,44 @@ export const adminRouter = router({
           timestamp: e.createdAt.toISOString(),
         })),
       };
+    }),
+
+  /** List pending (unaccepted) invites for the current tenant. */
+  listPendingInvites: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        id: invites.id,
+        email: invites.email,
+        role: invites.role,
+        token: invites.token,
+        expiresAt: invites.expiresAt,
+        createdAt: invites.createdAt,
+      })
+      .from(invites)
+      .where(
+        and(
+          eq(invites.tenantId, ctx.tenantId),
+          isNull(invites.acceptedAt),
+        ),
+      )
+      .orderBy(desc(invites.createdAt));
+  }),
+
+  /** Revoke (delete) a pending invite. Cannot revoke already-accepted invites. */
+  revokeInvite: adminProcedure
+    .input(z.object({ inviteId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [deleted] = await ctx.db
+        .delete(invites)
+        .where(
+          and(
+            eq(invites.id, input.inviteId),
+            eq(invites.tenantId, ctx.tenantId),
+            isNull(invites.acceptedAt),
+          ),
+        )
+        .returning();
+      if (!deleted) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or already accepted" });
+      return { success: true };
     }),
 });

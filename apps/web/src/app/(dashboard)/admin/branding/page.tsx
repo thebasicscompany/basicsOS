@@ -6,9 +6,14 @@ import { Button, Input, Label, addToast, PageHeader, Card, SectionLabel } from "
 
 // Next.js App Router requires default export — framework exception
 const BrandingPage = (): JSX.Element => {
+  const utils = trpc.useUtils();
   const { data: branding, isLoading } = trpc.admin.getBranding.useQuery();
   const updateBranding = trpc.admin.updateBranding.useMutation({
-    onSuccess: () => addToast({ title: "Branding updated", variant: "success" }),
+    onSuccess: () => {
+      void utils.admin.getBranding.invalidate();
+      void utils.auth.me.invalidate();
+      addToast({ title: "Branding updated", variant: "success" });
+    },
     onError: (err) =>
       addToast({ title: "Error", description: err.message, variant: "destructive" }),
   });

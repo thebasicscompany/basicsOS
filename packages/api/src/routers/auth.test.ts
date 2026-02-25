@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import type { TRPCContext } from "../context.js";
 
 // ---------------------------------------------------------------------------
@@ -109,20 +109,25 @@ beforeEach(() => {
 // auth.me
 // ---------------------------------------------------------------------------
 describe("auth.me", () => {
-  it("returns current user info", async () => {
-    const ctx = buildCtx();
+  it("returns current user info with tenant name and accent color", async () => {
+    const db = makeMockDb({ selectRows: [{ name: "Acme Corp", accentColor: "#ff5500" }] });
+    const ctx = buildCtx({ db: db as unknown as TRPCContext["db"] });
     const result = await caller(ctx).me();
     expect(result).toEqual({
       userId: USER_ID,
       tenantId: TENANT_ID,
       role: "admin",
+      tenantName: "Acme Corp",
+      accentColor: "#ff5500",
     });
   });
 
-  it("returns null tenantId when not in a tenant context", async () => {
+  it("returns null tenantId, tenantName, and accentColor when not in a tenant context", async () => {
     const ctx = buildCtx({ tenantId: null });
     const result = await caller(ctx).me();
     expect(result.tenantId).toBeNull();
+    expect(result.tenantName).toBeNull();
+    expect(result.accentColor).toBeNull();
   });
 });
 
@@ -157,7 +162,7 @@ describe("auth.sendInvite", () => {
   });
 
   it("does not fail the mutation when email delivery fails", async () => {
-    vi.mocked(sendInviteEmail).mockRejectedValueOnce(new Error("SMTP down"));
+    (sendInviteEmail as Mock).mockRejectedValueOnce(new Error("SMTP down"));
     const invite = { id: INVITE_ID, email: "new@example.com", role: "member", token: TOKEN };
     const db = makeMockDb({
       selectRows: [],

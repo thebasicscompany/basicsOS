@@ -224,22 +224,19 @@ const ContactsPageContent = (): JSX.Element => {
           value: entry.value ?? "",
         };
       });
-      viewState.setFilters(newFilters);
 
-      const sortRaw = view.sort as Record<string, string>;
-      if (sortRaw.field) {
-        viewState.setSortState(sortRaw.field, (sortRaw.dir ?? "asc") as "asc" | "desc");
-      } else {
-        viewState.setSortState("", "asc");
-      }
+      const sortRaw = (view.sort ?? {}) as Record<string, string>;
+      const sortField = sortRaw.field ?? "";
+      const sortDir = (sortRaw.dir ?? "asc") as "asc" | "desc";
 
-      const colVis = view.columnVisibility as Record<string, boolean>;
+      const colVis = (view.columnVisibility ?? {}) as Record<string, boolean>;
       const hidden = new Set(
         Object.entries(colVis)
           .filter(([, visible]) => !visible)
           .map(([key]) => key),
       );
-      viewState.setHiddenColumns(hidden);
+
+      viewState.applyView({ filters: newFilters, sort: sortField, sortDir, hiddenColumns: hidden });
     },
     [viewState],
   );

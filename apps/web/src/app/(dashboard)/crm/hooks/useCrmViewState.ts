@@ -25,6 +25,7 @@ export interface CrmViewState {
   setFilters: (filters: CrmFilter[]) => void;
   setSortState: (field: string, dir: "asc" | "desc") => void;
   setHiddenColumns: (cols: Set<string>) => void;
+  applyView: (opts: { filters: CrmFilter[]; sort: string; sortDir: "asc" | "desc"; hiddenColumns: Set<string> }) => void;
   setViewType: (v: "table" | "kanban") => void;
   toggleColumn: (key: string) => void;
 }
@@ -153,6 +154,30 @@ export function useCrmViewState(): CrmViewState {
     [updateParams],
   );
 
+  const applyView = useCallback(
+    (opts: { filters: CrmFilter[]; sort: string; sortDir: "asc" | "desc"; hiddenColumns: Set<string> }) =>
+      updateParams((p) => {
+        // Clear old filters
+        const keysToDelete: string[] = [];
+        p.forEach((_, key) => { if (key.startsWith("filter_")) keysToDelete.push(key); });
+        keysToDelete.forEach((k) => p.delete(k));
+        // Set new filters
+        opts.filters.forEach((f) => p.set(`filter_${f.field}`, `${f.operator}:${f.value}`));
+        // Set sort
+        if (opts.sort) {
+          p.set("sort", opts.sort);
+          p.set("dir", opts.sortDir);
+        } else {
+          p.delete("sort");
+          p.delete("dir");
+        }
+        // Set hidden columns
+        if (opts.hiddenColumns.size === 0) p.delete("hidden");
+        else p.set("hidden", [...opts.hiddenColumns].join(","));
+      }),
+    [updateParams],
+  );
+
   const toggleColumn = useCallback(
     (key: string) =>
       updateParams((p) => {
@@ -165,7 +190,7 @@ export function useCrmViewState(): CrmViewState {
     [updateParams],
   );
 
-  return { search, sort, sortDir, filters, viewType, hiddenColumns, setSearch, setSort, toggleSortDir, addFilter, removeFilter, clearFilters, setFilters, setSortState, setHiddenColumns, setViewType, toggleColumn };
+  return { search, sort, sortDir, filters, viewType, hiddenColumns, setSearch, setSort, toggleSortDir, addFilter, removeFilter, clearFilters, setFilters, setSortState, setHiddenColumns, applyView, setViewType, toggleColumn };
 }
 
 export function applyCrmFilters<T>(

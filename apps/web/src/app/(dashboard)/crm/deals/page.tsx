@@ -321,7 +321,6 @@ const DealsPageContent = (): JSX.Element => {
 
   const handleApplyView = useCallback(
     (view: { filters: unknown; sort: unknown; columnVisibility: unknown }) => {
-      // Reconstruct filters from saved payload: { [field]: { operator, value } }
       const filtersRaw = view.filters as Record<string, unknown>;
       const newFilters: CrmFilter[] = Object.entries(filtersRaw).map(([field, raw]) => {
         const entry = raw as Record<string, string>;
@@ -331,24 +330,19 @@ const DealsPageContent = (): JSX.Element => {
           value: entry.value ?? "",
         };
       });
-      viewState.setFilters(newFilters);
 
-      // Reconstruct sort from saved payload: { field, dir }
-      const sortRaw = view.sort as Record<string, string>;
-      if (sortRaw.field) {
-        viewState.setSortState(sortRaw.field, (sortRaw.dir ?? "asc") as "asc" | "desc");
-      } else {
-        viewState.setSortState("", "asc");
-      }
+      const sortRaw = (view.sort ?? {}) as Record<string, string>;
+      const sortField = sortRaw.field ?? "";
+      const sortDir = (sortRaw.dir ?? "asc") as "asc" | "desc";
 
-      // Reconstruct hidden columns from saved payload: { [colKey]: boolean }
-      const colVis = view.columnVisibility as Record<string, boolean>;
+      const colVis = (view.columnVisibility ?? {}) as Record<string, boolean>;
       const hidden = new Set(
         Object.entries(colVis)
           .filter(([, visible]) => !visible)
           .map(([key]) => key),
       );
-      viewState.setHiddenColumns(hidden);
+
+      viewState.applyView({ filters: newFilters, sort: sortField, sortDir, hiddenColumns: hidden });
     },
     [viewState],
   );

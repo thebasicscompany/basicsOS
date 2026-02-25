@@ -21,7 +21,7 @@ const STAGGER_MS = 80;
 // Heights
 // ---------------------------------------------------------------------------
 
-const IDLE_HEIGHT = 32;
+const IDLE_HEIGHT = 12;
 const ACTIVE_HEIGHT = 48;
 
 // ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ const CompanyLogo = ({ logoUrl }: { logoUrl: string | null }): JSX.Element => {
         alt=""
         animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.8, 0.5] }}
         transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{ width: 16, height: 16, borderRadius: 3, objectFit: "contain" }}
+        style={{ width: 15, height: 15, borderRadius: 3, objectFit: "contain" }}
       />
     );
   }
@@ -181,9 +181,9 @@ const CompanyLogo = ({ logoUrl }: { logoUrl: string | null }): JSX.Element => {
     <motion.div
       animate={{ opacity: [0.45, 0.75, 0.45] }}
       transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 16, height: 16 }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 15, height: 15 }}
     >
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
         <rect x="1" y="1" width="18" height="18" rx="5" fill="white" fillOpacity="0.15" />
         <path d="M7 5.5v9M7 10h2.5a2.5 2.5 0 0 0 0-5H7M7 10h3a2.5 2.5 0 0 1 0 5H7"
           stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -473,12 +473,14 @@ export const OverlayApp = (): JSX.Element => {
   // ---------------------------------------------------------------------------
   const hasNotch = config?.hasNotch ?? false;
   const notchHeight = config?.notchHeight ?? 0;
+  const menuBarHeight = config?.menuBarHeight ?? 25;
   const windowWidth = config?.windowWidth ?? 400;
-  const topPad = hasNotch ? notchHeight + 2 : 6;
+  const topPad = hasNotch ? notchHeight + 2 : 3;
 
   let pillHeight: number;
   if (pill.state === "idle") {
-    pillHeight = topPad + IDLE_HEIGHT;
+    // Match the macOS menu bar height exactly so the pill sits flush
+    pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
     pillHeight = topPad + 24 + 12 + measuredHeight + 12;
   } else {
@@ -548,19 +550,19 @@ export const OverlayApp = (): JSX.Element => {
         }}
         animate={{ height: pillHeight }}
         transition={SPRING}
-        style={{ width: "100%", background: "#000", borderRadius: "0 0 16px 16px", overflow: "hidden", position: "relative", cursor: pill.state === "idle" ? "pointer" : "default" }}
+        style={{ width: "100%", background: "#000", borderRadius: pill.state === "idle" ? "0 0 8px 8px" : "0 0 16px 16px", overflow: "hidden", position: "relative", cursor: pill.state === "idle" ? "pointer" : "default" }}
       >
-        <div style={{ paddingTop: topPad, paddingLeft: 16, paddingRight: 16, paddingBottom: 12 }}>
-          {/* Idle: company logo or sparkle */}
+        <div style={{ paddingTop: pill.state === "idle" ? 0 : topPad, paddingLeft: 16, paddingRight: 16, paddingBottom: pill.state === "idle" ? 0 : 12 }}>
+          {/* Idle: company logo or sparkle — vertically centered in menu bar height */}
           {pill.state === "idle" && !flashMessage && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight }}>
               <CompanyLogo logoUrl={branding?.logoUrl ?? null} />
             </div>
           )}
 
           {/* Flash message ("Pasted!" / "Copied!") */}
           {pill.state === "idle" && flashMessage && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight }}>
               <motion.span initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} style={{ color: "#4ade80", fontSize: 13, fontWeight: 600 }}>
                 {flashMessage}
               </motion.span>

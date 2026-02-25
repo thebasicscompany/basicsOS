@@ -20,7 +20,7 @@ const DashboardShell = ({ children }: { children: React.ReactNode }): JSX.Elemen
           <NavClient />
         </div>
       ) : (
-        <DashboardSidebar />
+        <DashboardSidebar onCollapse={() => setSidebarCollapsed(true)} />
       )}
 
       {/* Right side: canvas controls + paper surface */}

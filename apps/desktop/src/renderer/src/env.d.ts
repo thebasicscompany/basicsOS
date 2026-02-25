@@ -2,6 +2,7 @@
 type NotchInfo = {
   hasNotch: boolean;
   notchHeight: number;
+  menuBarHeight: number;
   windowWidth: number;
 };
 

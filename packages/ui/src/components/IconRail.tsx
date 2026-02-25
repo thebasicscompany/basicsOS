@@ -80,7 +80,7 @@ export const IconRail = forwardRef<HTMLDivElement, IconRailProps>(
       <div
         ref={ref}
         className={cn(
-          "flex h-full w-14 flex-col items-center pt-8 pb-3",
+          "flex h-full w-14 flex-col items-center pt-12 pb-3",
           className,
         )}
         {...props}

@@ -70,11 +70,21 @@ const fetchBranding = async (): Promise<Branding> => {
 type NotchInfo = {
   hasNotch: boolean;
   notchHeight: number;
+  menuBarHeight: number;
   windowWidth: number;
 };
 
 const detectNotch = (): NotchInfo => {
-  const info: NotchInfo = { hasNotch: false, notchHeight: 0, windowWidth: PILL_WIDTH };
+  // Get menu bar height from the primary display work area offset
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const menuBarHeight = primaryDisplay.workArea.y;
+
+  const info: NotchInfo = {
+    hasNotch: false,
+    notchHeight: 0,
+    menuBarHeight: menuBarHeight > 0 ? menuBarHeight : 25,
+    windowWidth: PILL_WIDTH,
+  };
 
   if (process.platform !== "darwin") return info;
 
@@ -151,6 +161,7 @@ const createOverlayWindow = (): void => {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    hiddenInMissionControl: true,
     show: false,
     resizable: false,
     movable: false,

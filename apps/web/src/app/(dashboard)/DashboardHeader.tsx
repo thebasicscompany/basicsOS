@@ -47,17 +47,21 @@ export function DashboardHeader({
   const label = getBreadcrumbLabel(pathname);
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 px-4 pt-4">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="-ml-1 size-7 text-muted-foreground"
-        onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        <PanelLeft size={18} className={sidebarCollapsed ? "rotate-180" : ""} />
-      </Button>
-      <Separator orientation="vertical" className="h-4 bg-border" />
+    <header className="flex shrink-0 items-center gap-2 px-4 pt-10 pb-2">
+      {sidebarCollapsed && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-1 size-7 text-muted-foreground"
+            onClick={onToggleSidebar}
+            aria-label="Expand sidebar"
+          >
+            <PanelLeft size={18} className="rotate-180" />
+          </Button>
+          <Separator orientation="vertical" className="h-4 bg-border" />
+        </>
+      )}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

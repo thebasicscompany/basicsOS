@@ -30,6 +30,7 @@ import {
   Building2,
   Briefcase,
   BarChart3,
+  PanelLeft,
 } from "@basicsos/ui";
 import { useAuth } from "@/providers/AuthProvider";
 import { authClient } from "@/lib/auth-client";
@@ -69,7 +70,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function DashboardSidebar(): JSX.Element {
+export function DashboardSidebar({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isPending } = useAuth();
@@ -101,12 +102,23 @@ export function DashboardSidebar(): JSX.Element {
       <Link href="/" className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary" aria-label="Home">
         <img src="/icon.svg" alt="" className="size-5 rounded text-sidebar-primary-foreground" />
       </Link>
-      <div className="flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0 flex-1">
         <span className="text-sm font-semibold text-sidebar-foreground truncate">
           {me?.tenantName ?? "Basics OS"}
         </span>
         <span className="text-xs text-muted-foreground">Workspace</span>
       </div>
+      {onCollapse && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground"
+          onClick={onCollapse}
+          aria-label="Collapse sidebar"
+        >
+          <PanelLeft size={16} />
+        </Button>
+      )}
     </div>
   );
 

@@ -29,11 +29,15 @@ import {
   PageHeader,
   SectionLabel,
   addToast,
+  cn,
   Trash2,
   Edit3,
   Plus,
   Hash,
+  X,
 } from "@basicsos/ui";
+import { OPTION_COLORS, normalizeOptions } from "../../utils";
+import type { SelectOption } from "../../utils";
 
 type EntityType = "contacts" | "companies" | "deals";
 
@@ -77,7 +81,7 @@ interface FieldDefFormState {
   key: string;
   label: string;
   type: FieldType;
-  options: string;
+  options: SelectOption[];
   required: boolean;
   position: number;
 }
@@ -86,17 +90,10 @@ const DEFAULT_FORM: FieldDefFormState = {
   key: "",
   label: "",
   type: "text",
-  options: "",
+  options: [],
   required: false,
   position: 0,
 };
-
-function parseOptions(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
 
 function needsOptions(type: FieldType): boolean {
   return type === "select" || type === "multi_select";
@@ -162,7 +159,7 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
       key: def.key,
       label: def.label,
       type: def.type as FieldType,
-      options: Array.isArray(def.options) ? (def.options as string[]).join(", ") : "",
+      options: normalizeOptions(def.options),
       required: def.required,
       position: def.position,
     });
@@ -170,11 +167,14 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
   };
 
   const handleSubmit = (): void => {
+    const opts = needsOptions(form.type) && form.options.length > 0
+      ? form.options.filter((o) => o.label.trim() !== "")
+      : undefined;
     if (form.id) {
       updateMutation.mutate({
         id: form.id,
         label: form.label,
-        options: needsOptions(form.type) ? parseOptions(form.options) : undefined,
+        options: opts,
         required: form.required,
         position: form.position,
       });
@@ -184,7 +184,7 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
         key: form.key,
         label: form.label,
         type: form.type,
-        options: needsOptions(form.type) ? parseOptions(form.options) : undefined,
+        options: opts,
         required: form.required,
         position: form.position,
       });
@@ -332,14 +332,87 @@ const FieldList = ({ entity }: FieldListProps): JSX.Element => {
 
             {needsOptions(form.type) && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="field-options">Options</Label>
-                <Input
-                  id="field-options"
-                  placeholder="e.g. Option A, Option B, Option C"
-                  value={form.options}
-                  onChange={(e) => setForm((f) => ({ ...f, options: e.target.value }))}
-                />
-                <p className="text-xs text-stone-500">Comma-separated list of options.</p>
+                <Label>Options</Label>
+                <div className="flex flex-col gap-2 rounded-md border border-stone-200 p-2 dark:border-stone-700">
+                  {form.options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        autoFocus={idx === form.options.length - 1}
+                        placeholder="Option label..."
+                        value={opt.label}
+                        onChange={(e) => {
+                          const label = e.target.value;
+                          setForm((f) => ({
+                            ...f,
+                            options: f.options.map((o, i) =>
+                              i === idx
+                                ? { ...o, label, value: label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") }
+                                : o,
+                            ),
+                          }));
+                        }}
+                        className="h-7 flex-1 text-xs"
+                      />
+                      <div className="flex items-center gap-0.5">
+                        {OPTION_COLORS.map((c) => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              setForm((f) => ({
+                                ...f,
+                                options: f.options.map((o, i) =>
+                                  i === idx ? { ...o, color: c.name } : o,
+                                ),
+                              }));
+                            }}
+                            className={cn(
+                              "size-4 rounded-full transition-all",
+                              c.dot,
+                              opt.color === c.name
+                                ? "ring-2 ring-stone-400 ring-offset-1 dark:ring-stone-500"
+                                : "opacity-60 hover:opacity-100",
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            options: f.options.filter((_, i) => i !== idx),
+                          }))
+                        }
+                        className="shrink-0 rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        options: [
+                          ...f.options,
+                          {
+                            label: "",
+                            value: "",
+                            color: OPTION_COLORS[f.options.length % OPTION_COLORS.length]!.name,
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    <Plus size={14} className="mr-1" />
+                    Add option
+                  </Button>
+                </div>
               </div>
             )}
 

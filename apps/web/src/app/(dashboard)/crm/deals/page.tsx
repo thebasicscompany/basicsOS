@@ -166,8 +166,8 @@ const DealsPageContent = (): JSX.Element => {
         render: (r: FlatDeal) => {
           const color = STAGE_COLORS[r.stage] ?? "bg-stone-400";
           return (
-            <div className="flex items-center gap-1.5">
-              <span className={`size-2 rounded-full ${color}`} />
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className={`size-2 shrink-0 rounded-full ${color}`} />
               <Badge variant="outline" className="capitalize text-xs">{r.stage}</Badge>
             </div>
           );

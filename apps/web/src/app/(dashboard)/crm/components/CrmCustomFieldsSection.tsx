@@ -1,7 +1,8 @@
 "use client";
 
 import { trpc } from "@/lib/trpc";
-import { Badge, ExternalLink, Phone } from "@basicsos/ui";
+import { Badge, ExternalLink, Phone, cn } from "@basicsos/ui";
+import { normalizeOptions, getOptionColor } from "../utils";
 
 interface CrmCustomFieldsSectionProps {
   entity: "contacts" | "companies" | "deals";
@@ -11,7 +12,7 @@ interface CrmCustomFieldsSectionProps {
 function formatValue(
   type: string,
   value: unknown,
-  options: string[] | null,
+  rawOptions: unknown,
 ): React.ReactNode {
   if (value === null || value === undefined || value === "") {
     return <span className="text-muted-foreground">—</span>;
@@ -26,25 +27,37 @@ function formatValue(
   }
 
   if (type === "select") {
-    const label =
-      options?.includes(String(value)) ? String(value) : String(value);
+    const opts = normalizeOptions(rawOptions);
+    const opt = opts.find((o) => o.value === String(value) || o.label === String(value));
+    const colors = opt ? getOptionColor(opt.color) : null;
     return (
-      <Badge variant="outline" className="text-xs">
-        {label}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        {colors && <span className={cn("size-2 rounded-full", colors.dot)} />}
+        <Badge className={cn("text-xs border-0", colors?.badge ?? "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300")}>
+          {opt?.label ?? String(value)}
+        </Badge>
+      </div>
     );
   }
 
   if (type === "multi_select") {
+    const opts = normalizeOptions(rawOptions);
     const vals = Array.isArray(value) ? (value as string[]) : [String(value)];
     if (vals.length === 0) return <span className="text-muted-foreground">—</span>;
     return (
       <div className="flex flex-wrap gap-1">
-        {vals.map((v) => (
-          <Badge key={v} variant="outline" className="text-xs">
-            {v}
-          </Badge>
-        ))}
+        {vals.map((v) => {
+          const opt = opts.find((o) => o.value === String(v) || o.label === String(v));
+          const colors = opt ? getOptionColor(opt.color) : null;
+          return (
+            <div key={v} className="flex items-center gap-1">
+              {colors && <span className={cn("size-2 rounded-full", colors.dot)} />}
+              <Badge className={cn("text-xs border-0", colors?.badge ?? "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300")}>
+                {opt?.label ?? v}
+              </Badge>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -111,7 +124,7 @@ export function CrmCustomFieldsSection({
               {formatValue(
                 def.type,
                 customFields[def.key],
-                Array.isArray(def.options) ? (def.options as string[]) : null,
+                def.options,
               )}
             </div>
           </div>

@@ -104,7 +104,7 @@ const ContactsPageContent = (): JSX.Element => {
         sortable: true,
         sortValue: (r: Contact) => r.name.toLowerCase(),
         render: (r: Contact) => (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Avatar className="size-7 shrink-0">
               <AvatarFallback className={`text-[10px] font-medium ${nameToColor(r.name)}`}>
                 {r.name[0]?.toUpperCase() ?? "?"}

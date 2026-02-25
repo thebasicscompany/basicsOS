@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { Hash, Calendar, Check, List, Phone } from "@basicsos/ui";
+import { Hash, Calendar, Check, List, Phone, cn } from "@basicsos/ui";
 import { Badge } from "@basicsos/ui";
 import { trpc } from "@/lib/trpc";
 import type { ColumnDef } from "../components/CrmRecordTable";
+import { normalizeOptions, getOptionColor } from "../utils";
 
 type Entity = "contacts" | "companies" | "deals";
 
@@ -29,13 +30,15 @@ export function useCustomFieldColumns<
         return "text"; // covers text, url, phone
       })();
 
-      const editOptions =
-        (def.type === "select" || def.type === "multi_select") && Array.isArray(def.options)
-          ? def.options.map((o) => ({ label: String(o), value: String(o) }))
-          : undefined;
+      const normalizedOpts = (def.type === "select" || def.type === "multi_select")
+        ? normalizeOptions(def.options)
+        : [];
+      const editOptions = normalizedOpts.length > 0
+        ? normalizedOpts.map((o) => ({ label: o.label, value: o.value, color: o.color }))
+        : undefined;
 
       return {
-        key: `cf_${def.key}`,
+        key: `cf_${def.id}`,
         label: def.label,
         icon: iconForType(def.type),
         sortable: true,
@@ -104,17 +107,36 @@ function renderCustomField(
       );
 
     case "select": {
-      const label = String(val);
-      return <Badge variant="secondary" className="text-xs">{label}</Badge>;
+      const opts = normalizeOptions(def.options);
+      const opt = opts.find((o) => o.value === String(val) || o.label === String(val));
+      const colors = opt ? getOptionColor(opt.color) : null;
+      return (
+        <div className="flex min-w-0 items-center gap-1.5">
+          {colors && <span className={cn("size-2 shrink-0 rounded-full", colors.dot)} />}
+          <Badge className={cn("text-xs border-0", colors?.badge ?? "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300")}>
+            {opt?.label ?? String(val)}
+          </Badge>
+        </div>
+      );
     }
 
     case "multi_select": {
+      const opts = normalizeOptions(def.options);
       const values = Array.isArray(val) ? val : String(val).split(",").map((s) => s.trim());
       return (
-        <div className="flex flex-wrap gap-1">
-          {values.filter(Boolean).map((v) => (
-            <Badge key={String(v)} variant="secondary" className="text-xs">{String(v)}</Badge>
-          ))}
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {values.filter(Boolean).map((v) => {
+            const opt = opts.find((o) => o.value === String(v) || o.label === String(v));
+            const colors = opt ? getOptionColor(opt.color) : null;
+            return (
+              <div key={String(v)} className="flex items-center gap-1">
+                {colors && <span className={cn("size-2 shrink-0 rounded-full", colors.dot)} />}
+                <Badge className={cn("text-xs border-0", colors?.badge ?? "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300")}>
+                  {opt?.label ?? String(v)}
+                </Badge>
+              </div>
+            );
+          })}
         </div>
       );
     }

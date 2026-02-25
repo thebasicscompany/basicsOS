@@ -1,5 +1,47 @@
 import type { DealStage } from "./types";
 
+// ---------------------------------------------------------------------------
+// Select/Multi-select option colors
+// ---------------------------------------------------------------------------
+
+export const OPTION_COLORS = [
+  { name: "gray",   dot: "bg-stone-400",   badge: "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300" },
+  { name: "red",    dot: "bg-red-500",     badge: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" },
+  { name: "orange", dot: "bg-orange-500",  badge: "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300" },
+  { name: "amber",  dot: "bg-amber-500",   badge: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
+  { name: "green",  dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
+  { name: "teal",   dot: "bg-teal-500",    badge: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300" },
+  { name: "blue",   dot: "bg-blue-500",    badge: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300" },
+  { name: "indigo", dot: "bg-indigo-500",  badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" },
+  { name: "purple", dot: "bg-purple-500",  badge: "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300" },
+  { name: "pink",   dot: "bg-pink-500",    badge: "bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300" },
+] as const;
+
+export interface SelectOption {
+  label: string;
+  value: string;
+  color: string;
+}
+
+/** Normalizes legacy string[] and new object[] options into SelectOption[]. */
+export function normalizeOptions(raw: unknown): SelectOption[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, i) => {
+    if (typeof item === "string") {
+      return { label: item, value: item, color: OPTION_COLORS[i % OPTION_COLORS.length]!.name };
+    }
+    return item as SelectOption;
+  });
+}
+
+/** Returns dot + badge class strings for a color name. */
+export function getOptionColor(colorName: string): { dot: string; badge: string } {
+  const found = OPTION_COLORS.find((c) => c.name === colorName);
+  return found
+    ? { dot: found.dot, badge: found.badge }
+    : { dot: OPTION_COLORS[0]!.dot, badge: OPTION_COLORS[0]!.badge };
+}
+
 export const STAGES: readonly DealStage[] = [
   "lead",
   "qualified",

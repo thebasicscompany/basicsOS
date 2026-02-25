@@ -1889,12 +1889,29 @@ const customFieldDefsSubRouter = router({
           .regex(/^[a-z_]+$/),
         label: z.string().min(1).max(100),
         type: FIELD_TYPE_ENUM,
-        options: z.array(z.string()).optional(),
+        options: z.union([
+          z.array(z.string()),
+          z.array(z.object({ label: z.string(), value: z.string(), color: z.string() })),
+        ]).optional(),
         required: z.boolean().default(false),
         position: z.number().int().default(0),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db
+        .select({ id: customFieldDefs.id })
+        .from(customFieldDefs)
+        .where(
+          and(
+            eq(customFieldDefs.tenantId, ctx.tenantId),
+            eq(customFieldDefs.entity, input.entity),
+            eq(customFieldDefs.key, input.key),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        throw new TRPCError({ code: "CONFLICT", message: `A field with key "${input.key}" already exists for this entity` });
+      }
       const [def] = await ctx.db
         .insert(customFieldDefs)
         .values({ ...input, tenantId: ctx.tenantId })
@@ -1908,7 +1925,10 @@ const customFieldDefsSubRouter = router({
       z.object({
         id: z.string().uuid(),
         label: z.string().min(1).max(100).optional(),
-        options: z.array(z.string()).optional(),
+        options: z.union([
+          z.array(z.string()),
+          z.array(z.object({ label: z.string(), value: z.string(), color: z.string() })),
+        ]).optional(),
         required: z.boolean().optional(),
         position: z.number().int().optional(),
       }),

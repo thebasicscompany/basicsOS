@@ -10,7 +10,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  cn,
 } from "@basicsos/ui";
+import { normalizeOptions, getOptionColor } from "./utils";
 
 interface CustomFieldsEditorProps {
   entity: "contacts" | "companies" | "deals";
@@ -34,7 +36,7 @@ export const CustomFieldsEditor = ({
       </Label>
       {defs.map((def) => {
         const currentValue = value[def.key];
-        const options: string[] = Array.isArray(def.options) ? (def.options as string[]) : [];
+        const options = normalizeOptions(def.options);
 
         if (def.type === "boolean") {
           return (
@@ -66,11 +68,17 @@ export const CustomFieldsEditor = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
-                  {options.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
+                  {options.map((opt) => {
+                    const colors = getOptionColor(opt.color);
+                    return (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <span className="flex items-center gap-1.5">
+                          <span className={cn("size-2 rounded-full", colors.dot)} />
+                          {opt.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -83,23 +91,27 @@ export const CustomFieldsEditor = ({
             <div key={def.key} className="flex flex-col gap-1.5">
               <Label className="text-sm">{def.label}</Label>
               <div className="flex flex-col gap-1">
-                {options.map((opt) => (
-                  <div key={opt} className="flex items-center gap-2">
-                    <Switch
-                      id={`cf-${def.key}-${opt}`}
-                      checked={selected.includes(opt)}
-                      onCheckedChange={(checked) => {
-                        const next = checked
-                          ? [...selected, opt]
-                          : selected.filter((s) => s !== opt);
-                        onChange({ ...value, [def.key]: next });
-                      }}
-                    />
-                    <Label htmlFor={`cf-${def.key}-${opt}`} className="text-sm cursor-pointer">
-                      {opt}
-                    </Label>
-                  </div>
-                ))}
+                {options.map((opt) => {
+                  const colors = getOptionColor(opt.color);
+                  return (
+                    <div key={opt.value} className="flex items-center gap-2">
+                      <Switch
+                        id={`cf-${def.key}-${opt.value}`}
+                        checked={selected.includes(opt.value)}
+                        onCheckedChange={(checked) => {
+                          const next = checked
+                            ? [...selected, opt.value]
+                            : selected.filter((s) => s !== opt.value);
+                          onChange({ ...value, [def.key]: next });
+                        }}
+                      />
+                      <Label htmlFor={`cf-${def.key}-${opt.value}`} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <span className={cn("size-2 rounded-full", colors.dot)} />
+                        {opt.label}
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

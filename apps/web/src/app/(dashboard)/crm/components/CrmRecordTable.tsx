@@ -757,6 +757,12 @@ export function CrmRecordTable<T>({
                         !isFirst && isEditable && !isCellEditing && "cursor-text",
                       )}
                       style={isFirst ? { minWidth: 220, width: 220 } : col.width ? { width: col.width } : undefined}
+                      onDoubleClick={(e) => {
+                        if (!isFirst && isEditable) {
+                          e.stopPropagation();
+                          openEditor(rowId, col.key);
+                        }
+                      }}
                       onClick={(e) => {
                         if (isFirst && onRowClick) {
                           onRowClick(row);

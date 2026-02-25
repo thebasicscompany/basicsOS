@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import {
@@ -21,7 +20,6 @@ import {
   Plus,
   addToast,
 } from "@basicsos/ui";
-import { CreateAutomationDialog } from "./CreateAutomationDialog";
 import { getTriggerLabel } from "./trigger-meta";
 
 const formatRelative = (date: Date | string | null): string => {
@@ -40,9 +38,18 @@ const formatRelative = (date: Date | string | null): string => {
 const AutomationsPage = (): JSX.Element => {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading } = trpc.automations.list.useQuery();
+
+  const createAndGoToFlow = trpc.automations.create.useMutation({
+    onSuccess: (automation) => {
+      void utils.automations.list.invalidate();
+      router.push(`/automations/${automation.id}/flow`);
+    },
+    onError: (err) => {
+      addToast({ title: "Failed to create automation", description: err.message, variant: "destructive" });
+    },
+  });
 
   const setEnabled = trpc.automations.setEnabled.useMutation({
     onSuccess: () => void utils.automations.list.invalidate(),
@@ -51,6 +58,15 @@ const AutomationsPage = (): JSX.Element => {
 
   const automationList = data ?? [];
 
+  const handleNewAutomation = (): void => {
+    createAndGoToFlow.mutate({
+      name: "Untitled Automation",
+      triggerConfig: { eventType: "task.created", conditions: [] },
+      actionChain: [],
+      enabled: false,
+    });
+  };
+
   return (
     <div>
       <PageHeader
@@ -58,7 +74,7 @@ const AutomationsPage = (): JSX.Element => {
         description="Trigger actions automatically when business events occur."
         className="mb-6"
         action={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={handleNewAutomation} disabled={createAndGoToFlow.isPending}>
             <Plus size={14} className="mr-1" /> New Automation
           </Button>
         }
@@ -82,9 +98,9 @@ const AutomationsPage = (): JSX.Element => {
         <EmptyState
           Icon={Zap}
           heading="No automations yet"
-          description="Describe what you want to automate in plain English, or build one step by step."
+          description="Create an automation and build your trigger and actions in the visual flow."
           action={
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button onClick={handleNewAutomation} disabled={createAndGoToFlow.isPending}>
               <Plus size={14} className="mr-1" /> New Automation
             </Button>
           }
@@ -143,12 +159,6 @@ const AutomationsPage = (): JSX.Element => {
           </Table>
         </Card>
       )}
-
-      <CreateAutomationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={() => void utils.automations.list.invalidate()}
-      />
     </div>
   );
 };

@@ -1,6 +1,15 @@
 # Automations
 
-Automations let you trigger chains of actions in response to business events — no code required. They're created via natural language or a manual form, and results are visible in the automations UI.
+Automations let you trigger chains of actions in response to business events — no code required. They're created via natural language or a manual form, and results are visible in the automations UI. A **visual flow editor** at `/automations/[id]/flow` lets you build the same automation as a trigger → action chain on a canvas.
+
+---
+
+## Flow graph persistence and adapter
+
+- **DB:** `automations` has optional `flow_nodes` and `flow_edges` (JSONB). When present, they store the React Flow graph (nodes/edges) from the visual editor.
+- **Execution:** The executor still uses `triggerConfig` and `actionChain` only. It does not read the graph.
+- **Adapter (save):** When the flow editor saves, it sends `flowNodes` and `flowEdges` to `automations.update`. The API runs `flowToAutomation(nodes, edges)` (from `@basicsos/shared`) to derive `triggerConfig` and `actionChain`, then writes both the graph and the derived fields. So the graph is the source of truth in the UI and DB; execution stays unchanged.
+- **Adapter (load):** If an automation has `flow_nodes`/`flow_edges`, the flow page uses them. Otherwise it builds initial nodes/edges from `triggerConfig` + `actionChain` with `flowFromAutomation` so older automations open in the visual editor.
 
 ---
 

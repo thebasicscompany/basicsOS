@@ -2,6 +2,7 @@
 
 import React, { use, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import Link from "next/link";
 import {
   Card,
   CardHeader,
@@ -26,6 +27,7 @@ import {
   Mail,
   Users,
   MessageSquare,
+  GitMerge,
 } from "@basicsos/ui";
 import { ActionBuilder } from "../ActionBuilder";
 import type { ActionConfig } from "../action-primitives/index";
@@ -124,9 +126,16 @@ const AutomationDetailPage = ({ params }: { params: Promise<{ id: string }> }): 
         backHref="/automations"
         backLabel="Automations"
         action={
-          <Badge variant={automation.enabled ? "success" : "outline"}>
-            {automation.enabled ? "Enabled" : "Disabled"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/automations/${automation.id}/flow`}>
+                <GitMerge size={14} className="mr-1" /> Visual builder
+              </Link>
+            </Button>
+            <Badge variant={automation.enabled ? "success" : "outline"}>
+              {automation.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
         }
       />
 

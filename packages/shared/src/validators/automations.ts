@@ -25,12 +25,31 @@ export const actionSchema = z.object({
   config: z.record(z.unknown()),
 });
 
+/** Serializable flow node (matches React Flow node shape for persistence). */
+export const flowNodeSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  position: z.object({ x: z.number(), y: z.number() }),
+  data: z.record(z.unknown()),
+});
+/** Serializable flow edge. */
+export const flowEdgeSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+});
+
 export const insertAutomationSchema = z.object({
   tenantId: z.string().uuid(),
   name: z.string().min(1).max(255),
   triggerConfig: triggerConfigSchema,
   actionChain: z.array(actionSchema),
   enabled: z.boolean().default(true),
+});
+
+export const updateAutomationFlowSchema = z.object({
+  flowNodes: z.array(flowNodeSchema).optional(),
+  flowEdges: z.array(flowEdgeSchema).optional(),
 });
 
 export type InsertAutomation = z.infer<typeof insertAutomationSchema>;

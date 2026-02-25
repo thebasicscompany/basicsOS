@@ -3,7 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { router, protectedProcedure, memberProcedure } from "../trpc.js";
 import { automations, automationRuns } from "@basicsos/db";
-import { insertAutomationSchema } from "@basicsos/shared";
+import { flowToAutomation, insertAutomationSchema } from "@basicsos/shared";
+import type { FlowEdge, FlowNode } from "@basicsos/shared";
 import { chatCompletion } from "../lib/llm-client.js";
 
 /** System prompt for converting natural language to automation JSON. */
@@ -110,12 +111,32 @@ export const automationsRouter = router({
     }),
 
   update: memberProcedure
-    .input(insertAutomationSchema.partial().extend({ id: z.string().uuid() }))
+    .input(
+      insertAutomationSchema
+        .partial()
+        .extend({
+          id: z.string().uuid(),
+          flowNodes: z.array(z.object({ id: z.string(), type: z.string(), position: z.object({ x: z.number(), y: z.number() }), data: z.record(z.unknown()) })).optional(),
+          flowEdges: z.array(z.object({ id: z.string(), source: z.string(), target: z.string() })).optional(),
+        }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...updateData } = input;
+      const { id, flowNodes, flowEdges, ...rest } = input;
+      const setPayload: Record<string, unknown> = { ...rest, updatedAt: new Date() };
+
+      if (flowNodes != null && flowEdges != null && flowNodes.length > 0) {
+        const derived = flowToAutomation(flowNodes as FlowNode[], flowEdges as FlowEdge[]);
+        if (derived) {
+          setPayload.triggerConfig = derived.triggerConfig;
+          setPayload.actionChain = derived.actionChain;
+        }
+        setPayload.flowNodes = flowNodes;
+        setPayload.flowEdges = flowEdges;
+      }
+
       const [updated] = await ctx.db
         .update(automations)
-        .set(updateData)
+        .set(setPayload as typeof automations.$inferInsert)
         .where(and(eq(automations.id, id), eq(automations.tenantId, ctx.tenantId)))
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });

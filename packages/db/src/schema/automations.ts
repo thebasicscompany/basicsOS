@@ -11,6 +11,9 @@ export const automations = pgTable(
     name: text("name").notNull(),
     triggerConfig: jsonb("trigger_config").notNull(),
     actionChain: jsonb("action_chain").notNull(),
+    /** Visual flow graph (React Flow nodes/edges). When set, triggerConfig/actionChain are derived from it on save. */
+    flowNodes: jsonb("flow_nodes"),
+    flowEdges: jsonb("flow_edges"),
     enabled: boolean("enabled").notNull().default(true),
     lastRunAt: timestamp("last_run_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),

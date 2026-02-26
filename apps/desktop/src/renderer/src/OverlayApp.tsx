@@ -7,6 +7,8 @@ import { detectCommand } from "./lib/voice-commands";
 import { useSilenceDetector } from "./lib/silence-detector";
 import { pillReducer, initialPillContext } from "./lib/notch-pill-state";
 import type { InteractionMode } from "./lib/notch-pill-state";
+import { useMeetingRecorder } from "./lib/meeting-recorder";
+import { uploadMeetingTranscript, processMeeting } from "./api";
 
 // ---------------------------------------------------------------------------
 // Animation constants
@@ -29,9 +31,10 @@ const ACTIVE_HEIGHT = 48;
 // ---------------------------------------------------------------------------
 
 const DEFAULT_SETTINGS: OverlaySettings = {
-  shortcuts: { assistantToggle: "Control+Space", dictationToggle: "Control+Shift+Space" },
+  shortcuts: { assistantToggle: "CommandOrControl+Space", dictationToggle: "CommandOrControl+Shift+Space", dictationHoldKey: "CommandOrControl+Shift+Space", meetingToggle: "CommandOrControl+Alt+Space" },
   voice: { language: "en-US", silenceTimeoutMs: 2000, ttsEnabled: true, ttsRate: 1.05 },
-  behavior: { doubleTapWindowMs: 400, autoDismissMs: 5000, showDictationPreview: true },
+  behavior: { doubleTapWindowMs: 400, autoDismissMs: 5000, showDictationPreview: true, holdThresholdMs: 150 },
+  meeting: { autoDetect: false, chunkIntervalMs: 5000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -227,6 +230,24 @@ const ResponseBody = ({ response }: { response: { title: string; lines: string[]
   </div>
 );
 
+const MeetingTimer = ({ startedAt }: { startedAt: number | null }): JSX.Element | null => {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!startedAt) return;
+    const iv = setInterval(() => setElapsed(Date.now() - startedAt), 1000);
+    return () => clearInterval(iv);
+  }, [startedAt]);
+  if (!startedAt) return null;
+  const totalSec = Math.floor(elapsed / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return (
+    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+      {min}:{sec.toString().padStart(2, "0")}
+    </span>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // OverlayApp — the NotchPill (4 interaction modes)
 // ---------------------------------------------------------------------------
@@ -243,6 +264,9 @@ export const OverlayApp = (): JSX.Element => {
   const streamAbortRef = useRef(false);
 
   const speech = useSpeechRecognition();
+  const meetingRecorder = useMeetingRecorder(settings.meeting?.chunkIntervalMs ?? 5000);
+  const meetingRecorderRef = useRef(meetingRecorder);
+  meetingRecorderRef.current = meetingRecorder;
 
   // Refs for stable IPC listener access (avoids stale closures)
   const pillRef = useRef(pill);
@@ -255,12 +279,7 @@ export const OverlayApp = (): JSX.Element => {
   // ---------------------------------------------------------------------------
   // Load settings + branding on mount (one-time IPC listeners)
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    window.electronAPI?.getOverlaySettings().then((s) => setSettings(s)).catch(() => undefined);
-    window.electronAPI?.onNotchInfo((info) => setConfig(info));
-    window.electronAPI?.onBranding((b) => setBranding(b));
-    window.electronAPI?.onSettingsChanged((s) => setSettings(s));
-  }, []);
+  // Settings + branding loaded inside main IPC useEffect (after removeAllListeners)
 
   // ---------------------------------------------------------------------------
   // Timer management
@@ -274,7 +293,9 @@ export const OverlayApp = (): JSX.Element => {
     cancelTTS();
     clearDismissTimer();
     streamAbortRef.current = true;
-    if (speechRef.current.isListening) speechRef.current.stopListening();
+    if (speechRef.current.isListening) {
+      void speechRef.current.stopListening(); // fire and forget on dismiss
+    }
     dispatch({ type: "DISMISS" });
     window.electronAPI?.notifyDismissed();
   };
@@ -286,14 +307,14 @@ export const OverlayApp = (): JSX.Element => {
   // ---------------------------------------------------------------------------
   const handleSilence = useCallback(() => {
     const p = pillRef.current;
-    const s = speechRef.current;
     if (p.interactionMode !== "assistant" || p.state !== "listening") return;
-    const transcript = s.stopListening();
-    if (transcript) {
-      dispatch({ type: "LISTENING_COMPLETE", transcript });
-    } else {
-      dismissRef.current();
-    }
+    void speechRef.current.stopListening().then((transcript) => {
+      if (transcript) {
+        dispatch({ type: "LISTENING_COMPLETE", transcript });
+      } else {
+        dismissRef.current();
+      }
+    });
   }, []);
 
   useSilenceDetector(
@@ -349,11 +370,13 @@ export const OverlayApp = (): JSX.Element => {
   // TTS on response
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (pill.state === "response" && settingsRef.current.voice.ttsEnabled) {
+    // Only speak for assistant/continuous modes — never for dictation/transcribe
+    const mode = pill.interactionMode;
+    if (pill.state === "response" && settingsRef.current.voice.ttsEnabled && (mode === "assistant" || mode === "continuous")) {
       const text = pill.responseLines.join(". ");
       if (text) void speak(text, { rate: settingsRef.current.voice.ttsRate });
     }
-  }, [pill.state, pill.responseLines]);
+  }, [pill.state, pill.responseLines, pill.interactionMode]);
 
   // ---------------------------------------------------------------------------
   // IPC listeners (register once, access state via refs)
@@ -362,58 +385,74 @@ export const OverlayApp = (): JSX.Element => {
     const api = window.electronAPI;
     if (!api) return;
 
+    // Clean up any stale listeners from HMR before registering new ones
+    api.removeAllListeners?.();
+
+    // Settings, notch info, and branding (must be after removeAllListeners)
+    api.getOverlaySettings().then((s) => setSettings(s)).catch(() => undefined);
+    api.onNotchInfo((info) => setConfig(info));
+    api.onBranding((b) => setBranding(b));
+    api.onSettingsChanged((s) => setSettings(s));
+
     const handleActivate = (mode: ActivationMode): void => {
       const cur = pillRef.current;
       const s = speechRef.current;
 
       if (cur.state !== "idle") {
-        // --- DICTATION active, press again → stop, paste, dismiss ---
+        // --- DICTATION active, press again → stop, transcribe, paste, dismiss ---
         if (cur.interactionMode === "dictation" && mode === "dictation") {
-          const transcript = s.stopListening();
-          if (transcript) {
-            void api.injectText(transcript).then(() => {
-              setFlashMessage("Pasted!");
-              setTimeout(() => { setFlashMessage(null); dismissRef.current(); }, 800);
-            });
-          } else {
-            dismissRef.current();
-          }
+          dispatch({ type: "TRANSCRIBING_START" });
+          s.stopListening().then((transcript) => {
+            if (transcript) {
+              void api.injectText(transcript).then(() => {
+                dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+                setFlashMessage("Copied! \u2318V to paste");
+                setTimeout(() => { setFlashMessage(null); dismissRef.current(); }, 800);
+              });
+            } else {
+              dismissRef.current();
+            }
+          }).catch(() => dismissRef.current());
           return;
         }
 
-        // --- TRANSCRIBE active, press again → stop, copy to clipboard ---
+        // --- TRANSCRIBE active, press again → stop, transcribe, copy to clipboard ---
         if (cur.interactionMode === "transcribe" && mode === "transcribe") {
-          const transcript = s.stopListening();
-          if (transcript) {
-            void navigator.clipboard.writeText(transcript);
-            setFlashMessage("Copied!");
-            dispatch({ type: "DISMISS" });
-            setTimeout(() => setFlashMessage(null), 800);
-          } else {
-            dismissRef.current();
-          }
+          dispatch({ type: "TRANSCRIBING_START" });
+          s.stopListening().then((transcript) => {
+            if (transcript) {
+              void navigator.clipboard.writeText(transcript);
+              dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+              setFlashMessage("Copied!");
+              setTimeout(() => setFlashMessage(null), 800);
+            } else {
+              dismissRef.current();
+            }
+          }).catch(() => dismissRef.current());
           return;
         }
 
         // --- CONTINUOUS active, assistant press → stop listening, send to AI ---
         if (cur.interactionMode === "continuous" && mode === "continuous") {
-          const transcript = s.stopListening();
-          if (transcript) {
-            dispatch({ type: "LISTENING_COMPLETE", transcript });
-          } else {
-            dismissRef.current();
-          }
+          void s.stopListening().then((transcript) => {
+            if (transcript) {
+              dispatch({ type: "LISTENING_COMPLETE", transcript });
+            } else {
+              dismissRef.current();
+            }
+          });
           return;
         }
 
         // --- ASSISTANT active, press again → stop early, send what we have ---
         if (cur.interactionMode === "assistant" && mode === "assistant" && cur.state === "listening") {
-          const transcript = s.stopListening();
-          if (transcript) {
-            dispatch({ type: "LISTENING_COMPLETE", transcript });
-          } else {
-            dismissRef.current();
-          }
+          void s.stopListening().then((transcript) => {
+            if (transcript) {
+              dispatch({ type: "LISTENING_COMPLETE", transcript });
+            } else {
+              dismissRef.current();
+            }
+          });
           return;
         }
 
@@ -428,12 +467,119 @@ export const OverlayApp = (): JSX.Element => {
     };
 
     const handleDeactivate = (): void => {
-      if (speechRef.current.isListening) speechRef.current.stopListening();
+      if (speechRef.current.isListening) {
+        void speechRef.current.stopListening(); // fire and forget on deactivate
+      }
       dispatch({ type: "DEACTIVATE" });
     };
 
     api.onActivate(handleActivate);
     api.onDeactivate(handleDeactivate);
+
+    // Hold-to-talk IPC listeners (primary dictation trigger)
+    api.onHoldStart?.(() => {
+      const cur = pillRef.current;
+      if (cur.state !== "idle") return; // ignore if already active
+      dispatch({ type: "ACTIVATE", mode: "dictation" });
+      speechRef.current.startListening();
+    });
+
+    api.onHoldEnd?.(() => {
+      const cur = pillRef.current;
+      if (cur.state !== "listening" || cur.interactionMode !== "dictation") return;
+      dispatch({ type: "TRANSCRIBING_START" });
+      speechRef.current.stopListening().then((transcript) => {
+        if (transcript) {
+          dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+          window.electronAPI?.injectText(transcript).then(() => {
+            setFlashMessage("Copied! \u2318V to paste");
+            setTimeout(() => { setFlashMessage(null); }, 800);
+          }).catch(() => undefined);
+        } else {
+          dismissRef.current();
+        }
+      }).catch(() => {
+        dismissRef.current();
+      });
+    });
+
+    // Check accessibility permission for text injection
+    api.checkAccessibility?.().then((trusted) => {
+      if (!trusted) {
+        console.warn("[overlay] Accessibility permission not granted — text injection may fail");
+      }
+    }).catch(() => undefined);
+
+    // Meeting IPC listeners
+    api.onMeetingToggle?.(() => {
+      const cur = pillRef.current;
+      if (cur.meetingActive) {
+        void api.stopMeeting?.();
+      } else {
+        void api.startMeeting?.();
+      }
+    });
+
+    api.onMeetingStarted?.((meetingId: string) => {
+      dispatch({ type: "MEETING_UPDATE", active: true, meetingId, startedAt: Date.now() });
+      // Check screen recording permission before starting (macOS requires it for system audio)
+      void (async () => {
+        const hasPermission = await api.checkScreenRecording?.() ?? true;
+        if (!hasPermission) {
+          setFlashMessage("Enable Screen Recording in System Settings");
+          setTimeout(() => setFlashMessage(null), 3000);
+          dispatch({ type: "MEETING_UPDATE", active: false, meetingId: null, startedAt: null });
+          return;
+        }
+        await meetingRecorderRef.current.startRecording(meetingId);
+      })().catch((err: unknown) => {
+        console.error("[overlay] Failed to start meeting recording:", err);
+      });
+    });
+
+    api.onMeetingStopped?.(() => {
+      setFlashMessage("Saving meeting...");
+      void (async () => {
+        const result = await meetingRecorderRef.current.stopRecording();
+        dispatch({ type: "MEETING_UPDATE", active: false, meetingId: null, startedAt: null });
+        if (result.meetingId && result.transcript) {
+          try {
+            await uploadMeetingTranscript(result.meetingId, result.transcript);
+            await processMeeting(result.meetingId);
+            setFlashMessage("Meeting saved");
+            setTimeout(() => setFlashMessage(null), 2000);
+          } catch (err: unknown) {
+            console.error("[overlay] Failed to finalize meeting:", err);
+            setFlashMessage("Save failed");
+            setTimeout(() => setFlashMessage(null), 2000);
+          }
+        } else {
+          setFlashMessage(null);
+        }
+      })();
+    });
+
+    // Restore meeting state on mount (in case overlay reloaded mid-meeting)
+    api.getMeetingState?.().then((state) => {
+      if (state.active && state.meetingId) {
+        dispatch({ type: "MEETING_UPDATE", active: true, meetingId: state.meetingId, startedAt: state.startedAt });
+        void meetingRecorderRef.current.startRecording(state.meetingId).catch(() => undefined);
+      }
+    }).catch(() => undefined);
+
+    // Check for interrupted meeting (crash recovery via persisted state)
+    api.getPersistedMeeting?.().then((persisted) => {
+      if (persisted) {
+        dispatch({ type: "MEETING_UPDATE", active: true, meetingId: persisted.meetingId, startedAt: persisted.startedAt });
+        setFlashMessage("Meeting resumed");
+        setTimeout(() => setFlashMessage(null), 2000);
+      }
+    }).catch(() => undefined);
+
+    // Cleanup: remove all IPC listeners on unmount/HMR to prevent duplicates
+    return () => {
+      api.removeAllListeners?.();
+    };
   }, []);
 
   // Notify main when idle
@@ -484,6 +630,7 @@ export const OverlayApp = (): JSX.Element => {
   } else if (pill.state === "response") {
     pillHeight = topPad + 24 + 12 + measuredHeight + 12;
   } else {
+    // listening, thinking, transcribing all use active height
     pillHeight = topPad + ACTIVE_HEIGHT;
   }
 
@@ -541,9 +688,25 @@ export const OverlayApp = (): JSX.Element => {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={() => {
-          if (pillRef.current.state === "idle") {
-            dispatch({ type: "ACTIVATE", mode: "assistant" });
+          const cur = pillRef.current;
+          if (cur.state === "idle") {
+            // Click pill → start dictation (listen, then paste on second click)
+            dispatch({ type: "ACTIVATE", mode: "dictation" });
             speechRef.current.startListening();
+          } else if (cur.state === "listening" && cur.interactionMode === "dictation") {
+            // Second click while dictating → stop, transcribe, paste
+            dispatch({ type: "TRANSCRIBING_START" });
+            speechRef.current.stopListening().then((transcript) => {
+              if (transcript) {
+                window.electronAPI?.injectText(transcript).then(() => {
+                  dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+                  setFlashMessage("Copied! \u2318V to paste");
+                  setTimeout(() => { setFlashMessage(null); dismissRef.current(); }, 800);
+                }).catch(() => dismissRef.current());
+              } else {
+                dismissRef.current();
+              }
+            }).catch(() => dismissRef.current());
           } else {
             dismissRef.current();
           }
@@ -555,8 +718,18 @@ export const OverlayApp = (): JSX.Element => {
         <div style={{ paddingTop: pill.state === "idle" ? 0 : topPad, paddingLeft: 16, paddingRight: 16, paddingBottom: pill.state === "idle" ? 0 : 12 }}>
           {/* Idle: company logo or sparkle — vertically centered in menu bar height */}
           {pill.state === "idle" && !flashMessage && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight, gap: 6 }}>
               <CompanyLogo logoUrl={branding?.logoUrl ?? null} />
+              {pill.meetingActive && (
+                <>
+                  <motion.div
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }}
+                  />
+                  <MeetingTimer startedAt={pill.meetingStartedAt} />
+                </>
+              )}
             </div>
           )}
 
@@ -598,6 +771,16 @@ export const OverlayApp = (): JSX.Element => {
                 ) : (
                   <ThinkingDots />
                 )}
+              </motion.div>
+            )}
+
+            {pill.state === "transcribing" && (
+              <motion.div key="transcribing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={CONTENT_ENTER}
+                style={{ display: "flex", alignItems: "center", height: 24, gap: 8 }}>
+                <ThinkingDots />
+                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13.5, fontWeight: 500 }}>
+                  Transcribing...
+                </span>
               </motion.div>
             )}
 

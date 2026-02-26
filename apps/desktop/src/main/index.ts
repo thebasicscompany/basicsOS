@@ -8,8 +8,11 @@ import {
   ipcMain,
   clipboard,
   desktopCapturer,
+  dialog,
+  globalShortcut,
   shell,
   session,
+  systemPreferences,
 } from "electron";
 import path from "path";
 import { exec, execSync } from "child_process";
@@ -18,6 +21,9 @@ import { is } from "@electron-toolkit/utils";
 import { getOverlaySettings, setOverlaySettings } from "./settings-store.js";
 import { createShortcutManager } from "./shortcut-manager.js";
 import type { ShortcutManager } from "./shortcut-manager.js";
+import { createHoldKeyDetector } from "./hold-key-detector.js";
+import { createMeetingManager } from "./meeting-manager.js";
+import type { MeetingManager } from "./meeting-manager.js";
 
 type ActivationMode = "assistant" | "continuous" | "dictation" | "transcribe";
 
@@ -31,6 +37,8 @@ let tray: Tray | null = null;
 let overlayActive = false;
 let activeMode: ActivationMode = "assistant";
 let shortcutMgr: ShortcutManager | null = null;
+let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
+let meetingMgr: MeetingManager | null = null;
 let cachedBranding: Branding | null = null;
 
 // ---------------------------------------------------------------------------
@@ -133,12 +141,17 @@ const createMainWindow = (branding: Branding): void => {
     minWidth: 900,
     minHeight: 600,
     title: branding.companyName,
-    webPreferences: { contextIsolation: true },
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: false,
+      preload: path.join(__dirname, "../preload/index.js"),
+    },
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: "#f9fafb",
   });
   mainWindow.loadURL(WEB_URL);
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -264,15 +277,40 @@ ipcMain.handle("update-overlay-settings", (_event, partial: Record<string, unkno
   if (shortcutMgr) {
     shortcutMgr.registerAll(
       updated.shortcuts.assistantToggle,
-      updated.shortcuts.dictationToggle,
       updated.behavior.doubleTapWindowMs,
     );
+  }
+  registerMeetingShortcut(updated.shortcuts.meetingToggle);
+
+  if (holdDetector) {
+    holdDetector.updateConfig({
+      accelerator: updated.shortcuts.dictationHoldKey,
+      holdThresholdMs: updated.behavior.holdThresholdMs,
+    });
   }
 
   // Notify renderer of changes
   overlayWindow?.webContents.send("settings-changed", updated);
 
   return updated;
+});
+
+// Shortcut capture: temporarily unregister all shortcuts so keypresses reach the web renderer
+ipcMain.handle("start-shortcut-capture", () => {
+  shortcutMgr?.unregisterAll();
+  holdDetector?.stop();
+  if (registeredMeetingAccelerator) {
+    globalShortcut.unregister(registeredMeetingAccelerator);
+    registeredMeetingAccelerator = null;
+  }
+});
+
+// Shortcut capture: re-register all shortcuts after capture completes or is cancelled
+ipcMain.handle("stop-shortcut-capture", () => {
+  const settings = getOverlaySettings();
+  shortcutMgr?.registerAll(settings.shortcuts.assistantToggle, settings.behavior.doubleTapWindowMs);
+  holdDetector?.start();
+  registerMeetingShortcut(settings.shortcuts.meetingToggle);
 });
 
 // Click-through toggle
@@ -309,20 +347,20 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
           `osascript -e 'tell application "System Events" to keystroke "v" using {command down}'`,
           (err) => {
             if (err) console.error("[inject-text] osascript error:", err.message);
-            resolve();
+            setTimeout(() => resolve(), 200);
           },
         );
-      }, 120);
+      }, 50);
     } else if (process.platform === "win32") {
       setTimeout(() => {
         exec(
           `powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')"`,
           (err) => {
             if (err) console.error("[inject-text] powershell error:", err.message);
-            resolve();
+            setTimeout(() => resolve(), 200);
           },
         );
-      }, 120);
+      }, 50);
     } else {
       resolve();
     }
@@ -343,8 +381,99 @@ ipcMain.handle("capture-screen", async (): Promise<string> => {
   return primary.thumbnail.toPNG().toString("base64");
 });
 
+// Accessibility permission checks (macOS — required for uiohook-napi)
+ipcMain.handle("check-accessibility", () => {
+  if (process.platform !== "darwin") return true;
+  return systemPreferences.isTrustedAccessibilityClient(false);
+});
+
+ipcMain.handle("request-accessibility", () => {
+  if (process.platform !== "darwin") return true;
+  return systemPreferences.isTrustedAccessibilityClient(true);
+});
+
+// Meeting: start a new meeting via API
+ipcMain.handle("start-meeting", async () => {
+  if (!meetingMgr) return;
+  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const cookies = await session.defaultSession.cookies.get({
+    name: "better-auth.session_token",
+  });
+  const token = cookies[0]?.value;
+  if (!token) throw new Error("No session token — user must be logged in");
+  await meetingMgr.start(apiUrl, token);
+});
+
+// Meeting: stop the current meeting
+ipcMain.handle("stop-meeting", async () => {
+  if (!meetingMgr) return;
+  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const cookies = await session.defaultSession.cookies.get({
+    name: "better-auth.session_token",
+  });
+  const token = cookies[0]?.value;
+  if (!token) throw new Error("No session token — user must be logged in");
+  await meetingMgr.stop(apiUrl, token);
+});
+
+// Meeting: get current state
+ipcMain.handle("meeting-state", () => {
+  if (!meetingMgr) return { active: false, meetingId: null, startedAt: null };
+  return meetingMgr.getState();
+});
+
+// Meeting: get available desktop capture sources (for system audio)
+ipcMain.handle("get-desktop-sources", async () => {
+  const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  return sources.map((s) => ({ id: s.id, name: s.name }));
+});
+
+// Meeting: get persisted meeting state for crash recovery
+ipcMain.handle("get-persisted-meeting", () => {
+  if (!meetingMgr) return null;
+  return meetingMgr.getPersistedState();
+});
+
+// Screen recording permission check (macOS)
+// On macOS, if Screen Recording permission is denied, desktopCapturer returns blank thumbnails.
+ipcMain.handle("check-screen-recording", async (): Promise<boolean> => {
+  if (process.platform !== "darwin") return true;
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 1, height: 1 },
+    });
+    if (sources.length === 0) return false;
+    // Check if the thumbnail is blank (all zeros = permission denied)
+    const thumbnail = sources[0]!.thumbnail;
+    const bitmap = thumbnail.toBitmap();
+    // A 1x1 RGBA bitmap is 4 bytes — if all zero, permission is denied
+    return bitmap.some((byte) => byte !== 0);
+  } catch {
+    return false;
+  }
+});
+
 // ---------------------------------------------------------------------------
-// Shortcuts — 4 modes via press / double-tap on two keys
+// Accessibility permission check (macOS — required for global shortcuts + uiohook)
+// ---------------------------------------------------------------------------
+
+const ensureAccessibility = async (): Promise<void> => {
+  if (process.platform !== "darwin") return;
+  const trusted = systemPreferences.isTrustedAccessibilityClient(true);
+  if (!trusted) {
+    await dialog.showMessageBox({
+      type: "warning",
+      title: "Accessibility Permission Required",
+      message:
+        "Basics OS needs Accessibility permission for keyboard shortcuts.\n\n" +
+        "Please grant access in System Settings \u2192 Privacy & Security \u2192 Accessibility, then restart the app.",
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Shortcuts — assistant via globalShortcut, dictation via hold-key detector
 // ---------------------------------------------------------------------------
 
 const setupShortcuts = (): void => {
@@ -371,36 +500,62 @@ const setupShortcuts = (): void => {
         activateOverlay("continuous");
       }
     },
-
-    // Ctrl+Shift+Space press → dictation to paste
-    onDictationPress: () => {
-      if (!overlayWindow) return;
-      if (overlayActive && (activeMode === "dictation" || activeMode === "transcribe")) {
-        // Re-send — renderer handles paste/copy + dismiss
-        overlayWindow.webContents.send("activate-overlay", activeMode);
-      } else if (!overlayActive) {
-        activateOverlay("dictation");
-      } else {
-        deactivateOverlay();
-      }
-    },
-
-    // Ctrl+Shift+Space double-tap → speech-to-text (copy to clipboard)
-    onDictationDoubleTap: () => {
-      if (!overlayWindow) return;
-      if (overlayActive) {
-        deactivateOverlay();
-      } else {
-        activateOverlay("transcribe");
-      }
-    },
   });
 
   shortcutMgr.registerAll(
     settings.shortcuts.assistantToggle,
-    settings.shortcuts.dictationToggle,
     settings.behavior.doubleTapWindowMs,
   );
+
+  // Hold-to-talk dictation via uiohook-napi (global key listener)
+  holdDetector = createHoldKeyDetector(
+    {
+      accelerator: settings.shortcuts.dictationHoldKey,
+      holdThresholdMs: settings.behavior.holdThresholdMs,
+    },
+    {
+      onHoldStart: () => {
+        overlayWindow?.webContents.send("dictation-hold-start");
+      },
+      onHoldEnd: () => {
+        overlayWindow?.webContents.send("dictation-hold-end");
+      },
+    },
+  );
+  holdDetector.start();
+
+  // Meeting manager — orchestrates meeting state + IPC to renderer
+  meetingMgr = createMeetingManager({
+    onMeetingStart: (meetingId) => {
+      overlayWindow?.webContents.send("meeting-started", meetingId);
+    },
+    onMeetingStop: (meetingId) => {
+      overlayWindow?.webContents.send("meeting-stopped", meetingId);
+    },
+  });
+
+  // Meeting toggle shortcut — registered directly (not via shortcut-manager)
+  registerMeetingShortcut(settings.shortcuts.meetingToggle);
+};
+
+let registeredMeetingAccelerator: string | null = null;
+
+const registerMeetingShortcut = (accelerator: string): void => {
+  // Unregister the previously registered key (may differ from the new one)
+  if (registeredMeetingAccelerator) {
+    globalShortcut.unregister(registeredMeetingAccelerator);
+    registeredMeetingAccelerator = null;
+  }
+
+  const ok = globalShortcut.register(accelerator, () => {
+    if (!overlayWindow) return;
+    overlayWindow.webContents.send("meeting-toggle");
+  });
+  if (ok) {
+    registeredMeetingAccelerator = accelerator;
+  } else {
+    console.warn(`[shortcuts] Failed to register meeting shortcut: ${accelerator}`);
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -430,9 +585,15 @@ const handleProtocolUrl = (url: string): void => {
           if (shortcutMgr) {
             shortcutMgr.registerAll(
               updated.shortcuts.assistantToggle,
-              updated.shortcuts.dictationToggle,
               updated.behavior.doubleTapWindowMs,
             );
+          }
+          registerMeetingShortcut(updated.shortcuts.meetingToggle);
+          if (holdDetector) {
+            holdDetector.updateConfig({
+              accelerator: updated.shortcuts.dictationHoldKey,
+              holdThresholdMs: updated.behavior.holdThresholdMs,
+            });
           }
           overlayWindow?.webContents.send("settings-changed", updated);
         } catch {
@@ -558,6 +719,7 @@ app.whenReady().then(async () => {
   createOverlayWindow();
   createTray(branding);
   setupAutoUpdater();
+  await ensureAccessibility();
   setupShortcuts();
 
   app.on("activate", () => {
@@ -589,4 +751,5 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   shortcutMgr?.unregisterAll();
+  holdDetector?.stop();
 });

@@ -10,6 +10,8 @@ export type OverlaySettings = {
   shortcuts: {
     assistantToggle: string;
     dictationToggle: string;
+    dictationHoldKey: string;
+    meetingToggle: string;
   };
   voice: {
     language: string;
@@ -21,13 +23,20 @@ export type OverlaySettings = {
     doubleTapWindowMs: number;
     autoDismissMs: number;
     showDictationPreview: boolean;
+    holdThresholdMs: number;
+  };
+  meeting: {
+    autoDetect: boolean;
+    chunkIntervalMs: number;
   };
 };
 
 export const OVERLAY_DEFAULTS: OverlaySettings = {
   shortcuts: {
-    assistantToggle: "Control+Space",
-    dictationToggle: "Control+Shift+Space",
+    assistantToggle: "CommandOrControl+Space",
+    dictationToggle: "CommandOrControl+Shift+Space",
+    dictationHoldKey: "CommandOrControl+Shift+Space",
+    meetingToggle: "CommandOrControl+Alt+Space",
   },
   voice: {
     language: "en-US",
@@ -39,6 +48,11 @@ export const OVERLAY_DEFAULTS: OverlaySettings = {
     doubleTapWindowMs: 400,
     autoDismissMs: 5000,
     showDictationPreview: true,
+    holdThresholdMs: 150,
+  },
+  meeting: {
+    autoDetect: false,
+    chunkIntervalMs: 5000,
   },
 };
 
@@ -53,6 +67,7 @@ export const getOverlaySettings = (): OverlaySettings => {
       shortcuts: { ...OVERLAY_DEFAULTS.shortcuts, ...parsed.shortcuts },
       voice: { ...OVERLAY_DEFAULTS.voice, ...parsed.voice },
       behavior: { ...OVERLAY_DEFAULTS.behavior, ...parsed.behavior },
+      meeting: { ...OVERLAY_DEFAULTS.meeting, ...parsed.meeting },
     };
   } catch {
     return OVERLAY_DEFAULTS;
@@ -65,6 +80,7 @@ export const setOverlaySettings = (partial: Partial<OverlaySettings>): OverlaySe
     shortcuts: { ...current.shortcuts, ...partial.shortcuts },
     voice: { ...current.voice, ...partial.voice },
     behavior: { ...current.behavior, ...partial.behavior },
+    meeting: { ...current.meeting, ...partial.meeting },
   };
   try {
     fs.writeFileSync(getSettingsPath(), JSON.stringify(merged, null, 2), "utf8");

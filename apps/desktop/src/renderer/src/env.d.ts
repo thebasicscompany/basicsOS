@@ -18,9 +18,10 @@ type BrandingInfo = {
 
 /** Overlay settings shape (mirrors main process settings-store). */
 type OverlaySettings = {
-  shortcuts: { assistantToggle: string; dictationToggle: string };
+  shortcuts: { assistantToggle: string; dictationToggle: string; dictationHoldKey: string; meetingToggle: string };
   voice: { language: string; silenceTimeoutMs: number; ttsEnabled: boolean; ttsRate: number };
-  behavior: { doubleTapWindowMs: number; autoDismissMs: number; showDictationPreview: boolean };
+  behavior: { doubleTapWindowMs: number; autoDismissMs: number; showDictationPreview: boolean; holdThresholdMs: number };
+  meeting: { autoDetect: boolean; chunkIntervalMs: number };
 };
 
 /** IPC bridge exposed by the preload script via contextBridge. */
@@ -39,6 +40,22 @@ interface ElectronAPI {
   navigateMain: (path: string) => void;
   getOverlaySettings: () => Promise<OverlaySettings>;
   updateOverlaySettings: (partial: Partial<OverlaySettings>) => Promise<OverlaySettings>;
+  onHoldStart: (cb: () => void) => void;
+  onHoldEnd: (cb: () => void) => void;
+  checkAccessibility: () => Promise<boolean>;
+  requestAccessibility: () => Promise<boolean>;
+  onMeetingToggle: (cb: () => void) => void;
+  onMeetingStarted: (cb: (meetingId: string) => void) => void;
+  onMeetingStopped: (cb: (meetingId: string) => void) => void;
+  startMeeting: () => Promise<void>;
+  stopMeeting: () => Promise<void>;
+  getMeetingState: () => Promise<{ active: boolean; meetingId: string | null; startedAt: number | null }>;
+  getDesktopSources: () => Promise<Array<{ id: string; name: string }>>;
+  checkScreenRecording: () => Promise<boolean>;
+  getPersistedMeeting: () => Promise<{ meetingId: string; startedAt: number } | null>;
+  startShortcutCapture: () => Promise<void>;
+  stopShortcutCapture: () => Promise<void>;
+  removeAllListeners: () => void;
 }
 
 interface Window {

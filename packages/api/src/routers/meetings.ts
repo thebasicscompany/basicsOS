@@ -8,6 +8,8 @@ import { meetingProcessorQueue } from "../workers/meeting-processor.worker.js";
 import { createWriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isGatewayConfigured, isDeepgramConfigured } from "../lib/gateway-client.js";
+import { transcribeAudio as gatewayTranscribe, transcribeAudioDirect } from "../lib/gateway-client.js";
 
 // ---------------------------------------------------------------------------
 // Transcript parsing helpers
@@ -300,52 +302,36 @@ export const meetingsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const deepgramKey = process.env["DEEPGRAM_API_KEY"];
+      const gatewayOk = isGatewayConfigured();
+      const deepgramOk = isDeepgramConfigured();
 
-      // Without Deepgram: return placeholder
-      if (!deepgramKey) {
+      if (!gatewayOk && !deepgramOk) {
         return {
           transcript: null,
-          message: "Add DEEPGRAM_API_KEY to .env to enable live transcription",
+          message: "Set BASICOS_API_URL+BASICOS_API_KEY (gateway) or DEEPGRAM_API_KEY to enable transcription",
           configured: false,
         };
       }
 
       try {
-        // Decode base64 audio
         const audioBuffer = Buffer.from(input.audioChunk, "base64");
+        const mimeType = `audio/${input.format}`;
 
-        // Send to Deepgram
-        const response = await fetch(
-          `https://api.deepgram.com/v1/listen?model=nova-2&language=en&smart_format=true&punctuate=true`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Token ${deepgramKey}`,
-              "Content-Type": `audio/${input.format}`,
-            },
-            body: audioBuffer,
-          },
-        );
+        // Buffer.from(base64).buffer may return the full underlying ArrayBuffer pool.
+        // Slice to get a correctly-sized ArrayBuffer.
+        const safeArrayBuffer = audioBuffer.buffer.slice(
+          audioBuffer.byteOffset,
+          audioBuffer.byteOffset + audioBuffer.byteLength,
+        ) as ArrayBuffer;
 
-        if (!response.ok) {
-          throw new Error(`Deepgram error: ${response.status}`);
-        }
-
-        type DeepgramResult = {
-          results?: {
-            channels?: Array<{
-              alternatives?: Array<{ transcript?: string }>;
-            }>;
-          };
-        };
-
-        const result = (await response.json()) as DeepgramResult;
-        const transcript = result.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+        const transcript = gatewayOk
+          ? await gatewayTranscribe(safeArrayBuffer, mimeType)
+          : await transcribeAudioDirect(safeArrayBuffer, mimeType);
 
         return { transcript, message: null, configured: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
+        console.error(`[meetings.transcribeAudio] ${message}`);
         return { transcript: null, message, configured: true };
       }
     }),

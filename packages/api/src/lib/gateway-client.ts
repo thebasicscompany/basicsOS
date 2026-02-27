@@ -21,6 +21,10 @@ const GATEWAY_API_KEY =
 
 export const isGatewayConfigured = (): boolean => Boolean(GATEWAY_URL && GATEWAY_API_KEY);
 
+const DEEPGRAM_API_KEY = process.env["DEEPGRAM_API_KEY"] ?? "";
+
+export const isDeepgramConfigured = (): boolean => Boolean(DEEPGRAM_API_KEY);
+
 type DeepgramResult = {
   results?: {
     channels?: Array<{
@@ -52,6 +56,37 @@ export const transcribeAudio = async (
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`Gateway STT error ${res.status}: ${text}`);
+  }
+
+  const json = (await res.json()) as DeepgramResult;
+  return json.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+};
+
+/**
+ * Transcribe audio directly via Deepgram Nova-2 (no gateway).
+ * Fallback when DEEPGRAM_API_KEY is set but the gateway is not configured.
+ */
+export const transcribeAudioDirect = async (
+  audioBuffer: ArrayBuffer,
+  mimeType: string,
+): Promise<string> => {
+  if (!DEEPGRAM_API_KEY) throw new Error("DEEPGRAM_API_KEY not configured");
+
+  const res = await fetch(
+    "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${DEEPGRAM_API_KEY}`,
+        "Content-Type": mimeType,
+      },
+      body: Buffer.from(audioBuffer),
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Deepgram STT error ${res.status}: ${text}`);
   }
 
   const json = (await res.json()) as DeepgramResult;

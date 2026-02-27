@@ -3,6 +3,10 @@
  * Calls the API server directly with Bearer auth (session token from main window cookies).
  */
 
+import { createDesktopLogger } from "../../shared/logger.js";
+
+const log = createDesktopLogger("api");
+
 let cachedApiUrl: string | null = null;
 
 const getApiUrl = async (): Promise<string> => {
@@ -89,13 +93,13 @@ export const transcribeAudioBlob = async (blob: Blob): Promise<string | null> =>
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error(`[transcribeAudioBlob] Failed: ${res.status} ${errText}`);
+      log.error(`transcribeAudioBlob failed: ${res.status} ${errText}`);
       return null;
     }
     const json = (await res.json()) as { transcript?: string };
     return json.transcript ?? null;
   } catch (err: unknown) {
-    console.error("[transcribeAudioBlob] Network error:", err instanceof Error ? err.message : err);
+    log.error("transcribeAudioBlob network error:", err instanceof Error ? err.message : err);
     return null;
   }
 };
@@ -107,18 +111,18 @@ export const uploadMeetingTranscript = async (
   meetingId: string,
   transcriptText: string,
 ): Promise<void> => {
-  console.log(`[api] uploadMeetingTranscript: meetingId=${meetingId}, length=${transcriptText.length} chars`);
+  log.info(`uploadMeetingTranscript: meetingId=${meetingId}, length=${transcriptText.length} chars`);
   await trpcCall("meetings.uploadTranscript", { meetingId, transcriptText }, "mutation");
-  console.log(`[api] uploadMeetingTranscript: success`);
+  log.info("uploadMeetingTranscript: success");
 };
 
 /**
  * Trigger AI processing (summarization) for a meeting.
  */
 export const processMeeting = async (meetingId: string): Promise<void> => {
-  console.log(`[api] processMeeting: meetingId=${meetingId}`);
+  log.info(`processMeeting: meetingId=${meetingId}`);
   await trpcCall("meetings.process", { meetingId }, "mutation");
-  console.log(`[api] processMeeting: success`);
+  log.info("processMeeting: success");
 };
 
 /**

@@ -5,31 +5,12 @@
 import { app } from "electron";
 import fs from "fs";
 import path from "path";
+import type { OverlaySettings } from "../shared/types.js";
+import { createDesktopLogger } from "../shared/logger.js";
 
-export type OverlaySettings = {
-  shortcuts: {
-    assistantToggle: string;
-    dictationToggle: string;
-    dictationHoldKey: string;
-    meetingToggle: string;
-  };
-  voice: {
-    language: string;
-    silenceTimeoutMs: number;
-    ttsEnabled: boolean;
-    ttsRate: number;
-  };
-  behavior: {
-    doubleTapWindowMs: number;
-    autoDismissMs: number;
-    showDictationPreview: boolean;
-    holdThresholdMs: number;
-  };
-  meeting: {
-    autoDetect: boolean;
-    chunkIntervalMs: number;
-  };
-};
+export type { OverlaySettings } from "../shared/types.js";
+
+const log = createDesktopLogger("settings");
 
 export const OVERLAY_DEFAULTS: OverlaySettings = {
   shortcuts: {
@@ -85,7 +66,7 @@ export const setOverlaySettings = (partial: Partial<OverlaySettings>): OverlaySe
   try {
     fs.writeFileSync(getSettingsPath(), JSON.stringify(merged, null, 2), "utf8");
   } catch (err) {
-    console.error("[settings] Failed to write settings:", err);
+    log.error("Failed to write settings:", err);
   }
   return merged;
 };

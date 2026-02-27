@@ -2,9 +2,12 @@
 // NotchPill state machine — reducer-based, no external deps
 // ---------------------------------------------------------------------------
 
-export type PillState = "idle" | "listening" | "thinking" | "response";
+import type { ActivationMode } from "../../../shared/types.js";
 
-export type InteractionMode = "assistant" | "continuous" | "dictation" | "transcribe";
+export type PillState = "idle" | "listening" | "thinking" | "response" | "transcribing";
+
+/** Alias for ActivationMode — kept for backward compatibility in reducer code. */
+export type InteractionMode = ActivationMode;
 
 export type PillAction =
   | { type: "ACTIVATE"; mode: InteractionMode }
@@ -15,7 +18,10 @@ export type PillAction =
   | { type: "AI_COMPLETE"; title: string; lines: string[] }
   | { type: "AI_ERROR"; message: string }
   | { type: "DISMISS" }
-  | { type: "MEETING_UPDATE"; active: boolean; meetingId: string | null };
+  | { type: "MEETING_UPDATE"; active: boolean; meetingId: string | null; startedAt: number | null }
+  | { type: "TRANSCRIBING_START" }
+  | { type: "TRANSCRIBING_COMPLETE"; transcript: string }
+  | { type: "TRANSCRIBING_ERROR"; message: string };
 
 export type PillContext = {
   state: PillState;
@@ -26,6 +32,7 @@ export type PillContext = {
   streamingText: string;
   meetingActive: boolean;
   meetingId: string | null;
+  meetingStartedAt: number | null;
 };
 
 export const initialPillContext: PillContext = {
@@ -37,12 +44,13 @@ export const initialPillContext: PillContext = {
   streamingText: "",
   meetingActive: false,
   meetingId: null,
+  meetingStartedAt: null,
 };
 
 export const pillReducer = (ctx: PillContext, action: PillAction): PillContext => {
   switch (action.type) {
     case "ACTIVATE":
-      if (ctx.state !== "idle") return { ...ctx, ...initialPillContext, meetingActive: ctx.meetingActive, meetingId: ctx.meetingId };
+      if (ctx.state !== "idle") return { ...ctx, ...initialPillContext, meetingActive: ctx.meetingActive, meetingId: ctx.meetingId, meetingStartedAt: ctx.meetingStartedAt };
       return {
         ...ctx,
         state: "listening",
@@ -77,7 +85,16 @@ export const pillReducer = (ctx: PillContext, action: PillAction): PillContext =
       return { ...ctx, state: "response", responseTitle: "Error", responseLines: [action.message], streamingText: "" };
 
     case "MEETING_UPDATE":
-      return { ...ctx, meetingActive: action.active, meetingId: action.meetingId };
+      return { ...ctx, meetingActive: action.active, meetingId: action.meetingId, meetingStartedAt: action.startedAt };
+
+    case "TRANSCRIBING_START":
+      return { ...ctx, state: "transcribing" };
+
+    case "TRANSCRIBING_COMPLETE":
+      return { ...ctx, state: "idle", transcript: action.transcript };
+
+    case "TRANSCRIBING_ERROR":
+      return { ...ctx, state: "response", responseTitle: "Error", responseLines: [action.message], streamingText: "" };
 
     default:
       return ctx;

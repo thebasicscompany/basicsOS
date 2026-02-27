@@ -1,28 +1,4 @@
-/** Notch info sent from main process. */
-type NotchInfo = {
-  hasNotch: boolean;
-  notchHeight: number;
-  menuBarHeight: number;
-  windowWidth: number;
-};
-
-/** Activation mode for the overlay pill. */
-type ActivationMode = "assistant" | "continuous" | "dictation" | "transcribe";
-
-/** Branding info from the web app. */
-type BrandingInfo = {
-  companyName: string;
-  logoUrl: string | null;
-  accentColor: string;
-};
-
-/** Overlay settings shape (mirrors main process settings-store). */
-type OverlaySettings = {
-  shortcuts: { assistantToggle: string; dictationToggle: string; dictationHoldKey: string; meetingToggle: string };
-  voice: { language: string; silenceTimeoutMs: number; ttsEnabled: boolean; ttsRate: number };
-  behavior: { doubleTapWindowMs: number; autoDismissMs: number; showDictationPreview: boolean; holdThresholdMs: number };
-  meeting: { autoDetect: boolean; chunkIntervalMs: number };
-};
+import type { ActivationMode, OverlaySettings, BrandingInfo, NotchInfo } from "../../shared/types.js";
 
 /** IPC bridge exposed by the preload script via contextBridge. */
 interface ElectronAPI {
@@ -65,6 +41,10 @@ interface ElectronAPI {
   removeAllListeners: () => void;
 }
 
-interface Window {
-  electronAPI?: ElectronAPI;
+declare global {
+  interface Window {
+    electronAPI?: ElectronAPI;
+  }
 }
+
+export {};

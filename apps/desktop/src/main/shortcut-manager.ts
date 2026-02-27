@@ -1,18 +1,20 @@
 // ---------------------------------------------------------------------------
-// Global shortcut manager — double-tap detection on both shortcuts
+// Global shortcut manager — double-tap detection on assistant shortcut only
+// Dictation is now handled by hold-key-detector via uiohook-napi.
 // ---------------------------------------------------------------------------
 
 import { globalShortcut } from "electron";
+import { createDesktopLogger } from "../shared/logger.js";
+
+const log = createDesktopLogger("shortcuts");
 
 export type ShortcutCallbacks = {
   onAssistantPress: () => void;
   onAssistantDoubleTap: () => void;
-  onDictationPress: () => void;
-  onDictationDoubleTap: () => void;
 };
 
 export type ShortcutManager = {
-  registerAll: (assistantKey: string, dictationKey: string, doubleTapMs: number) => void;
+  registerAll: (assistantKey: string, doubleTapMs: number) => void;
   unregisterAll: () => void;
 };
 
@@ -44,29 +46,18 @@ const createDoubleTapDetector = (
 };
 
 export const createShortcutManager = (callbacks: ShortcutCallbacks): ShortcutManager => {
-  const registerAll = (assistantKey: string, dictationKey: string, doubleTapMs: number): void => {
+  const registerAll = (assistantKey: string, doubleTapMs: number): void => {
     unregisterAll();
 
     const handleAssistant = createDoubleTapDetector(
       doubleTapMs,
-      callbacks.onAssistantPress,
-      callbacks.onAssistantDoubleTap,
+      () => callbacks.onAssistantPress(),
+      () => callbacks.onAssistantDoubleTap(),
     );
 
-    const handleDictation = createDoubleTapDetector(
-      doubleTapMs,
-      callbacks.onDictationPress,
-      callbacks.onDictationDoubleTap,
-    );
-
-    const assistantOk = globalShortcut.register(assistantKey, handleAssistant);
-    if (!assistantOk) {
-      console.warn(`[shortcuts] Failed to register assistant shortcut: ${assistantKey}`);
-    }
-
-    const dictationOk = globalShortcut.register(dictationKey, handleDictation);
-    if (!dictationOk) {
-      console.warn(`[shortcuts] Failed to register dictation shortcut: ${dictationKey}`);
+    const ok = globalShortcut.register(assistantKey, handleAssistant);
+    if (!ok) {
+      log.warn(`Failed to register assistant shortcut: ${assistantKey}`);
     }
   };
 

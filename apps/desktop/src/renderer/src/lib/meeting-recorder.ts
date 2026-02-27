@@ -6,12 +6,16 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  SYSTEM_AUDIO_GAIN,
+  MIC_AUDIO_GAIN,
+  MEDIA_RECORDER_TIMESLICE_MS,
+  WS_CONNECT_TIMEOUT_MS,
+  WS_CLOSE_ACK_TIMEOUT_MS,
+} from "../../../shared/constants.js";
+import { createDesktopLogger } from "../../../shared/logger.js";
 
-/** Forward a log line to both DevTools console and main process stdout. */
-const rlog = (msg: string): void => {
-  console.log(msg);
-  window.electronAPI?.logToMain?.(msg);
-};
+const log = createDesktopLogger("meeting-recorder");
 
 export type MeetingRecorderState = {
   isRecording: boolean;
@@ -51,21 +55,20 @@ const buildWsUrl = async (meetingId: string): Promise<string> => {
   return `${wsBase}/ws/transcribe?meetingId=${encodeURIComponent(meetingId)}&token=${encodeURIComponent(token)}`;
 };
 
-// MediaRecorder timeslice — how often ondataavailable fires.
-// Smaller = lower latency for streaming. 250ms is a good balance.
-const MEDIA_RECORDER_TIMESLICE_MS = 250;
-
 /**
  * Custom hook for dual-stream audio capture (system audio via desktopCapturer + mic).
  * Streams audio to the API server via WebSocket for real-time Deepgram transcription.
  */
 export const useMeetingRecorder = (
   _chunkIntervalMs?: number, // kept for API compat, no longer used
+  onError?: (message: string) => void,
 ): MeetingRecorderState & MeetingRecorderActions => {
   const [isRecording, setIsRecording] = useState(false);
   const [isMicOnly, setIsMicOnly] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [chunkCount, setChunkCount] = useState(0);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   // Refs to hold recording infrastructure (survives re-renders)
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -78,6 +81,9 @@ export const useMeetingRecorder = (
   const transcriptPartsRef = useRef<Array<{ speaker?: number; text: string }>>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const stoppedRef = useRef<boolean>(true);
+  // Track mic audio nodes to disconnect on reconnect (prevents pile-up)
+  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const micGainRef = useRef<GainNode | null>(null);
   // Resolved when Deepgram sends "closed" — used by stopRecording to wait for final results
   const closeResolveRef = useRef<(() => void) | null>(null);
 
@@ -144,7 +150,7 @@ export const useMeetingRecorder = (
       }
 
       const audioTracks = stream.getAudioTracks();
-      rlog(`[meeting-recorder] System audio: ${audioTracks.length} audio tracks, labels: ${audioTracks.map((t) => t.label).join(", ")}`);
+      log.info(`System audio: ${audioTracks.length} audio tracks, labels: ${audioTracks.map((t) => t.label).join(", ")}`);
 
       if (audioTracks.length === 0) {
         throw new Error("No audio tracks in display media stream");
@@ -152,7 +158,7 @@ export const useMeetingRecorder = (
 
       // Detect dead loopback track (Electron 40 bug — track arrives in "ended" state)
       if (audioTracks[0]!.readyState === "ended") {
-        rlog("[meeting-recorder] Loopback audio track is dead (readyState=ended) — Electron audio capture bug");
+        log.warn("Loopback audio track is dead (readyState=ended) — Electron audio capture bug");
         stopStream(stream);
         throw new Error("Loopback audio track is dead (readyState=ended)");
       }
@@ -168,11 +174,11 @@ export const useMeetingRecorder = (
   const startRecording = useCallback(
     async (meetingId: string): Promise<{ micOnly: boolean }> => {
       if (recorderRef.current) {
-        rlog("[meeting-recorder] Already recording, skipping");
+        log.info("Already recording, skipping");
         return { micOnly: false };
       }
 
-      rlog(`[meeting-recorder] Starting recording for meeting: ${meetingId}`);
+      log.info(`Starting recording for meeting: ${meetingId}`);
       meetingIdRef.current = meetingId;
       stoppedRef.current = false;
       transcriptPartsRef.current = [];
@@ -186,26 +192,26 @@ export const useMeetingRecorder = (
       let micOnly = false;
 
       try {
-        rlog("[meeting-recorder] Requesting system audio via getDisplayMedia...");
+        log.info("Requesting system audio via getDisplayMedia...");
         systemStream = await getSystemAudioStream();
         systemStreamRef.current = systemStream;
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const errName = err instanceof Error ? err.name : "unknown";
-        rlog(`[meeting-recorder] System audio failed (${errName}): ${errMsg}`);
-        rlog("[meeting-recorder] Falling back to mic-only + ScreenCaptureKit system audio");
+        log.warn(`System audio failed (${errName}): ${errMsg}`);
+        log.info("Falling back to mic-only + ScreenCaptureKit system audio");
         micOnly = true;
 
         // Start ScreenCaptureKit system audio capture in main process as fallback
         try {
           const started = await window.electronAPI?.startSystemAudio?.(meetingId);
           if (started) {
-            rlog("[meeting-recorder] ScreenCaptureKit system audio started as fallback");
+            log.info("ScreenCaptureKit system audio started as fallback");
           } else {
-            rlog("[meeting-recorder] ScreenCaptureKit fallback failed or unavailable");
+            log.warn("ScreenCaptureKit fallback failed or unavailable");
           }
         } catch (sckErr: unknown) {
-          rlog(`[meeting-recorder] ScreenCaptureKit fallback error: ${sckErr instanceof Error ? sckErr.message : String(sckErr)}`);
+          log.error(`ScreenCaptureKit fallback error: ${sckErr instanceof Error ? sckErr.message : String(sckErr)}`);
         }
       }
 
@@ -229,22 +235,24 @@ export const useMeetingRecorder = (
       if (systemStream) {
         const systemSource = audioCtx.createMediaStreamSource(systemStream);
         const systemGain = audioCtx.createGain();
-        systemGain.gain.value = 0.7;
+        systemGain.gain.value = SYSTEM_AUDIO_GAIN;
         systemSource.connect(systemGain);
         systemGain.connect(dest);
       }
 
       const micSource = audioCtx.createMediaStreamSource(micStream);
       const micGain = audioCtx.createGain();
-      micGain.gain.value = 1.0;
+      micGain.gain.value = MIC_AUDIO_GAIN;
       micSource.connect(micGain);
       micGain.connect(dest);
+      micSourceRef.current = micSource;
+      micGainRef.current = micGain;
 
       // Handle device disconnects
       if (systemStream) {
         for (const track of systemStream.getAudioTracks()) {
           track.onended = () => {
-            console.warn("[meeting-recorder] System audio track ended unexpectedly");
+            log.warn("System audio track ended unexpectedly");
             void stopRecording();
           };
         }
@@ -252,19 +260,24 @@ export const useMeetingRecorder = (
 
       for (const track of micStream.getAudioTracks()) {
         track.onended = () => {
-          console.warn("[meeting-recorder] Mic track ended — attempting recovery");
+          log.warn("Mic track ended — attempting recovery");
           navigator.mediaDevices.getUserMedia({ audio: true })
             .then((newMic) => {
+              // Disconnect old audio nodes to prevent pile-up
+              micSourceRef.current?.disconnect();
+              micGainRef.current?.disconnect();
               stopStream(micStreamRef.current);
               micStreamRef.current = newMic;
               const newMicSource = audioCtx.createMediaStreamSource(newMic);
               const newMicGain = audioCtx.createGain();
-              newMicGain.gain.value = 1.0;
+              newMicGain.gain.value = MIC_AUDIO_GAIN;
               newMicSource.connect(newMicGain);
               newMicGain.connect(dest);
+              micSourceRef.current = newMicSource;
+              micGainRef.current = newMicGain;
             })
             .catch(() => {
-              console.error("[meeting-recorder] Mic recovery failed — stopping");
+              log.error("Mic recovery failed — stopping");
               void stopRecording();
             });
         };
@@ -272,14 +285,14 @@ export const useMeetingRecorder = (
 
       // Create MediaRecorder (ready to start, but don't start yet)
       const mimeType = pickMimeType();
-      rlog(`[meeting-recorder] ${micOnly ? "Mic-only" : "Mixed"} stream — mimeType=${mimeType}`);
+      log.info(`${micOnly ? "Mic-only" : "Mixed"} stream — mimeType=${mimeType}`);
       setIsMicOnly(micOnly);
 
       const recorder = new MediaRecorder(dest.stream, { mimeType });
       recorderRef.current = recorder;
 
       recorder.onerror = (e) => {
-        console.error("[meeting-recorder] MediaRecorder error:", e);
+        log.error("MediaRecorder error:", e);
       };
 
       // -----------------------------------------------------------------------
@@ -287,14 +300,14 @@ export const useMeetingRecorder = (
       //    immediately after Deepgram says "ready" (no idle gap).
       // -----------------------------------------------------------------------
       const wsUrl = await buildWsUrl(meetingId);
-      rlog(`[meeting-recorder] Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
+      log.info(`Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       // Wait for "ready" from server (Deepgram connected)
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("WebSocket connection timed out")), 10_000);
+        const timeout = setTimeout(() => reject(new Error("WebSocket connection timed out")), WS_CONNECT_TIMEOUT_MS);
 
         ws.onmessage = (event) => {
           try {
@@ -320,7 +333,7 @@ export const useMeetingRecorder = (
         };
       });
 
-      rlog("[meeting-recorder] WebSocket connected, Deepgram ready");
+      log.info("WebSocket connected, Deepgram ready");
 
       // -----------------------------------------------------------------------
       // 3. Start recording IMMEDIATELY — Deepgram's 10s idle timer is running
@@ -359,12 +372,21 @@ export const useMeetingRecorder = (
             if (msg.is_final) {
               transcriptPartsRef.current.push({ speaker: msg.speaker, text: msg.transcript });
               setChunkCount((prev) => prev + 1);
-              rlog(`[meeting-recorder] Transcript (final, speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
+              log.debug(`Transcript (final, speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
             }
+          } else if (msg.type === "reconnecting") {
+            log.info(`Server reconnecting to Deepgram (attempt ${(msg as { attempt?: number }).attempt ?? "?"})`);
           } else if (msg.type === "error") {
-            rlog(`[meeting-recorder] Server error: ${msg.message ?? "unknown"}`);
+            log.error(`Server error: ${msg.message ?? "unknown"}`);
+            onErrorRef.current?.(`Transcription error: ${msg.message ?? "unknown"}`);
           } else if (msg.type === "closed") {
-            rlog("[meeting-recorder] Deepgram stream closed by server");
+            const reason = (msg as { reason?: string }).reason;
+            if (reason === "max_retries") {
+              log.error("Deepgram reconnection exhausted — transcription lost");
+              onErrorRef.current?.("Transcription connection lost");
+            } else {
+              log.info("Deepgram stream closed by server");
+            }
             closeResolveRef.current?.();
             closeResolveRef.current = null;
           }
@@ -372,11 +394,11 @@ export const useMeetingRecorder = (
       };
 
       ws.onerror = (event) => {
-        console.error("[meeting-recorder] WebSocket error:", event);
+        log.error("WebSocket error:", event);
       };
 
       ws.onclose = () => {
-        rlog("[meeting-recorder] WebSocket closed");
+        log.info("WebSocket closed");
         wsRef.current = null;
       };
 
@@ -399,7 +421,7 @@ export const useMeetingRecorder = (
   );
 
   const stopRecording = useCallback(async (): Promise<{ meetingId: string | null; transcript: string }> => {
-    rlog("[meeting-recorder] stopRecording() called");
+    log.info("stopRecording() called");
     stoppedRef.current = true;
     const mid = meetingIdRef.current;
     const recorder = recorderRef.current;
@@ -430,7 +452,7 @@ export const useMeetingRecorder = (
 
       // Wait for the existing onmessage handler to receive "closed" (max 2s)
       await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 2000);
+        const timeout = setTimeout(resolve, WS_CLOSE_ACK_TIMEOUT_MS);
         closeResolveRef.current = () => { clearTimeout(timeout); resolve(); };
       });
       closeResolveRef.current = null;
@@ -441,7 +463,7 @@ export const useMeetingRecorder = (
     try {
       systemTranscript = (await window.electronAPI?.stopSystemAudio?.()) ?? "";
       if (systemTranscript) {
-        rlog(`[meeting-recorder] System audio transcript: ${systemTranscript.length} chars`);
+        log.info(`System audio transcript: ${systemTranscript.length} chars`);
       }
     } catch { /* system audio capture wasn't running */ }
 
@@ -458,7 +480,7 @@ export const useMeetingRecorder = (
       lines.push(systemTranscript);
     }
     const transcript = lines.join("\n");
-    rlog(`[meeting-recorder] Final transcript: ${transcript.length} chars, ${parts.length} parts`);
+    log.info(`Final transcript: ${transcript.length} chars, ${parts.length} parts`);
     transcriptPartsRef.current = [];
 
     // Clean up everything

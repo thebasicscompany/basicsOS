@@ -1,19 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ActivationMode, OverlaySettings, BrandingInfo } from "../shared/types.js";
 
-export type ActivationMode = "assistant" | "continuous" | "dictation" | "transcribe";
-
-export type OverlaySettings = {
-  shortcuts: { assistantToggle: string; dictationToggle: string; dictationHoldKey: string; meetingToggle: string };
-  voice: { language: string; silenceTimeoutMs: number; ttsEnabled: boolean; ttsRate: number };
-  behavior: { doubleTapWindowMs: number; autoDismissMs: number; showDictationPreview: boolean; holdThresholdMs: number };
-  meeting: { autoDetect: boolean; chunkIntervalMs: number };
-};
-
-export type BrandingInfo = {
-  companyName: string;
-  logoUrl: string | null;
-  accentColor: string;
-};
+export type { ActivationMode, OverlaySettings, BrandingInfo } from "../shared/types.js";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   /** Listen for activate signal from main process. */

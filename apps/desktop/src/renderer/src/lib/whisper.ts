@@ -1,4 +1,9 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { MIN_TRANSCRIPTION_BLOB_SIZE } from "../../../shared/constants.js";
+import { createDesktopLogger } from "../../../shared/logger.js";
+import { transcribeAudioBlob } from "../api";
+
+const log = createDesktopLogger("whisper");
 
 // ---------------------------------------------------------------------------
 // Audio cue: tiny chime via AudioContext (no file dependency)
@@ -28,35 +33,7 @@ const playStartChime = (): void => playChime(880, 0.15);
 const playStopChime = (): void => playChime(440, 0.2);
 
 // ---------------------------------------------------------------------------
-// SpeechRecognition types
-// ---------------------------------------------------------------------------
-
-type SpeechRecognitionEvent = {
-  results: SpeechRecognitionResultList;
-};
-type SpeechRecognitionResultList = Array<SpeechRecognitionResult>;
-type SpeechRecognitionResult = { isFinal: boolean } & Array<{ transcript: string }>;
-type SpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((e: SpeechRecognitionEvent) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognition;
-    webkitSpeechRecognition?: new () => SpeechRecognition;
-    require?: (module: string) => unknown;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Hook: useSpeechRecognition — pure recognition, no AI integration
+// Hook: useSpeechRecognition — MediaRecorder + Deepgram transcription
 // ---------------------------------------------------------------------------
 
 export type SpeechRecognitionState = {
@@ -64,72 +41,132 @@ export type SpeechRecognitionState = {
   transcript: string;
   interimText: string;
   startListening: () => void;
-  stopListening: () => string;
+  stopListening: () => Promise<string>;
 };
 
 export const useSpeechRecognition = (): SpeechRecognitionState => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimText, setInterimText] = useState("");
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const transcriptRef = useRef("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Cleanup media tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        for (const track of streamRef.current.getTracks()) {
+          track.stop();
+        }
+        streamRef.current = null;
+      }
+    };
+  }, []);
 
   const startListening = useCallback(() => {
-    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!SR) return;
-
+    playStartChime();
     setIsListening(true);
     setTranscript("");
     setInterimText("");
-    transcriptRef.current = "";
-    playStartChime();
+    chunksRef.current = [];
 
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+        },
+      })
+      .then((stream) => {
+        streamRef.current = stream;
 
-    recognition.onresult = (e) => {
-      let final = "";
-      let interim = "";
-      for (const result of Array.from(e.results) as SpeechRecognitionResultList) {
-        const text = result[0]?.transcript ?? "";
-        if (result.isFinal) {
-          final += text + " ";
-        } else {
-          interim += text;
-        }
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm";
+
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.onerror = () => {
+          setIsListening(false);
+          stopMediaTracks();
+        };
+
+        recorder.start();
+        setInterimText("Recording...");
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Microphone access denied";
+        log.error("getUserMedia failed:", msg);
+        setIsListening(false);
+        setInterimText(msg);
+      });
+  }, []);
+
+  const stopMediaTracks = useCallback(() => {
+    if (streamRef.current) {
+      for (const track of streamRef.current.getTracks()) {
+        track.stop();
       }
-      const combined = (final + interim).trim();
-      transcriptRef.current = combined;
-      setTranscript(combined);
-      // Show last few words as interim indicator
-      const words = combined.split(/\s+/);
-      setInterimText(words.slice(-6).join(" "));
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      // Fires when recognition stops naturally
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
-  }, []);
-
-  const stopListening = useCallback((): string => {
-    const recognition = recognitionRef.current;
-    if (recognition) {
-      recognition.stop();
-      recognitionRef.current = null;
+      streamRef.current = null;
     }
-    setIsListening(false);
-    playStopChime();
-    return transcriptRef.current.trim();
   }, []);
+
+  const stopListening = useCallback(async (): Promise<string> => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      log.debug("stopListening: recorder inactive or null — returning empty");
+      setIsListening(false);
+      playStopChime();
+      stopMediaTracks();
+      return "";
+    }
+
+    // Wait for the recorder to finish and collect all data
+    const blob = await new Promise<Blob>((resolve) => {
+      recorder.onstop = () => {
+        const chunks = chunksRef.current;
+        const mimeType = recorder.mimeType || "audio/webm";
+        resolve(new Blob(chunks, { type: mimeType }));
+      };
+      recorder.stop();
+    });
+
+    log.debug(`stopListening: blob.size=${blob.size}, mimeType=${blob.type}, chunks=${chunksRef.current.length}`);
+
+    playStopChime();
+    setIsListening(false);
+    stopMediaTracks();
+    setInterimText("Transcribing...");
+
+    // Skip transcription for very short recordings (likely no speech)
+    if (blob.size < MIN_TRANSCRIPTION_BLOB_SIZE) {
+      log.debug(`stopListening: blob too small (${blob.size} < ${MIN_TRANSCRIPTION_BLOB_SIZE}) — skipping transcription`);
+      setTranscript("");
+      setInterimText("");
+      return "";
+    }
+
+    let text = "";
+    try {
+      const result = await transcribeAudioBlob(blob);
+      text = result ?? "";
+    } catch (err: unknown) {
+      log.error("Transcription error:", err instanceof Error ? err.message : err);
+    }
+    log.debug(`transcription result: "${text}" (${text.length} chars)`);
+    setTranscript(text);
+    setInterimText("");
+    return text;
+  }, [stopMediaTracks]);
 
   return { isListening, transcript, interimText, startListening, stopListening };
 };

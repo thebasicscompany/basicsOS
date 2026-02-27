@@ -11,6 +11,14 @@
 // ---------------------------------------------------------------------------
 
 import { systemPreferences, shell } from "electron";
+import {
+  SILENCE_RMS_THRESHOLD,
+  SCK_SILENCE_SKIP_SAMPLES,
+  SCK_SILENCE_CHECK_SAMPLES,
+  WS_CONNECT_TIMEOUT_MS,
+  WS_CLOSE_ACK_TIMEOUT_MS,
+} from "../shared/constants.js";
+import { createDesktopLogger } from "../shared/logger.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +69,7 @@ type AudioCaptureInstance = {
   getDisplays: () => Array<{ displayId: number; width: number; height: number; isMainDisplay?: boolean }>;
   dispose: () => void;
   on: (event: string, cb: (...args: unknown[]) => void) => unknown;
+  removeAllListeners: () => void;
 };
 
 type AudioCaptureConstructor = new () => AudioCaptureInstance;
@@ -78,9 +87,7 @@ let isRunning = false;
 // Helpers
 // ---------------------------------------------------------------------------
 
-const log = (msg: string): void => {
-  console.log(`[system-audio] ${msg}`);
-};
+const log = createDesktopLogger("system-audio");
 
 /** Dynamically import screencapturekit-audio-capture. Returns null if unavailable. */
 const loadAudioCapture = async (): Promise<AudioCaptureConstructor | null> => {
@@ -88,7 +95,7 @@ const loadAudioCapture = async (): Promise<AudioCaptureConstructor | null> => {
     const mod = await import("screencapturekit-audio-capture") as { AudioCapture?: AudioCaptureConstructor };
     return mod.AudioCapture ?? null;
   } catch (err: unknown) {
-    log(`Failed to load screencapturekit-audio-capture: ${err instanceof Error ? err.message : String(err)}`);
+    log.error(`Failed to load screencapturekit-audio-capture: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 };
@@ -122,28 +129,28 @@ export const startSystemAudioCapture = async (
   options?: SystemAudioOptions,
 ): Promise<boolean> => {
   if (isRunning) {
-    log("Already running, skipping");
+    log.info("Already running, skipping");
     return true;
   }
 
   if (process.platform !== "darwin") {
-    log("macOS required for ScreenCaptureKit — skipping system audio");
+    log.info("macOS required for ScreenCaptureKit — skipping system audio");
     return false;
   }
 
   // Check Screen Recording permission
   const screenStatus = systemPreferences.getMediaAccessStatus("screen");
   const micStatus = systemPreferences.getMediaAccessStatus("microphone");
-  log(`Permission check: screen=${screenStatus}, microphone=${micStatus}`);
+  log.info(`Permission check: screen=${screenStatus}, microphone=${micStatus}`);
   if (!checkSystemAudioPermission()) {
-    log("Screen Recording permission not granted — opening System Settings");
+    log.warn("Screen Recording permission not granted — opening System Settings");
     shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture").catch(() => {});
     return false;
   }
 
   const AudioCapture = await loadAudioCapture();
   if (!AudioCapture) {
-    log("screencapturekit-audio-capture module not available — skipping system audio");
+    log.warn("screencapturekit-audio-capture module not available — skipping system audio");
     return false;
   }
 
@@ -152,14 +159,14 @@ export const startSystemAudioCapture = async (
   // Build WebSocket URL for system audio stream
   const wsBase = apiUrl.replace(/^http/, "ws");
   const wsUrl = `${wsBase}/ws/transcribe?meetingId=${encodeURIComponent(meetingId)}&token=${encodeURIComponent(token)}&source=system&encoding=linear16&sample_rate=16000`;
-  log(`Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
+  log.info(`Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
 
   // Open WebSocket and wait for "ready"
   try {
     ws = new WebSocket(wsUrl);
 
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("WebSocket timed out")), 10_000);
+      const timeout = setTimeout(() => reject(new Error("WebSocket timed out")), WS_CONNECT_TIMEOUT_MS);
 
       ws!.onmessage = (event) => {
         try {
@@ -185,9 +192,9 @@ export const startSystemAudioCapture = async (
       };
     });
 
-    log("WebSocket connected, Deepgram ready");
+    log.info("WebSocket connected, Deepgram ready");
   } catch (err: unknown) {
-    log(`WebSocket setup failed: ${err instanceof Error ? err.message : String(err)}`);
+    log.error(`WebSocket setup failed: ${err instanceof Error ? err.message : String(err)}`);
     ws?.close();
     ws = null;
     return false;
@@ -202,18 +209,25 @@ export const startSystemAudioCapture = async (
           speaker: msg.speaker,
           text: msg.transcript,
         });
-        log(`Transcript (speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 60)}..."`);
+        log.debug(`Transcript (speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 60)}..."`);
         options?.onTranscript?.(msg.speaker, msg.transcript);
+      } else if (msg.type === "reconnecting") {
+        log.info(`Server reconnecting to Deepgram (attempt ${(msg as { attempt?: number }).attempt ?? "?"})`);
+      } else if (msg.type === "closed") {
+        const reason = (msg as { reason?: string }).reason;
+        if (reason === "max_retries") {
+          log.error("Deepgram reconnection exhausted — transcription lost");
+        }
       }
     } catch { /* not JSON */ }
   };
 
   ws.onerror = () => {
-    log("WebSocket error");
+    log.warn("WebSocket error");
   };
 
   ws.onclose = () => {
-    log("WebSocket closed");
+    log.info("WebSocket closed");
     ws = null;
   };
 
@@ -227,15 +241,15 @@ export const startSystemAudioCapture = async (
     if (!mainDisplay) {
       throw new Error("No displays found for capture");
     }
-    log(`Found ${displays.length} display(s), capturing displayId=${mainDisplay.displayId} (${mainDisplay.width}x${mainDisplay.height})`);
+    log.info(`Found ${displays.length} display(s), capturing displayId=${mainDisplay.displayId} (${mainDisplay.width}x${mainDisplay.height})`);
 
     // Audio data event — sample.data is a Buffer of 16-bit signed PCM mono audio
     let sampleCount = 0;
     // ScreenCaptureKit has ~1s startup latency where initial samples are silent.
     // Check 25 samples (~0.5s of audio at 20ms chunks) AFTER skipping the first 25
     // to avoid false-positive silence detection during normal startup.
-    const SILENCE_SKIP_SAMPLES = 25;
-    const SILENCE_CHECK_SAMPLES = 25;
+    const SILENCE_SKIP_SAMPLES = SCK_SILENCE_SKIP_SAMPLES;
+    const SILENCE_CHECK_SAMPLES = SCK_SILENCE_CHECK_SAMPLES;
     let silentSamples = 0;
     let silenceChecked = false;
 
@@ -245,20 +259,20 @@ export const startSystemAudioCapture = async (
 
       // Log diagnostics at key milestones
       if (sampleCount <= 3 || sampleCount === 10 || sampleCount === 50) {
-        log(`audio #${sampleCount}: ${sample.data.length}B, rms=${sample.rms.toFixed(4)}, rate=${sample.sampleRate}, ch=${sample.channels}, ws=${ws?.readyState ?? "null"}`);
+        log.debug(`audio #${sampleCount}: ${sample.data.length}B, rms=${sample.rms.toFixed(4)}, rate=${sample.sampleRate}, ch=${sample.channels}, ws=${ws?.readyState ?? "null"}`);
       }
 
       // Silence detection: skip startup samples, then check a window for permission issues
       if (!silenceChecked && sampleCount > SILENCE_SKIP_SAMPLES && sampleCount <= SILENCE_SKIP_SAMPLES + SILENCE_CHECK_SAMPLES) {
-        if (sample.rms === 0) silentSamples++;
+        if (sample.rms < SILENCE_RMS_THRESHOLD) silentSamples++;
 
         if (sampleCount === SILENCE_SKIP_SAMPLES + SILENCE_CHECK_SAMPLES) {
           silenceChecked = true;
           if (silentSamples === SILENCE_CHECK_SAMPLES) {
-            log("All post-startup audio samples are silence — likely permission issue");
+            log.warn("All post-startup audio samples are silence — likely permission issue");
             options?.onSilenceDetected?.();
           } else {
-            log(`Silence check passed: ${SILENCE_CHECK_SAMPLES - silentSamples}/${SILENCE_CHECK_SAMPLES} samples had audio`);
+            log.info(`Silence check passed: ${SILENCE_CHECK_SAMPLES - silentSamples}/${SILENCE_CHECK_SAMPLES} samples had audio`);
           }
         }
       }
@@ -269,7 +283,7 @@ export const startSystemAudioCapture = async (
 
     capture.on("error", (err: unknown) => {
       const error = err as Error;
-      log(`Capture error: ${error.message ?? String(err)}`);
+      log.error(`Capture error: ${error.message ?? String(err)}`);
     });
 
     // Start capturing the main display audio
@@ -285,14 +299,14 @@ export const startSystemAudioCapture = async (
     }
 
     isRunning = true;
-    log("ScreenCaptureKit started — capturing system audio via display capture");
+    log.info("ScreenCaptureKit started — capturing system audio via display capture");
     return true;
   } catch (err: unknown) {
-    log(`ScreenCaptureKit start failed: ${err instanceof Error ? err.message : String(err)}`);
+    log.error(`ScreenCaptureKit start failed: ${err instanceof Error ? err.message : String(err)}`);
     ws?.close();
     ws = null;
     if (capture) {
-      try { capture.dispose(); } catch { /* ignore */ }
+      try { capture.removeAllListeners(); capture.dispose(); } catch { /* ignore */ }
       capture = null;
     }
     return false;
@@ -306,12 +320,13 @@ export const startSystemAudioCapture = async (
 export const stopSystemAudioCapture = async (): Promise<string> => {
   if (!isRunning) return "";
 
-  log("Stopping...");
+  log.info("Stopping...");
   isRunning = false;
 
-  // Stop ScreenCaptureKit capture
+  // Stop ScreenCaptureKit capture — remove listeners before dispose
   if (capture) {
     try {
+      capture.removeAllListeners();
       capture.stopCapture();
       capture.dispose();
     } catch { /* already stopped */ }
@@ -323,7 +338,7 @@ export const stopSystemAudioCapture = async (): Promise<string> => {
     ws.send(JSON.stringify({ type: "CloseStream" }));
 
     await new Promise<void>((resolve) => {
-      const timeout = setTimeout(resolve, 2000);
+      const timeout = setTimeout(resolve, WS_CLOSE_ACK_TIMEOUT_MS);
       const prevOnMessage = ws!.onmessage;
       ws!.onmessage = (event) => {
         if (prevOnMessage) {
@@ -350,7 +365,7 @@ export const stopSystemAudioCapture = async (): Promise<string> => {
   });
 
   const transcript = lines.join("\n");
-  log(`Final transcript: ${transcript.length} chars, ${transcriptChunks.length} chunks`);
+  log.info(`Final transcript: ${transcript.length} chars, ${transcriptChunks.length} chunks`);
   transcriptChunks = [];
 
   return transcript;

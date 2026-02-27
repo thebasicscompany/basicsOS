@@ -1,30 +1,25 @@
 import { useEffect, useCallback, useRef, useState, useReducer } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { OverlaySettings, BrandingInfo, NotchInfo } from "../../shared/types.js";
+import { FLASH_SHORT_MS } from "../../shared/constants.js";
+import { createDesktopLogger } from "../../shared/logger.js";
 import { setIgnoreMouse } from "./lib/ipc";
 import { speak, cancel as cancelTTS } from "./lib/tts";
 import { useSpeechRecognition } from "./lib/whisper";
-import { detectCommand } from "./lib/voice-commands";
 import { useSilenceDetector } from "./lib/silence-detector";
 import { pillReducer, initialPillContext } from "./lib/notch-pill-state";
 import type { InteractionMode } from "./lib/notch-pill-state";
 import { useMeetingRecorder } from "./lib/meeting-recorder";
-import { uploadMeetingTranscript, processMeeting } from "./api";
+import { useFlashMessage } from "./lib/use-flash-message";
+import { useAIResponse } from "./lib/use-ai-response";
+import { useActivationHandler } from "./lib/use-activation-handler";
+import { useMeetingControls } from "./lib/use-meeting-controls";
+import {
+  SPRING, CONTENT_ENTER, CONTENT_EXIT, STAGGER_MS, ACTIVE_HEIGHT,
+  Sparkle, PencilIcon, MicIcon, CompanyLogo, Waveform, ThinkingDots, ResponseBody, MeetingTimer,
+} from "./lib/pill-components";
 
-// ---------------------------------------------------------------------------
-// Animation constants
-// ---------------------------------------------------------------------------
-
-const SPRING = { type: "spring" as const, stiffness: 500, damping: 35, mass: 0.8 };
-const CONTENT_ENTER = { duration: 0.2, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
-const CONTENT_EXIT = { duration: 0.12 };
-const STAGGER_MS = 80;
-
-// ---------------------------------------------------------------------------
-// Heights
-// ---------------------------------------------------------------------------
-
-const IDLE_HEIGHT = 12;
-const ACTIVE_HEIGHT = 48;
+const log = createDesktopLogger("overlay");
 
 // ---------------------------------------------------------------------------
 // Default settings
@@ -38,217 +33,6 @@ const DEFAULT_SETTINGS: OverlaySettings = {
 };
 
 // ---------------------------------------------------------------------------
-// Simulated AI responses (used when API is unavailable)
-// ---------------------------------------------------------------------------
-
-const SIMULATED_RESPONSES = [
-  { title: "Assistant", lines: ["I'd be happy to help with that.", "Let me look into it for you."] },
-  { title: "Answer", lines: ["The quarterly review is scheduled for Friday at 2pm.", "Sarah and Alex are presenting."] },
-  { title: "Summary", lines: ["3 relevant documents and 2 recent tasks match your query."] },
-  { title: "Suggestion", lines: ["I can help you draft that email.", "Pulling in context from recent meetings."] },
-];
-
-let simIdx = 0;
-
-const getSimulatedResponse = (transcript: string): { title: string; lines: string[] } => {
-  const lower = transcript.toLowerCase();
-  if (lower.includes("meeting") || lower.includes("schedule")) {
-    return { title: "Meetings", lines: ["Your next meeting is the Weekly Sync at 2pm.", "Alex, Sarah, and 3 others."] };
-  }
-  if (lower.includes("task") || lower.includes("todo")) {
-    return { title: "Tasks", lines: ["5 tasks in progress.", "2 due today: Design review and API docs."] };
-  }
-  if (lower.includes("search") || lower.includes("find")) {
-    return { title: "Search", lines: ["Found 3 matching documents.", "Q1 Roadmap, Design System, Sprint Notes"] };
-  }
-  const resp = SIMULATED_RESPONSES[simIdx % SIMULATED_RESPONSES.length]!;
-  simIdx++;
-  return resp;
-};
-
-// ---------------------------------------------------------------------------
-// AI streaming — tries real API, falls back to simulation
-// ---------------------------------------------------------------------------
-
-const streamAssistant = async (
-  message: string,
-  onToken: (token: string) => void,
-  onComplete: (title: string, lines: string[]) => void,
-): Promise<void> => {
-  try {
-    const apiUrl = await window.electronAPI?.getApiUrl();
-    const sessionToken = await window.electronAPI?.getSessionToken();
-
-    if (!apiUrl || !sessionToken) {
-      await simulateResponse(message, onToken, onComplete);
-      return;
-    }
-
-    const res = await fetch(`${apiUrl}/stream/assistant`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
-      body: JSON.stringify({ message, history: [] }),
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!res.ok || !res.body) {
-      await simulateResponse(message, onToken, onComplete);
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = "";
-
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      for (const line of chunk.split("\n")) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") { onComplete("Assistant", fullText.split("\n").filter(Boolean)); return; }
-        try {
-          const parsed = JSON.parse(data) as { token?: string };
-          if (parsed.token) { fullText += parsed.token; onToken(parsed.token); }
-        } catch { /* skip */ }
-      }
-    }
-    onComplete("Assistant", fullText.split("\n").filter(Boolean));
-  } catch {
-    await simulateResponse(message, onToken, onComplete);
-  }
-};
-
-const simulateResponse = async (
-  message: string,
-  onToken: (token: string) => void,
-  onComplete: (title: string, lines: string[]) => void,
-): Promise<void> => {
-  const resp = getSimulatedResponse(message);
-  const words = resp.lines.join(" ").split(" ");
-  for (let i = 0; i < words.length; i++) {
-    await new Promise((r) => setTimeout(r, 40 + Math.random() * 30));
-    onToken((i > 0 ? " " : "") + words[i]);
-  }
-  onComplete(resp.title, resp.lines);
-};
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-const Sparkle = ({ active }: { active: boolean }): JSX.Element => (
-  <motion.div
-    animate={active
-      ? { scale: [1, 1.2, 1], rotate: [0, 15, 0] }
-      : { scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
-    transition={{ duration: active ? 0.5 : 2.8, repeat: active ? 0 : Infinity, ease: "easeInOut" }}
-    style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 14, height: 14 }}
-  >
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <path d="M8 0C8.3 4.5 11.5 7.7 16 8C11.5 8.3 8.3 11.5 8 16C7.7 11.5 4.5 8.3 0 8C4.5 7.7 7.7 4.5 8 0Z" fill="white" fillOpacity={active ? 1 : 0.55} />
-    </svg>
-  </motion.div>
-);
-
-const PencilIcon = (): JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-    <path d="m15 5 4 4" />
-  </svg>
-);
-
-const MicIcon = (): JSX.Element => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" x2="12" y1="19" y2="22" />
-  </svg>
-);
-
-const CompanyLogo = ({ logoUrl }: { logoUrl: string | null }): JSX.Element => {
-  if (logoUrl) {
-    return (
-      <motion.img
-        src={logoUrl}
-        alt=""
-        animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{ width: 15, height: 15, borderRadius: 3, objectFit: "contain" }}
-      />
-    );
-  }
-  // Default: Basics OS logomark — rounded "b" lettermark
-  return (
-    <motion.div
-      animate={{ opacity: [0.45, 0.75, 0.45] }}
-      transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 15, height: 15 }}
-    >
-      <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-        <rect x="1" y="1" width="18" height="18" rx="5" fill="white" fillOpacity="0.15" />
-        <path d="M7 5.5v9M7 10h2.5a2.5 2.5 0 0 0 0-5H7M7 10h3a2.5 2.5 0 0 1 0 5H7"
-          stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </motion.div>
-  );
-};
-
-const Waveform = (): JSX.Element => {
-  const [heights, setHeights] = useState([4, 8, 6, 10, 5]);
-  useEffect(() => {
-    const iv = setInterval(() => setHeights(Array.from({ length: 5 }, () => 3 + Math.random() * 13)), 100);
-    return () => clearInterval(iv);
-  }, []);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2, height: 16 }}>
-      {heights.map((h, i) => (
-        <motion.div key={i} animate={{ height: h }} transition={{ type: "spring", stiffness: 600, damping: 20, mass: 0.3 }}
-          style={{ width: 2, borderRadius: 1, background: "rgba(255,255,255,0.7)" }} />
-      ))}
-    </div>
-  );
-};
-
-const ThinkingDots = (): JSX.Element => (
-  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-    {[0, 1, 2].map((i) => (
-      <motion.div key={i} animate={{ opacity: [0.2, 1, 0.2] }}
-        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
-        style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />
-    ))}
-  </div>
-);
-
-const ResponseBody = ({ response }: { response: { title: string; lines: string[] } }): JSX.Element => (
-  <div>
-    <div style={{ color: "#fff", fontSize: 13.5, lineHeight: 1.5, fontWeight: 400 }}>{response.lines[0]}</div>
-    {response.lines.slice(1).map((line, i) => (
-      <div key={`${response.title}-${i}`} style={{ color: "rgba(255,255,255,0.6)", fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>{line}</div>
-    ))}
-  </div>
-);
-
-const MeetingTimer = ({ startedAt }: { startedAt: number | null }): JSX.Element | null => {
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    if (!startedAt) return;
-    const iv = setInterval(() => setElapsed(Date.now() - startedAt), 1000);
-    return () => clearInterval(iv);
-  }, [startedAt]);
-  if (!startedAt) return null;
-  const totalSec = Math.floor(elapsed / 1000);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return (
-    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
-      {min}:{sec.toString().padStart(2, "0")}
-    </span>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // OverlayApp — the NotchPill (4 interaction modes)
 // ---------------------------------------------------------------------------
 
@@ -258,13 +42,14 @@ export const OverlayApp = (): JSX.Element => {
   const [pill, dispatch] = useReducer(pillReducer, initialPillContext);
   const [settings, setSettings] = useState<OverlaySettings>(DEFAULT_SETTINGS);
   const [measuredHeight, setMeasuredHeight] = useState(0);
-  const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamAbortRef = useRef(false);
 
   const speech = useSpeechRecognition();
-  const meetingRecorder = useMeetingRecorder(settings.meeting?.chunkIntervalMs ?? 5000);
+  const flash = useFlashMessage();
+  const handleRecorderError = useCallback((msg: string) => flash.show(msg, 3000), [flash.show]);
+  const meetingRecorder = useMeetingRecorder(settings.meeting?.chunkIntervalMs ?? 5000, handleRecorderError);
   const meetingRecorderRef = useRef(meetingRecorder);
   meetingRecorderRef.current = meetingRecorder;
 
@@ -275,11 +60,6 @@ export const OverlayApp = (): JSX.Element => {
   speechRef.current = speech;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-
-  // ---------------------------------------------------------------------------
-  // Load settings + branding on mount (one-time IPC listeners)
-  // ---------------------------------------------------------------------------
-  // Settings + branding loaded inside main IPC useEffect (after removeAllListeners)
 
   // ---------------------------------------------------------------------------
   // Timer management
@@ -294,13 +74,27 @@ export const OverlayApp = (): JSX.Element => {
     clearDismissTimer();
     streamAbortRef.current = true;
     if (speechRef.current.isListening) {
-      void speechRef.current.stopListening(); // fire and forget on dismiss
+      void speechRef.current.stopListening();
     }
     dispatch({ type: "DISMISS" });
     window.electronAPI?.notifyDismissed();
   };
 
   const dismiss = useCallback(() => dismissRef.current(), []);
+
+  // ---------------------------------------------------------------------------
+  // Extracted hooks
+  // ---------------------------------------------------------------------------
+
+  const activation = useActivationHandler({
+    dispatch, pillRef, speechRef, dismissRef, showFlash: flash.show,
+  });
+
+  const meeting = useMeetingControls({
+    dispatch, pillRef, meetingRecorderRef, showFlash: flash.show,
+  });
+
+  useAIResponse(pill.state, pill.transcript, dispatch, streamAbortRef);
 
   // ---------------------------------------------------------------------------
   // Silence detector — assistant mode only (auto-stop after silence)
@@ -325,37 +119,6 @@ export const OverlayApp = (): JSX.Element => {
   );
 
   // ---------------------------------------------------------------------------
-  // Process transcript → thinking → AI (assistant + continuous modes)
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (pill.state !== "thinking" || !pill.transcript) return;
-
-    const cmd = detectCommand(pill.transcript);
-    if (cmd) {
-      switch (cmd.type) {
-        case "navigate":
-          dispatch({ type: "COMMAND_RESULT", title: `Opening ${cmd.module}`, lines: ["Navigating..."] });
-          window.electronAPI?.navigateMain(cmd.url);
-          return;
-        case "create_task":
-          dispatch({ type: "COMMAND_RESULT", title: "Task Created", lines: [cmd.title, "Added to your task list"] });
-          return;
-        case "search":
-          dispatch({ type: "COMMAND_RESULT", title: "Searching", lines: [`"${cmd.query}"`, "Opening results..."] });
-          window.electronAPI?.navigateMain(`/assistant?q=${encodeURIComponent(cmd.query)}`);
-          return;
-      }
-    }
-
-    streamAbortRef.current = false;
-    void streamAssistant(
-      pill.transcript,
-      (token) => { if (!streamAbortRef.current) dispatch({ type: "AI_STREAMING", text: token }); },
-      (title, lines) => { if (!streamAbortRef.current) dispatch({ type: "AI_COMPLETE", title, lines }); },
-    );
-  }, [pill.state, pill.transcript]);
-
-  // ---------------------------------------------------------------------------
   // Auto-dismiss on response
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -370,7 +133,6 @@ export const OverlayApp = (): JSX.Element => {
   // TTS on response
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    // Only speak for assistant/continuous modes — never for dictation/transcribe
     const mode = pill.interactionMode;
     if (pill.state === "response" && settingsRef.current.voice.ttsEnabled && (mode === "assistant" || mode === "continuous")) {
       const text = pill.responseLines.join(". ");
@@ -379,259 +141,43 @@ export const OverlayApp = (): JSX.Element => {
   }, [pill.state, pill.responseLines, pill.interactionMode]);
 
   // ---------------------------------------------------------------------------
-  // IPC listeners (register once, access state via refs)
+  // IPC listeners (single registration point, cleanup via removeAllListeners)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const api = window.electronAPI;
     if (!api) return;
 
-    // Clean up any stale listeners from HMR before registering new ones
+    // Clean up any stale listeners from HMR
     api.removeAllListeners?.();
 
-    // Settings, notch info, and branding (must be after removeAllListeners)
+    // Settings, notch info, and branding
     api.getOverlaySettings().then((s) => setSettings(s)).catch(() => undefined);
     api.onNotchInfo((info) => setConfig(info));
     api.onBranding((b) => setBranding(b));
     api.onSettingsChanged((s) => setSettings(s));
 
-    const handleActivate = (mode: ActivationMode): void => {
-      const cur = pillRef.current;
-      const s = speechRef.current;
+    // Activation handlers
+    api.onActivate(activation.handleActivate);
+    api.onDeactivate(activation.handleDeactivate);
+    api.onHoldStart?.(activation.handleHoldStart);
+    api.onHoldEnd?.(activation.handleHoldEnd);
 
-      if (cur.state !== "idle") {
-        // --- DICTATION active, press again → stop, transcribe, paste, dismiss ---
-        if (cur.interactionMode === "dictation" && mode === "dictation") {
-          dispatch({ type: "TRANSCRIBING_START" });
-          s.stopListening().then((transcript) => {
-            if (transcript) {
-              void api.injectText(transcript).then(() => {
-                dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-                setFlashMessage("Copied! \u2318V to paste");
-                setTimeout(() => { setFlashMessage(null); dismissRef.current(); }, 800);
-              });
-            } else {
-              dismissRef.current();
-            }
-          }).catch(() => dismissRef.current());
-          return;
-        }
-
-        // --- TRANSCRIBE active, press again → stop, transcribe, copy to clipboard ---
-        if (cur.interactionMode === "transcribe" && mode === "transcribe") {
-          dispatch({ type: "TRANSCRIBING_START" });
-          s.stopListening().then((transcript) => {
-            if (transcript) {
-              void navigator.clipboard.writeText(transcript);
-              dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-              setFlashMessage("Copied!");
-              setTimeout(() => setFlashMessage(null), 800);
-            } else {
-              dismissRef.current();
-            }
-          }).catch(() => dismissRef.current());
-          return;
-        }
-
-        // --- CONTINUOUS active, assistant press → stop listening, send to AI ---
-        if (cur.interactionMode === "continuous" && mode === "continuous") {
-          void s.stopListening().then((transcript) => {
-            if (transcript) {
-              dispatch({ type: "LISTENING_COMPLETE", transcript });
-            } else {
-              dismissRef.current();
-            }
-          });
-          return;
-        }
-
-        // --- ASSISTANT active, press again → stop early, send what we have ---
-        if (cur.interactionMode === "assistant" && mode === "assistant" && cur.state === "listening") {
-          void s.stopListening().then((transcript) => {
-            if (transcript) {
-              dispatch({ type: "LISTENING_COMPLETE", transcript });
-            } else {
-              dismissRef.current();
-            }
-          });
-          return;
-        }
-
-        // Anything else while active → dismiss
-        dismissRef.current();
-        return;
-      }
-
-      // --- Start fresh activation ---
-      dispatch({ type: "ACTIVATE", mode: mode as InteractionMode });
-      s.startListening();
-    };
-
-    const handleDeactivate = (): void => {
-      if (speechRef.current.isListening) {
-        void speechRef.current.stopListening(); // fire and forget on deactivate
-      }
-      dispatch({ type: "DEACTIVATE" });
-    };
-
-    api.onActivate(handleActivate);
-    api.onDeactivate(handleDeactivate);
-
-    // Hold-to-talk IPC listeners (primary dictation trigger)
-    api.onHoldStart?.(() => {
-      const cur = pillRef.current;
-      if (cur.state !== "idle") return; // ignore if already active
-      dispatch({ type: "ACTIVATE", mode: "dictation" });
-      speechRef.current.startListening();
-    });
-
-    api.onHoldEnd?.(() => {
-      const cur = pillRef.current;
-      console.log(`[H4] onHoldEnd: state=${cur.state}, mode=${cur.interactionMode}, willProcess=${cur.state === "listening" && cur.interactionMode === "dictation"}`);
-      if (cur.state !== "listening" || cur.interactionMode !== "dictation") return;
-      dispatch({ type: "TRANSCRIBING_START" });
-      speechRef.current.stopListening().then((transcript) => {
-        console.log(`[H5] onHoldEnd transcription done: "${transcript.slice(0, 40)}${transcript.length > 40 ? "..." : ""}" (${transcript.length} chars)`);
-        if (transcript) {
-          dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-          console.log(`[H5] Calling injectText with transcript (${transcript.length} chars)`);
-          window.electronAPI?.injectText(transcript).then(() => {
-            console.log("[H5] injectText resolved — showing flash");
-            setFlashMessage("Copied! \u2318V to paste");
-            setTimeout(() => { setFlashMessage(null); }, 800);
-          }).catch((err: unknown) => {
-            console.error("[H5] injectText failed:", err);
-          });
-        } else {
-          console.log("[H4] onHoldEnd: empty transcript — dismissing");
-          dismissRef.current();
-        }
-      }).catch((err: unknown) => {
-        console.error("[H4] onHoldEnd: stopListening threw:", err);
-        dismissRef.current();
-      });
-    });
-
-    // Check accessibility permission for text injection
+    // Accessibility check
     api.checkAccessibility?.().then((trusted) => {
-      if (!trusted) {
-        console.warn("[overlay] Accessibility permission not granted — text injection may fail");
-      }
+      if (!trusted) log.warn("Accessibility permission not granted — text injection may fail");
     }).catch(() => undefined);
 
-    // Meeting IPC listeners
-    console.log("[H8] onMeetingToggle listener registered");
-    api.onMeetingToggle?.(() => {
-      const cur = pillRef.current;
-      console.log(`[H8] meeting-toggle IPC received in renderer — meetingActive=${cur.meetingActive}, state=${cur.state}`);
-      if (cur.meetingActive) {
-        console.log("[overlay] Calling stopMeeting...");
-        api.stopMeeting?.().catch((err: unknown) => {
-          console.error("[overlay] stopMeeting failed:", err);
-        });
-      } else {
-        // Pre-check screen recording permission before creating meeting in DB
-        void (async () => {
-          const granted = await api.promptScreenRecording?.() ?? true;
-          console.log(`[H9] promptScreenRecording=${granted}`);
-          if (!granted) {
-            setFlashMessage("Grant Screen Recording permission, then try again");
-            setTimeout(() => setFlashMessage(null), 3000);
-            return;
-          }
-          console.log("[overlay] Calling startMeeting...");
-          try {
-            await api.startMeeting?.();
-            console.log("[H10] startMeeting resolved successfully");
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(`[H10] startMeeting error: ${msg}`);
-            setFlashMessage("Meeting failed: " + msg);
-            setTimeout(() => setFlashMessage(null), 3000);
-          }
-        })();
-      }
-    });
+    // Meeting handlers
+    api.onMeetingToggle?.(meeting.handleMeetingToggle);
+    api.onMeetingStarted?.(meeting.handleMeetingStarted);
+    api.onMeetingStopped?.(meeting.handleMeetingStopped);
+    api.onSystemAudioTranscript?.(meeting.handleSystemAudioTranscript);
 
-    api.onMeetingStarted?.((meetingId: string) => {
-      console.log("[overlay] meeting-started IPC received, meetingId:", meetingId);
-      dispatch({ type: "MEETING_UPDATE", active: true, meetingId, startedAt: Date.now() });
-      // Permission already pre-checked in onMeetingToggle — start recording directly
-      void (async () => {
-        try {
-          console.log("[overlay] Starting meeting recorder for:", meetingId);
-          const { micOnly } = await meetingRecorderRef.current.startRecording(meetingId);
-          console.log("[overlay] Meeting recorder started successfully, micOnly:", micOnly);
-          setFlashMessage(micOnly ? "Recording (mic only)" : "Recording (mic + system audio)");
-          setTimeout(() => setFlashMessage(null), 3000);
-        } catch (err: unknown) {
-          console.error("[overlay] Failed to start meeting recording:", err);
-          setFlashMessage("Recording failed");
-          setTimeout(() => setFlashMessage(null), 3000);
-          // Stop the meeting since recording couldn't start
-          api.stopMeeting?.().catch(() => undefined);
-        }
-      })();
-    });
+    // Restore meeting state on mount
+    meeting.restoreMeetingState();
+    meeting.restorePersistedMeeting();
 
-    api.onMeetingStopped?.(() => {
-      console.log("[overlay] meeting-stopped IPC received");
-      setFlashMessage("Saving meeting...");
-      void (async () => {
-        console.log("[overlay] Stopping meeting recorder...");
-        const result = await meetingRecorderRef.current.stopRecording();
-        console.log("[overlay] Meeting recorder stopped — meetingId:", result.meetingId, "transcript:", result.transcript.length);
-        dispatch({ type: "MEETING_UPDATE", active: false, meetingId: null, startedAt: null });
-
-        if (result.meetingId && result.transcript) {
-          try {
-            console.log("[overlay] Uploading transcript for meeting:", result.meetingId);
-            await uploadMeetingTranscript(result.meetingId, result.transcript);
-            console.log("[overlay] Transcript uploaded, triggering AI processing...");
-            await processMeeting(result.meetingId);
-            console.log("[overlay] Meeting processing triggered");
-            setFlashMessage("Meeting saved");
-            setTimeout(() => setFlashMessage(null), 2000);
-          } catch (err: unknown) {
-            console.error("[overlay] Failed to finalize meeting:", err);
-            setFlashMessage("Save failed");
-            setTimeout(() => setFlashMessage(null), 2000);
-          }
-        } else {
-          console.log("[overlay] No transcript to upload — meetingId:", result.meetingId, "transcript empty:", !result.transcript);
-          setFlashMessage(null);
-        }
-      })();
-    });
-
-    // Log system audio transcripts in the renderer console for visibility
-    api.onSystemAudioTranscript?.((speaker, text) => {
-      const label = speaker !== undefined ? `Speaker ${speaker}` : "System";
-      console.log(`[system-audio] ${label}: ${text}`);
-    });
-
-    // Restore meeting state on mount (in case overlay reloaded mid-meeting)
-    api.getMeetingState?.().then((state) => {
-      console.log("[overlay] Meeting state on mount:", JSON.stringify(state));
-      if (state.active && state.meetingId) {
-        dispatch({ type: "MEETING_UPDATE", active: true, meetingId: state.meetingId, startedAt: state.startedAt });
-        void meetingRecorderRef.current.startRecording(state.meetingId).catch(() => undefined);
-      }
-    }).catch(() => undefined);
-
-    // Check for interrupted meeting (crash recovery via persisted state)
-    api.getPersistedMeeting?.().then((persisted) => {
-      console.log("[overlay] Persisted meeting state:", persisted ? JSON.stringify(persisted) : "none");
-      if (persisted) {
-        dispatch({ type: "MEETING_UPDATE", active: true, meetingId: persisted.meetingId, startedAt: persisted.startedAt });
-        setFlashMessage("Meeting resumed");
-        setTimeout(() => setFlashMessage(null), 2000);
-      }
-    }).catch(() => undefined);
-
-    // Cleanup: remove all IPC listeners on unmount/HMR to prevent duplicates
-    return () => {
-      api.removeAllListeners?.();
-    };
+    return () => { api.removeAllListeners?.(); };
   }, []);
 
   // Notify main when idle
@@ -677,12 +223,10 @@ export const OverlayApp = (): JSX.Element => {
 
   let pillHeight: number;
   if (pill.state === "idle") {
-    // Match the macOS menu bar height exactly so the pill sits flush
     pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
     pillHeight = topPad + 24 + 12 + measuredHeight + 12;
   } else {
-    // listening, thinking, transcribing all use active height
     pillHeight = topPad + ACTIVE_HEIGHT;
   }
 
@@ -726,6 +270,32 @@ export const OverlayApp = (): JSX.Element => {
   const handleMouseLeave = useCallback(() => setIgnoreMouse(true), []);
 
   // ---------------------------------------------------------------------------
+  // Pill click handler
+  // ---------------------------------------------------------------------------
+  const handlePillClick = useCallback(() => {
+    const cur = pillRef.current;
+    if (cur.state === "idle") {
+      dispatch({ type: "ACTIVATE", mode: "dictation" as InteractionMode });
+      speechRef.current.startListening();
+    } else if (cur.state === "listening" && cur.interactionMode === "dictation") {
+      dispatch({ type: "TRANSCRIBING_START" });
+      speechRef.current.stopListening().then((transcript) => {
+        if (transcript) {
+          window.electronAPI?.injectText(transcript).then(() => {
+            dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+            flash.show("Copied! \u2318V to paste", FLASH_SHORT_MS);
+            setTimeout(() => dismissRef.current(), FLASH_SHORT_MS);
+          }).catch(() => dismissRef.current());
+        } else {
+          dismissRef.current();
+        }
+      }).catch(() => dismissRef.current());
+    } else {
+      dismissRef.current();
+    }
+  }, [flash]);
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
   return (
@@ -739,37 +309,14 @@ export const OverlayApp = (): JSX.Element => {
       <motion.div
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={() => {
-          const cur = pillRef.current;
-          if (cur.state === "idle") {
-            // Click pill → start dictation (listen, then paste on second click)
-            dispatch({ type: "ACTIVATE", mode: "dictation" });
-            speechRef.current.startListening();
-          } else if (cur.state === "listening" && cur.interactionMode === "dictation") {
-            // Second click while dictating → stop, transcribe, paste
-            dispatch({ type: "TRANSCRIBING_START" });
-            speechRef.current.stopListening().then((transcript) => {
-              if (transcript) {
-                window.electronAPI?.injectText(transcript).then(() => {
-                  dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-                  setFlashMessage("Copied! \u2318V to paste");
-                  setTimeout(() => { setFlashMessage(null); dismissRef.current(); }, 800);
-                }).catch(() => dismissRef.current());
-              } else {
-                dismissRef.current();
-              }
-            }).catch(() => dismissRef.current());
-          } else {
-            dismissRef.current();
-          }
-        }}
+        onClick={handlePillClick}
         animate={{ height: pillHeight }}
         transition={SPRING}
         style={{ width: "100%", background: "#000", borderRadius: pill.state === "idle" ? "0 0 8px 8px" : "0 0 16px 16px", overflow: "hidden", position: "relative", cursor: pill.state === "idle" ? "pointer" : "default" }}
       >
         <div style={{ paddingTop: pill.state === "idle" ? 0 : topPad, paddingLeft: 16, paddingRight: 16, paddingBottom: pill.state === "idle" ? 0 : 12 }}>
-          {/* Idle: company logo or sparkle — vertically centered in menu bar height */}
-          {pill.state === "idle" && !flashMessage && (
+          {/* Idle: company logo or sparkle */}
+          {pill.state === "idle" && !flash.message && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight, gap: 6 }}>
               <CompanyLogo logoUrl={branding?.logoUrl ?? null} />
               {pill.meetingActive && (
@@ -785,11 +332,11 @@ export const OverlayApp = (): JSX.Element => {
             </div>
           )}
 
-          {/* Flash message ("Pasted!" / "Copied!") */}
-          {pill.state === "idle" && flashMessage && (
+          {/* Flash message */}
+          {pill.state === "idle" && flash.message && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", height: menuBarHeight }}>
               <motion.span initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} style={{ color: "#4ade80", fontSize: 13, fontWeight: 600 }}>
-                {flashMessage}
+                {flash.message}
               </motion.span>
             </div>
           )}

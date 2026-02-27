@@ -55,6 +55,7 @@ interface ElectronAPI {
   stopSystemAudio: () => Promise<string>;
   checkSystemAudioPermission: () => Promise<boolean>;
   onSystemAudioSilent: (cb: () => void) => void;
+  onSystemAudioTranscript: (cb: (speaker: number | undefined, text: string) => void) => void;
   checkScreenRecording: () => Promise<boolean>;
   promptScreenRecording: () => Promise<boolean>;
   getPersistedMeeting: () => Promise<{ meetingId: string; startedAt: number } | null>;

@@ -134,6 +134,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("system-audio-silent", cb);
   },
 
+  /** Listen for system audio transcript chunks (forwarded from main process). */
+  onSystemAudioTranscript: (cb: (speaker: number | undefined, text: string) => void): void => {
+    ipcRenderer.on("system-audio-transcript", (_event, speaker: number | undefined, text: string) => cb(speaker, text));
+  },
+
   /** Check if screen recording permission is granted (macOS). */
   checkScreenRecording: (): Promise<boolean> => ipcRenderer.invoke("check-screen-recording"),
 
@@ -160,7 +165,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const channels = [
       "activate-overlay", "deactivate-overlay", "dictation-hold-start",
       "dictation-hold-end", "notch-info", "branding-info", "settings-changed",
-      "meeting-toggle", "meeting-started", "meeting-stopped", "system-audio-silent",
+      "meeting-toggle", "meeting-started", "meeting-stopped", "system-audio-silent", "system-audio-transcript",
     ];
     for (const ch of channels) ipcRenderer.removeAllListeners(ch);
   },

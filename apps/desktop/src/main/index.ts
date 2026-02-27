@@ -469,6 +469,9 @@ ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
     onSilenceDetected: () => {
       overlayWindow?.webContents.send("system-audio-silent");
     },
+    onTranscript: (speaker, text) => {
+      overlayWindow?.webContents.send("system-audio-transcript", speaker, text);
+    },
   });
 });
 

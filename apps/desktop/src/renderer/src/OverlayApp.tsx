@@ -486,19 +486,27 @@ export const OverlayApp = (): JSX.Element => {
 
     api.onHoldEnd?.(() => {
       const cur = pillRef.current;
+      console.log(`[H4] onHoldEnd: state=${cur.state}, mode=${cur.interactionMode}, willProcess=${cur.state === "listening" && cur.interactionMode === "dictation"}`);
       if (cur.state !== "listening" || cur.interactionMode !== "dictation") return;
       dispatch({ type: "TRANSCRIBING_START" });
       speechRef.current.stopListening().then((transcript) => {
+        console.log(`[H5] onHoldEnd transcription done: "${transcript.slice(0, 40)}${transcript.length > 40 ? "..." : ""}" (${transcript.length} chars)`);
         if (transcript) {
           dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
+          console.log(`[H5] Calling injectText with transcript (${transcript.length} chars)`);
           window.electronAPI?.injectText(transcript).then(() => {
+            console.log("[H5] injectText resolved — showing flash");
             setFlashMessage("Copied! \u2318V to paste");
             setTimeout(() => { setFlashMessage(null); }, 800);
-          }).catch(() => undefined);
+          }).catch((err: unknown) => {
+            console.error("[H5] injectText failed:", err);
+          });
         } else {
+          console.log("[H4] onHoldEnd: empty transcript — dismissing");
           dismissRef.current();
         }
-      }).catch(() => {
+      }).catch((err: unknown) => {
+        console.error("[H4] onHoldEnd: stopListening threw:", err);
         dismissRef.current();
       });
     });
@@ -511,41 +519,76 @@ export const OverlayApp = (): JSX.Element => {
     }).catch(() => undefined);
 
     // Meeting IPC listeners
+    console.log("[H8] onMeetingToggle listener registered");
     api.onMeetingToggle?.(() => {
       const cur = pillRef.current;
+      console.log(`[H8] meeting-toggle IPC received in renderer — meetingActive=${cur.meetingActive}, state=${cur.state}`);
       if (cur.meetingActive) {
-        void api.stopMeeting?.();
+        console.log("[overlay] Calling stopMeeting...");
+        api.stopMeeting?.().catch((err: unknown) => {
+          console.error("[overlay] stopMeeting failed:", err);
+        });
       } else {
-        void api.startMeeting?.();
+        // Pre-check screen recording permission before creating meeting in DB
+        void (async () => {
+          const granted = await api.promptScreenRecording?.() ?? true;
+          console.log(`[H9] promptScreenRecording=${granted}`);
+          if (!granted) {
+            setFlashMessage("Grant Screen Recording permission, then try again");
+            setTimeout(() => setFlashMessage(null), 3000);
+            return;
+          }
+          console.log("[overlay] Calling startMeeting...");
+          try {
+            await api.startMeeting?.();
+            console.log("[H10] startMeeting resolved successfully");
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[H10] startMeeting error: ${msg}`);
+            setFlashMessage("Meeting failed: " + msg);
+            setTimeout(() => setFlashMessage(null), 3000);
+          }
+        })();
       }
     });
 
     api.onMeetingStarted?.((meetingId: string) => {
+      console.log("[overlay] meeting-started IPC received, meetingId:", meetingId);
       dispatch({ type: "MEETING_UPDATE", active: true, meetingId, startedAt: Date.now() });
-      // Check screen recording permission before starting (macOS requires it for system audio)
+      // Permission already pre-checked in onMeetingToggle — start recording directly
       void (async () => {
-        const hasPermission = await api.checkScreenRecording?.() ?? true;
-        if (!hasPermission) {
-          setFlashMessage("Enable Screen Recording in System Settings");
+        try {
+          console.log("[overlay] Starting meeting recorder for:", meetingId);
+          const { micOnly } = await meetingRecorderRef.current.startRecording(meetingId);
+          console.log("[overlay] Meeting recorder started successfully, micOnly:", micOnly);
+          setFlashMessage(micOnly ? "Recording (mic only)" : "Recording (mic + system audio)");
           setTimeout(() => setFlashMessage(null), 3000);
-          dispatch({ type: "MEETING_UPDATE", active: false, meetingId: null, startedAt: null });
-          return;
+        } catch (err: unknown) {
+          console.error("[overlay] Failed to start meeting recording:", err);
+          setFlashMessage("Recording failed");
+          setTimeout(() => setFlashMessage(null), 3000);
+          // Stop the meeting since recording couldn't start
+          api.stopMeeting?.().catch(() => undefined);
         }
-        await meetingRecorderRef.current.startRecording(meetingId);
-      })().catch((err: unknown) => {
-        console.error("[overlay] Failed to start meeting recording:", err);
-      });
+      })();
     });
 
     api.onMeetingStopped?.(() => {
+      console.log("[overlay] meeting-stopped IPC received");
       setFlashMessage("Saving meeting...");
       void (async () => {
+        console.log("[overlay] Stopping meeting recorder...");
         const result = await meetingRecorderRef.current.stopRecording();
+        console.log("[overlay] Meeting recorder stopped — meetingId:", result.meetingId, "transcript:", result.transcript.length);
         dispatch({ type: "MEETING_UPDATE", active: false, meetingId: null, startedAt: null });
+
         if (result.meetingId && result.transcript) {
           try {
+            console.log("[overlay] Uploading transcript for meeting:", result.meetingId);
             await uploadMeetingTranscript(result.meetingId, result.transcript);
+            console.log("[overlay] Transcript uploaded, triggering AI processing...");
             await processMeeting(result.meetingId);
+            console.log("[overlay] Meeting processing triggered");
             setFlashMessage("Meeting saved");
             setTimeout(() => setFlashMessage(null), 2000);
           } catch (err: unknown) {
@@ -554,13 +597,21 @@ export const OverlayApp = (): JSX.Element => {
             setTimeout(() => setFlashMessage(null), 2000);
           }
         } else {
+          console.log("[overlay] No transcript to upload — meetingId:", result.meetingId, "transcript empty:", !result.transcript);
           setFlashMessage(null);
         }
       })();
     });
 
+    // Log system audio transcripts in the renderer console for visibility
+    api.onSystemAudioTranscript?.((speaker, text) => {
+      const label = speaker !== undefined ? `Speaker ${speaker}` : "System";
+      console.log(`[system-audio] ${label}: ${text}`);
+    });
+
     // Restore meeting state on mount (in case overlay reloaded mid-meeting)
     api.getMeetingState?.().then((state) => {
+      console.log("[overlay] Meeting state on mount:", JSON.stringify(state));
       if (state.active && state.meetingId) {
         dispatch({ type: "MEETING_UPDATE", active: true, meetingId: state.meetingId, startedAt: state.startedAt });
         void meetingRecorderRef.current.startRecording(state.meetingId).catch(() => undefined);
@@ -569,6 +620,7 @@ export const OverlayApp = (): JSX.Element => {
 
     // Check for interrupted meeting (crash recovery via persisted state)
     api.getPersistedMeeting?.().then((persisted) => {
+      console.log("[overlay] Persisted meeting state:", persisted ? JSON.stringify(persisted) : "none");
       if (persisted) {
         dispatch({ type: "MEETING_UPDATE", active: true, meetingId: persisted.meetingId, startedAt: persisted.startedAt });
         setFlashMessage("Meeting resumed");

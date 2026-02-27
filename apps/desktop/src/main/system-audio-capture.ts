@@ -19,6 +19,8 @@ import { systemPreferences, shell } from "electron";
 type SystemAudioOptions = {
   /** Called if the first N audio chunks are all silence (likely permission issue). */
   onSilenceDetected?: () => void;
+  /** Called with each final transcript chunk (for forwarding to renderer). */
+  onTranscript?: (speaker: number | undefined, text: string) => void;
 };
 
 type TranscriptChunk = {
@@ -201,6 +203,7 @@ export const startSystemAudioCapture = async (
           text: msg.transcript,
         });
         log(`Transcript (speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 60)}..."`);
+        options?.onTranscript?.(msg.speaker, msg.transcript);
       }
     } catch { /* not JSON */ }
   };

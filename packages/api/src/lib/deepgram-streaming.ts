@@ -18,7 +18,7 @@
 import { isGatewayConfigured, isDeepgramConfigured } from "./gateway-client.js";
 
 const DEEPGRAM_API_KEY = process.env["DEEPGRAM_API_KEY"] ?? "";
-const KEEPALIVE_INTERVAL_MS = 10_000;
+const KEEPALIVE_INTERVAL_MS = 5_000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -133,7 +133,9 @@ export const createDeepgramStream = (
   };
 
   dgWs.onmessage = (event) => {
-    try { handleDeepgramMessage(clientWs, event); }
+    try {
+      handleDeepgramMessage(clientWs, event);
+    }
     catch (err: unknown) {
       console.error("[deepgram-streaming] Parse error:", err instanceof Error ? err.message : err);
     }
@@ -155,7 +157,11 @@ export const createDeepgramStream = (
 
   return {
     sendAudio: (data) => {
-      if (dgWs.readyState === WebSocket.OPEN) dgWs.send(data);
+      if (dgWs.readyState === WebSocket.OPEN) {
+        dgWs.send(data);
+      } else {
+        console.warn(`[deepgram-streaming] sendAudio dropped — readyState=${dgWs.readyState}`);
+      }
     },
     keepAlive: () => {
       if (dgWs.readyState === WebSocket.OPEN) dgWs.send(JSON.stringify({ type: "KeepAlive" }));

@@ -172,84 +172,9 @@ export const useMeetingRecorder = (
       transcriptPartsRef.current = [];
 
       // -----------------------------------------------------------------------
-      // 1. Open WebSocket to API server for streaming transcription
-      // -----------------------------------------------------------------------
-      const wsUrl = await buildWsUrl(meetingId);
-      rlog(`[meeting-recorder] Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      // Wait for either "ready" from server (Deepgram connected) or error
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("WebSocket connection timed out")), 10_000);
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data as string) as { type: string; message?: string };
-            if (msg.type === "ready") {
-              clearTimeout(timeout);
-              resolve();
-            } else if (msg.type === "error") {
-              clearTimeout(timeout);
-              reject(new Error(msg.message ?? "Transcription service error"));
-            }
-          } catch { /* not JSON, ignore during handshake */ }
-        };
-
-        ws.onerror = () => {
-          clearTimeout(timeout);
-          reject(new Error("WebSocket connection failed"));
-        };
-
-        ws.onclose = () => {
-          clearTimeout(timeout);
-          reject(new Error("WebSocket closed before ready"));
-        };
-      });
-
-      rlog("[meeting-recorder] WebSocket connected, Deepgram ready");
-
-      // Set up ongoing message handler for transcription results
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data as string) as {
-            type: string;
-            transcript?: string;
-            is_final?: boolean;
-            speech_final?: boolean;
-            message?: string;
-          };
-
-          if (msg.type === "transcript" && msg.transcript) {
-            if (msg.is_final) {
-              // Final result for this utterance — append to transcript
-              transcriptPartsRef.current.push(msg.transcript);
-              setChunkCount((prev) => prev + 1);
-              rlog(`[meeting-recorder] Transcript (final): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
-            }
-          } else if (msg.type === "error") {
-            rlog(`[meeting-recorder] Server error: ${msg.message ?? "unknown"}`);
-          } else if (msg.type === "closed") {
-            rlog("[meeting-recorder] Deepgram stream closed by server");
-            // If stopRecording is waiting for this, resolve the promise
-            closeResolveRef.current?.();
-            closeResolveRef.current = null;
-          }
-        } catch { /* not JSON */ }
-      };
-
-      ws.onerror = (event) => {
-        console.error("[meeting-recorder] WebSocket error:", event);
-      };
-
-      ws.onclose = () => {
-        rlog("[meeting-recorder] WebSocket closed");
-        wsRef.current = null;
-      };
-
-      // -----------------------------------------------------------------------
-      // 2. Try to get system audio
+      // 1. Set up audio capture FIRST (before WebSocket)
+      //    Deepgram has a 10s idle timeout — audio must flow immediately after
+      //    the WebSocket opens, so we prepare everything beforehand.
       // -----------------------------------------------------------------------
       let systemStream: MediaStream | null = null;
       let micOnly = false;
@@ -271,15 +196,9 @@ export const useMeetingRecorder = (
         micOnly = true;
       }
 
-      // -----------------------------------------------------------------------
-      // 3. Get mic stream
-      // -----------------------------------------------------------------------
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = micStream;
 
-      // -----------------------------------------------------------------------
-      // 4. Build AudioContext mixer
-      // -----------------------------------------------------------------------
       let audioCtx: AudioContext;
       try {
         audioCtx = new AudioContext();
@@ -288,8 +207,6 @@ export const useMeetingRecorder = (
         micStreamRef.current = null;
         stopStream(systemStream);
         systemStreamRef.current = null;
-        ws.close();
-        wsRef.current = null;
         throw err;
       }
       audioCtxRef.current = audioCtx;
@@ -310,9 +227,7 @@ export const useMeetingRecorder = (
       micSource.connect(micGain);
       micGain.connect(dest);
 
-      // -----------------------------------------------------------------------
-      // 5. Handle device disconnects
-      // -----------------------------------------------------------------------
+      // Handle device disconnects
       if (systemStream) {
         for (const track of systemStream.getAudioTracks()) {
           track.onended = () => {
@@ -342,9 +257,7 @@ export const useMeetingRecorder = (
         };
       }
 
-      // -----------------------------------------------------------------------
-      // 6. Create MediaRecorder and stream audio over WebSocket
-      // -----------------------------------------------------------------------
+      // Create MediaRecorder (ready to start, but don't start yet)
       const mimeType = pickMimeType();
       rlog(`[meeting-recorder] ${micOnly ? "Mic-only" : "Mixed"} stream — mimeType=${mimeType}`);
       setIsMicOnly(micOnly);
@@ -356,13 +269,56 @@ export const useMeetingRecorder = (
         console.error("[meeting-recorder] MediaRecorder error:", e);
       };
 
-      // Stream each chunk as binary over the WebSocket
+      // -----------------------------------------------------------------------
+      // 2. Open WebSocket — audio capture is ready, so we can start recording
+      //    immediately after Deepgram says "ready" (no idle gap).
+      // -----------------------------------------------------------------------
+      const wsUrl = await buildWsUrl(meetingId);
+      rlog(`[meeting-recorder] Connecting WebSocket: ${wsUrl.replace(/token=[^&]+/, "token=***")}`);
+
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      // Wait for "ready" from server (Deepgram connected)
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("WebSocket connection timed out")), 10_000);
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data as string) as { type: string; message?: string };
+            if (msg.type === "ready") {
+              clearTimeout(timeout);
+              resolve();
+            } else if (msg.type === "error") {
+              clearTimeout(timeout);
+              reject(new Error(msg.message ?? "Transcription service error"));
+            }
+          } catch { /* not JSON, ignore during handshake */ }
+        };
+
+        ws.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error("WebSocket connection failed"));
+        };
+
+        ws.onclose = () => {
+          clearTimeout(timeout);
+          reject(new Error("WebSocket closed before ready"));
+        };
+      });
+
+      rlog("[meeting-recorder] WebSocket connected, Deepgram ready");
+
+      // -----------------------------------------------------------------------
+      // 3. Start recording IMMEDIATELY — Deepgram's 10s idle timer is running
+      // -----------------------------------------------------------------------
+
+      // Wire up audio streaming
       recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size === 0 || stoppedRef.current) return;
         const currentWs = wsRef.current;
         if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
 
-        // Convert Blob to ArrayBuffer and send as binary frame
         void event.data.arrayBuffer().then((buffer) => {
           if (stoppedRef.current) return;
           if (currentWs.readyState === WebSocket.OPEN) {
@@ -371,11 +327,47 @@ export const useMeetingRecorder = (
         });
       };
 
-      // Use small timeslice for low-latency streaming
+      // Start recording — audio flows to Deepgram within 250ms
       recorder.start(MEDIA_RECORDER_TIMESLICE_MS);
 
+      // Set up ongoing message handler for transcription results
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data as string) as {
+            type: string;
+            transcript?: string;
+            is_final?: boolean;
+            speech_final?: boolean;
+            message?: string;
+          };
+
+          if (msg.type === "transcript" && msg.transcript) {
+            if (msg.is_final) {
+              transcriptPartsRef.current.push(msg.transcript);
+              setChunkCount((prev) => prev + 1);
+              rlog(`[meeting-recorder] Transcript (final): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
+            }
+          } else if (msg.type === "error") {
+            rlog(`[meeting-recorder] Server error: ${msg.message ?? "unknown"}`);
+          } else if (msg.type === "closed") {
+            rlog("[meeting-recorder] Deepgram stream closed by server");
+            closeResolveRef.current?.();
+            closeResolveRef.current = null;
+          }
+        } catch { /* not JSON */ }
+      };
+
+      ws.onerror = (event) => {
+        console.error("[meeting-recorder] WebSocket error:", event);
+      };
+
+      ws.onclose = () => {
+        rlog("[meeting-recorder] WebSocket closed");
+        wsRef.current = null;
+      };
+
       // -----------------------------------------------------------------------
-      // 7. Start elapsed timer + update state
+      // 4. Start elapsed timer + update state
       // -----------------------------------------------------------------------
       startTimeRef.current = Date.now();
       elapsedTimerRef.current = setInterval(() => {

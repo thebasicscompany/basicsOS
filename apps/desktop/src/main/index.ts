@@ -24,6 +24,7 @@ import type { ShortcutManager } from "./shortcut-manager.js";
 import { createHoldKeyDetector } from "./hold-key-detector.js";
 import { createMeetingManager } from "./meeting-manager.js";
 import type { MeetingManager } from "./meeting-manager.js";
+import { startSystemAudioCapture, stopSystemAudioCapture, checkSystemAudioPermission } from "./system-audio-capture.js";
 
 type ActivationMode = "assistant" | "continuous" | "dictation" | "transcribe";
 
@@ -195,6 +196,8 @@ const createOverlayWindow = (): void => {
   // Load the local renderer
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     overlayWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+    // Open DevTools detached in dev mode so we can see renderer console logs
+    overlayWindow.webContents.openDevTools({ mode: "detach" });
   } else {
     overlayWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
@@ -253,8 +256,11 @@ ipcMain.handle("get-session-token", async () => {
     const cookies = await session.defaultSession.cookies.get({
       name: "better-auth.session_token",
     });
+    const found = !!cookies[0]?.value;
+    console.log(`[H2] get-session-token: found=${found}, cookieCount=${cookies.length}${found ? `, token=${cookies[0]!.value.slice(0, 8)}...` : ""}`);
     return cookies[0]?.value ?? null;
-  } catch {
+  } catch (err: unknown) {
+    console.error(`[H2] get-session-token ERROR: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 });
@@ -313,6 +319,11 @@ ipcMain.handle("stop-shortcut-capture", () => {
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
 });
 
+// Forward renderer console logs to main process stdout (for log file capture)
+ipcMain.on("renderer-log", (_event, msg: string) => {
+  console.log(`[renderer] ${msg}`);
+});
+
 // Click-through toggle
 ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
   if (ignore) {
@@ -338,15 +349,17 @@ ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
 
 // Inject text via clipboard + simulated paste
 ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
+  console.log(`[H5] inject-text IPC: text="${text.slice(0, 40)}..." (${text.length} chars)`);
   return new Promise((resolve) => {
     clipboard.writeText(text);
+    console.log("[H5] inject-text: clipboard.writeText done, scheduling osascript paste...");
 
     if (process.platform === "darwin") {
       setTimeout(() => {
         exec(
           `osascript -e 'tell application "System Events" to keystroke "v" using {command down}'`,
           (err) => {
-            if (err) console.error("[inject-text] osascript error:", err.message);
+            console.log(`[H5] inject-text: osascript exit=${err ? err.message : "ok"}`);
             setTimeout(() => resolve(), 200);
           },
         );
@@ -394,44 +407,81 @@ ipcMain.handle("request-accessibility", () => {
 
 // Meeting: start a new meeting via API
 ipcMain.handle("start-meeting", async () => {
-  if (!meetingMgr) return;
+  console.log("[main] start-meeting IPC received");
+  if (!meetingMgr) { console.error("[main] No meeting manager!"); return; }
   const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
-  if (!token) throw new Error("No session token — user must be logged in");
+  if (!token) { console.error("[main] No session token for meeting start"); throw new Error("No session token — user must be logged in"); }
+  console.log("[main] Starting meeting with API:", apiUrl, "token:", token.slice(0, 8) + "...");
   await meetingMgr.start(apiUrl, token);
+  console.log("[main] Meeting start complete");
 });
 
 // Meeting: stop the current meeting
 ipcMain.handle("stop-meeting", async () => {
-  if (!meetingMgr) return;
+  console.log("[main] stop-meeting IPC received");
+  if (!meetingMgr) { console.error("[main] No meeting manager!"); return; }
   const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
-  if (!token) throw new Error("No session token — user must be logged in");
+  if (!token) { console.error("[main] No session token for meeting stop"); throw new Error("No session token — user must be logged in"); }
   await meetingMgr.stop(apiUrl, token);
+  console.log("[main] Meeting stop complete");
 });
 
 // Meeting: get current state
 ipcMain.handle("meeting-state", () => {
-  if (!meetingMgr) return { active: false, meetingId: null, startedAt: null };
-  return meetingMgr.getState();
+  const state = meetingMgr ? meetingMgr.getState() : { active: false, meetingId: null, startedAt: null };
+  console.log("[main] meeting-state query:", JSON.stringify(state));
+  return state;
 });
 
 // Meeting: get available desktop capture sources (for system audio)
 ipcMain.handle("get-desktop-sources", async () => {
   const sources = await desktopCapturer.getSources({ types: ["screen"] });
+  console.log("[main] get-desktop-sources:", sources.length, "sources:", sources.map((s) => `${s.name} (${s.id})`).join(", "));
   return sources.map((s) => ({ id: s.id, name: s.name }));
 });
 
 // Meeting: get persisted meeting state for crash recovery
 ipcMain.handle("get-persisted-meeting", () => {
-  if (!meetingMgr) return null;
-  return meetingMgr.getPersistedState();
+  if (!meetingMgr) { console.log("[main] get-persisted-meeting: no meeting manager"); return null; }
+  const persisted = meetingMgr.getPersistedState();
+  console.log("[main] get-persisted-meeting:", persisted ? JSON.stringify(persisted) : "none");
+  return persisted;
+});
+
+// System audio capture (macOS 14.2+ via AudioTee)
+ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
+  console.log("[main] start-system-audio IPC received, meetingId:", meetingId);
+  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const cookies = await session.defaultSession.cookies.get({
+    name: "better-auth.session_token",
+  });
+  const token = cookies[0]?.value;
+  if (!token) { console.error("[main] No session token for system audio"); return false; }
+  return startSystemAudioCapture(meetingId, apiUrl, token, {
+    onSilenceDetected: () => {
+      overlayWindow?.webContents.send("system-audio-silent");
+    },
+  });
+});
+
+ipcMain.handle("stop-system-audio", async () => {
+  console.log("[main] stop-system-audio IPC received");
+  return stopSystemAudioCapture();
+});
+
+// System audio: check if Screen & System Audio Recording permission is granted (macOS)
+ipcMain.handle("check-system-audio-permission", () => {
+  const status = checkSystemAudioPermission();
+  console.log("[main] check-system-audio-permission:", status);
+  return status;
 });
 
 // Screen recording permission check (macOS)
@@ -439,19 +489,61 @@ ipcMain.handle("get-persisted-meeting", () => {
 ipcMain.handle("check-screen-recording", async (): Promise<boolean> => {
   if (process.platform !== "darwin") return true;
   try {
+    const screenMediaStatus = systemPreferences.getMediaAccessStatus("screen");
+    console.log(`[main] check-screen-recording: mediaAccessStatus(screen)=${screenMediaStatus}`);
     const sources = await desktopCapturer.getSources({
       types: ["screen"],
       thumbnailSize: { width: 1, height: 1 },
     });
-    if (sources.length === 0) return false;
+    if (sources.length === 0) { console.log("[main] check-screen-recording: no sources"); return false; }
     // Check if the thumbnail is blank (all zeros = permission denied)
     const thumbnail = sources[0]!.thumbnail;
     const bitmap = thumbnail.toBitmap();
     // A 1x1 RGBA bitmap is 4 bytes — if all zero, permission is denied
-    return bitmap.some((byte) => byte !== 0);
-  } catch {
+    const hasPixels = bitmap.some((byte) => byte !== 0);
+    console.log(`[main] check-screen-recording: bitmapSize=${bitmap.length}, hasPixels=${hasPixels}`);
+    return hasPixels;
+  } catch (err: unknown) {
+    console.error(`[main] check-screen-recording error: ${err instanceof Error ? err.message : String(err)}`);
     return false;
   }
+});
+
+// Screen recording permission prompt (macOS)
+// Checks permission via bitmap test, and if denied shows a dialog offering to open System Settings.
+ipcMain.handle("prompt-screen-recording", async (): Promise<boolean> => {
+  if (process.platform !== "darwin") return true;
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 1, height: 1 },
+    });
+    if (sources.length === 0) {
+      // No sources at all — treat as denied
+    } else {
+      const bitmap = sources[0]!.thumbnail.toBitmap();
+      if (bitmap.some((byte) => byte !== 0)) return true; // Permission already granted
+    }
+  } catch {
+    // Failed to check — treat as denied
+  }
+
+  const { response } = await dialog.showMessageBox({
+    type: "warning",
+    title: "Screen Recording Permission Required",
+    message:
+      "Basics OS needs Screen Recording permission to capture system audio during meetings.\n\n" +
+      "Please grant access in System Settings → Privacy & Security → Screen Recording, then try again.",
+    buttons: ["Open System Settings", "Cancel"],
+    defaultId: 0,
+    cancelId: 1,
+  });
+
+  if (response === 0) {
+    void shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture");
+  }
+
+  return false;
 });
 
 // ---------------------------------------------------------------------------
@@ -527,9 +619,11 @@ const setupShortcuts = (): void => {
   // Meeting manager — orchestrates meeting state + IPC to renderer
   meetingMgr = createMeetingManager({
     onMeetingStart: (meetingId) => {
+      console.log("[main] Meeting manager callback: onMeetingStart, meetingId:", meetingId);
       overlayWindow?.webContents.send("meeting-started", meetingId);
     },
     onMeetingStop: (meetingId) => {
+      console.log("[main] Meeting manager callback: onMeetingStop, meetingId:", meetingId);
       overlayWindow?.webContents.send("meeting-stopped", meetingId);
     },
   });
@@ -541,6 +635,7 @@ const setupShortcuts = (): void => {
 let registeredMeetingAccelerator: string | null = null;
 
 const registerMeetingShortcut = (accelerator: string): void => {
+  console.log("[shortcuts] Registering meeting shortcut:", accelerator);
   // Unregister the previously registered key (may differ from the new one)
   if (registeredMeetingAccelerator) {
     globalShortcut.unregister(registeredMeetingAccelerator);
@@ -548,10 +643,13 @@ const registerMeetingShortcut = (accelerator: string): void => {
   }
 
   const ok = globalShortcut.register(accelerator, () => {
-    if (!overlayWindow) return;
+    console.log(`[H6] Meeting shortcut pressed! overlayWindow=${!!overlayWindow}, webContents=${!!overlayWindow?.webContents}`);
+    if (!overlayWindow) { console.log("[H6] Meeting shortcut: overlayWindow is null — aborting"); return; }
     overlayWindow.webContents.send("meeting-toggle");
+    console.log("[H6] Meeting shortcut: meeting-toggle IPC sent to renderer");
   });
   if (ok) {
+    console.log("[shortcuts] Meeting shortcut registered successfully:", accelerator);
     registeredMeetingAccelerator = accelerator;
   } else {
     console.warn(`[shortcuts] Failed to register meeting shortcut: ${accelerator}`);

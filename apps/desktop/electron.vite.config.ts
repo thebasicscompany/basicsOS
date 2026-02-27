@@ -8,7 +8,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ["electron-updater"],
+        external: ["electron-updater", "uiohook-napi", "audiotee", "screencapturekit-audio-capture"],
       },
     },
     resolve: {

@@ -51,10 +51,16 @@ interface ElectronAPI {
   stopMeeting: () => Promise<void>;
   getMeetingState: () => Promise<{ active: boolean; meetingId: string | null; startedAt: number | null }>;
   getDesktopSources: () => Promise<Array<{ id: string; name: string }>>;
+  startSystemAudio: (meetingId: string) => Promise<boolean>;
+  stopSystemAudio: () => Promise<string>;
+  checkSystemAudioPermission: () => Promise<boolean>;
+  onSystemAudioSilent: (cb: () => void) => void;
   checkScreenRecording: () => Promise<boolean>;
+  promptScreenRecording: () => Promise<boolean>;
   getPersistedMeeting: () => Promise<{ meetingId: string; startedAt: number } | null>;
   startShortcutCapture: () => Promise<void>;
   stopShortcutCapture: () => Promise<void>;
+  logToMain: (msg: string) => void;
   removeAllListeners: () => void;
 }
 

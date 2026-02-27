@@ -12,14 +12,17 @@
     "clean": "rm -rf out dist"
   },
   "dependencies": {
+    "@basicsos/ui": "workspace:*",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
-    "@basicsos/ui": "workspace:*",
+    "audiotee": "^0.0.7",
     "electron-updater": "^6.3.0",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "screencapturekit-audio-capture": "^1.3.6",
+    "uiohook-napi": "^1.5.4"
   },
   "devDependencies": {
     "@basicsos/config": "workspace:*",

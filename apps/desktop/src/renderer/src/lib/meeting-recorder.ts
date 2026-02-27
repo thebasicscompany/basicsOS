@@ -75,7 +75,7 @@ export const useMeetingRecorder = (
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const meetingIdRef = useRef<string | null>(null);
   const startTimeRef = useRef<number>(0);
-  const transcriptPartsRef = useRef<string[]>([]);
+  const transcriptPartsRef = useRef<Array<{ speaker?: number; text: string }>>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const stoppedRef = useRef<boolean>(true);
   // Resolved when Deepgram sends "closed" — used by stopRecording to wait for final results
@@ -117,38 +117,44 @@ export const useMeetingRecorder = (
     stoppedRef.current = true;
   }, []);
 
-  /** Acquire system audio stream via Electron desktopCapturer (with 5s timeout). */
-  const getSystemAudioStream = async (sourceId: string): Promise<MediaStream> => {
-    const streamPromise = navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: {
-          chromeMediaSource: "desktop",
-          chromeMediaSourceId: sourceId,
-        },
-      } as unknown as MediaStreamConstraints["audio"],
-      video: {
-        mandatory: {
-          chromeMediaSource: "desktop",
-          chromeMediaSourceId: sourceId,
-          maxWidth: 1,
-          maxHeight: 1,
-        },
-      } as unknown as MediaStreamConstraints["video"],
-    });
-
+  /**
+   * Acquire system audio stream via Chromium's getDisplayMedia loopback.
+   * Falls back to ScreenCaptureKit capture (main process) if the loopback track
+   * arrives dead (Electron 40 bug #49607).
+   */
+  const getSystemAudioStream = async (): Promise<MediaStream> => {
     let timeoutId: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
       timeoutId = setTimeout(() => reject(new Error("System audio capture timed out — Screen Recording permission may be denied")), 5000);
+    });
+
+    const streamPromise = navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: { width: 4, height: 4, frameRate: 1 } as MediaTrackConstraints,
     });
 
     try {
       const stream = await Promise.race([streamPromise, timeoutPromise]);
       clearTimeout(timeoutId!);
 
-      // Remove the tiny video track — we only need audio
+      // Remove the video track — we only need audio
       for (const videoTrack of stream.getVideoTracks()) {
         videoTrack.stop();
         stream.removeTrack(videoTrack);
+      }
+
+      const audioTracks = stream.getAudioTracks();
+      rlog(`[meeting-recorder] System audio: ${audioTracks.length} audio tracks, labels: ${audioTracks.map((t) => t.label).join(", ")}`);
+
+      if (audioTracks.length === 0) {
+        throw new Error("No audio tracks in display media stream");
+      }
+
+      // Detect dead loopback track (Electron 40 bug — track arrives in "ended" state)
+      if (audioTracks[0]!.readyState === "ended") {
+        rlog("[meeting-recorder] Loopback audio track is dead (readyState=ended) — Electron audio capture bug");
+        stopStream(stream);
+        throw new Error("Loopback audio track is dead (readyState=ended)");
       }
 
       return stream;
@@ -180,20 +186,27 @@ export const useMeetingRecorder = (
       let micOnly = false;
 
       try {
-        rlog("[meeting-recorder] Getting desktop capture sources...");
-        const sources = await window.electronAPI?.getDesktopSources();
-        if (!sources || sources.length === 0) {
-          throw new Error("No desktop capture sources available");
-        }
-        const sourceId = sources[0]!.id;
-        rlog(`[meeting-recorder] Using source: ${sources[0]!.name} (${sourceId})`);
-
-        systemStream = await getSystemAudioStream(sourceId);
+        rlog("[meeting-recorder] Requesting system audio via getDisplayMedia...");
+        systemStream = await getSystemAudioStream();
         systemStreamRef.current = systemStream;
-        rlog(`[meeting-recorder] System audio: ${systemStream.getAudioTracks().length} tracks`);
       } catch (err: unknown) {
-        rlog(`[meeting-recorder] System audio failed, mic-only: ${err instanceof Error ? err.message : String(err)}`);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const errName = err instanceof Error ? err.name : "unknown";
+        rlog(`[meeting-recorder] System audio failed (${errName}): ${errMsg}`);
+        rlog("[meeting-recorder] Falling back to mic-only + ScreenCaptureKit system audio");
         micOnly = true;
+
+        // Start ScreenCaptureKit system audio capture in main process as fallback
+        try {
+          const started = await window.electronAPI?.startSystemAudio?.(meetingId);
+          if (started) {
+            rlog("[meeting-recorder] ScreenCaptureKit system audio started as fallback");
+          } else {
+            rlog("[meeting-recorder] ScreenCaptureKit fallback failed or unavailable");
+          }
+        } catch (sckErr: unknown) {
+          rlog(`[meeting-recorder] ScreenCaptureKit fallback error: ${sckErr instanceof Error ? sckErr.message : String(sckErr)}`);
+        }
       }
 
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -336,6 +349,7 @@ export const useMeetingRecorder = (
           const msg = JSON.parse(event.data as string) as {
             type: string;
             transcript?: string;
+            speaker?: number;
             is_final?: boolean;
             speech_final?: boolean;
             message?: string;
@@ -343,9 +357,9 @@ export const useMeetingRecorder = (
 
           if (msg.type === "transcript" && msg.transcript) {
             if (msg.is_final) {
-              transcriptPartsRef.current.push(msg.transcript);
+              transcriptPartsRef.current.push({ speaker: msg.speaker, text: msg.transcript });
               setChunkCount((prev) => prev + 1);
-              rlog(`[meeting-recorder] Transcript (final): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
+              rlog(`[meeting-recorder] Transcript (final, speaker=${msg.speaker ?? "?"}): "${msg.transcript.slice(0, 80)}${msg.transcript.length > 80 ? "..." : ""}"`);
             }
           } else if (msg.type === "error") {
             rlog(`[meeting-recorder] Server error: ${msg.message ?? "unknown"}`);
@@ -422,9 +436,29 @@ export const useMeetingRecorder = (
       closeResolveRef.current = null;
     }
 
-    // Assemble final transcript
-    const transcript = transcriptPartsRef.current.join(" ");
-    rlog(`[meeting-recorder] Final transcript: ${transcript.length} chars, ${transcriptPartsRef.current.length} parts`);
+    // Stop ScreenCaptureKit system audio if it was running as fallback
+    let systemTranscript = "";
+    try {
+      systemTranscript = (await window.electronAPI?.stopSystemAudio?.()) ?? "";
+      if (systemTranscript) {
+        rlog(`[meeting-recorder] System audio transcript: ${systemTranscript.length} chars`);
+      }
+    } catch { /* system audio capture wasn't running */ }
+
+    // Assemble final transcript with speaker labels
+    // Speaker 0 is assumed to be the local user (mic), others are labeled Speaker N
+    const parts = transcriptPartsRef.current;
+    const lines = parts.map((part) => {
+      if (part.speaker === undefined) return part.text;
+      const label = part.speaker === 0 ? "You" : `Speaker ${part.speaker}`;
+      return `${label}: ${part.text}`;
+    });
+    // Append system audio transcript (already labeled with "Remote N:" prefixes)
+    if (systemTranscript) {
+      lines.push(systemTranscript);
+    }
+    const transcript = lines.join("\n");
+    rlog(`[meeting-recorder] Final transcript: ${transcript.length} chars, ${parts.length} parts`);
     transcriptPartsRef.current = [];
 
     // Clean up everything

@@ -120,8 +120,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDesktopSources: (): Promise<Array<{ id: string; name: string }>> =>
     ipcRenderer.invoke("get-desktop-sources"),
 
+  /** Start system audio capture via AudioTee (macOS 14.2+). Returns true if started. */
+  startSystemAudio: (meetingId: string): Promise<boolean> => ipcRenderer.invoke("start-system-audio", meetingId),
+
+  /** Stop system audio capture and return the remote transcript. */
+  stopSystemAudio: (): Promise<string> => ipcRenderer.invoke("stop-system-audio"),
+
+  /** Check if Screen & System Audio Recording permission is granted (macOS). */
+  checkSystemAudioPermission: (): Promise<boolean> => ipcRenderer.invoke("check-system-audio-permission"),
+
+  /** Listen for system audio silence detection (likely permission issue). */
+  onSystemAudioSilent: (cb: () => void): void => {
+    ipcRenderer.on("system-audio-silent", cb);
+  },
+
   /** Check if screen recording permission is granted (macOS). */
   checkScreenRecording: (): Promise<boolean> => ipcRenderer.invoke("check-screen-recording"),
+
+  /** Prompt for screen recording permission (macOS). Returns true if granted, false if user was prompted. */
+  promptScreenRecording: (): Promise<boolean> => ipcRenderer.invoke("prompt-screen-recording"),
 
   /** Get persisted meeting state for crash recovery. */
   getPersistedMeeting: (): Promise<{ meetingId: string; startedAt: number } | null> =>
@@ -133,12 +150,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   /** Re-register all global shortcuts after key capture completes. */
   stopShortcutCapture: (): Promise<void> => ipcRenderer.invoke("stop-shortcut-capture"),
 
+  /** Forward a renderer log line to main process stdout (for log file capture). */
+  logToMain: (msg: string): void => {
+    ipcRenderer.send("renderer-log", msg);
+  },
+
   /** Remove all overlay IPC listeners (cleanup for HMR/unmount). */
   removeAllListeners: (): void => {
     const channels = [
       "activate-overlay", "deactivate-overlay", "dictation-hold-start",
       "dictation-hold-end", "notch-info", "branding-info", "settings-changed",
-      "meeting-toggle", "meeting-started", "meeting-stopped",
+      "meeting-toggle", "meeting-started", "meeting-stopped", "system-audio-silent",
     ];
     for (const ch of channels) ipcRenderer.removeAllListeners(ch);
   },

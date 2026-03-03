@@ -1,8 +1,5 @@
-import { CaretDownIcon } from "@phosphor-icons/react";
 import { Button } from "basics-os/src/components/ui/button";
-import { Input } from "basics-os/src/components/ui/input";
 import { Label } from "basics-os/src/components/ui/label";
-import { Textarea } from "basics-os/src/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -10,41 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "basics-os/src/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "basics-os/src/components/ui/collapsible";
 import { useAutomationBuilder } from "./AutomationBuilderContext";
+import { VariableInput, VariableTextarea } from "./VariablePicker";
+import { useAvailableVariables } from "./useAvailableVariables";
 import type { WorkflowNode } from "./builderConstants";
-
-function VariableHint({
-  outputsAiResult,
-  outputsWebResults,
-}: {
-  outputsAiResult?: boolean;
-  outputsWebResults?: boolean;
-}) {
-  return (
-    <Collapsible defaultOpen={false}>
-      <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-md bg-muted px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted/80">
-        Available variables
-        <CaretDownIcon className="size-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="mt-2 space-y-1 rounded-md bg-muted p-3 text-xs text-muted-foreground">
-          <p><code className="font-mono">{"{{trigger_data}}"}</code> — full trigger payload</p>
-          <p><code className="font-mono">{"{{trigger_data.name}}"}</code> — dot-path access</p>
-          <p><code className="font-mono">{"{{sales_id}}"}</code> — current user ID</p>
-          <p><code className="font-mono">{"{{ai_result}}"}</code> — output from AI node</p>
-          <p><code className="font-mono">{"{{web_results}}"}</code> — output from Web Search node</p>
-          {outputsAiResult && <p className="pt-1 font-medium text-foreground">Outputs: <code className="font-mono">{"{{ai_result}}"}</code></p>}
-          {outputsWebResults && <p className="pt-1 font-medium text-foreground">Outputs: <code className="font-mono">{"{{web_results}}"}</code></p>}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
 
 function ConnectionRequiredBanner({
   provider,
@@ -84,7 +50,8 @@ export function NodeConfigPanel({
 }: NodeConfigPanelProps) {
   const data = node.data ?? {};
   const type = node.type;
-  const { connectedProviders } = useAutomationBuilder();
+  const { connectedProviders, nodes, edges, nodeTypeLabels } = useAutomationBuilder();
+  const variables = useAvailableVariables(node.id, nodes, edges, nodeTypeLabels);
 
   if (type === "trigger") {
     return (
@@ -201,11 +168,11 @@ export function NodeConfigPanel({
         </div>
         <div className="space-y-2">
           <Label>Cron expression</Label>
-          <Input value={cron} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ cron: e.target.value })} placeholder="0 9 * * 1" />
+          <VariableInput value={cron} onChange={(v) => onUpdate({ cron: v })} variables={variables} placeholder="0 9 * * 1" />
         </div>
         <div className="space-y-2">
           <Label>Label</Label>
-          <Input value={label} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ label: e.target.value })} placeholder="Every Monday at 9am" />
+          <VariableInput value={label} onChange={(v) => onUpdate({ label: v })} variables={variables} placeholder="Every Monday at 9am" />
         </div>
       </div>
     );
@@ -219,17 +186,16 @@ export function NodeConfigPanel({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>To</Label>
-          <Input type="email" value={to} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ to: e.target.value })} placeholder="email@example.com" />
+          <VariableInput type="email" value={to} onChange={(v) => onUpdate({ to: v })} variables={variables} placeholder="email@example.com" />
         </div>
         <div className="space-y-2">
           <Label>Subject</Label>
-          <Input value={subject} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ subject: e.target.value })} placeholder="New deal: {{trigger_data.name}}" />
+          <VariableInput value={subject} onChange={(v) => onUpdate({ subject: v })} variables={variables} placeholder="New deal: {{trigger_data.name}}" />
         </div>
         <div className="space-y-2">
           <Label>Body</Label>
-          <Textarea value={body} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ body: e.target.value })} placeholder="{{ai_result}}" rows={4} />
+          <VariableTextarea value={body} onChange={(v) => onUpdate({ body: v })} variables={variables} placeholder="{{ai_result}}" rows={4} />
         </div>
-        <VariableHint />
       </div>
     );
   }
@@ -241,13 +207,12 @@ export function NodeConfigPanel({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>Prompt</Label>
-          <Textarea value={prompt} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ prompt: e.target.value })} placeholder="Summarize {{trigger_data}}" rows={4} />
+          <VariableTextarea value={prompt} onChange={(v) => onUpdate({ prompt: v })} variables={variables} placeholder="Summarize {{trigger_data}}" rows={4} />
         </div>
         <div className="space-y-2">
           <Label>Model (optional)</Label>
-          <Input value={model} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ model: e.target.value })} placeholder="default" />
+          <VariableInput value={model} onChange={(v) => onUpdate({ model: v })} variables={variables} placeholder="default" />
         </div>
-        <VariableHint outputsAiResult />
       </div>
     );
   }
@@ -259,13 +224,12 @@ export function NodeConfigPanel({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>Query</Label>
-          <Input value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ query: e.target.value })} placeholder="Use {{variables}}" />
+          <VariableInput value={query} onChange={(v) => onUpdate({ query: v })} variables={variables} placeholder="Use {{variables}}" />
         </div>
         <div className="space-y-2">
           <Label>Num results (1–10)</Label>
-          <Input type="number" min={1} max={10} value={numResults} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ numResults: parseInt(e.target.value, 10) || 5 })} />
+          <VariableInput type="number" min={1} max={10} value={String(numResults)} onChange={(v) => onUpdate({ numResults: parseInt(v, 10) || 5 })} variables={variables} />
         </div>
-        <VariableHint outputsWebResults />
       </div>
     );
   }
@@ -291,15 +255,15 @@ export function NodeConfigPanel({
           <>
             <div className="space-y-2">
               <Label>Task text</Label>
-              <Input value={(params.text as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, text: e.target.value } })} placeholder="Follow up with {{trigger_data.name}}" />
+              <VariableInput value={(params.text as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, text: v } })} variables={variables} placeholder="Follow up with {{trigger_data.name}}" />
             </div>
             <div className="space-y-2">
               <Label>Type</Label>
-              <Input value={(params.type as string) ?? "Todo"} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, type: e.target.value } })} placeholder="Todo" />
+              <VariableInput value={(params.type as string) ?? "Todo"} onChange={(v) => onUpdate({ params: { ...params, type: v } })} variables={variables} placeholder="Todo" />
             </div>
             <div className="space-y-2">
               <Label>Contact ID</Label>
-              <Input value={(params.contactId as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, contactId: e.target.value } })} placeholder="{{trigger_data.contactId}}" />
+              <VariableInput value={(params.contactId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, contactId: v } })} variables={variables} placeholder="{{trigger_data.contactId}}" />
             </div>
           </>
         )}
@@ -307,15 +271,15 @@ export function NodeConfigPanel({
           <>
             <div className="space-y-2">
               <Label>First name</Label>
-              <Input value={(params.firstName as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, firstName: e.target.value } })} placeholder="{{trigger_data.first_name}}" />
+              <VariableInput value={(params.firstName as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, firstName: v } })} variables={variables} placeholder="{{trigger_data.first_name}}" />
             </div>
             <div className="space-y-2">
               <Label>Last name</Label>
-              <Input value={(params.lastName as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, lastName: e.target.value } })} placeholder="{{trigger_data.last_name}}" />
+              <VariableInput value={(params.lastName as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, lastName: v } })} variables={variables} placeholder="{{trigger_data.last_name}}" />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input value={(params.email as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, email: e.target.value } })} placeholder="{{trigger_data.email}}" />
+              <VariableInput value={(params.email as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, email: v } })} variables={variables} placeholder="{{trigger_data.email}}" />
             </div>
           </>
         )}
@@ -323,11 +287,11 @@ export function NodeConfigPanel({
           <>
             <div className="space-y-2">
               <Label>Contact ID</Label>
-              <Input value={(params.contactId as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, contactId: e.target.value } })} placeholder="{{trigger_data.contactId}}" />
+              <VariableInput value={(params.contactId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, contactId: v } })} variables={variables} placeholder="{{trigger_data.contactId}}" />
             </div>
             <div className="space-y-2">
               <Label>Note text</Label>
-              <Textarea value={(params.text as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ params: { ...params, text: e.target.value } })} placeholder="{{ai_result}}" rows={4} />
+              <VariableTextarea value={(params.text as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, text: v } })} variables={variables} placeholder="{{ai_result}}" rows={4} />
             </div>
           </>
         )}
@@ -335,18 +299,17 @@ export function NodeConfigPanel({
           <>
             <div className="space-y-2">
               <Label>Deal ID</Label>
-              <Input value={(params.dealId as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, dealId: e.target.value } })} placeholder="{{trigger_data.id}}" />
+              <VariableInput value={(params.dealId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, dealId: v } })} variables={variables} placeholder="{{trigger_data.id}}" />
             </div>
             <div className="space-y-2">
               <Label>Note text</Label>
-              <Textarea value={(params.text as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ params: { ...params, text: e.target.value } })} placeholder="{{ai_result}}" rows={4} />
+              <VariableTextarea value={(params.text as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, text: v } })} variables={variables} placeholder="{{ai_result}}" rows={4} />
             </div>
           </>
         )}
         <div className="space-y-1 rounded-md bg-muted p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">Outputs: <code className="font-mono">{"{{crm_result}}"}</code></p>
         </div>
-        <VariableHint />
       </div>
     );
   }
@@ -360,13 +323,12 @@ export function NodeConfigPanel({
         {needsConnection && onOpenSettings && <ConnectionRequiredBanner provider="slack" onOpenSettings={onOpenSettings} />}
         <div className="space-y-2">
           <Label>Channel</Label>
-          <Input value={channel} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ channel: e.target.value })} placeholder="#general or @username" />
+          <VariableInput value={channel} onChange={(v) => onUpdate({ channel: v })} variables={variables} placeholder="#general or @username" />
         </div>
         <div className="space-y-2">
           <Label>Message</Label>
-          <Textarea value={message} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ message: e.target.value })} placeholder="New deal: {{trigger_data.name}}" rows={4} />
+          <VariableTextarea value={message} onChange={(v) => onUpdate({ message: v })} variables={variables} placeholder="New deal: {{trigger_data.name}}" rows={4} />
         </div>
-        <VariableHint />
       </div>
     );
   }
@@ -380,11 +342,11 @@ export function NodeConfigPanel({
         {needsConnection && onOpenSettings && <ConnectionRequiredBanner provider="google" onOpenSettings={onOpenSettings} />}
         <div className="space-y-2">
           <Label>Query</Label>
-          <Input value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ query: e.target.value })} placeholder="is:unread from:boss@company.com" />
+          <VariableInput value={query} onChange={(v) => onUpdate({ query: v })} variables={variables} placeholder="is:unread from:boss@company.com" />
         </div>
         <div className="space-y-2">
           <Label>Max results</Label>
-          <Input type="number" min={1} max={20} value={maxResults} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ maxResults: parseInt(e.target.value, 10) || 5 })} />
+          <VariableInput type="number" min={1} max={20} value={String(maxResults)} onChange={(v) => onUpdate({ maxResults: parseInt(v, 10) || 5 })} variables={variables} />
         </div>
         <div className="space-y-1 rounded-md bg-muted p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">Outputs: <code className="font-mono">{"{{gmail_messages}}"}</code></p>
@@ -403,17 +365,16 @@ export function NodeConfigPanel({
         {needsConnection && onOpenSettings && <ConnectionRequiredBanner provider="google" onOpenSettings={onOpenSettings} />}
         <div className="space-y-2">
           <Label>To</Label>
-          <Input value={to} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ to: e.target.value })} placeholder="recipient@example.com" />
+          <VariableInput value={to} onChange={(v) => onUpdate({ to: v })} variables={variables} placeholder="recipient@example.com" />
         </div>
         <div className="space-y-2">
           <Label>Subject</Label>
-          <Input value={subject} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ subject: e.target.value })} placeholder="Update: {{trigger_data.name}}" />
+          <VariableInput value={subject} onChange={(v) => onUpdate({ subject: v })} variables={variables} placeholder="Update: {{trigger_data.name}}" />
         </div>
         <div className="space-y-2">
           <Label>Body</Label>
-          <Textarea value={body} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ body: e.target.value })} placeholder="{{ai_result}}" rows={4} />
+          <VariableTextarea value={body} onChange={(v) => onUpdate({ body: v })} variables={variables} placeholder="{{ai_result}}" rows={4} />
         </div>
-        <VariableHint />
       </div>
     );
   }
@@ -425,17 +386,16 @@ export function NodeConfigPanel({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label>Objective</Label>
-          <Textarea value={objective} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ objective: e.target.value })} placeholder="Find contacts from {{trigger_data.company}} and create a follow-up task" rows={4} />
+          <VariableTextarea value={objective} onChange={(v) => onUpdate({ objective: v })} variables={variables} placeholder="Find contacts from {{trigger_data.company}} and create a follow-up task" rows={4} />
         </div>
         <div className="space-y-2">
           <Label>Max steps</Label>
-          <Input type="number" min={1} max={10} value={maxSteps} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ maxSteps: parseInt(e.target.value, 10) || 6 })} />
+          <VariableInput type="number" min={1} max={10} value={String(maxSteps)} onChange={(v) => onUpdate({ maxSteps: parseInt(v, 10) || 6 })} variables={variables} />
         </div>
         <div className="space-y-1 rounded-md bg-muted p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">Outputs: <code className="font-mono">{"{{ai_agent_result}}"}</code></p>
           <p>The agent has access to CRM tools: search contacts, deals, create tasks, update deals.</p>
         </div>
-        <VariableHint />
       </div>
     );
   }

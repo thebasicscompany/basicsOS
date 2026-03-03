@@ -1,4 +1,4 @@
-import { CaretLeftIcon, FloppyDiskIcon, CircleNotchIcon, PlayIcon, PlusIcon, TrashIcon, LightningIcon, LinkIcon, XIcon } from "@phosphor-icons/react";
+import { CaretLeftIcon, FloppyDiskIcon, CircleNotchIcon, PlayIcon, PlusIcon, LightningIcon, LinkIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import {
@@ -40,7 +40,7 @@ import { WorkflowCanvas } from "basics-os/src/components/ai-elements/canvas";
 import { WorkflowControls } from "basics-os/src/components/ai-elements/controls";
 import { WorkflowConnection } from "basics-os/src/components/ai-elements/connection";
 import { AutomationRunsPanel } from "./AutomationRunsPanel";
-import { NodeConfigPanel } from "./NodeConfigPanel";
+import { WorkflowPropertiesSheet } from "./WorkflowPropertiesSheet";
 import { useAutomationConnections } from "./useAutomationConnections";
 import { AutomationBuilderProvider } from "./AutomationBuilderContext";
 import { NODE_TYPES, edgeTypes, newId, type WorkflowNode } from "./builderConstants";
@@ -73,8 +73,9 @@ function BuilderInner() {
 
   const [name, setName] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [propertiesSheetOpen, setPropertiesSheetOpen] = useState(false);
+  const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([]);
+  const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
 
@@ -112,6 +113,9 @@ function BuilderInner() {
         name: rule.name ?? "",
       })
     );
+    if (ruleLoaded && rule?.workflowDefinition?.nodes?.length) {
+      setPropertiesSheetOpen(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, ruleLoaded, rule?.id]);
 
@@ -126,7 +130,9 @@ function BuilderInner() {
     onChange: ({ nodes: selectedNodes }) => {
       const nodeId = selectedNodes.length === 1 ? selectedNodes[0].id : null;
       setSelectedNodeId(nodeId);
-      if (nodeId) setPanelOpen(true);
+      if (nodeId) {
+        setPropertiesSheetOpen(true);
+      }
     },
   });
 
@@ -146,23 +152,27 @@ function BuilderInner() {
       });
       position.x -= 56;
       position.y -= 56;
-      setNodes((nds) => nds.concat({ id: newId(), type, position, data: { ...defaultData } }));
+      const id = newId();
+      setNodes((nds) => nds.concat({ id, type, position, data: { ...defaultData } }));
+      setSelectedNodeId(id);
+      setExpandedNodeIds((prev) => [...prev, id]);
+      setPropertiesSheetOpen(true);
     },
     [setNodes, reactFlowInstance]
   );
 
   const handleDeleteNode = useCallback(() => {
-    if (!selectedNodeId) return;
-    setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
-    setEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
-    setSelectedNodeId(null);
-    setPanelOpen(false);
-    setDeleteConfirmOpen(false);
-  }, [selectedNodeId, setNodes, setEdges]);
+    const nodeIdToDelete = deleteConfirmNodeId ?? selectedNodeId;
+    if (!nodeIdToDelete) return;
+    setNodes((nds) => nds.filter((n) => n.id !== nodeIdToDelete));
+    setEdges((eds) => eds.filter((e) => e.source !== nodeIdToDelete && e.target !== nodeIdToDelete));
+    setSelectedNodeId((prev) => (prev === nodeIdToDelete ? null : prev));
+    setExpandedNodeIds((prev) => prev.filter((id) => id !== nodeIdToDelete));
+    setDeleteConfirmNodeId(null);
+  }, [deleteConfirmNodeId, selectedNodeId, setNodes, setEdges]);
 
-  const handleCloseModal = useCallback(() => {
-    setPanelOpen(false);
-    setDeleteConfirmOpen(false);
+  const handleCloseDeleteConfirm = useCallback(() => {
+    setDeleteConfirmNodeId(null);
   }, []);
 
   const createRule = useMutation({
@@ -236,7 +246,6 @@ function BuilderInner() {
     else updateRule.mutate({ ...payload, enabled: rule?.enabled ?? true });
   }, [nodes, edges, name, isNew, rule?.enabled, createRule, updateRule]);
 
-  const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
 
   const updateNodeData = useCallback(
     (nodeId: string, dataUpdate: Record<string, unknown>) => {
@@ -312,7 +321,7 @@ function BuilderInner() {
               <span className="text-xs text-muted-foreground">Active</span>
               <Switch
                 checked={rule?.enabled ?? false}
-                onCheckedChange={(v) => toggleEnabledMutation.mutate(v)}
+                onCheckedChange={(v: boolean) => toggleEnabledMutation.mutate(v)}
                 disabled={toggleEnabledMutation.isPending}
               />
             </div>
@@ -336,7 +345,14 @@ function BuilderInner() {
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
 
   return (
-    <AutomationBuilderProvider value={{ connectedProviders }}>
+    <AutomationBuilderProvider
+      value={{
+        connectedProviders,
+        nodes,
+        edges,
+        nodeTypeLabels: NODE_TYPE_LABELS,
+      }}
+    >
       <>
         {headerActionsPortal}
         <div className="flex min-h-0 flex-1 flex-col">
@@ -388,45 +404,22 @@ function BuilderInner() {
               </WorkflowCanvas>
             </div>
 
-            <Dialog open={panelOpen && !!selectedNode} onOpenChange={(open: boolean) => !open && handleCloseModal()}>
-              <DialogContent className="w-fit max-w-[calc(100%-2rem)] max-h-[85vh] overflow-y-auto p-8" showCloseButton={false}>
-                <DialogHeader className="flex flex-row items-center gap-2 space-y-0">
-                  <DialogTitle className="flex-1 min-w-0 truncate text-base">
-                    {selectedNode ? NODE_TYPE_LABELS[selectedNode.type ?? ""] ?? "Node properties" : "Node properties"}
-                  </DialogTitle>
-                  <div className="flex items-center gap-0.5 -mr-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground hover:text-destructive"
-                      title="Delete node"
-                      onClick={() => setDeleteConfirmOpen(true)}
-                    >
-                      <TrashIcon className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={handleCloseModal}
-                      aria-label="Close"
-                    >
-                      <XIcon className="size-4" />
-                    </Button>
-                  </div>
-                </DialogHeader>
-                {selectedNode && (
-                  <NodeConfigPanel
-                    node={selectedNode}
-                    onUpdate={(data) => updateNodeData(selectedNode.id, data)}
-                    onReplaceNode={(newType, newData) => replaceNode(selectedNode.id, newType, newData)}
-                    onOpenSettings={() => navigate("/settings#connections")}
-                  />
-                )}
-              </DialogContent>
-            </Dialog>
+            <WorkflowPropertiesSheet
+              open={propertiesSheetOpen && nodes.length > 0}
+              onOpenChange={setPropertiesSheetOpen}
+              nodes={nodes}
+              edges={edges}
+              selectedNodeId={selectedNodeId}
+              expandedNodeIds={expandedNodeIds}
+              onExpandedNodeIdsChange={setExpandedNodeIds}
+              onUpdateNode={updateNodeData}
+              onReplaceNode={replaceNode}
+              onRequestDeleteNode={setDeleteConfirmNodeId}
+              onOpenSettings={() => navigate("/settings#connections")}
+              nodeTypeLabels={NODE_TYPE_LABELS}
+            />
 
-            <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <Dialog open={deleteConfirmNodeId !== null} onOpenChange={(open: boolean) => !open && handleCloseDeleteConfirm()}>
               <DialogContent className="max-w-sm" showCloseButton={false}>
                 <DialogHeader>
                   <DialogTitle>Delete node?</DialogTitle>
@@ -435,7 +428,7 @@ function BuilderInner() {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(false)}>
+                  <Button variant="outline" size="sm" onClick={handleCloseDeleteConfirm}>
                     Cancel
                   </Button>
                   <Button variant="destructive" size="sm" onClick={handleDeleteNode}>

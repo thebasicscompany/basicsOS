@@ -50,7 +50,7 @@ function LayoutContent() {
   return (
     <div className="flex flex-1 min-h-0 flex-col">
       <div
-        className="mx-auto flex max-w-screen-xl flex-1 flex-col px-4 min-h-0"
+        className="flex w-full flex-1 flex-col px-4 min-h-0"
         id="main-content"
       >
         <ErrorBoundary
@@ -70,7 +70,7 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex h-svh flex-col min-w-0 sm:transition-[width] sm:duration-200 sm:ease-linear">
+      <SidebarInset className="flex h-svh flex-col min-w-0 overflow-hidden sm:transition-[width] sm:duration-200 sm:ease-linear">
         <PageHeaderProvider>
           <LayoutHeader />
           <LayoutContent />

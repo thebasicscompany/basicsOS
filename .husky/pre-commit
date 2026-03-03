@@ -1,1 +1,0 @@
-pnpm run registry:gen && pnpx prettier --config ./.prettierrc.json --write "registry.json"

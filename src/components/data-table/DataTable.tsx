@@ -598,7 +598,7 @@ export function DataTable({
 
   // ---- Render ----
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex min-w-0 w-full flex-col">
       {/* Bulk actions bar */}
       {selectedRowIds.length > 0 && onRowDelete && (
         <div className="flex items-center gap-3 rounded-t-md border border-b-0 bg-muted/50 px-3 py-1.5 text-sm">

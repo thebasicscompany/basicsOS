@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
+import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ROUTES } from "@basics-os/hub";
@@ -19,12 +20,15 @@ import { ProfilePage } from "@/components/pages/ProfilePage";
 import { SettingsPage } from "@/components/pages/SettingsPage";
 import { ImportPage } from "@/components/pages/ImportPage";
 import { ChatPage } from "@/components/pages/ChatPage";
-import { ConnectionsPage } from "@/components/pages/ConnectionsPage";
 import { TasksPage } from "@/components/pages/TasksPage";
 import { CommandPalette } from "@/components/command-palette";
 import { ObjectListPage } from "@/components/pages/ObjectListPage";
 import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
 import { AppLayout } from "@/layouts/AppLayout";
+
+function RedirectToSettingsConnections() {
+  return <Navigate to="/settings#connections" replace />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,7 +78,10 @@ function AppRoutes() {
           <Route path={ROUTES.CHAT} element={<ChatPage />} />
           <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
-          <Route path={ROUTES.CONNECTIONS} element={<ConnectionsPage />} />
+          <Route
+            path={ROUTES.CONNECTIONS}
+            element={<RedirectToSettingsConnections />}
+          />
           <Route path={ROUTES.TASKS} element={<TasksPage />} />
           <Route path={ROUTES.IMPORT} element={<ImportPage />} />
 
@@ -101,12 +108,14 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <TooltipProvider>
-        <AppRoutes />
-        <Toaster />
-      </TooltipProvider>
-    </BrowserRouter>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <BrowserRouter>
+        <TooltipProvider>
+          <AppRoutes />
+          <Toaster />
+        </TooltipProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

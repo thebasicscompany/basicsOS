@@ -1,11 +1,6 @@
 import { PlayIcon } from "@phosphor-icons/react"
 import type { NodeProps } from "@xyflow/react";
-import {
-  WorkflowNode,
-  NodeTitle,
-  NodeDescription,
-} from "basics-os/src/components/ai-elements/node";
-import { cn } from "basics-os/src/lib/utils";
+import { CompactAutomationNode } from "./CompactAutomationNode";
 
 const EVENT_OPTIONS = [
   "deal.created",
@@ -14,6 +9,8 @@ const EVENT_OPTIONS = [
   "contact.created",
   "contact.updated",
   "task.created",
+  "task.updated",
+  "task.deleted",
 ] as const;
 
 export interface TriggerEventData {
@@ -31,20 +28,12 @@ export function TriggerEventNode({
       : "Deal created";
 
   return (
-    <WorkflowNode
-      className={cn(
-        "flex w-40 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary"
-      )}
+    <CompactAutomationNode
+      icon={<PlayIcon className="size-4 text-blue-500" />}
+      title={displayTitle}
+      description="Trigger"
       handles={{ target: false, source: true }}
-    >
-      <div className="flex flex-col items-center justify-center gap-2 p-3">
-        <PlayIcon className="size-5 text-blue-500" />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-sm">{displayTitle}</NodeTitle>
-          <NodeDescription className="text-xs">Trigger</NodeDescription>
-        </div>
-      </div>
-    </WorkflowNode>
+      selected={selected}
+    />
   );
 }

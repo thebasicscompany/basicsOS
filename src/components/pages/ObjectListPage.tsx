@@ -350,7 +350,7 @@ export function ObjectListPage() {
             onSelectView={setActiveView}
             onCreateView={() =>
               createView
-                .mutateAsync({ title: `View ${views.length + 1}` })
+                .mutateAsync({ title: "New View" })
                 .then((newView) => setActiveView(newView.id))
                 .catch(() => {})
             }

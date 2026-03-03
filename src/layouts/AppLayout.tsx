@@ -50,10 +50,11 @@ function LayoutHeader() {
 
 function LayoutContent() {
   const location = useLocation()
+  const isBuilder = /^\/automations\/(create|\d+)/.test(location.pathname)
   return (
     <div className="flex flex-1 min-h-0 flex-col">
       <div
-        className="flex w-full flex-1 flex-col px-4 min-h-0"
+        className={isBuilder ? "flex w-full flex-1 flex-col min-h-0 pl-0 pr-4" : "flex w-full flex-1 flex-col px-4 min-h-0"}
         id="main-content"
       >
         <ErrorBoundary

@@ -23,8 +23,8 @@ export function ObjectRegistryNavSection() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Records
+      <SidebarGroupLabel className="text-xs font-medium text-muted-foreground">
+        Objects
       </SidebarGroupLabel>
       <SidebarGroupAction
         title="New record"

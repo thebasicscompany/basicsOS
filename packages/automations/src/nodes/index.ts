@@ -1,3 +1,5 @@
+export { BlankTriggerNode } from "./BlankTriggerNode";
+export { BlankActionNode } from "./BlankActionNode";
 export { TriggerEventNode } from "./TriggerEventNode";
 export { TriggerScheduleNode } from "./TriggerScheduleNode";
 export { EmailActionNode } from "./EmailActionNode";

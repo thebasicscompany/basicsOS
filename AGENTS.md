@@ -8,40 +8,49 @@ Basics CRM is a full-featured CRM built with React, shadcn-admin-kit, and Supaba
 
 ### Setup
 ```bash
-make install          # Install dependencies (frontend, backend, local Supabase)
-make start            # Start full stack with real API (Supabase + Vite dev server)
-make stop             # Stop the stack
-make start-demo       # Start full-stack with FakeRest data provider
+pnpm install                    # Install dependencies
+docker compose up -d            # Start Postgres (port 5435)
+cd packages/server && cp .env.example .env && pnpm db:migrate  # Configure and migrate
+```
+
+### Running the App
+```bash
+pnpm run dev:rest    # Frontend + API server (recommended)
+pnpm run dev         # Frontend only
+pnpm run dev:server  # API server only
 ```
 
 ### Testing and Code Quality
 
 ```bash
-make test             # Run unit tests (vitest)
-make typecheck        # Run TypeScript type checking
-make lint             # Run ESLint and Prettier checks
+pnpm test            # Run unit tests (vitest)
+pnpm run typecheck   # Run TypeScript type checking
+pnpm run lint        # Run ESLint checks
+pnpm run lint:apply  # ESLint with auto-fix
+pnpm run prettier:apply  # Prettier format
 ```
 
 ### Building
 
 ```bash
-make build            # Build production bundle (runs tsc + vite build)
+pnpm run build       # Build production bundle (tsc + vite build)
 ```
 
-### Database Management
-
+### Database Management (Drizzle)
 ```bash
-npx supabase migration new <name>  # Create new migration
-npx supabase migration up          # Apply migrations locally
-npx supabase db push               # Push migrations to remote
-npx supabase db reset              # Reset local database (destructive)
+cd packages/server
+pnpm db:generate     # Generate migration from schema changes
+pnpm db:migrate      # Apply migrations
+pnpm db:push         # Push schema to database
+pnpm db:seed         # Seed demo data (admin@example.com / admin123)
+pnpm db:studio       # Open Drizzle Studio
 ```
 
 ### Registry (Shadcn Components)
 
 ```bash
-make registry-gen     # Generate registry.json (runs automatically on pre-commit)
-make registry-build   # Build Shadcn registry
+pnpm run registry:gen    # Generate registry.json (runs on pre-commit via husky)
+pnpm run registry:build  # Build Shadcn registry
 ```
 
 ## Architecture
@@ -168,7 +177,7 @@ Import `test-data/contacts.csv` via the Contacts page → Import button.
 
 ### Git Hooks
 
-- Pre-commit: Automatically runs `make registry-gen` to update `registry.json`
+- Pre-commit (husky): Runs `pnpm run registry:gen` to update `registry.json`
 
 ### Accessing Local Services During Development
 

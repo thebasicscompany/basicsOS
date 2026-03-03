@@ -1,11 +1,7 @@
 import { TrayIcon } from "@phosphor-icons/react"
 import type { NodeProps } from "@xyflow/react";
-import {
-  WorkflowNode,
-  NodeTitle,
-  NodeDescription,
-} from "basics-os/src/components/ai-elements/node";
-import { cn } from "basics-os/src/lib/utils";
+import { CompactAutomationNode } from "./CompactAutomationNode";
+import { useAutomationBuilder } from "../AutomationBuilderContext";
 
 export interface GmailReadData {
   query?: string;
@@ -16,28 +12,20 @@ export function GmailReadNode({
   data,
   selected,
 }: NodeProps<{ type: "action_gmail_read"; data: GmailReadData }>) {
-  const query = data?.query?.trim() || "";
-  const display = query
-    ? query.length > 20
-      ? `${query.slice(0, 20)}…`
-      : query
-    : "Read Emails";
+  const { connectedProviders } = useAutomationBuilder();
+  const query = data?.query?.trim() || "is:unread";
+  const display =
+    query.length > 20 ? `${query.slice(0, 20)}…` : query || "Gmail Read";
+  const connectionRequired = !connectedProviders.includes("google");
 
   return (
-    <WorkflowNode
-      className={cn(
-        "flex w-40 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary",
-      )}
+    <CompactAutomationNode
+      icon={<TrayIcon className="size-4 text-red-400" />}
+      title="Gmail Read"
+      description={display}
       handles={{ target: true, source: true }}
-    >
-      <div className="flex flex-col items-center justify-center gap-2 p-3">
-        <TrayIcon className="size-5 text-red-400" />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-sm">Gmail Read</NodeTitle>
-          <NodeDescription className="text-xs">{display}</NodeDescription>
-        </div>
-      </div>
-    </WorkflowNode>
+      selected={selected}
+      connectionRequired={connectionRequired}
+    />
   );
 }

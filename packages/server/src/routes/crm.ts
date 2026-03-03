@@ -29,7 +29,7 @@ import {
   upsertEntityEmbedding,
   deleteEntityEmbedding,
 } from "../lib/embeddings.js";
-import { fireEvent } from "../lib/automation-engine.js";
+import { fireEvent, reloadRule } from "../lib/automation-engine.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -547,9 +547,14 @@ export function createCrmRoutes(
     }
 
     // Fire-and-forget: trigger automations
-    const eventResourceU = ["deals", "contacts"].includes(resource) ? resource : null;
+    const eventResourceU = ["deals", "contacts", "tasks"].includes(resource) ? resource : null;
     if (eventResourceU) {
       fireEvent(`${eventResourceU.replace(/s$/, "")}.updated`, updated as Record<string, unknown>, salesId).catch(() => {});
+    }
+
+    // When automation rule is updated, reload its schedule (if it has a schedule trigger)
+    if (resource === "automation_rules" && typeof id === "number") {
+      reloadRule(id).catch(() => {});
     }
 
     return c.json(updated);
@@ -593,7 +598,7 @@ export function createCrmRoutes(
     }
 
     // Fire-and-forget: trigger automations
-    const eventResourceDel = ["deals", "contacts"].includes(resource) ? resource : null;
+    const eventResourceDel = ["deals", "contacts", "tasks"].includes(resource) ? resource : null;
     if (eventResourceDel) {
       fireEvent(`${eventResourceDel.replace(/s$/, "")}.deleted`, deleted as Record<string, unknown>, salesId).catch(() => {});
     }

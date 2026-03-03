@@ -22,7 +22,6 @@ export const SIDEBAR_NAV_APPS: NavGroupConfig = {
     { title: "AI Chat", path: ROUTES.CHAT, icon: ChatCircleIcon },
     { title: "Voice", path: ROUTES.VOICE, icon: MicrophoneIcon },
     { title: "MCP", path: ROUTES.MCP, icon: PlugIcon },
-    { title: "Connections", path: ROUTES.CONNECTIONS, icon: LinkIcon },
   ],
 };
 
@@ -31,6 +30,7 @@ export const SIDEBAR_NAV_AUTOMATIONS: NavGroupConfig = {
   items: [
     { title: "All", path: ROUTES.AUTOMATIONS, icon: LightningIcon },
     { title: "Builder", path: `${ROUTES.AUTOMATIONS}/create`, icon: PlusIcon },
+    { title: "Connections", path: ROUTES.AUTOMATIONS_CONNECTIONS, icon: LinkIcon },
     { title: "Runs", path: ROUTES.AUTOMATIONS_RUNS, icon: PlayIcon },
     { title: "Logs", path: ROUTES.AUTOMATIONS_LOGS, icon: FileTextIcon },
   ],

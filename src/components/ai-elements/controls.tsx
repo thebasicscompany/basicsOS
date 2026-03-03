@@ -25,7 +25,7 @@ export const WorkflowControls = ({
   return (
     <Panel
       className="workflow-controls-panel border-none bg-transparent p-0"
-      position="bottom-left"
+      position="bottom-right"
     >
       <ButtonGroup orientation="vertical">
         <Button

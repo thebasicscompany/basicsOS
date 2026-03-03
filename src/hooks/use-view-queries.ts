@@ -139,6 +139,34 @@ export function useViewColumns(viewId: string) {
 }
 
 /**
+ * Create a new column in a view (for attributes that don't have a view column yet).
+ * POST /api/views/view/:viewId/columns
+ */
+export function useCreateViewColumn(viewId: string) {
+  const qc = useQueryClient();
+
+  return useMutation<
+    ViewColumn,
+    Error,
+    { fk_column_id: string; title?: string; show?: boolean; order?: number }
+  >({
+    mutationFn: async (body) => {
+      const raw = await fetchApi<ViewColumnRaw>(
+        `/api/views/view/${viewId}/columns`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      );
+      return mapViewColumn(raw);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["view-columns", viewId] });
+    },
+  });
+}
+
+/**
  * Update a column's visibility, order, or width within a view.
  * PATCH /api/views/view/:viewId/columns/:columnId
  */

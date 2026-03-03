@@ -8,6 +8,7 @@ import {
   useViewSorts,
   useViewFilters,
   useUpdateViewColumn,
+  useCreateViewColumn,
   useCreateViewSort,
   useDeleteViewSort,
   useCreateViewFilter,
@@ -117,7 +118,7 @@ export function useViews(objectSlug: string): UseViewsReturn {
       };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["noco-views", objectSlug] });
+      qc.invalidateQueries({ queryKey: ["views", objectSlug] });
     },
   });
 
@@ -254,6 +255,12 @@ export function useViewState(viewId: string): UseViewStateReturn {
   const isDirtyRef = useRef(localState.isDirty);
   isDirtyRef.current = localState.isDirty;
 
+  // Reset dirty state when switching views so new view's server data can sync
+  useEffect(() => {
+    isDirtyRef.current = false;
+    dispatch({ type: "MARK_CLEAN" });
+  }, [viewId]);
+
   // Sync server data into local state when it arrives (only when not dirty)
   useEffect(() => {
     if (!isDirtyRef.current && serverColumns.length > 0) {
@@ -275,20 +282,32 @@ export function useViewState(viewId: string): UseViewStateReturn {
 
   // Mutations
   const updateColumnMutation = useUpdateViewColumn(viewId);
+  const createColumnMutation = useCreateViewColumn(viewId);
   const createSortMutation = useCreateViewSort(viewId);
   const deleteSortMutation = useDeleteViewSort(viewId);
   const createFilterMutation = useCreateViewFilter(viewId);
   const deleteFilterMutation = useDeleteViewFilter(viewId);
 
-  // Optimistic local updates
+  // Update column: for virtual columns (id starts with "virtual-") with show:true, create via API
   const updateColumn = useCallback(
     (
       columnId: string,
       updates: Partial<Pick<ViewColumn, "show" | "order" | "width">>,
     ) => {
+      if (
+        columnId.startsWith("virtual-") &&
+        updates.show === true
+      ) {
+        const fieldId = columnId.replace(/^virtual-/, "");
+        void createColumnMutation.mutateAsync({
+          fk_column_id: fieldId,
+          show: true,
+        });
+        return;
+      }
       dispatch({ type: "UPDATE_COLUMN", columnId, updates });
     },
-    [],
+    [createColumnMutation],
   );
 
   const addSort = useCallback(

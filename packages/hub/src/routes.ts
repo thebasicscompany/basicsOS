@@ -8,6 +8,7 @@ export const ROUTES = {
   TASKS: "/tasks",
   // Automations (base + sub-routes for sidebar)
   AUTOMATIONS: "/automations",
+  AUTOMATIONS_CONNECTIONS: "/automations/connections",
   AUTOMATIONS_RUNS: "/automations/runs",
   AUTOMATIONS_LOGS: "/automations/logs",
   // User

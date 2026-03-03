@@ -1,11 +1,6 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
 import type { NodeProps } from "@xyflow/react";
-import {
-  WorkflowNode,
-  NodeTitle,
-  NodeDescription,
-} from "basics-os/src/components/ai-elements/node";
-import { cn } from "basics-os/src/lib/utils";
+import { CompactAutomationNode } from "./CompactAutomationNode";
 
 export interface WebSearchActionData {
   query?: string;
@@ -17,24 +12,16 @@ export function WebSearchActionNode({
   selected,
 }: NodeProps<{ type: "action_web_search"; data: WebSearchActionData }>) {
   const query = data?.query?.trim() || "";
-  const display = query.length > 20 ? `${query.slice(0, 20)}…` : query || "Web Search";
-  const num = data?.numResults ?? 5;
+  const display =
+    query.length > 20 ? `${query.slice(0, 20)}…` : query || "Web Search";
 
   return (
-    <WorkflowNode
-      className={cn(
-        "flex w-40 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary"
-      )}
+    <CompactAutomationNode
+      icon={<MagnifyingGlassIcon className="size-4 text-blue-400" />}
+      title="Web Search"
+      description={display}
       handles={{ target: true, source: true }}
-    >
-      <div className="flex flex-col items-center justify-center gap-2 p-3">
-        <MagnifyingGlassIcon className="size-5 text-blue-400" />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-sm">Web Search</NodeTitle>
-          <NodeDescription className="text-xs">{display} ({num})</NodeDescription>
-        </div>
-      </div>
-    </WorkflowNode>
+      selected={selected}
+    />
   );
 }

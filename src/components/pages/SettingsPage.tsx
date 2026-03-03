@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowSquareOutIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react"
+import { ArrowSquareOutIcon, EyeIcon, EyeSlashIcon, SunIcon, MoonIcon, MonitorIcon } from "@phosphor-icons/react";
 import { useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -16,6 +17,7 @@ async function persistApiKey(key: string | null) {
 
 import { toast } from "sonner";
 import { useGateway } from "@/hooks/useGateway";
+import { ConnectionsContent } from "@/components/connections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +30,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const VALID_PREFIXES = ["bos_live_sk_", "bos_test_sk_"] as const;
 
@@ -42,10 +51,17 @@ function maskApiKey(key: string): string {
 
 const DASHBOARD_URL = "https://basics.so/dashboard";
 
+const THEME_OPTIONS = [
+  { value: "light", label: "Light", icon: SunIcon },
+  { value: "dark", label: "Dark", icon: MoonIcon },
+  { value: "system", label: "System", icon: MonitorIcon },
+] as const;
+
 import { usePageTitle } from "@/contexts/page-header";
 
 export function SettingsPage() {
   usePageTitle("Settings");
+  const { theme, setTheme } = useTheme();
   const { apiKey, hasKey, setApiKey, clearApiKey } = useGateway();
   const [inputValue, setInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -81,6 +97,36 @@ export function SettingsPage() {
       <p className="mb-4 text-[12px] text-muted-foreground">Application configuration</p>
 
       <div className="max-w-lg space-y-4">
+        {/* Appearance */}
+        <div className="rounded-lg border p-4">
+          <h2 className="text-[13px] font-medium">Appearance</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Customize how the app looks.
+          </p>
+          <div className="mt-3">
+            <Label className="text-[12px]">Theme</Label>
+            <Select
+              value={theme ?? "system"}
+              onValueChange={(v) => setTheme(v)}
+            >
+              <SelectTrigger className="mt-1.5 h-8 w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <SelectItem key={opt.value} value={opt.value} className="gap-2">
+                      <Icon className="size-4" />
+                      {opt.label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* API Configuration */}
         <div className="rounded-lg border p-4">
           <h2 className="text-[13px] font-medium">API Configuration</h2>
@@ -154,6 +200,17 @@ export function SettingsPage() {
               Get an API key from basics.so
               <ArrowSquareOutIcon className="size-3" />
             </a>
+          </div>
+        </div>
+
+        {/* Connections (for automations: Gmail, Slack) */}
+        <div id="connections" className="rounded-lg border p-4 scroll-mt-4">
+          <h2 className="text-[13px] font-medium">Connections</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Connect Gmail and Slack for use in automations.
+          </p>
+          <div className="mt-3">
+            <ConnectionsContent embeddedInSettings />
           </div>
         </div>
       </div>

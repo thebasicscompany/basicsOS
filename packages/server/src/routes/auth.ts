@@ -49,9 +49,35 @@ export function createAuthRoutes(
     return c.json({
       id: sale.id,
       fullName: `${sale.firstName} ${sale.lastName}`,
+      firstName: sale.firstName,
+      lastName: sale.lastName,
+      email: sale.email,
       avatar: sale.avatar,
       administrator: sale.administrator,
     });
+  });
+
+  app.patch("/me", authMiddleware(auth), async (c) => {
+    const session = c.get("session") as { user?: { id: string } };
+    const userId = session?.user?.id;
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+    const body = await c.req.json<{ firstName?: string; lastName?: string }>();
+    const updates: Partial<{ firstName: string; lastName: string }> = {};
+    if (typeof body.firstName === "string" && body.firstName.trim())
+      updates.firstName = body.firstName.trim();
+    if (typeof body.lastName === "string" && body.lastName.trim())
+      updates.lastName = body.lastName.trim();
+
+    if (Object.keys(updates).length === 0)
+      return c.json({ error: "No valid fields to update" }, 400);
+
+    await db
+      .update(schema.sales)
+      .set(updates)
+      .where(eq(schema.sales.userId, userId));
+
+    return c.json({ ok: true });
   });
 
   app.patch("/settings", authMiddleware(auth), async (c) => {

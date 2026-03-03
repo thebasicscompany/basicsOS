@@ -1,4 +1,4 @@
-import { CaretLeftIcon, CaretRightIcon, CaretDoubleLeftIcon, CaretDoubleRightIcon, DotsThreeVerticalIcon, PlusIcon } from "@phosphor-icons/react"
+import { CaretLeftIcon, CaretRightIcon, CaretDoubleLeftIcon, CaretDoubleRightIcon, DotsThreeVerticalIcon, PlusIcon, TableIcon } from "@phosphor-icons/react"
 import * as React from "react";
 import {
   flexRender,
@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Cell } from "@/components/cells";
 import { getFieldType } from "@/field-types";
@@ -625,25 +626,24 @@ export function DataTable({
               ) : data.length === 0 ? (
                 // Empty state
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-32 text-center"
-                  >
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <p className="text-sm">
-                        No {pluralName.toLowerCase()} found
-                      </p>
-                      {onNewRecord && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={onNewRecord}
-                        >
-                          <PlusIcon className="size-3.5 mr-1" />
-                          New {singularName}
-                        </Button>
-                      )}
-                    </div>
+                  <TableCell colSpan={columns.length} className="p-0">
+                    <EmptyState
+                      icon={<TableIcon />}
+                      title={`No ${pluralName.toLowerCase()} found`}
+                      description="Get started by creating your first record."
+                      action={
+                        onNewRecord ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onNewRecord}
+                          >
+                            <PlusIcon className="size-3.5 mr-1" />
+                            New {singularName}
+                          </Button>
+                        ) : undefined
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

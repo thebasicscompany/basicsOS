@@ -1,11 +1,6 @@
 import { SparkleIcon } from "@phosphor-icons/react"
 import type { NodeProps } from "@xyflow/react";
-import {
-  WorkflowNode,
-  NodeTitle,
-  NodeDescription,
-} from "basics-os/src/components/ai-elements/node";
-import { cn } from "basics-os/src/lib/utils";
+import { CompactAutomationNode } from "./CompactAutomationNode";
 
 export interface AIAgentData {
   objective?: string;
@@ -22,20 +17,12 @@ export function AIAgentNode({
     objective.length > 24 ? `${objective.slice(0, 24)}…` : objective || "AI Agent";
 
   return (
-    <WorkflowNode
-      className={cn(
-        "flex w-40 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary",
-      )}
+    <CompactAutomationNode
+      icon={<SparkleIcon className="size-4 text-purple-400" />}
+      title="AI Agent"
+      description={display}
       handles={{ target: true, source: true }}
-    >
-      <div className="flex flex-col items-center justify-center gap-2 p-3">
-        <SparkleIcon className="size-5 text-purple-400" />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-sm">AI Agent</NodeTitle>
-          <NodeDescription className="text-xs">{display}</NodeDescription>
-        </div>
-      </div>
-    </WorkflowNode>
+      selected={selected}
+    />
   );
 }

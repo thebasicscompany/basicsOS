@@ -4,6 +4,9 @@ import { fetchApi } from "@/lib/api";
 export interface Identity {
   id: number;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   avatar?: string;
   administrator?: boolean;
 }

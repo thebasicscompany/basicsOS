@@ -22,7 +22,10 @@ const PROVIDERS = [
   { id: "google", name: "Gmail", description: "Read and send emails from your Google account" },
 ] as const;
 
+import { usePageTitle } from "@/contexts/page-header";
+
 export function ConnectionsPage() {
+  usePageTitle("Connections");
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { hasKey } = useGateway();
@@ -67,8 +70,7 @@ export function ConnectionsPage() {
     connections.find((c) => c.provider === providerId);
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
-      <h1 className="mb-1 text-lg font-semibold">Connections</h1>
+    <div className="flex h-full flex-col overflow-auto py-4">
       <p className="mb-4 text-[12px] text-muted-foreground">Connect services to use in your automations.</p>
 
       {!hasKey && (

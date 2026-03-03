@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { Upload, FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePageTitle } from "@/contexts/page-header";
 
 export function ImportPage() {
+  usePageTitle("Import");
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -32,8 +34,7 @@ export function ImportPage() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
-      <h1 className="mb-1 text-lg font-semibold">Import</h1>
+    <div className="flex h-full flex-col overflow-auto py-4">
       <p className="mb-4 text-[12px] text-muted-foreground">
         Import contacts from a CSV file
       </p>

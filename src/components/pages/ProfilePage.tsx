@@ -3,8 +3,10 @@ import { useMe } from "@/hooks/use-me";
 import { authClient } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { usePageTitle } from "@/contexts/page-header";
 
 export function ProfilePage() {
+  usePageTitle("Profile");
   const navigate = useNavigate();
   const { data: me, isPending, isError, refetch } = useMe();
 
@@ -14,8 +16,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
-      <h1 className="mb-1 text-lg font-semibold">Profile</h1>
+    <div className="flex h-full flex-col overflow-auto py-4">
       <p className="mb-4 text-[12px] text-muted-foreground">Your account details</p>
 
       <div className="max-w-sm space-y-4">

@@ -42,7 +42,10 @@ function maskApiKey(key: string): string {
 
 const DASHBOARD_URL = "https://basics.so/dashboard";
 
+import { usePageTitle } from "@/contexts/page-header";
+
 export function SettingsPage() {
+  usePageTitle("Settings");
   const { apiKey, hasKey, setApiKey, clearApiKey } = useGateway();
   const [inputValue, setInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -74,8 +77,7 @@ export function SettingsPage() {
   }, [clearApiKey]);
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
-      <h1 className="mb-1 text-lg font-semibold">Settings</h1>
+    <div className="flex h-full flex-col overflow-auto py-4">
       <p className="mb-4 text-[12px] text-muted-foreground">Application configuration</p>
 
       <div className="max-w-lg space-y-4">

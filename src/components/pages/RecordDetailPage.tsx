@@ -56,6 +56,7 @@ import {
 import { useToggleFavorite, useIsFavorite } from "@/hooks/use-favorites";
 import { useRecentItems, type RecentItem } from "@/hooks/use-recent-items";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/contexts/page-header";
 
 /* ------------------------------------------------------------------ */
 /*  Loading skeleton                                                   */
@@ -145,6 +146,9 @@ export function RecordDetailPage() {
     const val = (record as Record<string, unknown>)[primaryAttr.columnName];
     return typeof val === "string" && val ? val : "Unnamed";
   }, [record, primaryAttr]);
+
+  // Register record name in the layout header
+  usePageTitle(displayName === "\u2026" ? "" : displayName)
 
   // Track as recent item
   useEffect(() => {
@@ -345,7 +349,7 @@ export function RecordDetailPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 pt-4 pb-8">
         {/* ---- Breadcrumb ---- */}
         <Breadcrumb>
           <BreadcrumbList>

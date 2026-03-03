@@ -1,7 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
-import { HubLayout, ROUTES } from "@basics-os/hub";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ROUTES } from "@basics-os/hub";
 import { AutomationsApp } from "@basics-os/automations";
 import { VoiceApp } from "@basics-os/voice";
 import { MCPViewerApp } from "@basics-os/mcp-viewer";
@@ -22,7 +23,7 @@ import { TasksPage } from "@/components/pages/TasksPage";
 import { CommandPalette } from "@/components/command-palette";
 import { ObjectListPage } from "@/components/pages/ObjectListPage";
 import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
-import { ObjectRegistryNavSection } from "@/components/ObjectRegistryNavSection";
+import { AppLayout } from "@/layouts/AppLayout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,7 +59,7 @@ function AppRoutes() {
             <ProtectedRoute>
               <ObjectRegistryProvider>
                 <>
-                  <HubLayout extraNavContent={<ObjectRegistryNavSection />} />
+                  <AppLayout />
                   <CommandPalette />
                 </>
               </ObjectRegistryProvider>
@@ -100,7 +101,9 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AppRoutes />
+      <TooltipProvider>
+        <AppRoutes />
+      </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

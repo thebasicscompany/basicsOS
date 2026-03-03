@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Outlet, useLocation } from "react-router";
 import { ErrorBoundary } from "react-error-boundary";
-import { SidebarProvider } from "basics-os/src/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "basics-os/src/components/ui/sidebar";
 import { cn } from "basics-os/src/lib/utils";
 import { HubSidebar } from "./HubSidebar";
 
@@ -38,17 +38,17 @@ export function HubLayout({
   return (
     <SidebarProvider>
       <HubSidebar extraNavContent={extraNavContent} />
-      <main
+      <SidebarInset
         className={cn(
-          "flex h-svh flex-col",
-          "w-full max-w-full",
-          "peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]",
-          "peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]",
+          "flex h-svh flex-col min-w-0",
           "sm:transition-[width] sm:duration-200 sm:ease-linear",
         )}
       >
-        <div className="flex-1 overflow-auto">
-          <div className="max-w-screen-xl mx-auto pt-4 px-4" id="main-content">
+        <div className="flex flex-1 min-h-0 flex-col">
+          <div
+            className="mx-auto flex max-w-screen-xl flex-1 flex-col px-4 pt-4 min-h-0"
+            id="main-content"
+          >
             <ErrorBoundary
               key={location.pathname}
               fallbackRender={({ error, resetErrorBoundary }) => (
@@ -59,7 +59,7 @@ export function HubLayout({
             </ErrorBoundary>
           </div>
         </div>
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

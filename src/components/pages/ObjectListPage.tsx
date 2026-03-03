@@ -16,6 +16,7 @@ import { useRecords, useUpdateRecord, useDeleteRecord } from "@/hooks/use-record
 import { useViews, useViewState } from "@/hooks/use-views";
 import { getObjectIcon } from "@/lib/object-icon-map";
 import type { ViewSort, ViewFilter } from "@/types/views";
+import { usePageTitle } from "@/contexts/page-header";
 
 /* ------------------------------------------------------------------ */
 /*  ObjectListPage                                                     */
@@ -30,6 +31,9 @@ export function ObjectListPage() {
 
   const obj = useObject(objectSlug);
   const attributes = useAttributes(objectSlug);
+
+  // Register current object name in the layout header
+  usePageTitle(obj?.pluralName ?? "");
 
   // Views
   const {
@@ -197,18 +201,13 @@ export function ObjectListPage() {
   const total = data?.total ?? 0;
 
   return (
-    <div className="flex flex-col gap-3 h-full">
-      {/* ---- Page header ---- */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <HugeiconsIcon icon={IconComponent} className="h-6 w-6" />
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {obj.pluralName}
-          </h1>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 pt-4">
+      {/* ---- Page toolbar ---- */}
+      <div className="flex shrink-0 items-center justify-between">
+        <div className="flex items-center gap-2">
+          <HugeiconsIcon icon={IconComponent} className="h-5 w-5 text-muted-foreground" />
           {total > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {total} total
-            </span>
+            <span className="text-sm text-muted-foreground">{total} total</span>
           )}
         </div>
         <Button
@@ -223,19 +222,22 @@ export function ObjectListPage() {
 
       {/* ---- View selector tabs ---- */}
       {views.length > 0 && (
-        <ViewSelector
-          views={views}
-          activeViewId={activeView?.id ?? ""}
-          onSelectView={setActiveView}
-          onCreateView={() =>
-            createView.mutate({ title: `View ${views.length + 1}` })
-          }
-        />
+        <div className="shrink-0">
+          <ViewSelector
+            views={views}
+            activeViewId={activeView?.id ?? ""}
+            onSelectView={setActiveView}
+            onCreateView={() =>
+              createView.mutate({ title: `View ${views.length + 1}` })
+            }
+          />
+        </div>
       )}
 
       {/* ---- Toolbar (sort / filter / actions) ---- */}
       {activeView && attributes.length > 0 && (
-        <DataTableToolbar
+        <div className="shrink-0">
+          <DataTableToolbar
           objectSlug={objectSlug}
           singularName={obj.singularName}
           sorts={viewState.sorts}
@@ -275,18 +277,22 @@ export function ObjectListPage() {
           onSave={viewState.save}
           onDiscard={viewState.discard}
         />
+        </div>
       )}
 
       {/* ---- View save bar ---- */}
-      <ViewSaveBar
-        isDirty={viewState.isDirty}
-        onSave={viewState.save}
-        onDiscard={viewState.discard}
-      />
+      <div className="shrink-0">
+        <ViewSaveBar
+          isDirty={viewState.isDirty}
+          onSave={viewState.save}
+          onDiscard={viewState.discard}
+        />
+      </div>
 
-      {/* ---- Data table ---- */}
-      <DataTable
-        objectSlug={objectSlug}
+      {/* ---- Data table: only this area scrolls when columns/rows overflow ---- */}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <DataTable
+          objectSlug={objectSlug}
         singularName={obj.singularName}
         pluralName={obj.pluralName}
         attributes={attributes}
@@ -311,7 +317,8 @@ export function ObjectListPage() {
         onPaginationChange={handlePaginationChange}
         sorts={viewState.sorts}
         filters={viewState.filters}
-      />
+        />
+      </div>
 
       {/* ---- Create record modal ---- */}
       <CreateRecordModal

@@ -271,7 +271,10 @@ function AddTaskDialog({
   );
 }
 
+import { usePageTitle } from "@/contexts/page-header";
+
 export function TasksPage() {
+  usePageTitle("Tasks");
   const { data: tasksData, isPending: tasksPending } = useTasks();
   const { data: contactsData } = useContacts({ pagination: { page: 1, perPage: 500 } });
 
@@ -327,14 +330,13 @@ export function TasksPage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto p-4">
+    <div className="flex h-full flex-col overflow-auto py-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">Tasks</h1>
-          {!tasksPending && (
-            <span className="text-[12px] text-muted-foreground">{activeTasks.length} upcoming</span>
-          )}
-        </div>
+        {!tasksPending ? (
+          <span className="text-[12px] text-muted-foreground">{activeTasks.length} upcoming</span>
+        ) : (
+          <span />
+        )}
         <Button size="sm" onClick={() => setAddOpen(true)} className="h-7 gap-1 text-[13px]">
           <Plus className="size-3.5" />
           Add task

@@ -93,42 +93,10 @@ export function DataTableToolbar({
     [attributes],
   );
 
-  // Columns panel: merge ALL attributes with viewColumns for full list
-  const columnItems = React.useMemo(() => {
-    if (!viewColumns) return [];
-    const vcMap = new Map(viewColumns.map((vc) => [vc.fieldId, vc]));
-
-    // Start with viewColumns that match attributes, in order
-    const matched: Array<{
-      vc: ViewColumn;
-      attr: Attribute;
-    }> = [];
-    const sortedVcs = [...viewColumns].sort((a, b) => a.order - b.order);
-    for (const vc of sortedVcs) {
-      const attr = attrMap.get(vc.fieldId);
-      if (attr) {
-        matched.push({ vc, attr });
-      }
-    }
-
-    // Append any attributes not present in viewColumns (hidden by default)
-    for (const attr of attributes) {
-      if (!vcMap.has(attr.id)) {
-        matched.push({
-          vc: {
-            id: `virtual-${attr.id}`,
-            fieldId: attr.id,
-            title: attr.name,
-            show: false,
-            order: matched.length,
-          },
-          attr,
-        });
-      }
-    }
-
-    return matched;
-  }, [viewColumns, attributes, attrMap]);
+  const columnItems = React.useMemo(
+    () => buildColumnItems(viewColumns, attributes),
+    [viewColumns, attributes],
+  );
 
   const visibleCount = columnItems.filter((c) => c.vc.show).length;
 
@@ -285,12 +253,42 @@ export function DataTableToolbar({
 // Columns Popover — full attribute list with drag-to-reorder and toggles
 // ---------------------------------------------------------------------------
 
-interface ColumnItem {
+export interface ColumnItem {
   vc: ViewColumn;
   attr: Attribute;
 }
 
-function ColumnsPopover({
+export function buildColumnItems(
+  viewColumns: ViewColumn[] | undefined,
+  attributes: Attribute[],
+): ColumnItem[] {
+  if (!viewColumns?.length) return [];
+  const attrMap = new Map(attributes.map((a) => [a.id, a]));
+  const vcMap = new Map(viewColumns.map((vc) => [vc.fieldId, vc]));
+  const matched: ColumnItem[] = [];
+  const sortedVcs = [...viewColumns].sort((a, b) => a.order - b.order);
+  for (const vc of sortedVcs) {
+    const attr = attrMap.get(vc.fieldId);
+    if (attr) matched.push({ vc, attr });
+  }
+  for (const attr of attributes) {
+    if (!vcMap.has(attr.id)) {
+      matched.push({
+        vc: {
+          id: `virtual-${attr.id}`,
+          fieldId: attr.id,
+          title: attr.name,
+          show: false,
+          order: matched.length,
+        },
+        attr,
+      });
+    }
+  }
+  return matched;
+}
+
+export function ColumnsPopover({
   items,
   visibleCount,
   totalCount,

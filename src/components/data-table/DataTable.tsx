@@ -269,6 +269,13 @@ export function DataTable({
 
   const tableRef = React.useRef<HTMLDivElement>(null);
 
+  // Refs so column closures always read the latest selection state without
+  // being listed as memo deps (avoids rebuilding all column defs on every click).
+  const selectedCellRef = React.useRef(selectedCell);
+  selectedCellRef.current = selectedCell;
+  const editingCellRef = React.useRef(editingCell);
+  editingCellRef.current = editingCell;
+
   // ---- Derived visible columns ----
   const visibleCols = React.useMemo(
     () => getVisibleAttributes(attributes, viewColumns),
@@ -370,10 +377,11 @@ export function DataTable({
           const rowIndex = row.index;
           const colId = column.id;
           const isSel =
-            selectedCell?.rowIndex === rowIndex &&
-            selectedCell?.colId === colId;
+            selectedCellRef.current?.rowIndex === rowIndex &&
+            selectedCellRef.current?.colId === colId;
           const isEdit =
-            editingCell?.rowIndex === rowIndex && editingCell?.colId === colId;
+            editingCellRef.current?.rowIndex === rowIndex &&
+            editingCellRef.current?.colId === colId;
 
           return (
             <Cell
@@ -420,8 +428,6 @@ export function DataTable({
   }, [
     visibleCols,
     columnWidths,
-    selectedCell,
-    editingCell,
     pagination,
     onRowExpand,
     onCellUpdate,
@@ -598,7 +604,7 @@ export function DataTable({
 
   // ---- Render ----
   return (
-    <div className="flex min-w-0 w-full flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Bulk actions bar */}
       {selectedRowIds.length > 0 && onRowDelete && (
         <div className="flex items-center gap-3 rounded-t-md border border-b-0 bg-muted/50 px-3 py-1.5 text-sm">
@@ -615,12 +621,12 @@ export function DataTable({
         </div>
       )}
 
-      {/* Scrollable table area */}
+      {/* Scrollable table area: takes remaining height so only body scrolls */}
       <div
         ref={tableRef}
         tabIndex={0}
         className={cn(
-          "overflow-auto border outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "min-h-0 flex-1 overflow-auto rounded-md border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
           selectedRowIds.length > 0 && onRowDelete
             ? "rounded-b-md"
             : "rounded-md",

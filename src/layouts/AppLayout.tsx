@@ -3,7 +3,7 @@ import { ErrorBoundary } from "react-error-boundary"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { AppSidebar } from "@/components/app-sidebar"
-import { PageHeaderProvider, usePageHeaderTitle } from "@/contexts/page-header"
+import { PageHeaderProvider, usePageHeaderTitle, useRegisterActionsContainer } from "@/contexts/page-header"
 
 function PageErrorFallback({
   error,
@@ -29,18 +29,21 @@ function PageErrorFallback({
 
 function LayoutHeader() {
   const title = usePageHeaderTitle()
+  const registerActionsContainer = useRegisterActionsContainer()
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-      <div className="flex items-center gap-2 px-4">
-        <SidebarTrigger className="-ml-1" />
+    <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      <div className="flex min-w-0 items-center gap-2">
+        <SidebarTrigger className="-ml-1 shrink-0" />
         <Separator
           orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
+          className="mr-2 h-4 shrink-0 data-[orientation=vertical]:h-4"
         />
         {title && (
-          <span className="text-sm font-medium">{title}</span>
+          <span className="truncate text-sm font-medium">{title}</span>
         )}
       </div>
+      {/* Portal mount point — page components render their header actions here */}
+      <div ref={registerActionsContainer} className="flex shrink-0 items-center gap-2" />
     </header>
   )
 }

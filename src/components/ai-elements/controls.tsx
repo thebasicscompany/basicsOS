@@ -1,16 +1,26 @@
 "use client";
 
 import { useReactFlow } from "@xyflow/react";
-import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
-import { useState } from "react";
+import { Maximize2, ZoomIn, ZoomOut, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Panel } from "@/components/ai-elements/panel";
 
-/** Matches Vercel workflow-builder-template Controls (zoom in/out, fit view) */
-export const WorkflowControls = () => {
+type WorkflowControlsProps = {
+  showMinimap?: boolean;
+  onMinimapToggle?: (show: boolean) => void;
+};
+
+/** Matches Vercel workflow-builder-template Controls (zoom in/out, fit view, minimap) */
+export const WorkflowControls = ({
+  showMinimap = false,
+  onMinimapToggle,
+}: WorkflowControlsProps) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [, setShowMinimap] = useState(false);
+
+  const toggleMinimap = () => {
+    if (onMinimapToggle) onMinimapToggle(!showMinimap);
+  };
 
   return (
     <Panel
@@ -45,6 +55,17 @@ export const WorkflowControls = () => {
         >
           <Maximize2 className="size-4" />
         </Button>
+        {onMinimapToggle && (
+          <Button
+            className={`border hover:bg-black/5 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground ${showMinimap ? "bg-muted" : ""}`}
+            onClick={toggleMinimap}
+            size="icon"
+            title={showMinimap ? "Hide minimap" : "Show minimap"}
+            variant="secondary"
+          >
+            <Map className="size-4" />
+          </Button>
+        )}
       </ButtonGroup>
     </Panel>
   );

@@ -1,8 +1,8 @@
 /**
- * snake_case ↔ camelCase conversion for NocoDB records.
+ * snake_case ↔ camelCase conversion for API records.
  *
- * NocoDB uses actual PostgreSQL column names (snake_case) from introspection.
- * The React frontend uses camelCase. NocoDB v2 uses the actual DB column name ("id").
+ * The API uses PostgreSQL column names (snake_case) from introspection.
+ * The React frontend uses camelCase.
  */
 
 export function snakeToCamel(
@@ -33,14 +33,14 @@ export function camelToSnake(
   return result;
 }
 
-/** Convert an array of NocoDB records from snake_case to camelCase */
+/** Convert an array of API records from snake_case to camelCase */
 export function mapRecords(
   records: Record<string, unknown>[],
 ): Record<string, unknown>[] {
   return records.map(snakeToCamel);
 }
 
-/** Convert a single camelCase record to snake_case for NocoDB writes */
+/** Convert a single camelCase record to snake_case for API writes */
 export function unmapRecord(
   record: Record<string, unknown>,
 ): Record<string, unknown> {

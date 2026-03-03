@@ -2,9 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 
 /**
- * Column definition returned by the schema API (NocoDB-shaped for compatibility).
+ * Column definition returned by the schema API.
  */
-export interface NocoDBColumn {
+export interface SchemaColumn {
   id: string;
   fk_model_id: string;
   title: string;
@@ -33,7 +33,7 @@ export interface NocoDBColumn {
   meta: Record<string, unknown> | null;
 }
 
-/** Map CRM field types to NocoDB uidt values */
+/** Map CRM field types to schema uidt values */
 const FIELD_TYPE_TO_UIDT: Record<string, string> = {
   text: "SingleLineText",
   "long-text": "LongText",
@@ -71,8 +71,8 @@ interface CustomFieldDef {
  * GET /api/schema/:tableName
  */
 export function useTableColumns(resource: string) {
-  return useQuery<NocoDBColumn[]>({
-    queryKey: ["nocodb-columns", resource],
+  return useQuery<SchemaColumn[]>({
+    queryKey: ["columns", resource],
     queryFn: async () => {
       const response = await fetchApi<{ columns: NocoDBColumn[] }>(
         `/api/schema/${resource}`,
@@ -137,10 +137,10 @@ export function useCreateColumn() {
         order: 999,
         system: false,
         meta: null,
-      } as NocoDBColumn;
+      } as SchemaColumn;
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["nocodb-columns", vars.resource] });
+      qc.invalidateQueries({ queryKey: ["columns", vars.resource] });
       qc.invalidateQueries({ queryKey: ["object-config"] });
     },
   });
@@ -163,7 +163,7 @@ export function useDeleteColumn() {
       });
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["nocodb-columns", vars.resource] });
+      qc.invalidateQueries({ queryKey: ["columns", vars.resource] });
     },
   });
 }

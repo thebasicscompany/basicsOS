@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import * as crmApi from "@/lib/api/crm-nocodb";
-import type { FilterDef } from "@/lib/api/crm-nocodb";
+import * as crmApi from "@/lib/api/crm";
+import type { FilterDef } from "@/lib/api/crm";
 
 // ---------------------------------------------------------------------------
 // Types

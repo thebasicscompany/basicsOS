@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { useCreateColumn } from "@/hooks/use-nocodb-columns";
+import { useCreateColumn } from "@/hooks/use-columns";
 import { toast } from "sonner";
 
 interface AddColumnDialogProps {

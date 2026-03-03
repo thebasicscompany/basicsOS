@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   addEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
+  MiniMap,
   type Node,
   type Edge,
   type Connection,
@@ -15,6 +16,8 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOne, create, update } from "basics-os/src/lib/api/crm";
+import { fetchApi } from "basics-os/src/lib/api";
+import { usePageTitle, usePageHeaderActions } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
 import { Input } from "basics-os/src/components/ui/input";
 import { Label } from "basics-os/src/components/ui/label";
@@ -34,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "basics-os/src/components/ui/dropdown-menu";
+import { Switch } from "basics-os/src/components/ui/switch";
 import { WorkflowCanvas } from "basics-os/src/components/ai-elements/canvas";
 import { WorkflowControls } from "basics-os/src/components/ai-elements/controls";
 import { WorkflowConnection } from "basics-os/src/components/ai-elements/connection";
@@ -53,7 +57,7 @@ import {
   GmailSendNode,
 } from "./nodes";
 import { toast } from "sonner";
-import { ChevronLeft, Loader2, Play, Plus, Save, Trash2, X } from "lucide-react";
+import { ChevronLeft, Loader2, Play, PlayCircle, Plus, Save, Trash2, X } from "lucide-react";
 
 const NODE_TYPES = {
   trigger_event: TriggerEventNode,
@@ -104,6 +108,7 @@ function BuilderInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [runsPanelOpen, setRunsPanelOpen] = useState(false);
+  const [showMinimap, setShowMinimap] = useState(false);
 
   const { data: rule, isSuccess: ruleLoaded } = useQuery({
     queryKey: ["automation_rules", ruleId],
@@ -115,7 +120,13 @@ function BuilderInner() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdgeType>([]);
   const reactFlowInstance = useReactFlow<WorkflowNode, WorkflowEdgeType>();
 
+  const [initialDef, setInitialDef] = useState<string | null>(null);
+
   useEffect(() => {
+    if (isNew) {
+      setInitialDef(JSON.stringify({ nodes: [], edges: [], name: "" }));
+      return;
+    }
     if (!ruleLoaded || !rule) return;
     setName(rule.name ?? "");
     if (rule.workflowDefinition?.nodes?.length) {
@@ -124,7 +135,23 @@ function BuilderInner() {
     if (rule.workflowDefinition?.edges?.length) {
       setEdges((rule.workflowDefinition.edges as WorkflowEdgeType[]).map((e) => ({ ...e, type: "animated" })));
     }
-  }, [ruleLoaded, rule?.id]);
+    setInitialDef(
+      JSON.stringify({
+        nodes: rule.workflowDefinition?.nodes ?? [],
+        edges: rule.workflowDefinition?.edges ?? [],
+        name: rule.name ?? "",
+      })
+    );
+    // Only reset when rule identity changes; setNodes/setEdges are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, ruleLoaded, rule?.id]);
+
+  const currentDef = JSON.stringify({
+    nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
+    edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
+    name,
+  });
+  const isDirty = initialDef !== null && currentDef !== initialDef;
 
   useOnSelectionChange({
     onChange: ({ nodes: selectedNodes }) => {
@@ -180,14 +207,42 @@ function BuilderInner() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automation_rules"] });
       toast.success("Automation saved");
-      navigate("/automations");
+      setInitialDef(currentDef);
     },
     onError: () => toast.error("Failed to save automation"),
   });
 
+  const runNowMutation = useMutation({
+    mutationFn: () =>
+      fetchApi<{ triggered: boolean }>("/api/automation-runs/run", {
+        method: "POST",
+        body: JSON.stringify({ ruleId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["automation-runs", ruleId] });
+      setRunsPanelOpen(true);
+      toast.success("Run triggered");
+    },
+    onError: () => toast.error("Failed to trigger run"),
+  });
+
+  const toggleEnabledMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      update<AutomationRule>("automation_rules", ruleId!, { enabled }),
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["automation_rules"] });
+      toast.success(enabled ? "Automation enabled" : "Automation disabled");
+    },
+    onError: () => toast.error("Failed to update"),
+  });
+
   const isSaving = createRule.isPending || updateRule.isPending;
 
-  const onSave = () => {
+  const onSave = useCallback(() => {
+    if (!nodes.some((n) => n.type?.startsWith?.("trigger_"))) {
+      toast.error("Add a trigger node before saving");
+      return;
+    }
     const payload = {
       name: name.trim() || "Untitled Automation",
       workflowDefinition: {
@@ -197,8 +252,8 @@ function BuilderInner() {
       enabled: true,
     };
     if (isNew) createRule.mutate(payload);
-    else updateRule.mutate(payload);
-  };
+    else updateRule.mutate({ ...payload, enabled: rule?.enabled ?? true });
+  }, [nodes, edges, name, isNew, rule?.enabled, createRule, updateRule]);
 
   const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
 
@@ -211,64 +266,73 @@ function BuilderInner() {
     [setNodes]
   );
 
-  return (
-    <div
-      className="-mx-4 -mt-4 flex flex-col overflow-hidden"
-      style={{ height: "100dvh" }}
-    >
-      <style>{`
-        @keyframes workflow-dashdraw { to { stroke-dashoffset: -10; } }
-      `}</style>
+  usePageTitle(name || "New Automation");
 
-      {/* ── Top bar ─────────────────────────────────────────────── */}
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
+  const headerActionsNode = useMemo(
+    () => (
+      <div className="flex items-center gap-2 w-full">
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground"
+          className="mr-auto gap-1.5 text-muted-foreground hover:text-foreground"
           onClick={() => navigate("/automations")}
         >
           <ChevronLeft className="size-4" />
           Back
         </Button>
 
-        <div className="h-5 w-px bg-border" />
+        <div className="flex items-center gap-2">
+          <Input
+            className="h-8 w-52 border-0 bg-transparent px-0 font-medium focus-visible:ring-0"
+            placeholder="Untitled Automation"
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          />
+          {isDirty && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">● Unsaved changes</span>
+          )}
+        </div>
 
-        <Input
-          className="h-8 w-52 border-0 bg-transparent px-0 font-medium focus-visible:ring-0"
-          placeholder="Untitled Automation"
-          value={name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Plus className="size-4" />
+              Add node
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Triggers</DropdownMenuLabel>
+            {TRIGGER_ITEMS.map((item) => (
+              <DropdownMenuItem key={item.type} onClick={() => handleAddNode(item.type, item.defaultData)}>
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            {ACTION_ITEMS.map((item) => (
+              <DropdownMenuItem key={item.type} onClick={() => handleAddNode(item.type, item.defaultData)}>
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <div className="ml-auto flex items-center gap-2">
-          {/* Add node */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Plus className="size-4" />
-                Add node
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Triggers</DropdownMenuLabel>
-              {TRIGGER_ITEMS.map((item) => (
-                <DropdownMenuItem key={item.type} onClick={() => handleAddNode(item.type, item.defaultData)}>
-                  {item.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              {ACTION_ITEMS.map((item) => (
-                <DropdownMenuItem key={item.type} onClick={() => handleAddNode(item.type, item.defaultData)}>
-                  {item.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Run history (existing automations only) */}
-          {!isNew && (
+        {!isNew && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => runNowMutation.mutate()}
+              disabled={runNowMutation.isPending}
+            >
+              {runNowMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <PlayCircle className="size-4" />
+              )}
+              Run now
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -278,17 +342,47 @@ function BuilderInner() {
               <Play className="size-4" />
               History
             </Button>
-          )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Active</span>
+              <Switch
+                checked={rule?.enabled ?? false}
+                onCheckedChange={(v) => toggleEnabledMutation.mutate(v)}
+                disabled={toggleEnabledMutation.isPending}
+              />
+            </div>
+          </>
+        )}
 
-          {/* Save */}
-          <Button size="sm" onClick={onSave} disabled={isSaving} className="gap-1.5">
-            {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            Save
-          </Button>
-        </div>
+        <Button size="sm" onClick={onSave} disabled={isSaving} className="gap-1.5">
+          {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+          Save
+        </Button>
       </div>
+    ),
+    [
+      name,
+      isNew,
+      isSaving,
+      isDirty,
+      rule,
+      navigate,
+      onSave,
+      handleAddNode,
+      runNowMutation,
+      toggleEnabledMutation,
+    ],
+  );
+  const headerActionsPortal = usePageHeaderActions(headerActionsNode);
 
-      {/* ── Canvas + Properties panel ────────────────────────────── */}
+  return (
+    <>
+      {headerActionsPortal}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <style>{`
+          @keyframes workflow-dashdraw { to { stroke-dashoffset: -10; } }
+        `}</style>
+
+        {/* ── Canvas + Properties panel ────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
         {/* Canvas */}
         <div className="relative flex-1 min-w-0 bg-background">
@@ -310,7 +404,11 @@ function BuilderInner() {
             onNodesChange={onNodesChange}
             nodeTypes={NODE_TYPES}
           >
-            <WorkflowControls />
+            <WorkflowControls
+              showMinimap={showMinimap}
+              onMinimapToggle={setShowMinimap}
+            />
+            {showMinimap && <MiniMap nodeStrokeWidth={3} position="bottom-right" />}
           </WorkflowCanvas>
         </div>
 
@@ -351,15 +449,16 @@ function BuilderInner() {
         )}
       </div>
 
-      {/* Run history sheet */}
-      {ruleId && (
-        <AutomationRunsPanel
-          ruleId={runsPanelOpen ? ruleId : null}
-          open={runsPanelOpen}
-          onOpenChange={setRunsPanelOpen}
-        />
-      )}
-    </div>
+        {/* Run history sheet */}
+        {ruleId && (
+          <AutomationRunsPanel
+            ruleId={runsPanelOpen ? ruleId : null}
+            open={runsPanelOpen}
+            onOpenChange={setRunsPanelOpen}
+          />
+        )}
+      </div>
+    </>
   );
 }
 

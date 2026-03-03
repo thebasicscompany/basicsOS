@@ -157,6 +157,22 @@ export async function fireEvent(
   }
 }
 
+/** Trigger a manual run for a specific rule. Sends job to run-automation queue. */
+export async function triggerRunNow(ruleId: number, salesId: number): Promise<boolean> {
+  if (!_boss) return false;
+  try {
+    await _boss.send("run-automation", {
+      ruleId,
+      salesId,
+      triggerData: { manual: true },
+    });
+    return true;
+  } catch (err) {
+    console.error("[automation-engine] triggerRunNow error:", err);
+    return false;
+  }
+}
+
 async function runAutomation(
   ruleId: number,
   salesId: number,

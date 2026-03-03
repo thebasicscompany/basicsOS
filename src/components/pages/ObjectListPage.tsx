@@ -19,8 +19,9 @@ import {
 import { CreateRecordModal } from "@/components/create-record/CreateRecordModal";
 import { CreateAttributeModal } from "@/components/create-attribute/CreateAttributeModal";
 import { useObject, useAttributes } from "@/hooks/use-object-registry";
-import { useRecords, useUpdateRecord, useDeleteRecord } from "@/hooks/use-records";
+import { useRecords, useUpdateRecord } from "@/hooks/use-records";
 import { useViews, useViewState } from "@/hooks/use-views";
+import { useRenameView, useDeleteView } from "@/hooks/use-view-queries";
 import type { ViewSort, ViewFilter } from "@/types/views";
 import { usePageTitle, usePageHeaderActions } from "@/contexts/page-header";
 import { Separator } from "@/components/ui/separator";
@@ -52,6 +53,8 @@ export function ObjectListPage() {
 
   // View state (columns, sorts, filters, dirty tracking)
   const viewState = useViewState(activeView?.id ?? "");
+  const renameView = useRenameView(objectSlug);
+  const deleteView = useDeleteView(objectSlug);
 
   // Pagination from URL
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -92,7 +95,6 @@ export function ObjectListPage() {
   });
 
   const updateRecord = useUpdateRecord(objectSlug);
-  const deleteRecord = useDeleteRecord(objectSlug);
 
   // Pagination handler
   const handlePaginationChange = useCallback(
@@ -116,16 +118,6 @@ export function ObjectListPage() {
       updateRecord.mutate({ id: recordId, data: { [columnName]: value } });
     },
     [updateRecord],
-  );
-
-  // Row delete handler
-  const handleRowDelete = useCallback(
-    async (ids: number[]) => {
-      for (const id of ids) {
-        await deleteRecord.mutateAsync(id);
-      }
-    },
-    [deleteRecord],
   );
 
   // Row expand -> navigate to detail page
@@ -357,8 +349,26 @@ export function ObjectListPage() {
             activeViewId={activeView?.id ?? ""}
             onSelectView={setActiveView}
             onCreateView={() =>
-              createView.mutate({ title: `View ${views.length + 1}` })
+              createView
+                .mutateAsync({ title: `View ${views.length + 1}` })
+                .then((newView) => setActiveView(newView.id))
+                .catch(() => {})
             }
+            onRenameView={(viewId, title) =>
+              renameView.mutateAsync({ viewId, title }).catch(() => {})
+            }
+            onDeleteView={(viewId) =>
+              deleteView
+                .mutateAsync(viewId)
+                .then(() => {
+                  const defaultView = views.find((v) => v.isDefault) ?? views[0];
+                  if (defaultView && defaultView.id !== viewId) {
+                    setActiveView(defaultView.id);
+                  }
+                })
+                .catch(() => {})
+            }
+            defaultViewId={views.find((v) => v.isDefault)?.id ?? views[0]?.id ?? ""}
           />
         </div>
       )}
@@ -440,7 +450,6 @@ export function ObjectListPage() {
         isLoading={isPending}
         viewColumns={viewState.columns}
         onCellUpdate={handleCellUpdate}
-        onRowDelete={handleRowDelete}
         onRowExpand={handleRowExpand}
         onNewRecord={() => setCreateOpen(true)}
         onAddColumn={() => setAddColumnOpen(true)}
@@ -468,7 +477,7 @@ export function ObjectListPage() {
         onOpenChange={setCreateOpen}
       />
 
-      {/* ---- Create attribute modal (for adding new NocoDB columns) ---- */}
+      {/* ---- Create attribute modal ---- */}
       <CreateAttributeModal
         objectSlug={objectSlug}
         resource={objectSlug}

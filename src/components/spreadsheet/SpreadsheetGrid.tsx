@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import {
   useTableColumns,
   type NocoDBColumn,
-} from "@/hooks/use-nocodb-columns";
+} from "@/hooks/use-columns";
 import { useGridPreferences, type RowHeight } from "@/hooks/use-grid-preferences";
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import { SpreadsheetCell } from "./SpreadsheetCell";

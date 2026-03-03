@@ -27,7 +27,7 @@ import {
 import {
   useTableColumns,
   type NocoDBColumn,
-} from "@/hooks/use-nocodb-columns";
+} from "@/hooks/use-columns";
 import { getTypeIcon } from "./type-icons";
 import { ExpandedFieldEditor } from "./SpreadsheetCell";
 import { cn } from "@/lib/utils";

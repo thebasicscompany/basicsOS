@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router";
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getList, update, remove } from "basics-os/src/lib/api/crm";
+import { usePageTitle, usePageHeaderActions } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
 import { Switch } from "basics-os/src/components/ui/switch";
 import {
@@ -76,23 +78,24 @@ export function AutomationListPage() {
 
   const rules = data?.data ?? [];
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Automations</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Trigger emails, AI tasks, and CRM actions automatically.
-          </p>
-        </div>
-        <Button onClick={() => navigate("/automations/create")}>
-          <Plus className="mr-2 size-4" />
-          New Automation
-        </Button>
-      </div>
+  usePageTitle("Automations");
 
-      {/* Error */}
+  const headerActionsNode = useMemo(
+    () => (
+      <Button onClick={() => navigate("/automations/create")}>
+        <Plus className="mr-2 size-4" />
+        New Automation
+      </Button>
+    ),
+    [navigate],
+  );
+  const headerActionsPortal = usePageHeaderActions(headerActionsNode);
+
+  return (
+    <>
+      {headerActionsPortal}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
+        {/* Error */}
       {isError && (
         <p className="text-sm text-destructive">Failed to load automations.</p>
       )}
@@ -202,11 +205,12 @@ export function AutomationListPage() {
         </div>
       )}
 
-      <AutomationRunsPanel
-        ruleId={runsPanelRuleId}
-        open={runsPanelRuleId !== null}
-        onOpenChange={(open) => !open && setRunsPanelRuleId(null)}
-      />
-    </div>
+        <AutomationRunsPanel
+          ruleId={runsPanelRuleId}
+          open={runsPanelRuleId !== null}
+          onOpenChange={(open) => !open && setRunsPanelRuleId(null)}
+        />
+      </div>
+    </>
   );
 }

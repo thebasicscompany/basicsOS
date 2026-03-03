@@ -3,16 +3,16 @@ import { useSearchParams } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import {
-  useNocoViews,
-  useNocoViewColumns,
-  useNocoViewSorts,
-  useNocoViewFilters,
-  useUpdateNocoViewColumn,
-  useCreateNocoViewSort,
-  useDeleteNocoViewSort,
-  useCreateNocoViewFilter,
-  useDeleteNocoViewFilter,
-} from "@/hooks/use-noco-views";
+  useViewList,
+  useViewColumns,
+  useViewSorts,
+  useViewFilters,
+  useUpdateViewColumn,
+  useCreateViewSort,
+  useDeleteViewSort,
+  useCreateViewFilter,
+  useDeleteViewFilter,
+} from "@/hooks/use-view-queries";
 import type {
   ViewConfig,
   ViewColumn,
@@ -68,7 +68,7 @@ const VIEW_TYPE_TO_NOCO: Record<string, number> = {
 
 export function useViews(objectSlug: string): UseViewsReturn {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: views = [], isLoading, error } = useNocoViews(objectSlug);
+  const { data: views = [], isLoading, error } = useViewList(objectSlug);
 
   const activeViewId = searchParams.get("view");
 
@@ -234,11 +234,11 @@ const EMPTY_FILTERS: ViewFilter[] = [];
 export function useViewState(viewId: string): UseViewStateReturn {
   // Fetch server state
   const { data: serverColumns = EMPTY_COLUMNS, isLoading: columnsLoading } =
-    useNocoViewColumns(viewId);
+    useViewColumns(viewId);
   const { data: serverSorts = EMPTY_SORTS, isLoading: sortsLoading } =
-    useNocoViewSorts(viewId);
+    useViewSorts(viewId);
   const { data: serverFilters = EMPTY_FILTERS, isLoading: filtersLoading } =
-    useNocoViewFilters(viewId);
+    useViewFilters(viewId);
 
   const isLoading = columnsLoading || sortsLoading || filtersLoading;
 
@@ -274,11 +274,11 @@ export function useViewState(viewId: string): UseViewStateReturn {
   }, [serverFilters]);
 
   // Mutations
-  const updateColumnMutation = useUpdateNocoViewColumn(viewId);
-  const createSortMutation = useCreateNocoViewSort(viewId);
-  const deleteSortMutation = useDeleteNocoViewSort(viewId);
-  const createFilterMutation = useCreateNocoViewFilter(viewId);
-  const deleteFilterMutation = useDeleteNocoViewFilter(viewId);
+  const updateColumnMutation = useUpdateViewColumn(viewId);
+  const createSortMutation = useCreateViewSort(viewId);
+  const deleteSortMutation = useDeleteViewSort(viewId);
+  const createFilterMutation = useCreateViewFilter(viewId);
+  const deleteFilterMutation = useDeleteViewFilter(viewId);
 
   // Optimistic local updates
   const updateColumn = useCallback(
@@ -332,7 +332,7 @@ export function useViewState(viewId: string): UseViewStateReturn {
     dispatch({ type: "REMOVE_FILTER", filterId });
   }, []);
 
-  // Save — persist all dirty changes to NocoDB
+  // Save — persist all dirty changes
   const save = useCallback(async () => {
     // Persist column updates
     const columnPromises = localState.columns.map((col) => {

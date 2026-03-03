@@ -1,11 +1,16 @@
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Grid3X3, List, Plus } from "lucide-react";
+import { Grid3X3, List, Plus, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export interface ViewSelectorProps {
   views: Array<{ id: string; title: string; type: string }>;
   activeViewId: string;
   onSelectView: (viewId: string) => void;
   onCreateView?: () => void;
+  onRenameView?: (viewId: string, title: string) => void | Promise<void>;
+  onDeleteView?: (viewId: string) => void | Promise<void>;
+  defaultViewId?: string;
 }
 
 function getViewIcon(type: string) {
@@ -24,27 +29,99 @@ export function ViewSelector({
   activeViewId,
   onSelectView,
   onCreateView,
+  onRenameView,
+  onDeleteView,
+  defaultViewId = "",
 }: ViewSelectorProps) {
+  const [editingViewId, setEditingViewId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingViewId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingViewId]);
+
+  const handleStartRename = (view: { id: string; title: string }) => {
+    setEditingViewId(view.id);
+    setEditValue(view.title);
+  };
+
+  const handleCommitRename = () => {
+    if (!editingViewId || !onRenameView) return;
+    const trimmed = editValue.trim();
+    if (trimmed) {
+      onRenameView(editingViewId, trimmed);
+    }
+    setEditingViewId(null);
+  };
+
+  const handleCancelRename = () => {
+    setEditingViewId(null);
+  };
+
   return (
     <div className="flex items-center gap-0.5 border-b">
       {views.map((view) => {
         const Icon = getViewIcon(view.type);
         const isActive = view.id === activeViewId;
+        const isDefault = view.id === defaultViewId;
+        const isEditing = editingViewId === view.id;
 
         return (
-          <button
+          <div
             key={view.id}
-            onClick={() => onSelectView(view.id)}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors",
+              "group/view flex items-center gap-1 border-b-2 transition-colors",
               isActive
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+                ? "border-primary"
+                : "border-transparent",
             )}
           >
-            <Icon className="size-3.5" />
-            <span>{view.title}</span>
-          </button>
+            {isEditing ? (
+              <Input
+                ref={inputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleCommitRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCommitRename();
+                  if (e.key === "Escape") handleCancelRename();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 w-24 border-0 border-b-2 border-primary bg-transparent px-2 text-xs focus-visible:ring-0"
+              />
+            ) : (
+              <button
+                onClick={() => onSelectView(view.id)}
+                onDoubleClick={() => onRenameView && handleStartRename(view)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
+                  isActive
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:border-border",
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                <span className="truncate">{view.title}</span>
+              </button>
+            )}
+            {!isDefault && onDeleteView && !isEditing && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteView(view.id);
+                }}
+                className="opacity-0 group-hover/view:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-opacity"
+                aria-label="Delete view"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </div>
         );
       })}
 

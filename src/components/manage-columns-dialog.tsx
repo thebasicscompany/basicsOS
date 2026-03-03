@@ -20,7 +20,7 @@ import {
   useTableColumns,
   useCreateColumn,
   useDeleteColumn,
-} from "@/hooks/use-nocodb-columns";
+} from "@/hooks/use-columns";
 
 /** System/metadata columns to hide from the manage dialog */
 const SYSTEM_COLUMNS = new Set([

@@ -26,7 +26,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { ROUTES } from "@basics-os/hub";
 import { getList } from "@/lib/api/crm";
-import { mapRecords } from "@/lib/nocodb/field-mapper";
+import { mapRecords } from "@/lib/crm/field-mapper";
 import type { ContactSummary } from "@/hooks/use-contacts";
 import type { CompanySummary } from "@/hooks/use-companies";
 import type { Deal } from "@/hooks/use-deals";

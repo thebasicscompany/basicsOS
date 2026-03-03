@@ -155,6 +155,29 @@ async function getColumnListForTable(
   return out;
 }
 
+/** Copy view_columns from sourceViewId to targetViewId. */
+async function copyViewColumns(
+  db: Db,
+  sourceViewId: string,
+  targetViewId: string
+): Promise<void> {
+  const sourceCols = await db
+    .select()
+    .from(schema.viewColumns)
+    .where(eq(schema.viewColumns.viewId, sourceViewId))
+    .orderBy(asc(schema.viewColumns.displayOrder), asc(schema.viewColumns.id));
+  if (sourceCols.length === 0) return;
+  await db.insert(schema.viewColumns).values(
+    sourceCols.map((c) => ({
+      viewId: targetViewId,
+      fieldId: c.fieldId,
+      title: c.title,
+      show: c.show,
+      displayOrder: c.displayOrder,
+    }))
+  );
+}
+
 /** Seed view_columns for a view from the object's table schema. */
 async function seedDefaultViewColumns(
   db: Db,
@@ -256,6 +279,24 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
       .returning();
 
     if (!inserted) return c.json({ error: "Insert failed" }, 500);
+
+    // Seed columns by copying from default view
+    const existingViews = await db
+      .select()
+      .from(schema.views)
+      .where(
+        and(
+          eq(schema.views.objectSlug, objectSlug),
+          eq(schema.views.salesId, salesId)
+        )
+      );
+    const defaultView = existingViews.find((v) => v.isDefault) ?? existingViews[0];
+    if (defaultView && defaultView.id !== inserted.id) {
+      await copyViewColumns(db, defaultView.id, inserted.id);
+    } else {
+      await seedDefaultViewColumns(db, inserted.id, objectSlug);
+    }
+
     return c.json(viewRowToNocoRaw(inserted));
   });
 
@@ -443,6 +484,45 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
           eq(schema.viewFilters.id, filterId)
         )
       );
+    return c.json({});
+  });
+
+  // PATCH /view/:viewId — rename view
+  app.patch("/view/:viewId", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const body = await c.req.json<{ title?: string }>();
+    if (typeof body.title !== "string" || body.title.trim() === "") {
+      return c.json({ error: "title is required" }, 400);
+    }
+
+    const [updated] = await db
+      .update(schema.views)
+      .set({ title: body.title.trim() })
+      .where(eq(schema.views.id, viewId))
+      .returning();
+
+    if (!updated) return c.json({ error: "Update failed" }, 500);
+    return c.json(viewRowToNocoRaw(updated));
+  });
+
+  // DELETE /view/:viewId — delete view (cascades to view_columns, view_sorts, view_filters)
+  app.delete("/view/:viewId", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    await db.delete(schema.views).where(eq(schema.views.id, viewId));
     return c.json({});
   });
 

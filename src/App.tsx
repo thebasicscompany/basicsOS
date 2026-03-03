@@ -77,7 +77,7 @@ function AppRoutes() {
           <Route path={ROUTES.TASKS} element={<TasksPage />} />
           <Route path={ROUTES.IMPORT} element={<ImportPage />} />
 
-          {/* Records (NocoDB-backed objects) */}
+          {/* Records (object-registry backed objects) */}
           <Route path="/objects/:objectSlug" element={<ObjectListPage />} />
           <Route path="/objects/:objectSlug/:recordId" element={<RecordDetailPage />} />
 

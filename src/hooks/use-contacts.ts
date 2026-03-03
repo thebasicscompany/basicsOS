@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getList, getOne, create, update, remove, type ListParams } from "@/lib/api/crm";
-import { mapRecords, snakeToCamel, unmapRecord } from "@/lib/nocodb/field-mapper";
+import { mapRecords, snakeToCamel, unmapRecord } from "@/lib/crm/field-mapper";
 
 export interface ContactSummary {
   id: number;

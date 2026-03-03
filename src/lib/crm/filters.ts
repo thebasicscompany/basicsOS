@@ -1,7 +1,7 @@
 /**
- * Translate frontend filter objects to NocoDB `where` query syntax.
+ * Translate frontend filter objects to `where` query syntax.
  *
- * NocoDB filter syntax:
+ * Filter syntax:
  *   Simple:  (field_name,eq,value)
  *   Combine: (field1,eq,val1)~and(field2,gt,val2)
  *   Like:    (field_name,like,%value%)

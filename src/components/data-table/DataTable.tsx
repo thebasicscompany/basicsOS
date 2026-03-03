@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Cell } from "@/components/cells";
@@ -44,7 +43,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Expand,
   GripVertical,
   Plus,
 } from "lucide-react";
@@ -70,7 +68,6 @@ export interface DataTableProps {
   isLoading: boolean;
   viewColumns: ViewColumn[];
   onCellUpdate: (recordId: number, columnName: string, value: any) => void;
-  onRowDelete?: (recordIds: number[]) => void;
   onRowExpand?: (recordId: number) => void;
   onNewRecord?: () => void;
   onAddColumn?: () => void;
@@ -221,7 +218,6 @@ export function DataTable({
   isLoading,
   viewColumns,
   onCellUpdate,
-  onRowDelete,
   onRowExpand,
   onNewRecord,
   onAddColumn,
@@ -239,9 +235,6 @@ export function DataTable({
   const [editingCell, setEditingCell] = React.useState<CellPosition | null>(
     null,
   );
-  const [rowSelection, setRowSelection] = React.useState<
-    Record<string, boolean>
-  >({});
 
   // ---- Column widths (local override) ----
   const [columnWidths, setColumnWidths] = React.useState<
@@ -292,66 +285,7 @@ export function DataTable({
   const columns = React.useMemo<ColumnDef<Record<string, any>>[]>(() => {
     const cols: ColumnDef<Record<string, any>>[] = [];
 
-    // 1. Row selection checkbox column
-    cols.push({
-      id: "_select",
-      size: 40,
-      minSize: 40,
-      maxSize: 40,
-      enableResizing: false,
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected()
-              ? true
-              : table.getIsSomePageRowsSelected()
-                ? "indeterminate"
-                : false
-          }
-          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(v) => row.toggleSelected(!!v)}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Select row"
-        />
-      ),
-    });
-
-    // 2. Row number / expand column
-    cols.push({
-      id: "_rowNum",
-      size: 48,
-      minSize: 48,
-      maxSize: 48,
-      enableResizing: false,
-      header: () => <span className="text-muted-foreground">#</span>,
-      cell: ({ row }) => (
-        <div className="group/rownum flex items-center justify-center gap-0.5 text-muted-foreground text-xs">
-          <span className={cn(onRowExpand && "group-hover/rownum:hidden")}>
-            {pagination.perPage * (pagination.page - 1) + row.index + 1}
-          </span>
-          {onRowExpand && (
-            <button
-              className="hidden group-hover/rownum:flex items-center justify-center text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRowExpand(row.original.Id ?? row.original.id);
-              }}
-            >
-              <Expand className="size-3.5" />
-            </button>
-          )}
-        </div>
-      ),
-    });
-
-    // 3. Data columns from attributes
+    // 1. Data columns from attributes
     for (const { attribute, viewColumn } of visibleCols) {
       const fieldType = getFieldType(attribute.uiType);
       const colWidth =
@@ -405,7 +339,7 @@ export function DataTable({
       });
     }
 
-    // 4. Add column button
+    // 2. Add column button
     cols.push({
       id: "_addColumn",
       size: 40,
@@ -425,14 +359,7 @@ export function DataTable({
     });
 
     return cols;
-  }, [
-    visibleCols,
-    columnWidths,
-    pagination,
-    onRowExpand,
-    onCellUpdate,
-    onAddColumn,
-  ]);
+  }, [visibleCols, columnWidths, onCellUpdate, onAddColumn]);
 
   // ---- TanStack Table instance ----
   const table = useReactTable({
@@ -440,11 +367,6 @@ export function DataTable({
     columns,
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode: "onChange" as ColumnResizeMode,
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      rowSelection,
-    },
     getRowId: (row) => String(row.Id ?? row.id ?? Math.random()),
     manualPagination: true,
     pageCount: Math.ceil(total / pagination.perPage),
@@ -597,40 +519,14 @@ export function DataTable({
   const canPrevPage = pagination.page > 1;
   const canNextPage = pagination.page < totalPages;
 
-  // ---- Bulk selection ----
-  const selectedRowIds = Object.keys(rowSelection).filter(
-    (k) => rowSelection[k],
-  );
-
   // ---- Render ----
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* Bulk actions bar */}
-      {selectedRowIds.length > 0 && onRowDelete && (
-        <div className="flex items-center gap-3 rounded-t-md border border-b-0 bg-muted/50 px-3 py-1.5 text-sm">
-          <span className="text-muted-foreground">
-            {selectedRowIds.length} selected
-          </span>
-          <Button
-            variant="destructive"
-            size="xs"
-            onClick={() => onRowDelete(selectedRowIds.map((id) => Number(id)))}
-          >
-            Delete
-          </Button>
-        </div>
-      )}
-
       {/* Scrollable table area: takes remaining height so only body scrolls */}
       <div
         ref={tableRef}
         tabIndex={0}
-        className={cn(
-          "min-h-0 flex-1 overflow-auto rounded-md border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          selectedRowIds.length > 0 && onRowDelete
-            ? "rounded-b-md"
-            : "rounded-md",
-        )}
+        className="min-h-0 flex-1 overflow-auto rounded-md border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onKeyDown={handleKeyDown}
       >
         <DndContext
@@ -650,27 +546,15 @@ export function DataTable({
                   >
                     {headerGroup.headers.map((header) => {
                       const isSortable = sortableColumnIds.includes(header.id);
-                      const isSticky =
-                        header.id === "_select" || header.id === "_rowNum";
                       const isPrimaryAttr =
                         visibleCols.length > 0 &&
                         header.id === visibleCols[0].attribute.id;
 
                       const stickyStyle: React.CSSProperties = {};
-                      if (isSticky || isPrimaryAttr) {
-                        if (header.id === "_select") {
-                          stickyStyle.position = "sticky";
-                          stickyStyle.left = 0;
-                          stickyStyle.zIndex = 3;
-                        } else if (header.id === "_rowNum") {
-                          stickyStyle.position = "sticky";
-                          stickyStyle.left = 40;
-                          stickyStyle.zIndex = 3;
-                        } else if (isPrimaryAttr) {
-                          stickyStyle.position = "sticky";
-                          stickyStyle.left = 88; // 40 + 48
-                          stickyStyle.zIndex = 3;
-                        }
+                      if (isPrimaryAttr) {
+                        stickyStyle.position = "sticky";
+                        stickyStyle.left = 0;
+                        stickyStyle.zIndex = 3;
                       }
 
                       if (isSortable) {
@@ -679,6 +563,7 @@ export function DataTable({
                             key={header.id}
                             id={header.id}
                             colSpan={header.colSpan}
+                            className={isPrimaryAttr ? "bg-background" : undefined}
                             style={{
                               width: header.getSize(),
                               minWidth: header.column.columnDef.minSize,
@@ -707,6 +592,7 @@ export function DataTable({
                         <TableHead
                           key={header.id}
                           colSpan={header.colSpan}
+                          className={isPrimaryAttr ? "bg-background" : undefined}
                           style={{
                             width: header.getSize(),
                             minWidth: header.column.columnDef.minSize,
@@ -773,34 +659,30 @@ export function DataTable({
                   return (
                     <TableRow
                       key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
+                      onDoubleClick={
+                        onRowExpand
+                          ? () =>
+                              onRowExpand(
+                                row.original.Id ?? row.original.id,
+                              )
+                          : undefined
+                      }
+                      className={onRowExpand ? "cursor-pointer" : undefined}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const colDef = cell.column.columnDef;
                         const colId = cell.column.id;
                         const rowIndex = row.index;
 
-                        const isSticky =
-                          colId === "_select" || colId === "_rowNum";
                         const isPrimaryAttr =
                           visibleCols.length > 0 &&
                           colId === visibleCols[0].attribute.id;
 
                         const stickyStyle: React.CSSProperties = {};
-                        if (isSticky || isPrimaryAttr) {
-                          if (colId === "_select") {
-                            stickyStyle.position = "sticky";
-                            stickyStyle.left = 0;
-                            stickyStyle.zIndex = 2;
-                          } else if (colId === "_rowNum") {
-                            stickyStyle.position = "sticky";
-                            stickyStyle.left = 40;
-                            stickyStyle.zIndex = 2;
-                          } else if (isPrimaryAttr) {
-                            stickyStyle.position = "sticky";
-                            stickyStyle.left = 88;
-                            stickyStyle.zIndex = 2;
-                          }
+                        if (isPrimaryAttr) {
+                          stickyStyle.position = "sticky";
+                          stickyStyle.left = 0;
+                          stickyStyle.zIndex = 2;
                         }
 
                         const isSel =
@@ -822,7 +704,7 @@ export function DataTable({
                               ...stickyStyle,
                             }}
                             className={cn(
-                              (isSticky || isPrimaryAttr) && "bg-background",
+                              isPrimaryAttr && "bg-background",
                               isSel &&
                                 "ring-2 ring-inset ring-primary/50 bg-primary/5",
                             )}
@@ -863,9 +745,6 @@ export function DataTable({
         <div className="text-muted-foreground whitespace-nowrap text-xs">
           {total}{" "}
           {total === 1 ? singularName.toLowerCase() : pluralName.toLowerCase()}
-          {selectedRowIds.length > 0 && (
-            <span className="ml-1">({selectedRowIds.length} selected)</span>
-          )}
         </div>
 
         <div className="flex items-center gap-4">

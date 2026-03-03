@@ -2,7 +2,7 @@ import { createContext, useMemo, type ReactNode } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import { TAG_COLOR_PALETTE } from "@/field-types/colors";
-import type { NocoDBColumn } from "@/hooks/use-nocodb-columns";
+import type { SchemaColumn } from "@/hooks/use-columns";
 import type {
   Attribute,
   AttributeOverride,
@@ -10,43 +10,14 @@ import type {
   ObjectConfigApiResponse,
 } from "@/types/objects";
 
-// ---------------------------------------------------------------------------
-// NocoDB uidt -> field type key mapping
-// ---------------------------------------------------------------------------
-
-const NOCODB_UIDT_TO_FIELD_TYPE: Record<string, string> = {
-  SingleLineText: "text",
-  LongText: "long-text",
-  Number: "number",
-  Currency: "currency",
-  Checkbox: "checkbox",
-  Date: "date",
-  DateTime: "timestamp",
-  Rating: "rating",
-  SingleSelect: "select",
-  MultiSelect: "multi-select",
-  Email: "email",
-  URL: "domain",
-  JSON: "text",
-  Decimal: "number",
-  Percent: "number",
-  Duration: "number",
-  CreatedTime: "timestamp",
-  LastModifiedTime: "timestamp",
-  PhoneNumber: "phone",
-  LinkToAnotherRecord: "relationship",
-};
-
-function mapNocoUidtToFieldType(uidt: string): string {
-  return NOCODB_UIDT_TO_FIELD_TYPE[uidt] ?? "text";
-}
+import { mapUidtToFieldType } from "@/field-types";
 
 // ---------------------------------------------------------------------------
-// Merge NocoDB columns with attribute overrides into Attribute[]
+// Merge schema columns with attribute overrides into Attribute[]
 // ---------------------------------------------------------------------------
 
 /**
- * Parse NocoDB dtxp (comma-separated select values) into SelectOption[].
+ * Parse dtxp (comma-separated select values) into SelectOption[].
  * e.g. "opportunity,proposal-sent,won,lost" → [{id, label, color}, ...]
  */
 function parseDtxpOptions(
@@ -84,7 +55,7 @@ function formatColumnName(col: NocoDBColumn): string {
 }
 
 function mergeAttributes(
-  columns: NocoDBColumn[],
+  columns: SchemaColumn[],
   overrides: AttributeOverride[],
 ): Attribute[] {
   const overrideByColumn = new Map<string, AttributeOverride>();
@@ -94,7 +65,7 @@ function mergeAttributes(
 
   return columns.map((col) => {
     const override = overrideByColumn.get(col.column_name);
-    const mappedUiType = mapNocoUidtToFieldType(col.uidt);
+    const mappedUiType = mapUidtToFieldType(col.uidt);
 
     // Parse dtxp into options for select/multi-select columns
     const isSelectType =
@@ -167,7 +138,7 @@ export function ObjectRegistryProvider({ children }: { children: ReactNode }) {
   // 3. For each active object, fetch schema columns in parallel
   const columnQueries = useQueries({
     queries: activeConfigs.map((cfg) => ({
-      queryKey: ["nocodb-columns", cfg.tableName],
+      queryKey: ["columns", cfg.tableName],
       queryFn: async (): Promise<{
         slug: string;
         columns: NocoDBColumn[];

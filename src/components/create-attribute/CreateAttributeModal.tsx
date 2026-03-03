@@ -49,7 +49,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { getFieldType, getAllFieldTypes } from "@/field-types";
-import { useCreateColumn } from "@/hooks/use-nocodb-columns";
+import { useCreateColumn } from "@/hooks/use-columns";
 
 // ---------------------------------------------------------------------------
 // Props

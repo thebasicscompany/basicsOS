@@ -53,7 +53,7 @@ export function useAttributes(slug: string): Attribute[] {
 
 /**
  * Update object config by slug (PUT /api/object-config/:slug).
- * Invalidates object-config and nocodb-columns queries on success.
+ * Invalidates object-config and columns queries on success.
  */
 export function useUpdateObjectConfig(slug: string) {
   const qc = useQueryClient();
@@ -65,7 +65,7 @@ export function useUpdateObjectConfig(slug: string) {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["object-config"] });
-      qc.invalidateQueries({ queryKey: ["nocodb-columns"] });
+      qc.invalidateQueries({ queryKey: ["columns"] });
     },
   });
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getList, create, update, remove } from "@/lib/api/crm";
-import { mapRecords, unmapRecord } from "@/lib/nocodb/field-mapper";
+import { mapRecords, unmapRecord } from "@/lib/crm/field-mapper";
 
 export interface Task {
   id: number;

@@ -339,7 +339,7 @@ async function seed(db: ReturnType<typeof createDb>, salesId: number) {
         companyId: companies[2].id,
         contactIds: [contacts[3].id],
         category: "copywriting",
-        stage: "in-negociation",
+        stage: "in-negotiation",
         amount: 8000,
         description: "Homepage and landing page copy refresh.",
         expectedClosingDate: in90Days,
@@ -394,7 +394,7 @@ async function seed(db: ReturnType<typeof createDb>, salesId: number) {
     dealStages: [
       { value: "opportunity", label: "Opportunity" },
       { value: "proposal-sent", label: "Proposal Sent" },
-      { value: "in-negociation", label: "In Negotiation" },
+      { value: "in-negotiation", label: "In Negotiation" },
       { value: "won", label: "Won" },
       { value: "lost", label: "Lost" },
     ],

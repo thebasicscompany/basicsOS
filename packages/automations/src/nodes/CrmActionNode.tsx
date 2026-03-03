@@ -12,7 +12,14 @@ export function CrmActionNode({
   selected,
 }: NodeProps<{ type: "action_crm"; data: CrmActionData }>) {
   const action = data?.action ?? "create_task";
-  const label = action === "create_task" ? "Create task" : action;
+  const labelMap: Record<string, string> = {
+    create_task: "Create task",
+    create_contact: "Create contact",
+    create_note: "Create note",
+    create_deal_note: "Create deal note",
+    update_deal: "Update deal",
+  };
+  const label = labelMap[action] ?? action;
 
   return (
     <CompactAutomationNode

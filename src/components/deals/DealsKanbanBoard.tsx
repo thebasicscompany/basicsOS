@@ -12,7 +12,7 @@ const NEW_STAGE_ID = "new";
 const DEFAULT_STAGES = [
   "opportunity",
   "proposal-made",
-  "in-negociation",
+  "in-negotiation",
   "won",
   "lost",
   "delayed",

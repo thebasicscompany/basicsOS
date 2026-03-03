@@ -249,6 +249,7 @@ export function NodeConfigPanel({
               <SelectItem value="create_contact">Create contact</SelectItem>
               <SelectItem value="create_note">Create note (on contact)</SelectItem>
               <SelectItem value="create_deal_note">Create deal note</SelectItem>
+              <SelectItem value="update_deal">Update deal</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -323,6 +324,47 @@ export function NodeConfigPanel({
             <div className="space-y-2">
               <Label>Note text</Label>
               <VariableTextarea value={(params.text as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, text: v } })} variables={variables} placeholder="{{ai_result}}" rows={4} />
+            </div>
+          </>
+        )}
+        {action === "update_deal" && (
+          <>
+            <div className="space-y-2">
+              <Label>Deal</Label>
+              <EntityPickerInput
+                resource="deals"
+                value={String(params.dealId ?? "")}
+                onChange={(v) => onUpdate({ params: { ...params, dealId: v || undefined } })}
+                variables={variables}
+                placeholder="{{trigger_data.id}}"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Stage</Label>
+              <VariableInput
+                value={(params.stage as string) ?? ""}
+                onChange={(v) => onUpdate({ params: { ...params, stage: v } })}
+                variables={variables}
+                placeholder="e.g. proposal-made, in-negotiation, won"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Name (optional)</Label>
+              <VariableInput
+                value={(params.name as string) ?? ""}
+                onChange={(v) => onUpdate({ params: { ...params, name: v } })}
+                variables={variables}
+                placeholder="{{trigger_data.name}}"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Amount in cents (optional)</Label>
+              <VariableInput
+                value={(params.amount as string) ?? ""}
+                onChange={(v) => onUpdate({ params: { ...params, amount: v } })}
+                variables={variables}
+                placeholder="{{trigger_data.amount}}"
+              />
             </div>
           </>
         )}

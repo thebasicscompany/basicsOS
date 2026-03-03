@@ -86,10 +86,9 @@ This document summarizes dead/deprecated code, refactoring opportunities, incomp
 - **Issue:** Toast says “The assistant currently supports text only” when files are attached.
 - **Action:** Either implement file handling or hide/disable attachment UI until supported.
 
-### 3.3 CRM action: missing `update_deal`
+### 3.3 CRM action: missing `update_deal` ✅ DONE
 - **Location:** `packages/server/src/lib/automation-actions/crm-action.ts`
-- **Issue:** Supports `create_task`, `create_contact`, `create_note`, `create_deal_note`. AI agent has `updateDeal`; automations do not.
-- **Action:** Add `update_deal` to CRM action if users should update deal stage from automations.
+- **Change:** Added `update_deal` with params: dealId, stage, name, category, amount, description. NodeConfigPanel and CrmActionNode updated.
 
 ### 3.4 Variable picker gaps
 - **Location:** `packages/automations/src/useAvailableVariables.ts`
@@ -138,7 +137,7 @@ This document summarizes dead/deprecated code, refactoring opportunities, incomp
 | P0       | UX        | Preserve OAuth `?connected=` when redirecting to Settings |
 | P1       | Docs      | Update AGENTS.md to match current architecture |
 | P1       | Refactor  | Extract shared topological sort utility |
-| P1       | Stub      | Add `update_deal` to CRM automation action (if needed) |
+| P1       | Stub      | ~~Add `update_deal` to CRM automation action~~ ✅ DONE |
 | P2       | Dead      | Clarify Connections page vs redirect; fix or remove dead logic |
 | P2       | Refactor  | Address FIXME in `canAccess.ts` |
 | P2       | Stub      | Implement or hide Voice app; document assistant route usage |

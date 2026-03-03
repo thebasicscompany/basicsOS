@@ -12,7 +12,8 @@ const CONTACT_STATUS_STYLES: Record<string, string> = {
 const DEAL_STAGE_STYLES: Record<string, string> = {
   opportunity: "border-blue-200/60 text-blue-600 dark:border-blue-800/60 dark:text-blue-400",
   "proposal-made": "border-violet-200/60 text-violet-600 dark:border-violet-800/60 dark:text-violet-400",
-  "in-negociation": "border-amber-200/60 text-amber-600 dark:border-amber-800/60 dark:text-amber-400",
+  "in-negotiation": "border-amber-200/60 text-amber-600 dark:border-amber-800/60 dark:text-amber-400",
+  "in-negociation": "border-amber-200/60 text-amber-600 dark:border-amber-800/60 dark:text-amber-400", // legacy typo, keep for backward compat
   won: "border-emerald-200/60 text-emerald-600 dark:border-emerald-800/60 dark:text-emerald-400",
   lost: "border-red-200/60 text-red-600 dark:border-red-800/60 dark:text-red-400",
   delayed: "border-orange-200/60 text-orange-600 dark:border-orange-800/60 dark:text-orange-400",
@@ -22,7 +23,8 @@ const DEAL_STAGE_STYLES: Record<string, string> = {
 const DEAL_STAGE_LABELS: Record<string, string> = {
   opportunity: "Opportunity",
   "proposal-made": "Proposal Made",
-  "in-negociation": "In Negotiation",
+  "in-negotiation": "In Negotiation",
+  "in-negociation": "In Negotiation", // legacy typo
   won: "Won",
   lost: "Lost",
   delayed: "Delayed",

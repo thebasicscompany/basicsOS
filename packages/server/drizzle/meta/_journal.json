@@ -57,6 +57,13 @@
       "when": 1730678400000,
       "tag": "0008_crm_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1730764800000,
+      "tag": "0009_fix_in_negociation_typo",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import type { Db } from "../../db/client.js";
 import * as schema from "../../db/schema/index.js";
+import { eq, and } from "drizzle-orm";
 
 export async function executeCrmAction(
   config: Record<string, unknown>,
@@ -92,6 +93,45 @@ export async function executeCrmAction(
         date: new Date(),
       }).returning();
       return { crm_result: note };
+    }
+
+    case "update_deal": {
+      const { dealId: rawDealId, stage, name, category, amount, description } = params as {
+        dealId?: number | string;
+        stage?: string;
+        name?: string;
+        category?: string;
+        amount?: number | string;
+        description?: string;
+      };
+
+      const dealId = typeof rawDealId === "string" ? parseInt(rawDealId, 10) : rawDealId;
+      if (dealId == null || Number.isNaN(dealId)) {
+        throw new Error("update_deal requires a valid dealId (use {{trigger_data.id}} for deal.created)");
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (stage !== undefined && stage !== "") updates.stage = stage;
+      if (name !== undefined && name !== "") updates.name = name;
+      if (category !== undefined && category !== "") updates.category = category;
+      if (amount !== undefined && amount !== "") {
+        const amountNum = typeof amount === "string" ? parseInt(amount, 10) : amount;
+        if (!Number.isNaN(amountNum)) updates.amount = amountNum;
+      }
+      if (description !== undefined) updates.description = description;
+
+      if (Object.keys(updates).length === 0) {
+        throw new Error("update_deal requires at least one field to update (stage, name, category, amount, description)");
+      }
+
+      const [deal] = await db
+        .update(schema.deals)
+        .set(updates)
+        .where(and(eq(schema.deals.id, dealId), eq(schema.deals.salesId, salesId)))
+        .returning();
+
+      if (!deal) throw new Error(`Deal ${dealId} not found or access denied`);
+      return { crm_result: deal };
     }
 
     default:

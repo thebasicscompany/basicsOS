@@ -1,10 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import { PlusIcon } from "@phosphor-icons/react";
 import { useRecords, useUpdateRecord } from "@/hooks/use-records";
 import { DealStageBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const NEW_STAGE_ID = "new";
 
 const DEFAULT_STAGES = [
   "opportunity",
@@ -30,7 +33,7 @@ export function DealsKanbanBoard() {
   const updateRecord = useUpdateRecord("deals");
 
   const deals = (data?.data ?? []) as Record<string, unknown>[];
-  const stages = useMemo(() => {
+  const allStages = useMemo(() => {
     const stageSet = new Set(DEFAULT_STAGES);
     for (const d of deals) {
       const s = (d.stage ?? d.Stage) as string | undefined;
@@ -41,22 +44,27 @@ export function DealsKanbanBoard() {
 
   const dealsByStage = useMemo(() => {
     const map: Record<string, typeof deals> = {};
-    for (const s of stages) map[s] = [];
+    for (const s of allStages) map[s] = [];
     for (const d of deals) {
       const s = ((d.stage ?? d.Stage) as string) || "opportunity";
       if (!map[s]) map[s] = [];
       map[s].push(d);
     }
     return map;
-  }, [deals, stages]);
+  }, [deals, allStages]);
+
+  const stagesWithDeals = useMemo(
+    () => allStages.filter((s) => (dealsByStage[s]?.length ?? 0) > 0),
+    [allStages, dealsByStage],
+  );
 
   const handleDragEnd = useCallback(
     (result: DropResult) => {
-      if (!result.destination || result.destination.droppableId === result.source.droppableId) {
-        return;
-      }
+      if (!result.destination) return;
       const dealId = result.draggableId.replace(/^deal-/, "");
-      const targetStage = result.destination.droppableId;
+      let targetStage = result.destination.droppableId;
+      if (targetStage === "add-stage") targetStage = NEW_STAGE_ID;
+      if (targetStage === result.source.droppableId) return;
       const id = parseInt(dealId, 10);
       if (isNaN(id)) return;
       updateRecord.mutate({
@@ -92,7 +100,7 @@ export function DealsKanbanBoard() {
     <div className="flex min-h-0 flex-1 flex-col">
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4 pt-2">
-          {stages.map((stageId) => (
+          {stagesWithDeals.map((stageId) => (
             <Droppable key={stageId} droppableId={stageId}>
               {(provided, snapshot) => (
                 <div
@@ -148,6 +156,29 @@ export function DealsKanbanBoard() {
               )}
             </Droppable>
           ))}
+          <Droppable key="add-stage" droppableId="add-stage">
+            {(provided, snapshot) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={cn(
+                  "flex w-48 shrink-0 flex-col items-center justify-center rounded-lg border border-dashed transition-colors",
+                  snapshot.isDraggingOver
+                    ? "border-primary/50 bg-primary/5"
+                    : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
+                )}
+              >
+                <PlusIcon className="h-6 w-6 text-muted-foreground" />
+                <span className="mt-1 text-xs text-muted-foreground">
+                  Add stage
+                </span>
+                <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+                  Drop deal here
+                </p>
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
         </div>
       </DragDropContext>
     </div>

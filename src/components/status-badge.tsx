@@ -16,6 +16,7 @@ const DEAL_STAGE_STYLES: Record<string, string> = {
   won: "border-emerald-200/60 text-emerald-600 dark:border-emerald-800/60 dark:text-emerald-400",
   lost: "border-red-200/60 text-red-600 dark:border-red-800/60 dark:text-red-400",
   delayed: "border-orange-200/60 text-orange-600 dark:border-orange-800/60 dark:text-orange-400",
+  new: "border-teal-200/60 text-teal-600 dark:border-teal-800/60 dark:text-teal-400",
 };
 
 const DEAL_STAGE_LABELS: Record<string, string> = {
@@ -25,6 +26,7 @@ const DEAL_STAGE_LABELS: Record<string, string> = {
   won: "Won",
   lost: "Lost",
   delayed: "Delayed",
+  new: "New",
 };
 
 const FALLBACK =

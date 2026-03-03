@@ -1,6 +1,7 @@
 import type { Db } from "../db/client.js";
 import type { Env } from "../env.js";
 import type { WorkflowDefinition } from "./automation-engine.js";
+import { topologicalSort } from "@basics-os/shared";
 import { executeEmail } from "./automation-actions/email.js";
 import { executeAI } from "./automation-actions/ai-task.js";
 import { executeWebSearch } from "./automation-actions/web-search.js";
@@ -23,36 +24,10 @@ export async function executeWorkflow(
 
   if (!nodes?.length) return { trigger_data: triggerData };
 
-  // Build adjacency list and in-degree map for topological sort
-  const adjacency = new Map<string, string[]>();
-  const inDegree = new Map<string, number>();
-
-  for (const node of nodes) {
-    adjacency.set(node.id, []);
-    inDegree.set(node.id, 0);
-  }
-
-  for (const edge of edges ?? []) {
-    adjacency.get(edge.source)?.push(edge.target);
-    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-  }
-
-  // Kahn's topological sort
-  const queue: string[] = [];
-  for (const [nodeId, deg] of inDegree) {
-    if (deg === 0) queue.push(nodeId);
-  }
-
-  const order: string[] = [];
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    order.push(nodeId);
-    for (const neighbor of adjacency.get(nodeId) ?? []) {
-      const newDeg = (inDegree.get(neighbor) ?? 0) - 1;
-      inDegree.set(neighbor, newDeg);
-      if (newDeg === 0) queue.push(neighbor);
-    }
-  }
+  const order = topologicalSort(
+    nodes.map((n) => n.id),
+    edges ?? []
+  );
 
   const context: Record<string, unknown> = {
     trigger_data: triggerData,

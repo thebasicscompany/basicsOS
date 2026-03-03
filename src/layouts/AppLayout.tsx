@@ -8,6 +8,8 @@ import {
   usePageHeaderTitle,
   useRegisterActionsContainer,
   useRegisterBreadcrumbContainer,
+  useRegisterTitleSlotContainer,
+  useTitleSlotInUse,
 } from "@/contexts/page-header"
 
 function PageErrorFallback({
@@ -34,8 +36,10 @@ function PageErrorFallback({
 
 function LayoutHeader() {
   const title = usePageHeaderTitle()
+  const titleSlotInUse = useTitleSlotInUse()
   const registerActionsContainer = useRegisterActionsContainer()
   const registerBreadcrumbContainer = useRegisterBreadcrumbContainer()
+  const registerTitleSlotContainer = useRegisterTitleSlotContainer()
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -44,9 +48,15 @@ function LayoutHeader() {
           orientation="vertical"
           className="mr-2 h-4 shrink-0 data-[orientation=vertical]:h-4"
         />
-        {/* Fallback title (e.g. ObjectListPage) */}
-        {title && <span className="truncate text-sm font-medium shrink-0">{title}</span>}
-        {/* Breadcrumb portal — RecordDetailPage renders here, replaces title slot */}
+        {titleSlotInUse ? (
+          <div
+            ref={registerTitleSlotContainer}
+            className="min-w-0 shrink-0 overflow-hidden [&>*]:truncate"
+          />
+        ) : (
+          title && <span className="truncate text-sm font-medium shrink-0">{title}</span>
+        )}
+        {/* Breadcrumb portal — RecordDetailPage renders here */}
         <div
           ref={registerBreadcrumbContainer}
           className="min-w-0 flex-1 overflow-hidden [&>*]:truncate"

@@ -1,16 +1,4 @@
-import { CRM } from "@/components/atomic-crm/root/CRM";
-import {
-  authProvider,
-  dataProvider,
-} from "@/components/atomic-crm/providers/fakerest";
-import { memoryStore } from "ra-core";
-
-const App = () => (
-  <CRM
-    dataProvider={dataProvider}
-    authProvider={authProvider}
-    store={memoryStore()}
-  />
-);
+/** Demo entry — uses the main app. Run with pnpm dev:demo or pnpm build:demo */
+import App from "../src/App";
 
 export default App;

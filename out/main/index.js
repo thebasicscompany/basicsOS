@@ -34,7 +34,8 @@ app.whenReady().then(() => {
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
-  ipcMain.on("ping", () => console.log("pong"));
+  ipcMain.on("ping", () => {
+  });
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

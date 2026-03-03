@@ -9,6 +9,7 @@ import {
 } from "basics-os/src/components/ui/select";
 import { useAutomationBuilder } from "./AutomationBuilderContext";
 import { VariableInput, VariableTextarea } from "./VariablePicker";
+import { EntityPickerInput } from "./EntityPicker";
 import { useAvailableVariables } from "./useAvailableVariables";
 import type { WorkflowNode } from "./builderConstants";
 
@@ -262,8 +263,14 @@ export function NodeConfigPanel({
               <VariableInput value={(params.type as string) ?? "Todo"} onChange={(v) => onUpdate({ params: { ...params, type: v } })} variables={variables} placeholder="Todo" />
             </div>
             <div className="space-y-2">
-              <Label>Contact ID</Label>
-              <VariableInput value={(params.contactId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, contactId: v } })} variables={variables} placeholder="{{trigger_data.contactId}}" />
+              <Label>Contact</Label>
+              <EntityPickerInput
+                resource="contacts"
+                value={String(params.contactId ?? "")}
+                onChange={(v) => onUpdate({ params: { ...params, contactId: v || undefined } })}
+                variables={variables}
+                placeholder="{{trigger_data.contactId}}"
+              />
             </div>
           </>
         )}
@@ -286,8 +293,14 @@ export function NodeConfigPanel({
         {action === "create_note" && (
           <>
             <div className="space-y-2">
-              <Label>Contact ID</Label>
-              <VariableInput value={(params.contactId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, contactId: v } })} variables={variables} placeholder="{{trigger_data.contactId}}" />
+              <Label>Contact</Label>
+              <EntityPickerInput
+                resource="contacts"
+                value={String(params.contactId ?? "")}
+                onChange={(v) => onUpdate({ params: { ...params, contactId: v || undefined } })}
+                variables={variables}
+                placeholder="{{trigger_data.contactId}}"
+              />
             </div>
             <div className="space-y-2">
               <Label>Note text</Label>
@@ -298,8 +311,14 @@ export function NodeConfigPanel({
         {action === "create_deal_note" && (
           <>
             <div className="space-y-2">
-              <Label>Deal ID</Label>
-              <VariableInput value={(params.dealId as string) ?? ""} onChange={(v) => onUpdate({ params: { ...params, dealId: v } })} variables={variables} placeholder="{{trigger_data.id}}" />
+              <Label>Deal</Label>
+              <EntityPickerInput
+                resource="deals"
+                value={String(params.dealId ?? "")}
+                onChange={(v) => onUpdate({ params: { ...params, dealId: v || undefined } })}
+                variables={variables}
+                placeholder="{{trigger_data.id}}"
+              />
             </div>
             <div className="space-y-2">
               <Label>Note text</Label>

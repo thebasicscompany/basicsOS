@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowSquareOutIcon, EyeIcon, EyeSlashIcon, SunIcon, MoonIcon, MonitorIcon } from "@phosphor-icons/react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { useTheme } from "next-themes";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
@@ -61,11 +62,29 @@ import { usePageTitle } from "@/contexts/page-header";
 
 export function SettingsPage() {
   usePageTitle("Settings");
+  const [searchParams, setSearchParams] = useSearchParams();
   const { theme, setTheme } = useTheme();
   const { apiKey, hasKey, setApiKey, clearApiKey } = useGateway();
   const [inputValue, setInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+  // Handle OAuth redirect from /connections?connected=slack (or google)
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    if (connected) {
+      const name = connected.charAt(0).toUpperCase() + connected.slice(1);
+      toast.success(`${name} connected!`);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("connected");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSave = useCallback(async () => {
     const trimmed = inputValue.trim();

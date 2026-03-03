@@ -140,6 +140,9 @@ importers:
       '@streamparser/json-whatwg':
         specifier: ^0.0.22
         version: 0.0.22
+      '@tabler/icons-react':
+        specifier: ^3.38.0
+        version: 3.38.0(react@19.2.4)
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.2.1(vite@7.3.1(@types/node@22.19.12)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(tsx@4.21.0))
@@ -501,6 +504,9 @@ importers:
 
   packages/automations:
     dependencies:
+      '@basics-os/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.4)
@@ -3544,6 +3550,14 @@ packages:
   '@tabby_ai/hijri-converter@1.0.5':
     resolution: {integrity: sha512-r5bClKrcIusDoo049dSL8CawnHR6mRdDwhlQuIgZRNty68q0x8k3Lf1BtPAMxRf/GgnHBnIO4ujd3+GQdLWzxQ==}
     engines: {node: '>=16.0.0'}
+
+  '@tabler/icons-react@3.38.0':
+    resolution: {integrity: sha512-kR5wv+m4+GgmnSszg3rQd6SrTFAQ/XnQC/yTwIfuRJSfqB12KoIC7fPbIijFgOHTFlBN5DARnN0IVrR7KYG6/A==}
+    peerDependencies:
+      react: '>= 16'
+
+  '@tabler/icons@3.38.0':
+    resolution: {integrity: sha512-FdETQSpQ3lN7BEjEUzjKhsfTDCamrvMDops4HEMphTm3DmkIFpThoODn8XXZ8Q9MhjshIvphIYVHHB7zpq167w==}
 
   '@tailwindcss/node@4.2.1':
     resolution: {integrity: sha512-jlx6sLk4EOwO6hHe1oCGm1Q4AN/s0rSrTTPBGPM0/RQ6Uylwq17FuU8IeJJKEjtc6K6O07zsvP+gDO6MMWo7pg==}
@@ -11838,6 +11852,13 @@ snapshots:
       defer-to-connect: 2.0.1
 
   '@tabby_ai/hijri-converter@1.0.5': {}
+
+  '@tabler/icons-react@3.38.0(react@19.2.4)':
+    dependencies:
+      '@tabler/icons': 3.38.0
+      react: 19.2.4
+
+  '@tabler/icons@3.38.0': {}
 
   '@tailwindcss/node@4.2.1':
     dependencies:

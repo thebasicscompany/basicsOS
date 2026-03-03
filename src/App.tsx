@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { ThemeProvider } from "next-themes";
@@ -28,7 +28,10 @@ import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
 import { AppLayout } from "@/layouts/AppLayout";
 
 function RedirectToSettingsConnections() {
-  return <Navigate to="/settings#connections" replace />;
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  const to = qs ? `/settings?${qs}#connections` : "/settings#connections";
+  return <Navigate to={to} replace />;
 }
 
 const queryClient = new QueryClient({

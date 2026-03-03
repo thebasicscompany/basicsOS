@@ -14,6 +14,10 @@ interface PageHeaderCtx {
   setActionsContainer: (el: HTMLElement | null) => void
   breadcrumbContainer: HTMLElement | null
   setBreadcrumbContainer: (el: HTMLElement | null) => void
+  titleSlotInUse: boolean
+  setTitleSlotInUse: (v: boolean) => void
+  titleSlotContainer: HTMLElement | null
+  setTitleSlotContainer: (el: HTMLElement | null) => void
 }
 
 const PageHeaderContext = createContext<PageHeaderCtx>({
@@ -23,12 +27,18 @@ const PageHeaderContext = createContext<PageHeaderCtx>({
   setActionsContainer: () => {},
   breadcrumbContainer: null,
   setBreadcrumbContainer: () => {},
+  titleSlotInUse: false,
+  setTitleSlotInUse: () => {},
+  titleSlotContainer: null,
+  setTitleSlotContainer: () => {},
 })
 
 export function PageHeaderProvider({ children }: { children: ReactNode }) {
   const [title, setTitle] = useState("")
   const [actionsContainer, setActionsContainer] = useState<HTMLElement | null>(null)
   const [breadcrumbContainer, setBreadcrumbContainer] = useState<HTMLElement | null>(null)
+  const [titleSlotInUse, setTitleSlotInUse] = useState(false)
+  const [titleSlotContainer, setTitleSlotContainer] = useState<HTMLElement | null>(null)
   return (
     <PageHeaderContext.Provider
       value={{
@@ -38,6 +48,10 @@ export function PageHeaderProvider({ children }: { children: ReactNode }) {
         setActionsContainer,
         breadcrumbContainer,
         setBreadcrumbContainer,
+        titleSlotInUse,
+        setTitleSlotInUse,
+        titleSlotContainer,
+        setTitleSlotContainer,
       }}
     >
       {children}
@@ -97,4 +111,35 @@ export function usePageHeaderBreadcrumb(breadcrumb: ReactNode): ReactNode {
  */
 export function useRegisterBreadcrumbContainer(): (el: HTMLElement | null) => void {
   return useContext(PageHeaderContext).setBreadcrumbContainer
+}
+
+/**
+ * Used by the layout header to register the title slot mount point.
+ */
+export function useRegisterTitleSlotContainer(): (el: HTMLElement | null) => void {
+  return useContext(PageHeaderContext).setTitleSlotContainer
+}
+
+/**
+ * Returns a portal ReactNode that renders `content` into the layout header's
+ * title slot, replacing the default title span. Call setTitleSlotInUse so
+ * the layout knows to show the slot instead of the title.
+ *
+ * Use this when a page needs custom title content (e.g. an editable input).
+ */
+export function usePageHeaderTitleSlot(content: ReactNode): ReactNode {
+  const {
+    titleSlotContainer,
+    setTitleSlotInUse,
+  } = useContext(PageHeaderContext)
+  useLayoutEffect(() => {
+    setTitleSlotInUse(true)
+    return () => setTitleSlotInUse(false)
+  }, [setTitleSlotInUse])
+  if (!titleSlotContainer) return null
+  return createPortal(content, titleSlotContainer)
+}
+
+export function useTitleSlotInUse(): boolean {
+  return useContext(PageHeaderContext).titleSlotInUse
 }

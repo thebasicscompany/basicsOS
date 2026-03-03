@@ -5,7 +5,7 @@ import {
   ChatCircleIcon,
   MicrophoneIcon,
   PlugIcon,
-  LightningIcon,
+  HardDrivesIcon,
   PlusIcon,
   NotePencilIcon,
 } from "@phosphor-icons/react";
@@ -27,7 +27,7 @@ export const SIDEBAR_NAV_APPS: NavGroupConfig = {
 export const SIDEBAR_NAV_AUTOMATIONS: NavGroupConfig = {
   label: "Automations",
   items: [
-    { title: "All", path: ROUTES.AUTOMATIONS, icon: LightningIcon },
+    { title: "Hub", path: ROUTES.AUTOMATIONS, icon: HardDrivesIcon },
     { title: "Builder", path: `${ROUTES.AUTOMATIONS}/create`, icon: PlusIcon },
   ],
 };

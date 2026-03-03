@@ -1,4 +1,4 @@
-import { CaretLeftIcon, FloppyDiskIcon, CircleNotchIcon, PlayIcon, PlusIcon, LightningIcon, LinkIcon } from "@phosphor-icons/react";
+import { HardDrivesIcon, FloppyDiskIcon, CircleNotchIcon, PlayIcon, PlusIcon, LightningIcon, LinkIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import {
@@ -18,7 +18,7 @@ import "@xyflow/react/dist/style.css";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOne, create, update } from "basics-os/src/lib/api/crm";
 import { fetchApi } from "basics-os/src/lib/api";
-import { usePageTitle, usePageHeaderActions } from "basics-os/src/contexts/page-header";
+import { usePageTitle, usePageHeaderActions, usePageHeaderTitleSlot } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
 import { Input } from "basics-os/src/components/ui/input";
 import {
@@ -35,7 +35,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "basics-os/src/components/ui/dialog";
-import { Switch } from "basics-os/src/components/ui/switch";
 import { WorkflowCanvas } from "basics-os/src/components/ai-elements/canvas";
 import { WorkflowControls } from "basics-os/src/components/ai-elements/controls";
 import { WorkflowConnection } from "basics-os/src/components/ai-elements/connection";
@@ -211,16 +210,6 @@ function BuilderInner() {
     onError: () => toast.error("Failed to trigger run"),
   });
 
-  const toggleEnabledMutation = useMutation({
-    mutationFn: (enabled: boolean) =>
-      update<AutomationRule>("automation_rules", ruleId!, { enabled }),
-    onSuccess: (_, enabled) => {
-      queryClient.invalidateQueries({ queryKey: ["automation_rules"] });
-      toast.success(enabled ? "Automation enabled" : "Automation disabled");
-    },
-    onError: () => toast.error("Failed to update"),
-  });
-
   const isSaving = createRule.isPending || updateRule.isPending;
 
   const onSave = useCallback(() => {
@@ -265,7 +254,22 @@ function BuilderInner() {
     [setNodes]
   );
 
-  usePageTitle(name || "New Automation");
+  usePageTitle("");
+  const titleSlotPortal = usePageHeaderTitleSlot(
+    <Input
+      className="h-8 w-52 border-0 bg-transparent px-0 font-medium focus-visible:ring-0"
+      placeholder="Untitled Automation"
+      value={name}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+    />
+  );
+
+  useEffect(() => {
+    document.title = `${name || "New Automation"} | Basics CRM`;
+    return () => {
+      document.title = "Basics CRM";
+    };
+  }, [name]);
 
   const headerActionsNode = useMemo(
     () => (
@@ -276,21 +280,12 @@ function BuilderInner() {
           className="mr-auto gap-1.5 text-muted-foreground hover:text-foreground"
           onClick={() => navigate("/automations")}
         >
-          <CaretLeftIcon className="size-4" />
-          Back
+          <HardDrivesIcon className="size-4" />
+          Hub
         </Button>
-
-        <div className="flex items-center gap-2">
-          <Input
-            className="h-8 w-52 border-0 bg-transparent px-0 font-medium focus-visible:ring-0"
-            placeholder="Untitled Automation"
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-          />
-          {isDirty && (
-            <span className="text-xs text-muted-foreground whitespace-nowrap">● Unsaved changes</span>
-          )}
-        </div>
+        {isDirty && (
+          <span className="text-xs text-muted-foreground whitespace-nowrap">● Unsaved changes</span>
+        )}
 
         {!isNew && (
           <>
@@ -317,14 +312,6 @@ function BuilderInner() {
               <PlayIcon className="size-4" />
               History
             </Button>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Active</span>
-              <Switch
-                checked={rule?.enabled ?? false}
-                onCheckedChange={(v: boolean) => toggleEnabledMutation.mutate(v)}
-                disabled={toggleEnabledMutation.isPending}
-              />
-            </div>
           </>
         )}
 
@@ -340,7 +327,7 @@ function BuilderInner() {
         </Button>
       </div>
     ),
-    [name, isNew, isSaving, isDirty, rule, navigate, onSave, runNowMutation, toggleEnabledMutation],
+    [name, isNew, isSaving, isDirty, rule, navigate, onSave, runNowMutation],
   );
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
 
@@ -354,6 +341,7 @@ function BuilderInner() {
       }}
     >
       <>
+        {titleSlotPortal}
         {headerActionsPortal}
         <div className="flex min-h-0 flex-1 flex-col">
           <style>{`

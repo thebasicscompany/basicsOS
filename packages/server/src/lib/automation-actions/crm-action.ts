@@ -72,6 +72,28 @@ export async function executeCrmAction(
       return { crm_result: note };
     }
 
+    case "create_deal_note": {
+      const { dealId: rawDealId, text, type } = params as {
+        dealId?: number | string;
+        text?: string;
+        type?: string;
+      };
+
+      const dealId = typeof rawDealId === "string" ? parseInt(rawDealId, 10) : rawDealId;
+      if (dealId == null || Number.isNaN(dealId)) {
+        throw new Error("create_deal_note requires a valid dealId (use {{trigger_data.id}} for deal.created)");
+      }
+
+      const [note] = await db.insert(schema.dealNotes).values({
+        salesId,
+        dealId,
+        text: text ?? "",
+        type: type ?? null,
+        date: new Date(),
+      }).returning();
+      return { crm_result: note };
+    }
+
     default:
       throw new Error(`Unknown CRM action: ${action}`);
   }

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { Table } from "@/components/ui/table";

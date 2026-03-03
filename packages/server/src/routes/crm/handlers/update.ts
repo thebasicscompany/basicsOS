@@ -44,6 +44,10 @@ export function createUpdateHandler(db: Db, env: Env) {
     delete rawBody.id;
     const body = snakeToCamel(rawBody) as Record<string, unknown>;
 
+    if (Object.keys(body).length === 0) {
+      return c.json({ error: "No fields to update; request body is empty after removing id" }, 400);
+    }
+
     const table = TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">];
     if (!table) return c.json({ error: "Unknown resource" }, 404);
 

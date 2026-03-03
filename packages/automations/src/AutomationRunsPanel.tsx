@@ -122,7 +122,7 @@ function RunRow({ run }: { run: AutomationRun }) {
     if (run.status === "success")
       return <CheckCircleIcon className="size-4 text-green-600 dark:text-green-500 shrink-0" />;
     if (run.status === "error")
-      return <IconCircleX className="size-4 text-destructive shrink-0" />;
+      return <XCircleIcon className="size-4 text-destructive shrink-0" />;
     return <CircleNotchIcon className="size-4 shrink-0 animate-spin text-muted-foreground" />;
   };
 

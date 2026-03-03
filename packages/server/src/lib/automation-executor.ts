@@ -132,24 +132,30 @@ function resolveTemplates(
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string") {
-      result[key] = value.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, varPath) => {
-        const parts = varPath.split(".");
-        let val: unknown = context;
-        for (const part of parts) {
-          if (val && typeof val === "object") {
-            val = (val as Record<string, unknown>)[part];
-          } else {
-            val = undefined;
-            break;
-          }
-        }
-        if (val === undefined) return `{{${varPath}}}`;
-        if (typeof val === "string") return val;
-        return JSON.stringify(val);
-      });
+      result[key] = resolveString(value, context);
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = resolveTemplates(value as Record<string, unknown>, context);
     } else {
       result[key] = value;
     }
   }
   return result;
+}
+
+function resolveString(str: string, context: Record<string, unknown>): string {
+  return str.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, varPath) => {
+    const parts = varPath.split(".");
+    let val: unknown = context;
+    for (const part of parts) {
+      if (val && typeof val === "object") {
+        val = (val as Record<string, unknown>)[part];
+      } else {
+        val = undefined;
+        break;
+      }
+    }
+    if (val === undefined) return `{{${varPath}}}`;
+    if (typeof val === "string") return val;
+    return JSON.stringify(val);
+  });
 }

@@ -282,7 +282,8 @@ export function NodeConfigPanel({
             <SelectContent>
               <SelectItem value="create_task">Create task</SelectItem>
               <SelectItem value="create_contact">Create contact</SelectItem>
-              <SelectItem value="create_note">Create note</SelectItem>
+              <SelectItem value="create_note">Create note (on contact)</SelectItem>
+              <SelectItem value="create_deal_note">Create deal note</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -323,6 +324,18 @@ export function NodeConfigPanel({
             <div className="space-y-2">
               <Label>Contact ID</Label>
               <Input value={(params.contactId as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, contactId: e.target.value } })} placeholder="{{trigger_data.contactId}}" />
+            </div>
+            <div className="space-y-2">
+              <Label>Note text</Label>
+              <Textarea value={(params.text as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ params: { ...params, text: e.target.value } })} placeholder="{{ai_result}}" rows={4} />
+            </div>
+          </>
+        )}
+        {action === "create_deal_note" && (
+          <>
+            <div className="space-y-2">
+              <Label>Deal ID</Label>
+              <Input value={(params.dealId as string) ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ params: { ...params, dealId: e.target.value } })} placeholder="{{trigger_data.id}}" />
             </div>
             <div className="space-y-2">
               <Label>Note text</Label>

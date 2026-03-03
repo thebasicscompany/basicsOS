@@ -6,9 +6,17 @@ import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import {
   eq,
+  ne,
   and,
   or,
+  not,
   ilike,
+  gt,
+  lt,
+  gte,
+  lte,
+  isNull,
+  isNotNull,
   sql,
   desc,
   asc,
@@ -81,6 +89,49 @@ function hasSalesId(resource: Resource): boolean {
     "sales",
     "automation_rules",
   ].includes(resource);
+}
+
+function snakeToCamelField(field: string): string {
+  return field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+interface GenericFilter {
+  field: string;
+  op: string;
+  value: string;
+}
+
+function buildGenericFilterCondition(
+  table: PgTableWithColumns<any>,
+  f: GenericFilter
+): SQL | null {
+  const col = (table as Record<string, unknown>)[snakeToCamelField(f.field)];
+  if (!col || typeof (col as { getSQL: unknown }).getSQL !== "function") return null;
+  const c = col as SQL;
+  switch (f.op) {
+    case "eq":
+      return eq(c, f.value);
+    case "neq":
+      return ne(c, f.value);
+    case "like":
+      return ilike(c, `%${f.value}%`);
+    case "nlike":
+      return not(ilike(c, `%${f.value}%`));
+    case "gt":
+      return gt(c, f.value);
+    case "lt":
+      return lt(c, f.value);
+    case "gte":
+      return gte(c, f.value);
+    case "lte":
+      return lte(c, f.value);
+    case "blank":
+      return isNull(c);
+    case "notblank":
+      return isNotNull(c);
+    default:
+      return null;
+  }
 }
 
 export function createCrmRoutes(
@@ -159,6 +210,7 @@ export function createCrmRoutes(
     const sortParam = c.req.query("sort");
     const orderParam = c.req.query("order");
     const filterParam = c.req.query("filter");
+    const filtersParam = c.req.query("filters");
 
     let [start, end] = [0, 24];
     if (range) {
@@ -183,6 +235,25 @@ export function createCrmRoutes(
       }
     }
     const q = typeof filter.q === "string" ? filter.q.trim() : null;
+
+    let genericFilters: GenericFilter[] = [];
+    if (filtersParam) {
+      try {
+        const parsed = JSON.parse(filtersParam) as unknown;
+        if (Array.isArray(parsed)) {
+          genericFilters = parsed.filter(
+            (x): x is GenericFilter =>
+              x != null &&
+              typeof x === "object" &&
+              typeof (x as GenericFilter).field === "string" &&
+              typeof (x as GenericFilter).op === "string" &&
+              typeof (x as GenericFilter).value === "string"
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+    }
 
     if (resource === "companies_summary") {
       const companyConds: SQL[] = [eq(schema.companies.salesId, salesId)];
@@ -290,7 +361,15 @@ export function createCrmRoutes(
       conditions.push(eq(schema.dealNotes.dealId, Number(filter.deal_id)));
     }
 
-    const orderByCol = sortParam ? (table as Record<string, unknown>)[sortParam] : null;
+    for (const gf of genericFilters) {
+      const cond = buildGenericFilterCondition(table, gf);
+      if (cond) conditions.push(cond);
+    }
+
+    const sortParamCamel = sortParam ? snakeToCamelField(sortParam) : null;
+    const orderByCol = sortParamCamel
+      ? (table as Record<string, unknown>)[sortParamCamel]
+      : null;
     const orderDir = orderParam === "DESC" ? desc : asc;
 
     const countResult = await (conditions.length > 0

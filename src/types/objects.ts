@@ -3,7 +3,7 @@ export interface Attribute {
   name: string;
   columnName: string;
   uiType: string; // key into fieldTypeRegistry
-  nocoUidt: string; // original NocoDB uidt
+  sqlType: string; // schema-derived type (e.g. SingleLineText, DateTime)
   config: Record<string, unknown>;
   isPrimary: boolean;
   isSystem: boolean;
@@ -19,7 +19,7 @@ export interface ObjectConfig {
   pluralName: string;
   icon: string;
   iconColor: string;
-  nocoTableName: string;
+  tableName: string;
   type: "standard" | "system";
   isActive: boolean;
   position: number;
@@ -50,7 +50,7 @@ export interface ObjectConfigApiResponse {
   pluralName: string;
   icon: string;
   iconColor: string;
-  nocoTableName: string;
+  tableName: string;
   type: "standard" | "system";
   isActive: boolean;
   position: number;

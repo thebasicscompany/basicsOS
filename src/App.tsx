@@ -7,7 +7,6 @@ import { VoiceApp } from "@basics-os/voice";
 import { MCPViewerApp } from "@basics-os/mcp-viewer";
 
 import { GatewayProvider } from "@/providers/GatewayProvider";
-import { NocoDBProvider } from "@/providers/NocoDBProvider";
 import { ObjectRegistryProvider } from "@/providers/ObjectRegistryProvider";
 import { ErrorFallback } from "@/components/error-fallback";
 import { ProtectedRoute } from "@/lib/auth";
@@ -57,14 +56,12 @@ function AppRoutes() {
         <Route
           element={
             <ProtectedRoute>
-              <NocoDBProvider>
-                <ObjectRegistryProvider>
-                  <>
-                    <HubLayout extraNavContent={<ObjectRegistryNavSection />} />
-                    <CommandPalette />
-                  </>
-                </ObjectRegistryProvider>
-              </NocoDBProvider>
+              <ObjectRegistryProvider>
+                <>
+                  <HubLayout extraNavContent={<ObjectRegistryNavSection />} />
+                  <CommandPalette />
+                </>
+              </ObjectRegistryProvider>
             </ProtectedRoute>
           }
         >

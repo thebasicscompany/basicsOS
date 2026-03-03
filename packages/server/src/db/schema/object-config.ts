@@ -19,7 +19,7 @@ export const objectConfig = pgTable("object_config", {
   pluralName: varchar("plural_name", { length: 128 }).notNull(),
   icon: varchar("icon", { length: 64 }).notNull().default("building"),
   iconColor: varchar("icon_color", { length: 32 }).notNull().default("blue"),
-  nocoTableName: varchar("noco_table_name", { length: 128 }).notNull(),
+  tableName: varchar("table_name", { length: 128 }).notNull(),
   type: varchar("type", { length: 32 }).notNull().default("standard"),
   isActive: boolean("is_active").notNull().default(true),
   position: smallint("position").notNull().default(0),

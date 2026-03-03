@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as crmApi from "@/lib/api/crm-nocodb";
+import type { FilterDef } from "@/lib/api/crm-nocodb";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,7 +16,9 @@ export interface UseRecordsParams {
   perPage?: number;
   sort?: RecordSortParam;
   filter?: Record<string, unknown>;
-  /** Pre-built NocoDB where clause for view-level filters */
+  /** View-level filters (generic filters sent to API) */
+  viewFilters?: FilterDef[];
+  /** Legacy: NocoDB-style where clause (parsed when viewFilters not set) */
   extraWhere?: string;
 }
 
@@ -49,6 +52,7 @@ export function useRecords<T = Record<string, unknown>>(
         perPage,
         sort: params?.sort,
         filter: params?.filter,
+        viewFilters: params?.viewFilters,
         extraWhere: params?.extraWhere,
       },
     ],
@@ -57,6 +61,7 @@ export function useRecords<T = Record<string, unknown>>(
         pagination: { page, perPage },
         sort: params?.sort,
         filter: params?.filter,
+        viewFilters: params?.viewFilters,
         extraWhere: params?.extraWhere,
       }),
     enabled: !!objectSlug,

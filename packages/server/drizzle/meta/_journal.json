@@ -22,6 +22,34 @@
       "when": 1730246400000,
       "tag": "0002_custom_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1730332800000,
+      "tag": "0003_nocodb_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1730419200000,
+      "tag": "0005_object_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1730505600000,
+      "tag": "0006_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1730592000000,
+      "tag": "0007_rename_noco_table_name_to_table_name",
+      "breakpoints": true
     }
   ]
 }

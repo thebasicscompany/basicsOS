@@ -73,7 +73,7 @@ export interface Attribute {
   name: string;
   columnName: string;
   uiType: string;
-  nocoUidt: string;
+  sqlType: string;
   config: Record<string, any>;
   isPrimary: boolean;
   isSystem: boolean;

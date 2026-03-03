@@ -1,17 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { nocoFetch } from "@/lib/nocodb/client";
-import { getTableId } from "@/lib/nocodb/table-map";
+import { fetchApi } from "@/lib/api";
 
 /**
- * NocoDB column definition returned by the Meta API.
+ * Column definition returned by the schema API (NocoDB-shaped for compatibility).
  */
 export interface NocoDBColumn {
   id: string;
   fk_model_id: string;
   title: string;
   column_name: string;
-  uidt: string; // UI data type: SingleLineText, Number, Date, Checkbox, etc.
-  dt: string; // Database type
+  uidt: string;
+  dt: string;
   np: number | null;
   ns: number | null;
   clen: number | null;
@@ -53,24 +52,30 @@ const FIELD_TYPE_TO_UIDT: Record<string, string> = {
   location: "SingleLineText",
   user: "SingleLineText",
   relationship: "LinkToAnotherRecord",
-  // Legacy keys
   boolean: "Checkbox",
   url: "URL",
   longText: "LongText",
 };
 
+interface CustomFieldDef {
+  id: number;
+  resource: string;
+  name: string;
+  label: string;
+  fieldType: string;
+  options: string[] | null;
+}
+
 /**
- * Fetch all columns for a NocoDB table.
- * Uses the Meta API: GET /api/v2/meta/tables/{tableId}
- * Columns are embedded in the table metadata response.
+ * Fetch all columns for a resource (schema + custom fields).
+ * GET /api/schema/:tableName
  */
 export function useTableColumns(resource: string) {
   return useQuery<NocoDBColumn[]>({
     queryKey: ["nocodb-columns", resource],
     queryFn: async () => {
-      const tableId = getTableId(resource);
-      const response = await nocoFetch<{ columns: NocoDBColumn[] }>(
-        `/api/v2/meta/tables/${tableId}`,
+      const response = await fetchApi<{ columns: NocoDBColumn[] }>(
+        `/api/schema/${resource}`,
       );
       return response.columns;
     },
@@ -79,8 +84,8 @@ export function useTableColumns(resource: string) {
 }
 
 /**
- * Create a new column on a NocoDB table.
- * Uses: POST /api/v2/meta/tables/{tableId}/columns
+ * Create a custom field (stored in custom_field_defs).
+ * POST /api/custom_field_defs
  */
 export function useCreateColumn() {
   const qc = useQueryClient();
@@ -91,54 +96,69 @@ export function useCreateColumn() {
       fieldType: string;
       options?: Array<{ id: string; label: string; color: string }> | string[];
     }) => {
-      const tableId = getTableId(params.resource);
+      const safeName = params.title.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+      const row = await fetchApi<CustomFieldDef>("/api/custom_field_defs", {
+        method: "POST",
+        body: JSON.stringify({
+          resource: params.resource,
+          name: safeName,
+          label: params.title,
+          fieldType: params.fieldType,
+          options: params.options?.map((o) =>
+            typeof o === "string" ? o : o.label,
+          ),
+        }),
+      });
       const uidt = FIELD_TYPE_TO_UIDT[params.fieldType] ?? "SingleLineText";
-
-      const body: Record<string, unknown> = {
-        title: params.title,
-        column_name: params.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "_"),
+      return {
+        id: `custom_${row.id}`,
+        fk_model_id: params.resource,
+        title: row.label,
+        column_name: row.name,
         uidt,
-      };
-
-      // For SingleSelect/MultiSelect, include options as dtxp
-      if (
-        (uidt === "SingleSelect" || uidt === "MultiSelect") &&
-        params.options?.length
-      ) {
-        // Options can be SelectOption[] objects or plain strings
-        const labels = params.options.map((opt) =>
-          typeof opt === "string" ? opt : opt.label,
-        );
-        body.dtxp = labels.join(",");
-      }
-
-      return nocoFetch<NocoDBColumn>(
-        `/api/v2/meta/tables/${tableId}/columns`,
-        {
-          method: "POST",
-          body: JSON.stringify(body),
-        },
-      );
+        dt: "varchar",
+        np: null,
+        ns: null,
+        clen: null,
+        cop: "",
+        pk: false,
+        pv: false,
+        rqd: false,
+        un: false,
+        ai: false,
+        unique: false,
+        cdf: null,
+        cc: "",
+        csn: "",
+        dtx: "",
+        dtxp: Array.isArray(row.options) ? row.options.join(",") : "",
+        dtxs: "",
+        au: false,
+        order: 999,
+        system: false,
+        meta: null,
+      } as NocoDBColumn;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["nocodb-columns", vars.resource] });
-      // Also invalidate the object registry to pick up the new column
       qc.invalidateQueries({ queryKey: ["object-config"] });
     },
   });
 }
 
 /**
- * Delete a column from a NocoDB table.
- * Uses: DELETE /api/v2/meta/columns/{columnId}
+ * Delete a custom field.
+ * DELETE /api/custom_field_defs/:id (columnId is "custom_42" or numeric string)
  */
 export function useDeleteColumn() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { columnId: string; resource: string }) => {
-      return nocoFetch(`/api/v2/meta/columns/${params.columnId}`, {
+      const id =
+        params.columnId.startsWith("custom_")
+          ? params.columnId.slice(7)
+          : params.columnId;
+      await fetchApi(`/api/custom_field_defs/${id}`, {
         method: "DELETE",
       });
     },

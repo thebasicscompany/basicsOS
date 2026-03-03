@@ -24,8 +24,8 @@ function KanbanFieldDisplay({
 }) {
   if (value == null || value === "") return null;
 
-  // Format based on uiType / nocoUidt
-  const uiType = attribute.uiType ?? attribute.nocoUidt ?? "";
+  // Format based on uiType / sqlType
+  const uiType = attribute.uiType ?? attribute.sqlType ?? "";
 
   switch (uiType.toLowerCase()) {
     case "currency":

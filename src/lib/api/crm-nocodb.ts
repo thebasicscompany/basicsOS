@@ -1,119 +1,95 @@
 /**
- * NocoDB implementation of the CRM API (drop-in replacement for crm.ts).
- *
- * NocoDB API v2 endpoints:
- *   List:   GET  /api/v2/tables/{tableId}/records
- *   Get:    GET  /api/v2/tables/{tableId}/records/{rowId}
- *   Create: POST /api/v2/tables/{tableId}/records
- *   Update: PATCH /api/v2/tables/{tableId}/records
- *   Delete: DELETE /api/v2/tables/{tableId}/records
- *   Count:  GET  /api/v2/tables/{tableId}/records/count
+ * CRM API implementation that calls the Hono backend (/api/:resource).
+ * Replaces the previous NocoDB-based implementation.
  */
 
-import { nocoFetch } from "@/lib/nocodb/client";
-import { buildWhereClause, buildSortParam } from "@/lib/nocodb/filters";
-import { getTableId } from "@/lib/nocodb/table-map";
+import { fetchApi, fetchApiList } from "@/lib/api";
 import type { ListParams } from "./crm";
 
-/** NocoDB list response shape */
-interface NocoListResponse {
-  list: Record<string, unknown>[];
-  pageInfo: { totalRows: number; page: number; pageSize: number };
+/** Parsed filter for the generic filters query param */
+export interface FilterDef {
+  field: string;
+  op: string;
+  value: string;
 }
 
-/** Get the current salesId from the NocoDB provider context (set at init) */
-let _salesId: number | undefined;
-
-export function setNocoSalesId(salesId: number) {
-  _salesId = salesId;
+/** Parse NocoDB-style where clause into FilterDef[] for the Hono filters param. */
+export function parseNocoWhereToFilters(where: string): FilterDef[] {
+  const filters: FilterDef[] = [];
+  const clauseRe = /\(([^,]+),([^,]+),([^)]*)\)/g;
+  let match;
+  while ((match = clauseRe.exec(where)) !== null) {
+    const op = match[2].toLowerCase();
+    const normalizedOp =
+      op === "is" && (match[3] === "" || match[3].toLowerCase() === "null")
+        ? "blank"
+        : op === "isnot" && (match[3] === "" || match[3].toLowerCase() === "null")
+          ? "notblank"
+          : op;
+    filters.push({
+      field: match[1],
+      op: normalizedOp,
+      value: match[3] ?? "",
+    });
+  }
+  return filters;
 }
 
-/** Resources that require salesId scoping */
-const SALES_SCOPED = new Set([
-  "companies",
-  "deals",
-  "contact_notes",
-  "deal_notes",
-  "tasks",
-  "sales",
-  "automation_rules",
-  "companies_summary",
-  "contacts_summary",
-]);
-
-function getSalesIdForResource(resource: string): number | undefined {
-  return SALES_SCOPED.has(resource) ? _salesId : undefined;
+/** No-op: backend derives sales_id from session. Kept for API compatibility. */
+export function setNocoSalesId(_salesId: number) {
+  /* no-op */
 }
 
 export async function getList<T>(
   resource: string,
   params: ListParams = {},
 ): Promise<{ data: T[]; total: number }> {
-  const tableId = getTableId(resource);
   const {
     pagination = { page: 1, perPage: 25 },
     sort,
     filter = {},
+    viewFilters,
     extraWhere,
   } = params;
 
-  const offset = (pagination.page - 1) * pagination.perPage;
-  const limit = pagination.perPage;
+  const start = (pagination.page - 1) * pagination.perPage;
+  const end = start + pagination.perPage - 1;
 
   const qs = new URLSearchParams();
-  qs.set("limit", String(limit));
-  qs.set("offset", String(offset));
+  qs.set("range", JSON.stringify([start, end]));
 
-  let where = buildWhereClause(
-    filter,
-    resource,
-    getSalesIdForResource(resource),
-  );
-  // Append view-level where clause if provided
-  if (extraWhere) {
-    where = where ? `${where}~and${extraWhere}` : extraWhere;
+  if (sort?.field) {
+    qs.set("sort", sort.field);
+    qs.set("order", sort.order ?? "ASC");
   }
-  if (where) qs.set("where", where);
 
-  const sortParam = buildSortParam(sort?.field, sort?.order);
-  if (sortParam) qs.set("sort", sortParam);
+  if (Object.keys(filter).length > 0) {
+    qs.set("filter", JSON.stringify(filter));
+  }
 
-  const response = await nocoFetch<NocoListResponse>(
-    `/api/v2/tables/${tableId}/records?${qs.toString()}`,
-  );
+  const filtersToSend = viewFilters ?? (extraWhere ? parseNocoWhereToFilters(extraWhere) : []);
+  if (filtersToSend.length > 0) {
+    qs.set("filters", JSON.stringify(filtersToSend));
+  }
 
-  const data = response.list as T[];
-  const total = response.pageInfo.totalRows;
-
-  return { data, total };
+  return fetchApiList<T>(`/api/${resource}?${qs.toString()}`);
 }
 
 export async function getOne<T>(
   resource: string,
   id: number | string,
 ): Promise<T> {
-  const tableId = getTableId(resource);
-  const record = await nocoFetch<Record<string, unknown>>(
-    `/api/v2/tables/${tableId}/records/${id}`,
-  );
-  return record as T;
+  return fetchApi<T>(`/api/${resource}/${id}`);
 }
 
 export async function create<T>(
   resource: string,
   data: unknown,
 ): Promise<T> {
-  const tableId = getTableId(resource);
-  const body = data as Record<string, unknown>;
-
-  const record = await nocoFetch<Record<string, unknown>>(
-    `/api/v2/tables/${tableId}/records`,
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    },
-  );
-  return record as T;
+  return fetchApi<T>(`/api/${resource}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function update<T>(
@@ -121,40 +97,20 @@ export async function update<T>(
   id: number | string,
   data: unknown,
 ): Promise<T> {
-  const tableId = getTableId(resource);
-  const body = data as Record<string, unknown>;
-  // NocoDB PATCH expects an array with id field
-  body.Id = Number(id);
-
-  const response = await nocoFetch<Record<string, unknown>>(
-    `/api/v2/tables/${tableId}/records`,
-    {
-      method: "PATCH",
-      body: JSON.stringify([body]),
-    },
-  );
-
-  // NocoDB PATCH returns the updated record (or array of records)
-  const record = Array.isArray(response) ? response[0] : response;
-  return record as T;
+  const body = { ...(data as Record<string, unknown>) };
+  delete body.id;
+  delete body.Id;
+  return fetchApi<T>(`/api/${resource}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function remove<T>(
   resource: string,
   id: number | string,
 ): Promise<T> {
-  const tableId = getTableId(resource);
-
-  // Fetch the record before deletion so we can return it
   const existing = await getOne<T>(resource, id);
-
-  await nocoFetch(
-    `/api/v2/tables/${tableId}/records`,
-    {
-      method: "DELETE",
-      body: JSON.stringify([{ id: Number(id) }]),
-    },
-  );
-
+  await fetchApi(`/api/${resource}/${id}`, { method: "DELETE" });
   return existing;
 }

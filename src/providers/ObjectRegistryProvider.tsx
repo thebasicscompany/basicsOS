@@ -1,8 +1,6 @@
 import { createContext, useMemo, type ReactNode } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
-import { nocoFetch } from "@/lib/nocodb/client";
-import { getTableMap } from "@/lib/nocodb/table-map";
 import { TAG_COLOR_PALETTE } from "@/field-types/colors";
 import type { NocoDBColumn } from "@/hooks/use-nocodb-columns";
 import type {
@@ -109,7 +107,7 @@ function mergeAttributes(
       name: override?.displayName ?? formatColumnName(col),
       columnName: col.column_name,
       uiType: override?.uiType ?? mappedUiType,
-      nocoUidt: col.uidt,
+      sqlType: col.uidt,
       config: {
         ...(col.dtxp ? { dtxp: col.dtxp } : {}),
         ...(dtxpOptions ? { options: dtxpOptions } : {}),
@@ -123,18 +121,6 @@ function mergeAttributes(
       order: col.order,
     };
   });
-}
-
-// ---------------------------------------------------------------------------
-// Resolve the NocoDB table ID for an object config's nocoTableName
-// ---------------------------------------------------------------------------
-
-function resolveTableId(nocoTableName: string): string | undefined {
-  const tableMap = getTableMap();
-  // Try exact match first, then normalized match
-  if (tableMap[nocoTableName]) return tableMap[nocoTableName];
-  const normalized = nocoTableName.toLowerCase().replace(/ /g, "_");
-  return tableMap[normalized];
 }
 
 // ---------------------------------------------------------------------------
@@ -172,34 +158,26 @@ export function ObjectRegistryProvider({ children }: { children: ReactNode }) {
     queryFn: () => fetchApi<ObjectConfigApiResponse[]>("/api/object-config"),
   });
 
-  // 2. Filter to active objects and resolve their table IDs
+  // 2. Filter to active objects
   const activeConfigs = useMemo(() => {
     if (!rawConfigs) return [];
-    return rawConfigs
-      .filter((cfg) => cfg.isActive)
-      .map((cfg) => ({
-        ...cfg,
-        _tableId: resolveTableId(cfg.nocoTableName),
-      }));
+    return rawConfigs.filter((cfg) => cfg.isActive);
   }, [rawConfigs]);
 
-  // 3. For each active object, fetch NocoDB columns in parallel
+  // 3. For each active object, fetch schema columns in parallel
   const columnQueries = useQueries({
     queries: activeConfigs.map((cfg) => ({
-      queryKey: ["nocodb-columns", cfg.nocoTableName],
+      queryKey: ["nocodb-columns", cfg.tableName],
       queryFn: async (): Promise<{
         slug: string;
         columns: NocoDBColumn[];
       }> => {
-        if (!cfg._tableId) {
-          return { slug: cfg.slug, columns: [] };
-        }
-        const response = await nocoFetch<{ columns: NocoDBColumn[] }>(
-          `/api/v2/meta/tables/${cfg._tableId}`,
+        const response = await fetchApi<{ columns: NocoDBColumn[] }>(
+          `/api/schema/${cfg.tableName}`,
         );
         return { slug: cfg.slug, columns: response.columns };
       },
-      enabled: !!cfg._tableId,
+      enabled: !!cfg.tableName,
     })),
   });
 
@@ -233,7 +211,7 @@ export function ObjectRegistryProvider({ children }: { children: ReactNode }) {
         pluralName: cfg.pluralName,
         icon: cfg.icon,
         iconColor: cfg.iconColor,
-        nocoTableName: cfg.nocoTableName,
+        tableName: cfg.tableName,
         type: cfg.type as "standard" | "system",
         isActive: cfg.isActive,
         position: cfg.position,

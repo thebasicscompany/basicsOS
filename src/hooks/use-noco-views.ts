@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { nocoFetch } from "@/lib/nocodb/client";
-import { getTableId } from "@/lib/nocodb/table-map";
+import { fetchApi } from "@/lib/api";
 import type {
   ViewConfig,
   ViewColumn,
@@ -102,16 +101,15 @@ function mapViewFilter(raw: NocoViewFilterRaw): ViewFilter {
 // ---------------------------------------------------------------------------
 
 /**
- * List all views for a NocoDB table (by CRM resource name).
- * GET /api/v2/meta/tables/{tableId}/views
+ * List all views for an object (by CRM resource name).
+ * GET /api/views/:objectSlug
  */
 export function useNocoViews(resource: string) {
   return useQuery<ViewConfig[]>({
     queryKey: ["noco-views", resource],
     queryFn: async () => {
-      const tableId = getTableId(resource);
-      const response = await nocoFetch<{ list: NocoViewRaw[] }>(
-        `/api/v2/meta/tables/${tableId}/views`,
+      const response = await fetchApi<{ list: NocoViewRaw[] }>(
+        `/api/views/${resource}`,
       );
       return response.list.map(mapView);
     },
@@ -125,14 +123,14 @@ export function useNocoViews(resource: string) {
 
 /**
  * Get column configuration for a specific view.
- * GET /api/v2/meta/views/{viewId}/columns
+ * GET /api/views/view/:viewId/columns
  */
 export function useNocoViewColumns(viewId: string) {
   return useQuery<ViewColumn[]>({
     queryKey: ["noco-view-columns", viewId],
     queryFn: async () => {
-      const response = await nocoFetch<{ list: NocoViewColumnRaw[] }>(
-        `/api/v2/meta/views/${viewId}/columns`,
+      const response = await fetchApi<{ list: NocoViewColumnRaw[] }>(
+        `/api/views/view/${viewId}/columns`,
       );
       return response.list.map(mapViewColumn);
     },
@@ -142,7 +140,7 @@ export function useNocoViewColumns(viewId: string) {
 
 /**
  * Update a column's visibility, order, or width within a view.
- * PATCH /api/v2/meta/views/{viewId}/columns/{columnId}
+ * PATCH /api/views/view/:viewId/columns/:columnId
  */
 export function useUpdateNocoViewColumn(viewId: string) {
   const qc = useQueryClient();
@@ -153,8 +151,8 @@ export function useUpdateNocoViewColumn(viewId: string) {
     { columnId: string; show?: boolean; order?: number; width?: string }
   >({
     mutationFn: async ({ columnId, ...updates }) => {
-      const raw = await nocoFetch<NocoViewColumnRaw>(
-        `/api/v2/meta/views/${viewId}/columns/${columnId}`,
+      const raw = await fetchApi<NocoViewColumnRaw>(
+        `/api/views/view/${viewId}/columns/${columnId}`,
         {
           method: "PATCH",
           body: JSON.stringify(updates),
@@ -174,14 +172,14 @@ export function useUpdateNocoViewColumn(viewId: string) {
 
 /**
  * List sorts for a view.
- * GET /api/v2/meta/views/{viewId}/sorts
+ * GET /api/views/view/:viewId/sorts
  */
 export function useNocoViewSorts(viewId: string) {
   return useQuery<ViewSort[]>({
     queryKey: ["noco-view-sorts", viewId],
     queryFn: async () => {
-      const response = await nocoFetch<{ list: NocoViewSortRaw[] }>(
-        `/api/v2/meta/views/${viewId}/sorts`,
+      const response = await fetchApi<{ list: NocoViewSortRaw[] }>(
+        `/api/views/view/${viewId}/sorts`,
       );
       return response.list.map(mapViewSort);
     },
@@ -191,7 +189,7 @@ export function useNocoViewSorts(viewId: string) {
 
 /**
  * Create a sort on a view.
- * POST /api/v2/meta/views/{viewId}/sorts
+ * POST /api/views/view/:viewId/sorts
  */
 export function useCreateNocoViewSort(viewId: string) {
   const qc = useQueryClient();
@@ -202,8 +200,8 @@ export function useCreateNocoViewSort(viewId: string) {
     { fk_column_id: string; direction: "asc" | "desc" }
   >({
     mutationFn: async (body) => {
-      const raw = await nocoFetch<NocoViewSortRaw>(
-        `/api/v2/meta/views/${viewId}/sorts`,
+      const raw = await fetchApi<NocoViewSortRaw>(
+        `/api/views/view/${viewId}/sorts`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -219,14 +217,14 @@ export function useCreateNocoViewSort(viewId: string) {
 
 /**
  * Delete a sort from a view.
- * DELETE /api/v2/meta/views/{viewId}/sorts/{sortId}
+ * DELETE /api/views/view/:viewId/sorts/:sortId
  */
 export function useDeleteNocoViewSort(viewId: string) {
   const qc = useQueryClient();
 
   return useMutation<void, Error, string>({
     mutationFn: async (sortId) => {
-      await nocoFetch(`/api/v2/meta/views/${viewId}/sorts/${sortId}`, {
+      await fetchApi(`/api/views/view/${viewId}/sorts/${sortId}`, {
         method: "DELETE",
       });
     },
@@ -242,14 +240,14 @@ export function useDeleteNocoViewSort(viewId: string) {
 
 /**
  * List filters for a view.
- * GET /api/v2/meta/views/{viewId}/filters
+ * GET /api/views/view/:viewId/filters
  */
 export function useNocoViewFilters(viewId: string) {
   return useQuery<ViewFilter[]>({
     queryKey: ["noco-view-filters", viewId],
     queryFn: async () => {
-      const response = await nocoFetch<{ list: NocoViewFilterRaw[] }>(
-        `/api/v2/meta/views/${viewId}/filters`,
+      const response = await fetchApi<{ list: NocoViewFilterRaw[] }>(
+        `/api/views/view/${viewId}/filters`,
       );
       return response.list.map(mapViewFilter);
     },
@@ -259,7 +257,7 @@ export function useNocoViewFilters(viewId: string) {
 
 /**
  * Create a filter on a view.
- * POST /api/v2/meta/views/{viewId}/filters
+ * POST /api/views/view/:viewId/filters
  */
 export function useCreateNocoViewFilter(viewId: string) {
   const qc = useQueryClient();
@@ -275,8 +273,8 @@ export function useCreateNocoViewFilter(viewId: string) {
     }
   >({
     mutationFn: async (body) => {
-      const raw = await nocoFetch<NocoViewFilterRaw>(
-        `/api/v2/meta/views/${viewId}/filters`,
+      const raw = await fetchApi<NocoViewFilterRaw>(
+        `/api/views/view/${viewId}/filters`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -292,14 +290,14 @@ export function useCreateNocoViewFilter(viewId: string) {
 
 /**
  * Delete a filter from a view.
- * DELETE /api/v2/meta/views/{viewId}/filters/{filterId}
+ * DELETE /api/views/view/:viewId/filters/:filterId
  */
 export function useDeleteNocoViewFilter(viewId: string) {
   const qc = useQueryClient();
 
   return useMutation<void, Error, string>({
     mutationFn: async (filterId) => {
-      await nocoFetch(`/api/v2/meta/views/${viewId}/filters/${filterId}`, {
+      await fetchApi(`/api/views/view/${viewId}/filters/${filterId}`, {
         method: "DELETE",
       });
     },

@@ -1,0 +1,450 @@
+import { Hono } from "hono";
+import { authMiddleware } from "../middleware/auth.js";
+import type { Db } from "../db/client.js";
+import type { createAuth } from "../auth.js";
+import { sql, eq, and, asc } from "drizzle-orm";
+import * as schema from "../db/schema/index.js";
+
+type BetterAuthInstance = ReturnType<typeof createAuth>;
+
+const VIEW_TYPE_TO_NUMBER: Record<string, number> = {
+  grid: 3,
+  kanban: 2,
+  gallery: 4,
+  form: 5,
+};
+const NUMBER_TO_VIEW_TYPE: Record<number, string> = {
+  3: "grid",
+  2: "kanban",
+  4: "gallery",
+  5: "form",
+};
+
+async function getSalesId(
+  db: Db,
+  session: { user?: { id: string } }
+): Promise<number | null> {
+  if (!session?.user?.id) return null;
+  const [row] = await db
+    .select({ id: schema.sales.id })
+    .from(schema.sales)
+    .where(eq(schema.sales.userId, session.user.id))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+async function getViewAndCheckOwnership(
+  db: Db,
+  viewId: string,
+  salesId: number
+): Promise<typeof schema.views.$inferSelect | null> {
+  const [row] = await db
+    .select()
+    .from(schema.views)
+    .where(and(eq(schema.views.id, viewId), eq(schema.views.salesId, salesId)))
+    .limit(1);
+  return row ?? null;
+}
+
+function viewRowToNocoRaw(row: typeof schema.views.$inferSelect): {
+  id: string;
+  title: string;
+  type: number;
+  order: number;
+  is_default: boolean;
+  lock_type?: string;
+} {
+  return {
+    id: row.id,
+    title: row.title,
+    type: VIEW_TYPE_TO_NUMBER[row.type] ?? 3,
+    order: row.displayOrder,
+    is_default: row.isDefault,
+    lock_type: row.lockType ?? undefined,
+  };
+}
+
+function columnRowToNocoRaw(row: typeof schema.viewColumns.$inferSelect): {
+  id: string;
+  fk_column_id: string;
+  title: string | null;
+  show: boolean;
+  order: number;
+  width: string | null;
+} {
+  return {
+    id: row.id,
+    fk_column_id: row.fieldId,
+    title: row.title,
+    show: row.show,
+    order: row.displayOrder,
+    width: row.width,
+  };
+}
+
+function sortRowToNocoRaw(row: typeof schema.viewSorts.$inferSelect): {
+  id: string;
+  fk_column_id: string;
+  direction: "asc" | "desc";
+  order: number;
+} {
+  return {
+    id: row.id,
+    fk_column_id: row.fieldId,
+    direction: row.direction as "asc" | "desc",
+    order: row.displayOrder,
+  };
+}
+
+function filterRowToNocoRaw(row: typeof schema.viewFilters.$inferSelect): {
+  id: string;
+  fk_column_id: string;
+  comparison_op: string;
+  value: unknown;
+  logical_op: string;
+} {
+  return {
+    id: row.id,
+    fk_column_id: row.fieldId,
+    comparison_op: row.comparisonOp,
+    value: row.value,
+    logical_op: row.logicalOp,
+  };
+}
+
+/** Format column_name for display (e.g. "company_id" → "Company Id"). */
+function formatColumnTitle(columnName: string): string {
+  if (/[_]/.test(columnName) || /^[A-Z_]+$/.test(columnName)) {
+    return columnName
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return columnName;
+}
+
+/**
+ * Return list of { fieldId, title } for a table (base table name).
+ * Matches the schema API: base columns from information_schema + custom fields.
+ * Used to seed default view_columns when creating the first view for an object.
+ */
+async function getColumnListForTable(
+  db: Db,
+  baseTable: string
+): Promise<{ fieldId: string; title: string }[]> {
+  const result = await db.execute(
+    sql`SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = ${baseTable}
+        ORDER BY ordinal_position`
+  );
+  const raw = Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? [];
+  const rows = raw as { column_name: string }[];
+  const out: { fieldId: string; title: string }[] = rows.map((r) => ({
+    fieldId: r.column_name,
+    title: formatColumnTitle(r.column_name),
+  }));
+
+  const customRows = await db
+    .select()
+    .from(schema.customFieldDefs)
+    .where(eq(schema.customFieldDefs.resource, baseTable))
+    .orderBy(asc(schema.customFieldDefs.position), asc(schema.customFieldDefs.id));
+  for (const def of customRows) {
+    out.push({ fieldId: `custom_${def.id}`, title: def.label });
+  }
+  return out;
+}
+
+/** Seed view_columns for a view from the object's table schema. */
+async function seedDefaultViewColumns(
+  db: Db,
+  viewId: string,
+  objectSlug: string
+): Promise<void> {
+  const [objConfig] = await db
+    .select({ tableName: schema.objectConfig.tableName })
+    .from(schema.objectConfig)
+    .where(eq(schema.objectConfig.slug, objectSlug))
+    .limit(1);
+  if (!objConfig) return;
+  const columns = await getColumnListForTable(db, objConfig.tableName);
+  if (columns.length === 0) return;
+  await db.insert(schema.viewColumns).values(
+    columns.map((col, i) => ({
+      viewId,
+      fieldId: col.fieldId,
+      title: col.title,
+      show: true,
+      displayOrder: i,
+    }))
+  );
+}
+
+export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
+  const app = new Hono();
+  app.use("*", authMiddleware(auth));
+
+  app.get("/:objectSlug", async (c) => {
+    const objectSlug = c.req.param("objectSlug");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    let list = await db
+      .select()
+      .from(schema.views)
+      .where(
+        and(
+          eq(schema.views.objectSlug, objectSlug),
+          eq(schema.views.salesId, salesId)
+        )
+      )
+      .orderBy(asc(schema.views.displayOrder), asc(schema.views.createdAt));
+
+    if (list.length === 0) {
+      const [inserted] = await db
+        .insert(schema.views)
+        .values({
+          objectSlug,
+          salesId,
+          title: "Grid View",
+          type: "grid",
+          displayOrder: 0,
+          isDefault: true,
+        })
+        .returning();
+      if (inserted) {
+        list = [inserted];
+        await seedDefaultViewColumns(db, inserted.id, objectSlug);
+      }
+    } else {
+      // Backfill: if default view has no columns, seed them (e.g. after deploy)
+      const defaultView = list.find((v) => v.isDefault) ?? list[0];
+      const existingCols = await db
+        .select()
+        .from(schema.viewColumns)
+        .where(eq(schema.viewColumns.viewId, defaultView.id))
+        .limit(1);
+      if (existingCols.length === 0) {
+        await seedDefaultViewColumns(db, defaultView.id, objectSlug);
+      }
+    }
+
+    return c.json({ list: list.map(viewRowToNocoRaw) });
+  });
+
+  app.post("/:objectSlug", async (c) => {
+    const objectSlug = c.req.param("objectSlug");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const body = await c.req.json<{ title: string; type?: number }>();
+    const typeNum = body.type ?? 3;
+    const typeStr = NUMBER_TO_VIEW_TYPE[typeNum] ?? "grid";
+
+    const [inserted] = await db
+      .insert(schema.views)
+      .values({
+        objectSlug,
+        salesId,
+        title: body.title ?? "Untitled",
+        type: typeStr,
+        displayOrder: 0,
+        isDefault: false,
+      })
+      .returning();
+
+    if (!inserted) return c.json({ error: "Insert failed" }, 500);
+    return c.json(viewRowToNocoRaw(inserted));
+  });
+
+  app.get("/view/:viewId/columns", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const list = await db
+      .select()
+      .from(schema.viewColumns)
+      .where(eq(schema.viewColumns.viewId, viewId))
+      .orderBy(asc(schema.viewColumns.displayOrder), asc(schema.viewColumns.id));
+
+    return c.json({ list: list.map(columnRowToNocoRaw) });
+  });
+
+  app.patch("/view/:viewId/columns/:columnId", async (c) => {
+    const viewId = c.req.param("viewId");
+    const columnId = c.req.param("columnId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const body = await c.req.json<{ show?: boolean; order?: number; width?: string }>();
+    const updates: Partial<typeof schema.viewColumns.$inferInsert> = {};
+    if (typeof body.show === "boolean") updates.show = body.show;
+    if (typeof body.order === "number") updates.displayOrder = body.order;
+    if (body.width !== undefined) updates.width = body.width;
+
+    const [updated] = await db
+      .update(schema.viewColumns)
+      .set(updates)
+      .where(
+        and(
+          eq(schema.viewColumns.viewId, viewId),
+          eq(schema.viewColumns.id, columnId)
+        )
+      )
+      .returning();
+
+    if (!updated) return c.json({ error: "Column not found" }, 404);
+    return c.json(columnRowToNocoRaw(updated));
+  });
+
+  app.get("/view/:viewId/sorts", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const list = await db
+      .select()
+      .from(schema.viewSorts)
+      .where(eq(schema.viewSorts.viewId, viewId))
+      .orderBy(asc(schema.viewSorts.displayOrder), asc(schema.viewSorts.id));
+
+    return c.json({ list: list.map(sortRowToNocoRaw) });
+  });
+
+  app.post("/view/:viewId/sorts", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const body = await c.req.json<{ fk_column_id: string; direction: "asc" | "desc" }>();
+    const existing = await db
+      .select()
+      .from(schema.viewSorts)
+      .where(eq(schema.viewSorts.viewId, viewId));
+    const displayOrder = existing.length;
+
+    const [inserted] = await db
+      .insert(schema.viewSorts)
+      .values({
+        viewId,
+        fieldId: body.fk_column_id,
+        direction: body.direction ?? "asc",
+        displayOrder,
+      })
+      .returning();
+
+    if (!inserted) return c.json({ error: "Insert failed" }, 500);
+    return c.json(sortRowToNocoRaw(inserted));
+  });
+
+  app.delete("/view/:viewId/sorts/:sortId", async (c) => {
+    const viewId = c.req.param("viewId");
+    const sortId = c.req.param("sortId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    await db
+      .delete(schema.viewSorts)
+      .where(
+        and(
+          eq(schema.viewSorts.viewId, viewId),
+          eq(schema.viewSorts.id, sortId)
+        )
+      );
+    return c.json({});
+  });
+
+  app.get("/view/:viewId/filters", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const list = await db
+      .select()
+      .from(schema.viewFilters)
+      .where(eq(schema.viewFilters.viewId, viewId));
+
+    return c.json({ list: list.map(filterRowToNocoRaw) });
+  });
+
+  app.post("/view/:viewId/filters", async (c) => {
+    const viewId = c.req.param("viewId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    const body = await c.req.json<{
+      fk_column_id: string;
+      comparison_op: string;
+      value: unknown;
+      logical_op?: "and" | "or";
+    }>();
+
+    const [inserted] = await db
+      .insert(schema.viewFilters)
+      .values({
+        viewId,
+        fieldId: body.fk_column_id,
+        comparisonOp: body.comparison_op,
+        value: body.value != null ? String(body.value) : null,
+        logicalOp: body.logical_op ?? "and",
+      })
+      .returning();
+
+    if (!inserted) return c.json({ error: "Insert failed" }, 500);
+    return c.json(filterRowToNocoRaw(inserted));
+  });
+
+  app.delete("/view/:viewId/filters/:filterId", async (c) => {
+    const viewId = c.req.param("viewId");
+    const filterId = c.req.param("filterId");
+    const session = c.get("session") as { user?: { id: string } };
+    const salesId = await getSalesId(db, session);
+    if (salesId == null) return c.json({ error: "User not found in CRM" }, 404);
+
+    const view = await getViewAndCheckOwnership(db, viewId, salesId);
+    if (!view) return c.json({ error: "View not found" }, 404);
+
+    await db
+      .delete(schema.viewFilters)
+      .where(
+        and(
+          eq(schema.viewFilters.viewId, viewId),
+          eq(schema.viewFilters.id, filterId)
+        )
+      );
+    return c.json({});
+  });
+
+  return app;
+}

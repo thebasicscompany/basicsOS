@@ -6,6 +6,7 @@
 import "dotenv/config";
 import { randomUUID } from "crypto";
 import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
 import { createDb } from "./client.js";
 import * as schema from "./schema/index.js";
 
@@ -49,9 +50,75 @@ async function ensureAdminUser(db: ReturnType<typeof createDb>): Promise<number>
   }
 
   // Fallback: direct DB insert (no server needed)
-  console.log("[seed] Signup API unavailable, creating user directly...");
-  const userId = randomUUID();
   const now = new Date();
+  const existingUsers = await db
+    .select()
+    .from(schema.user)
+    .where(eq(schema.user.email, DEMO_USER.email))
+    .limit(1);
+
+  let userId: string;
+  if (existingUsers.length > 0) {
+    console.log("[seed] Admin user already exists, ensuring org/sales...");
+    userId = existingUsers[0].id;
+    const existingSales = await db
+      .select()
+      .from(schema.sales)
+      .where(eq(schema.sales.userId, userId))
+      .limit(1);
+    if (existingSales.length > 0) return existingSales[0].id;
+
+    const existingAccounts = await db
+      .select()
+      .from(schema.account)
+      .where(eq(schema.account.userId, userId))
+      .limit(1);
+    if (existingAccounts.length === 0) {
+      const passwordHash = await hashPassword(DEMO_USER.password);
+      await db.insert(schema.account).values({
+        id: randomUUID(),
+        accountId: userId,
+        providerId: "credential",
+        userId,
+        password: passwordHash,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    let orgId: number;
+    const existingOrgs = await db
+      .select()
+      .from(schema.organizations)
+      .limit(1);
+    if (existingOrgs.length > 0) {
+      orgId = existingOrgs[0].id;
+    } else {
+      const [org] = await db
+        .insert(schema.organizations)
+        .values({ name: `${DEMO_USER.firstName}'s Organization` })
+        .returning();
+      if (!org) throw new Error("Failed to create organization");
+      orgId = org.id;
+    }
+
+    const [sale] = await db
+      .insert(schema.sales)
+      .values({
+        firstName: DEMO_USER.firstName,
+        lastName: DEMO_USER.lastName,
+        email: DEMO_USER.email,
+        userId,
+        organizationId: orgId,
+        administrator: true,
+      })
+      .returning();
+    if (!sale) throw new Error("Failed to create sales");
+    return sale.id;
+  }
+
+  console.log("[seed] Creating user directly...");
+  userId = randomUUID();
   const passwordHash = await hashPassword(DEMO_USER.password);
 
   await db.insert(schema.user).values({

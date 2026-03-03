@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { nocoFetch } from "@/lib/nocodb/client";
-import { getTableId } from "@/lib/nocodb/table-map";
+import { fetchApi } from "@/lib/api";
 import {
   useNocoViews,
   useNocoViewColumns,
@@ -102,17 +101,13 @@ export function useViews(objectSlug: string): UseViewsReturn {
     { title: string; type?: ViewConfig["type"] }
   >({
     mutationFn: async ({ title, type = "grid" }) => {
-      const tableId = getTableId(objectSlug);
-      const raw = await nocoFetch<NocoViewCreateRaw>(
-        `/api/v2/meta/tables/${tableId}/views`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            title,
-            type: VIEW_TYPE_TO_NOCO[type] ?? 3,
-          }),
-        },
-      );
+      const raw = await fetchApi<NocoViewCreateRaw>(`/api/views/${objectSlug}`, {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          type: VIEW_TYPE_TO_NOCO[type] ?? 3,
+        }),
+      });
       return {
         id: raw.id,
         title: raw.title,

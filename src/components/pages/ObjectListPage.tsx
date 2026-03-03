@@ -58,29 +58,18 @@ export function ObjectListPage() {
     };
   }, [viewState.sorts, attributes]);
 
-  // Build NocoDB where clause from view filters
-  const extraWhere = useMemo(() => {
+  // View-level filters as generic filter array for the API
+  const viewFilterParams = useMemo(() => {
     if (!viewState.filters.length) return undefined;
-    const clauses = viewState.filters.map((f) => {
-      // Map fieldId (column ID) to column name
+    return viewState.filters.map((f) => {
       const attr = attributes.find((a) => a.id === f.fieldId);
       const colName = attr?.columnName ?? f.fieldId;
-      const op = f.operator || "eq";
-      if (op === "blank") return `(${colName},is,null)`;
-      if (op === "notblank") return `(${colName},isnot,null)`;
-      if (op === "like" || op === "nlike") {
-        return `(${colName},${op},%${f.value ?? ""}%)`;
-      }
-      return `(${colName},${op},${f.value ?? ""})`;
+      return {
+        field: colName,
+        op: f.operator || "eq",
+        value: String(f.value ?? ""),
+      };
     });
-    // Join with logical operators (first filter has no prefix, rest use their logicalOp)
-    return clauses
-      .map((clause, i) => {
-        if (i === 0) return clause;
-        const logOp = viewState.filters[i].logicalOp ?? "and";
-        return `~${logOp}${clause}`;
-      })
-      .join("");
   }, [viewState.filters, attributes]);
 
   // Fetch records
@@ -88,7 +77,7 @@ export function ObjectListPage() {
     page,
     perPage,
     sort: sortParam,
-    extraWhere,
+    viewFilters: viewFilterParams,
   });
 
   const updateRecord = useUpdateRecord(objectSlug);

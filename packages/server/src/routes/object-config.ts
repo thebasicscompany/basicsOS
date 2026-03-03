@@ -171,7 +171,7 @@ export function createObjectConfigRoutes(
         pluralName?: string;
         icon?: string;
         iconColor?: string;
-        nocoTableName?: string;
+        tableName?: string;
         type?: string;
         isActive?: boolean;
         position?: number;
@@ -195,8 +195,8 @@ export function createObjectConfigRoutes(
       if (body.pluralName !== undefined) updates.pluralName = body.pluralName;
       if (body.icon !== undefined) updates.icon = body.icon;
       if (body.iconColor !== undefined) updates.iconColor = body.iconColor;
-      if (body.nocoTableName !== undefined)
-        updates.nocoTableName = body.nocoTableName;
+      if (body.tableName !== undefined)
+        updates.tableName = body.tableName;
       if (body.type !== undefined) updates.type = body.type;
       if (body.isActive !== undefined) updates.isActive = body.isActive;
       if (body.position !== undefined) updates.position = body.position;

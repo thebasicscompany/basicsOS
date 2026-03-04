@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useState, useReducer, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { XIcon } from "@phosphor-icons/react";
 import type {
   OverlaySettings,
   BrandingInfo,
@@ -391,7 +392,7 @@ export const OverlayApp = () => {
             e.currentTarget.style.background = "var(--overlay-close-bg)";
           }}
         >
-          x
+          <XIcon size={10} weight="bold" aria-hidden="true" />
         </button>
         <div
           style={{

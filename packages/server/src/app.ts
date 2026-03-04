@@ -13,6 +13,8 @@ import { createGatewayChatRoutes } from "./routes/gateway-chat.js";
 import { createObjectConfigRoutes } from "./routes/object-config.js";
 import { createSchemaRoutes } from "./routes/schema.js";
 import { createViewRoutes } from "./routes/views.js";
+import { createVoiceProxyRoutes } from "./routes/voice-proxy.js";
+import { createStreamAssistantRoutes } from "./routes/stream-assistant.js";
 
 export function createApp(db: Db, env: Env) {
   const auth = createAuth(db, env.BETTER_AUTH_URL, env.BETTER_AUTH_SECRET);
@@ -76,6 +78,10 @@ export function createApp(db: Db, env: Env) {
 
   // Assistant
   app.route("/assistant", createAssistantRoutes(db, auth, env));
+
+  // Voice pill BFF — /v1/audio/* and /stream/assistant
+  app.route("/v1/audio", createVoiceProxyRoutes(db, auth, env));
+  app.route("/stream", createStreamAssistantRoutes(db, auth, env));
 
   return app;
 }

@@ -7,6 +7,14 @@ export default defineConfig({
   main: {},
   preload: {},
   renderer: {
+    build: {
+      rollupOptions: {
+        input: {
+          index: path.resolve(__dirname, "src/renderer/index.html"),
+          overlay: path.resolve(__dirname, "src/renderer/overlay.html"),
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
@@ -25,6 +33,8 @@ export default defineConfig({
       proxy: {
         "/api": { target: "http://localhost:3001", changeOrigin: true },
         "/assistant": { target: "http://localhost:3001", changeOrigin: true },
+        "/v1": { target: "http://localhost:3001", changeOrigin: true },
+        "/stream": { target: "http://localhost:3001", changeOrigin: true },
       },
     },
   },

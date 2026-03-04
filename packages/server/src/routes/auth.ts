@@ -100,6 +100,94 @@ export function createAuthRoutes(
     return c.json({ ok: true });
   });
 
+  app.get("/organization", authMiddleware(auth), async (c) => {
+    const session = c.get("session") as { user?: { id: string } };
+    const userId = session?.user?.id;
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+    const [crmUser] = await db
+      .select()
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.userId, userId))
+      .limit(1);
+    if (!crmUser) return c.json({ error: "User not found in CRM" }, 404);
+    if (!crmUser.organizationId) return c.json({ error: "No organization found" }, 404);
+
+    const [org] = await db
+      .select()
+      .from(schema.organizations)
+      .where(eq(schema.organizations.id, crmUser.organizationId))
+      .limit(1);
+    if (!org) return c.json({ error: "Organization not found" }, 404);
+
+    return c.json({
+      id: org.id,
+      name: org.name,
+      logo: org.logo,
+    });
+  });
+
+  app.patch("/organization", authMiddleware(auth), async (c) => {
+    const session = c.get("session") as { user?: { id: string } };
+    const userId = session?.user?.id;
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+    const [crmUser] = await db
+      .select()
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.userId, userId))
+      .limit(1);
+    if (!crmUser) return c.json({ error: "User not found in CRM" }, 404);
+    if (!crmUser.administrator) return c.json({ error: "Admin access required" }, 403);
+    if (!crmUser.organizationId) return c.json({ error: "No organization found" }, 404);
+
+    const body = await c.req
+      .json<{
+        name?: string;
+        logo?: { src?: string } | null;
+      }>()
+      .catch(() => ({}));
+
+    const updates: Partial<{
+      name: string;
+      logo: { src: string } | null;
+      updatedAt: Date;
+    }> = {};
+
+    if (typeof body.name === "string") {
+      const name = body.name.trim();
+      if (!name) return c.json({ error: "Organization name cannot be empty" }, 400);
+      updates.name = name.slice(0, 255);
+    }
+
+    if (body.logo === null) {
+      updates.logo = null;
+    } else if (body.logo && typeof body.logo.src === "string") {
+      const src = body.logo.src.trim();
+      updates.logo = src ? { src } : null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return c.json({ error: "No valid fields to update" }, 400);
+    }
+
+    updates.updatedAt = new Date();
+
+    const [org] = await db
+      .update(schema.organizations)
+      .set(updates)
+      .where(eq(schema.organizations.id, crmUser.organizationId))
+      .returning();
+
+    if (!org) return c.json({ error: "Organization not found" }, 404);
+
+    return c.json({
+      id: org.id,
+      name: org.name,
+      logo: org.logo,
+    });
+  });
+
   app.post("/signup", async (c) => {
     const body = await c.req.json<{
       email: string;

@@ -1,4 +1,4 @@
-import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react"
+import { CaretUpDownIcon, PlusIcon } from "@phosphor-icons/react"
 import * as React from "react"
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ export function WorkspaceSwitcher({
   workspaces: {
     name: string
     logo: React.ElementType
+    logoUrl?: string | null
     plan: string
   }[]
 }) {
@@ -42,13 +43,21 @@ export function WorkspaceSwitcher({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <activeWorkspace.logo className="size-4" />
+                {activeWorkspace.logoUrl ? (
+                  <img
+                    src={activeWorkspace.logoUrl}
+                    alt={activeWorkspace.name}
+                    className="size-4 rounded-sm object-cover"
+                  />
+                ) : (
+                  <activeWorkspace.logo className="size-4" />
+                )}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{activeWorkspace.name}</span>
                 <span className="truncate text-xs">{activeWorkspace.plan}</span>
               </div>
-              <CaretDownIcon className="ml-auto" />
+              <CaretUpDownIcon size={32} className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -67,7 +76,15 @@ export function WorkspaceSwitcher({
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
-                  <workspace.logo className="size-3.5 shrink-0" />
+                  {workspace.logoUrl ? (
+                    <img
+                      src={workspace.logoUrl}
+                      alt={workspace.name}
+                      className="size-3.5 shrink-0 rounded-sm object-cover"
+                    />
+                  ) : (
+                    <workspace.logo className="size-3.5 shrink-0" />
+                  )}
                 </div>
                 {workspace.name}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>

@@ -4,6 +4,7 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher"
 import { NavGroup } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { ObjectRegistryNavSection } from "@/components/ObjectRegistryNavSection"
+import { useOrganization } from "@/hooks/use-organization"
 import { SIDEBAR_NAV_APPS, SIDEBAR_NAV_AUTOMATIONS } from "@/config/sidebar-nav"
 import { Kbd } from "@/components/ui/kbd"
 import {
@@ -21,16 +22,21 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const WORKSPACES = [
-  { name: "Basics Hub", logo: LayoutIcon, plan: "Desktop" },
-]
-
 export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
+  const { data: organization } = useOrganization()
+  const workspaces = [
+    {
+      name: organization?.name ?? "Basics Hub",
+      logo: LayoutIcon,
+      logoUrl: organization?.logo?.src ?? null,
+      plan: "Desktop",
+    },
+  ]
   const shortcutLabel = getCommandPaletteShortcutLabel()
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <WorkspaceSwitcher workspaces={WORKSPACES} />
+        <WorkspaceSwitcher workspaces={workspaces} />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

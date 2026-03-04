@@ -126,7 +126,23 @@ The Electron app will open. Log in with:
 | `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5435/crm` | PostgreSQL connection string |
 | `BETTER_AUTH_SECRET` | Yes | N/A | Better Auth secret (min 32 chars) |
 | `BETTER_AUTH_URL` | No | `http://localhost:5173` | Auth callback base URL |
+| `BASICOS_API_URL` | No | `https://api.basicsos.com` | AI gateway URL (chat, embeddings, voice) |
 | `PORT` | No | `3001` | API server port |
+
+*For self-hosting: set `BASICOS_API_URL` to your gateway. Users add their API key in Settings.*
+
+---
+
+## API Keys and BYOK
+
+The app uses the Basics API gateway. **We recommend a Basics API key** — one key for chat, embeddings, and voice. Get one at [basicsos.com/dashboard](https://basicsos.com/dashboard) and add it in Settings.
+
+To run against your own gateway (self-hosting):
+
+1. Set `BASICOS_API_URL` in `packages/server/.env` to your gateway URL.
+2. Users add their API key in Settings as usual. Your gateway must accept the same key format (`bos_live_sk_` / `bos_test_sk_`) or you'll need to adjust validation in `GatewayProvider` and `SettingsPage`.
+
+You can also use your own provider keys (OpenAI, Anthropic, Gemini, Deepgram) with our gateway by passing `x-byok-provider` and `x-byok-api-key` headers when calling the API—you still get observability, logging, and unified usage tracking. See the [gateway API documentation](https://basicsos.com/api-docs) for details. (CRM Settings accepts Basics key only; BYOK via headers is for direct API integrations.)
 
 ---
 

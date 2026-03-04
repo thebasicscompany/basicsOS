@@ -1,106 +1,203 @@
-# BasicsOS
+<p align="center">
+  <img src="./public/logos/basicos-wordmark.png" width="220" alt="BasicsOS" />
+</p>
 
-A CRM hub built with React, Vite, and a Node/Hono REST API. Contact/deal/company management, task tracking, notes, AI chat, automations, voice (placeholder), and MCP viewer. Data is backed by PostgreSQL via Drizzle; auth uses Better Auth.
+<h3 align="center">Open-Source CRM Hub for Modern Teams</h3>
 
-## Quick Start
+<p align="center">
+  Contacts, companies, deals, tasks, notes, AI chat, automations, and desktop support in one platform.<br/>
+  <strong>Open-source core. Commercial services available.</strong>
+</p>
 
-**Prerequisites:** Node 22+, pnpm, Docker
+<p align="center">
+  <a href="https://www.basicsos.com/">Website</a> &bull;
+  <a href="https://github.com/thebasicscompany/basicsOSnew">GitHub</a>
+</p>
 
-```sh
-# 1. Clone and install
-git clone https://github.com/thebasicscompany/basicsOSnew.git
-cd basicsOSnew
-pnpm install
-
-# 2. Start Postgres
-docker compose up -d
-
-# 3. Configure and migrate
-cd packages/server && cp .env.example .env
-# Edit .env: set BETTER_AUTH_SECRET (min 32 chars). Example: openssl rand -base64 32
-pnpm db:migrate
-pnpm db:seed   # creates admin@example.com / admin123 + demo data
-
-# 4. Run the app (from repo root)
-cd ../..
-pnpm run dev:rest
-```
-
-Open **http://localhost:5173**. Log in with the seed user. (For Electron dev, use `pnpm dev:all`; the app uses the Vite proxy so auth cookies work.)
-
-| Email | Password |
-|-------|----------|
-| `admin@example.com` | `admin123` |
+<p align="center">
+  <img src="https://img.shields.io/badge/frontend-React%2019-61DAFB?style=flat-square" alt="React 19" />
+  <img src="https://img.shields.io/badge/backend-Hono%20%2B%20Drizzle-0EA5E9?style=flat-square" alt="Hono + Drizzle" />
+  <img src="https://img.shields.io/badge/database-PostgreSQL-336791?style=flat-square" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT" />
+  <img src="https://img.shields.io/badge/version-0.1.0-green?style=flat-square" alt="v0.1.0" />
+</p>
 
 ---
 
-## Features
+## What is BasicsOS?
 
-- 📇 **Organize Contacts**: Keep all your contacts in one easily accessible place.
-- ⏰ **Create Tasks & Set Reminders**: Never miss a follow-up or deadline.
-- 📝 **Take Notes**: Capture important details and insights effortlessly.
-- 📊 **Manage Deals**: Visualize and track your sales pipeline in a Kanban board.
-- 🤖 **AI Chat & Assistant**: Built-in AI chat and streaming assistant via the server.
-- 🔄 **Automations**: Workflow builder with triggers and actions (email, AI, CRM, Slack, Gmail).
-- 🔐 **Authentication**: Email/password signup and login via Better Auth.
-- 📜 **Track Activity History**: View interactions in aggregated activity logs.
-- 🔗 **Integrate via API**: REST API for CRM resources.
-- 🖥️ **Electron App**: Desktop build with overlay support.
-- 🛠️ **Customize Everything**: Add custom fields, object config, views, and themes.
+BasicsOS is a CRM hub built with React, Vite, and a Node/Hono REST API. It supports configurable CRM objects, custom fields, generic list/detail views, workflow automations, and AI-assisted operations.
 
-## Setup Details
+This repository is the open-source codebase. Commercial offerings may include hosted infrastructure, support SLAs, and managed services.
 
-### Environment
+---
 
-`packages/server/.env`:
+## Product Screenshots
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5435/crm` | Postgres connection string |
-| `BETTER_AUTH_SECRET` | Yes | — | Min 32 chars. Generate with `openssl rand -base64 32` |
-| `BETTER_AUTH_URL` | No | `http://localhost:5173` | Frontend URL (for auth redirects) |
-| `PORT` | No | `3001` | API server port |
+Add product visuals here when ready.
 
-### Commands
+```md
+![Dashboard](./public/screenshots/dashboard.png)
+![Deals Pipeline](./public/screenshots/deals-pipeline.png)
+![AI Chat](./public/screenshots/ai-chat.png)
+```
 
-| Command | Description |
-|---------|-------------|
-| `pnpm run dev:rest` | Start frontend + API (recommended) |
-| `pnpm run dev:server` | Start API only |
-| `pnpm run dev` | Start frontend only |
-| `pnpm run dev:all` | Start API + Electron app |
-| `pnpm run dev:electron` | Start Electron app only (with API proxy) |
-| `pnpm run build` | Build frontend |
-| `pnpm run build:electron` | Build Electron app |
+---
 
-### Database (Drizzle)
+## Core Features
+
+- Configurable CRM objects and custom fields
+- Contacts, companies, deals, tasks, notes, and activity tracking
+- Saved views, filters, and sorts across list/detail experiences
+- Built-in AI chat and streaming assistant
+- Workflow automation builder (email, AI, CRM, Slack, Gmail)
+- REST API server with Hono + Drizzle + PostgreSQL
+- Optional Electron desktop app
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+You must have all of the following installed before running BasicsOS locally:
+
+- Node.js `22+` (LTS recommended)
+- pnpm `10+`
+- Docker Desktop (or Docker Engine + Compose plugin)
+- Git
+
+Quick checks:
+
+```sh
+node -v
+pnpm -v
+docker --version
+docker compose version
+git --version
+```
+
+If any command fails, install that dependency first.
+
+### 1. Clone and install
+
+```sh
+git clone https://github.com/thebasicscompany/basicsOSnew.git
+cd basicsOSnew
+pnpm install
+```
+
+### 2. Start Postgres
+
+```sh
+docker compose up -d
+```
+
+### 3. Configure backend and migrate
 
 ```sh
 cd packages/server
-pnpm db:generate   # Generate migrations
-pnpm db:migrate    # Run migrations
-pnpm db:push       # Push schema (dev)
-pnpm db:seed       # Seed demo data
-pnpm db:studio     # Drizzle Studio
+cp .env.example .env
+# Set BETTER_AUTH_SECRET (min 32 chars), e.g. openssl rand -base64 32
+pnpm db:migrate
+pnpm db:seed
+cd ../..
 ```
 
-## Testing & Code Quality
+### 4. Run frontend + API
 
 ```sh
+pnpm run dev:rest
+```
+
+Open `http://localhost:5173` and log in with:
+
+- Email: `admin@example.com`
+- Password: `admin123`
+
+---
+
+## Environment Variables
+
+`packages/server/.env`
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5435/crm` | PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Yes | N/A | Better Auth secret (min 32 chars) |
+| `BETTER_AUTH_URL` | No | `http://localhost:5173` | Auth callback base URL |
+| `PORT` | No | `3001` | API server port |
+
+---
+
+## Monorepo Structure
+
+```text
+packages/
+  server/
+  hub/
+  automations/
+  voice/
+  mcp-viewer/
+  shared/
+src/
+  components/
+  hooks/
+  providers/
+```
+
+---
+
+## Common Commands
+
+```sh
+pnpm run dev:rest      # frontend + API (recommended)
+pnpm run dev           # frontend only
+pnpm run dev:server    # API only
+pnpm run dev:all       # API + Electron
 pnpm test
 pnpm run typecheck
 pnpm run lint
-pnpm run lint:apply
-pnpm run prettier:apply
+pnpm run build
 ```
 
-## Technology Stack
+Database commands:
 
-- **Frontend**: React 19, TypeScript, Vite, React Router v7, TanStack Query
-- **UI**: Shadcn UI, Radix UI, Tailwind CSS v4
-- **Backend**: Node + Hono, Drizzle ORM, PostgreSQL, Better Auth
-- **Packages**: `@basics-os/server`, `@basics-os/hub`, `@basics-os/automations`, `@basics-os/voice`, `@basics-os/mcp-viewer`, `@basics-os/shared`
+```sh
+cd packages/server
+pnpm db:generate
+pnpm db:migrate
+pnpm db:push
+pnpm db:seed
+pnpm db:studio
+```
+
+---
+
+## Troubleshooting
+
+- Ensure Docker is running and Postgres container is healthy.
+- Confirm ports are free: `5173` (frontend), `3001` (API), `5435` (Postgres).
+- If auth fails, verify `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in `packages/server/.env`.
+
+---
+
+## OSS and Commercial
+
+BasicsOS is open-source under MIT in this repository.
+
+Commercial offerings can include hosted deployments, managed operations, compliance support, and enterprise service layers on top of the OSS core.
+
+---
+
+## Contributing
+
+Contributions are welcome. See [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md).
+
+## Code of Conduct
+
+See [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT License. See [LICENSE.md](./LICENSE.md).
+MIT. See [`LICENSE.md`](./LICENSE.md).

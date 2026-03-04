@@ -5,7 +5,7 @@ import type { Db } from "../db/client.js";
 import type { Env } from "../env.js";
 import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, or, isNull, inArray } from "drizzle-orm";
 import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 import { writeAuditLogSafe } from "../lib/audit-log.js";
 
@@ -28,18 +28,41 @@ export function createObjectConfigRoutes(
 
   // GET / — List all objects with their attribute overrides
   app.get("/", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+    const orgId = authz.crmUser.organizationId;
+    if (!orgId) return c.json({ error: "Organization not found" }, 404);
+
     try {
       const objects = await db
         .select()
         .from(schema.objectConfig)
+        .where(
+          or(
+            eq(schema.objectConfig.organizationId, orgId),
+            isNull(schema.objectConfig.organizationId),
+          ),
+        )
         .orderBy(
           asc(schema.objectConfig.position),
           asc(schema.objectConfig.id),
         );
+      const objectIds = objects.map((obj) => obj.id);
 
       const overrides = await db
         .select()
         .from(schema.objectAttributeOverrides)
+        .where(
+          and(
+            objectIds.length > 0
+              ? inArray(schema.objectAttributeOverrides.objectConfigId, objectIds)
+              : eq(schema.objectAttributeOverrides.objectConfigId, -1),
+            or(
+              eq(schema.objectAttributeOverrides.organizationId, orgId),
+              isNull(schema.objectAttributeOverrides.organizationId),
+            ),
+          ),
+        )
         .orderBy(asc(schema.objectAttributeOverrides.id));
 
       // Group overrides by objectConfigId

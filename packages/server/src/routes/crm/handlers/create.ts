@@ -20,6 +20,7 @@ import { snakeToCamel } from "../utils.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
 import { getWriteAllowlist } from "./field-allowlists.js";
 import { resolveStoredApiKey } from "../../../lib/api-key-crypto.js";
+import { validateWritePayload } from "./payload-schemas.js";
 
 export function createCreateHandler(db: Db, env: Env) {
   return async (c: Context) => {
@@ -52,12 +53,15 @@ export function createCreateHandler(db: Db, env: Env) {
     if (!table) return c.json({ error: "Unknown resource" }, 404);
 
     const bodyRaw = snakeToCamel(rawBody) as Record<string, unknown>;
+    const validated = validateWritePayload(resource, "create", bodyRaw);
+    if (!validated.success) return c.json({ error: validated.error }, 400);
+
     const allowedFields = getWriteAllowlist(resource);
     if (allowedFields.size === 0) {
       return c.json({ error: "Create not supported for this resource" }, 400);
     }
     const body: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(bodyRaw)) {
+    for (const [key, value] of Object.entries(validated.data)) {
       if (allowedFields.has(key)) body[key] = value;
     }
     if (Object.keys(body).length === 0) {

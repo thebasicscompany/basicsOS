@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
-import { sql, eq, and, asc } from "drizzle-orm";
+import { sql, eq, and, asc, or, isNull } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
@@ -139,7 +139,8 @@ function formatColumnTitle(columnName: string): string {
  */
 async function getColumnListForTable(
   db: Db,
-  baseTable: string
+  baseTable: string,
+  organizationId: string
 ): Promise<{ fieldId: string; title: string }[]> {
   const result = await db.execute(
     sql`SELECT column_name FROM information_schema.columns
@@ -156,7 +157,15 @@ async function getColumnListForTable(
   const customRows = await db
     .select()
     .from(schema.customFieldDefs)
-    .where(eq(schema.customFieldDefs.resource, baseTable))
+    .where(
+      and(
+        eq(schema.customFieldDefs.resource, baseTable),
+        or(
+          eq(schema.customFieldDefs.organizationId, organizationId),
+          isNull(schema.customFieldDefs.organizationId)
+        )
+      )
+    )
     .orderBy(asc(schema.customFieldDefs.position), asc(schema.customFieldDefs.id));
   for (const def of customRows) {
     out.push({ fieldId: `custom_${def.id}`, title: def.label });
@@ -191,7 +200,8 @@ async function copyViewColumns(
 async function seedDefaultViewColumns(
   db: Db,
   viewId: string,
-  objectSlug: string
+  objectSlug: string,
+  organizationId: string
 ): Promise<void> {
   const [objConfig] = await db
     .select({ tableName: schema.objectConfig.tableName })
@@ -199,7 +209,7 @@ async function seedDefaultViewColumns(
     .where(eq(schema.objectConfig.slug, objectSlug))
     .limit(1);
   if (!objConfig) return;
-  const columns = await getColumnListForTable(db, objConfig.tableName);
+  const columns = await getColumnListForTable(db, objConfig.tableName, organizationId);
   if (columns.length === 0) return;
   await db.insert(schema.viewColumns).values(
     columns.map((col, i) => ({
@@ -253,7 +263,7 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
         .returning();
       if (inserted) {
         list = [inserted];
-        await seedDefaultViewColumns(db, inserted.id, objectSlug);
+        await seedDefaultViewColumns(db, inserted.id, objectSlug, organizationId);
       }
     } else {
       // Backfill: if default view has no columns, seed them (e.g. after deploy)
@@ -264,7 +274,7 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
         .where(eq(schema.viewColumns.viewId, defaultView.id))
         .limit(1);
       if (existingCols.length === 0) {
-        await seedDefaultViewColumns(db, defaultView.id, objectSlug);
+        await seedDefaultViewColumns(db, defaultView.id, objectSlug, organizationId);
       }
     }
 
@@ -315,7 +325,7 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
     if (defaultView && defaultView.id !== inserted.id) {
       await copyViewColumns(db, defaultView.id, inserted.id);
     } else {
-      await seedDefaultViewColumns(db, inserted.id, objectSlug);
+      await seedDefaultViewColumns(db, inserted.id, objectSlug, organizationId);
     }
 
     return c.json(viewRowToNocoRaw(inserted));

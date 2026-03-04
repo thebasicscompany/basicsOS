@@ -19,6 +19,7 @@ import { snakeToCamel } from "../utils.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
 import { getWriteAllowlist } from "./field-allowlists.js";
 import { resolveStoredApiKey } from "../../../lib/api-key-crypto.js";
+import { validateWritePayload } from "./payload-schemas.js";
 
 export function createUpdateHandler(db: Db, env: Env) {
   return async (c: Context) => {
@@ -55,12 +56,15 @@ export function createUpdateHandler(db: Db, env: Env) {
     const rawBody = (await c.req.json()) as Record<string, unknown>;
     delete rawBody.id;
     const bodyRaw = snakeToCamel(rawBody) as Record<string, unknown>;
+    const validated = validateWritePayload(resource, "update", bodyRaw);
+    if (!validated.success) return c.json({ error: validated.error }, 400);
+
     const allowedFields = getWriteAllowlist(resource);
     if (allowedFields.size === 0) {
       return c.json({ error: "Update not supported for this resource" }, 400);
     }
     const body: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(bodyRaw)) {
+    for (const [key, value] of Object.entries(validated.data)) {
       if (allowedFields.has(key)) body[key] = value;
     }
 

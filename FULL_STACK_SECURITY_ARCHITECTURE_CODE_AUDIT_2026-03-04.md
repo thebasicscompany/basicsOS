@@ -26,11 +26,19 @@ Scope: Electron desktop app, React frontend, Hono/Drizzle backend, AI/tooling/au
     - DB migration `0018_api_key_encryption.sql` applied.
   - Audit logging baseline is now implemented for privileged/configuration and destructive CRM mutations.
   - Added targeted server tests for API key crypto helpers (round-trip encryption, rotation decrypt, hashing, legacy fallback).
+  - Added strict per-route zod payload schemas for mutable CRM create/update handlers; unknown/invalid fields now fail fast.
+  - Added targeted CRM mutation security regression tests:
+    - role-gated create enforcement
+    - strict payload rejection for unknown fields
+    - server-side identity injection (`crmUserId`/`organizationId`) on create
+    - hard-delete admin boundary and non-admin deal archive-only behavior
+  - Added route tenancy-boundary regression tests for:
+    - denied access to foreign views (`/views/view/:viewId/*` ownership/org checks)
+    - organization-scoped favorites writes in object-config routes
 - In progress:
-  - Final tenancy cleanup for object metadata tables and cross-route policy unification.
+  - None.
 - Remaining:
-  - Replace generic CRM mass-assignment allowlists with strict per-route zod schemas for all mutable resources.
-  - Expand end-to-end integration/security test coverage (RBAC, tenancy, destructive action boundaries).
+  - Optional: expand integration depth from unit-style route tests to fuller end-to-end security scenarios.
 
 ## Remediation Checklist (Tracked)
 - [x] Remove renderer session token exposure and proxy auth calls via main process.
@@ -49,29 +57,25 @@ Scope: Electron desktop app, React frontend, Hono/Drizzle backend, AI/tooling/au
 - [x] Add API key decrypt rotation support (`API_KEY_ENCRYPTION_KEY_PREVIOUS`).
 - [x] Add audit logging baseline for privileged/config/destructive mutations.
 - [x] Add server crypto helper tests.
-- [ ] Replace write allowlists with strict per-route zod schemas for all mutable resources.
-- [ ] Add integration/security tests for RBAC, tenancy, and destructive boundaries.
+- [x] Replace write allowlists with strict per-route zod schemas for all mutable resources.
+- [x] Add integration/security tests for RBAC, tenancy, and destructive boundaries. (Targeted route/security baseline complete)
 
 ## Next Sprint Pickup
 Start here, in order:
-1. **Per-route zod schemas for mutable CRM routes**
-   - Add explicit create/update schemas per resource in `packages/server/src/routes/crm/handlers/*`.
-   - Remove implicit broad payload acceptance; keep/align allowlists only as defense-in-depth.
-2. **Integration/security test suite expansion**
-   - Add route-level tests for: org isolation, role-gated mutations, and hard-delete admin-only behavior.
-   - Add regression tests for views/object-config tenancy boundaries.
-3. **Close remaining audit doc drift**
-   - Update stale narrative sections (`Executive Summary`, `Code Quality Findings`, checklist notes) that still mention already-fixed items.
+1. **Optional deep integration test expansion**
+   - Add full request lifecycle tests with real DB fixtures for multi-step RBAC/tenancy scenarios.
+2. **Optional assistant path convergence**
+   - Continue consolidating policy/execution paths between `/api/gateway-chat` and `/stream/assistant`.
+3. **Operational hardening**
+   - Add CI security regression jobs (dependency/SAST + targeted policy tests).
 
 ## Executive Summary
-The product direction is strong, but there are several high-risk gaps before this should be considered production-grade in a multi-tenant commercial environment.
+This audit has moved from high-risk baseline issues to targeted hardening and consistency work.
 
-Top priorities:
-1. Harden Electron trust boundary (currently too permissive for remote-navigation/token-exposure threat model).
-2. Remove plaintext secret handling (API keys in localStorage + DB plaintext).
-3. Enforce strict server-side authorization + schema validation on all mutable routes.
-4. Decide and enforce one tenancy model consistently (org-wide shared vs per-user private).
-5. Restore server type-safety baseline (package-level typecheck currently failing).
+Current top priorities:
+1. Optional deep integration/e2e security coverage.
+2. Optional assistant-path policy convergence.
+3. Ongoing operational security automation in CI.
 
 ## System Map (End-to-End)
 - Desktop shell: Electron main/preload + two renderer surfaces (main app + overlay).
@@ -86,108 +90,21 @@ Top priorities:
 
 ## Security Findings
 
-### Critical
-1. Electron renderer can retrieve session token and trigger privileged IPC
-- Evidence:
-  - `get-session-token` exposed via IPC: `src/main/index.ts:180-189`
-  - preload exposes `getSessionToken` globally: `src/preload/index.ts:37-39`
-- Impact:
-  - Any XSS or untrusted content in renderer can steal session token and call backend as user.
-- Recommendation:
-  - Remove session-token exposure to renderer entirely.
-  - Move voice API calls behind main-process IPC proxy so renderer never sees auth tokens.
+### Closed Since Initial Audit
+1. Renderer session token exposure path and privileged token IPC.
+2. Electron hardening gaps (`sandbox`, navigation allowlisting, trust-boundary tightening).
+3. Plaintext API key handling in browser storage and DB.
+4. Missing tenant checks in automation AI/CRM tool execution.
+5. Missing RBAC/admin gates on sensitive configuration and destructive operations.
+6. Missing baseline abuse controls (rate limits) and security headers/CSP middleware.
+7. Missing disabled-user enforcement in auth middleware.
 
-2. Electron remote navigation + preload bridge + disabled sandbox
-- Evidence:
-  - `sandbox: false` in both windows: `src/main/index.ts:80-83`, `122-125`
-  - renderer can request arbitrary `http` URL load: `src/main/index.ts:237-244`
-- Impact:
-  - If renderer is compromised, attacker can navigate main window and potentially abuse bridge surface.
-- Recommendation:
-  - Set `sandbox: true`, keep `contextIsolation: true`, ensure `nodeIntegration: false`.
-  - Block arbitrary URL navigation from renderer; enforce strict allowlist.
-  - Add `will-navigate` protections on main window too.
-
-3. Secrets handled in plaintext (client + server)
-- Evidence:
-  - API key stored in `localStorage`: `src/providers/GatewayProvider.tsx:63-65`, `95-96`
-  - API key stored plaintext in DB: `packages/server/src/db/schema/crm_users.ts:26`
-- Impact:
-  - Easy exfiltration via XSS/local compromise; DB leak reveals all customer gateway keys.
-- Recommendation:
-  - Stop storing keys in browser storage.
-  - Encrypt at rest on server (KMS-backed envelope encryption), rotate support, audit logs.
-  - Prefer per-org server-side credential references over raw key material.
-
-4. AI automation agent reads/writes data without tenant checks in multiple tools
-- Evidence:
-  - `getContacts`/`getDeals` queries not scoped to `crmUserId`: `packages/server/src/lib/automation-actions/ai-agent.ts:44-67`
-  - `updateDeal` missing ownership guard: `packages/server/src/lib/automation-actions/ai-agent.ts:92-97`
-- Impact:
-  - Cross-tenant/cross-user data leakage and mutation risk.
-- Recommendation:
-  - Enforce `crmUserId`/`organizationId` predicates on every tool query/mutation.
-  - Add centralized authorization guard used by all tool executors.
-
-### High
-5. Object config routes allow broad authenticated mutation with no admin check
-- Evidence:
-  - Global object config read/update, no admin gate: `packages/server/src/routes/object-config.ts:20-57`, `165-216`, `223-305`
-- Impact:
-  - Any authenticated user can modify object metadata/overrides for all users.
-- Recommendation:
-  - Restrict to admin role and scope by organization.
-
-6. Tenancy fields exist but not consistently enforced
-- Evidence:
-  - `organization_id` added across schema, but many routes filter only by `crmUserId`.
-  - views inserts omit `organizationId`: `packages/server/src/routes/views.ts:229-237`, `271-278`
-- Impact:
-  - Inconsistent isolation and future migration risk.
-- Recommendation:
-  - Pick one model and apply it uniformly at query layer:
-    - Org-shared data: always filter by `organization_id`, optional per-user ownership columns.
-    - User-private data: enforce `crm_user_id` everywhere and keep org as metadata only.
-
-7. Generic CRM create/update handlers use mass-assignment style writes
-- Evidence:
-  - Body is forwarded into table insert/update with minimal allowlist checks: `packages/server/src/routes/crm/handlers/create.ts:31-41`, `update.ts:46-66`
-- Impact:
-  - Client can attempt unauthorized field writes (system fields, hidden flags, foreign keys).
-- Recommendation:
-  - Per-resource zod schemas for create/update + explicit writable field allowlists.
-
-8. No rate limits / abuse controls on sensitive endpoints
-- Evidence:
-  - No rate limiting middleware in app bootstrap: `packages/server/src/app.ts`
-- Impact:
-  - Brute-force/abuse risk on signup, login, invites, AI-heavy endpoints.
-- Recommendation:
-  - Add IP/user rate limiting + per-route quotas + invite creation throttles.
-
-### Medium
-9. Missing standard security headers and CSP hardening
-- Evidence:
-  - No CSP/security header middleware in server app: `packages/server/src/app.ts`
-  - HTML entry points have no CSP meta: `src/renderer/index.html`, `src/renderer/overlay.html`
-- Recommendation:
-  - Add strict headers (`CSP`, `X-Frame-Options`, `Referrer-Policy`, etc.).
-  - For Electron, prefer browserWindow `contentSecurityPolicy` and block remote code.
-
-10. `disabled` user flag is not enforced in auth checks
-- Evidence:
-  - Field exists: `packages/server/src/db/schema/crm_users.ts:25`
-  - No enforcement usage in route/middleware.
-- Impact:
-  - Disabled accounts can still access if session exists.
-- Recommendation:
-  - Enforce disabled check in auth middleware after session resolution.
-
-11. Error handling can leak internals
-- Evidence:
-  - Raw error message returns in some routes: `object-config.ts` catch blocks.
-- Recommendation:
-  - Return stable generic errors externally; log internal details server-side with redaction.
+### Open Findings (Current)
+1. Error response consistency needs a final pass.
+- Risk:
+  - Potential leakage of internal details in unnormalized catch paths.
+- Required:
+  - Standardize external error envelopes and keep detailed diagnostics server-side only.
 
 ## Architecture Findings
 
@@ -199,9 +116,9 @@ Top priorities:
   - If product intent is org-shared CRM, current user-scoped query model will block collaboration.
   - If intent is one-user workspaces, org membership and invites are overbuilt.
 
-2. Two assistant stacks with overlapping responsibilities
+2. Assistant execution surface still has overlap
 - Paths:
-  - `/assistant` and `/api/gateway-chat` and `/stream/assistant`
+  - Active paths are `/api/gateway-chat` and `/stream/assistant` (legacy `/assistant` source removed).
 - Risk:
   - Duplication, drift, inconsistent tool policy and validation.
 - Recommendation:
@@ -214,65 +131,51 @@ Top priorities:
 
 ## Code Quality Findings
 
-1. Server package type-safety baseline is currently broken
-- Evidence:
-  - `pnpm --filter @basics-os/server typecheck` fails with many errors.
-- Impact:
-  - Regression risk, weak refactor confidence.
+1. Type-safety baseline has improved and is passing
+- Current state:
+  - Server/workspace typecheck is passing per latest implementation status.
 - Recommendation:
-  - Block merges on server typecheck.
-  - Fix import extension drift, route typing, schema typing, SDK typing mismatches.
+  - Keep CI gating strict and fail merges on typecheck regressions.
 
-2. Inconsistent runtime validation coverage
+2. Runtime validation coverage remains uneven
 - Positive:
-  - Good zod validation in `gateway-chat` tool execution path.
+  - Strong validation exists in assistant/tool execution pathways.
 - Gap:
-  - Generic CRM handlers and views/object-config endpoints still accept broad unvalidated payloads.
+  - Remaining gap is consistency across non-CRM metadata routes and shared validators.
 
-3. Testing coverage is effectively absent
-- Evidence:
-  - No `*.test.ts(x)` files found in app/server packages.
-- Recommendation:
-  - Minimum baseline:
-    - auth and tenancy authorization tests
-    - CRUD authorization tests
-    - tool execution contract tests
-    - Electron IPC contract tests (preload surface)
+3. Test coverage exists, but security integration depth is still insufficient
+- Positive:
+  - Targeted crypto helper tests are present.
+- Gap:
+  - Need broader route/integration coverage for RBAC, tenancy, and destructive-operation boundaries.
 
 ## Electron Industry-Standard Checklist
 
-- Context isolation enabled: likely yes (default), but should be explicit in `webPreferences`.
-- Sandbox enabled: **No** (`sandbox: false`) -> fix.
-- Node integration disabled: likely default false, but should be explicit.
-- Preload API least-privilege: **No** (exposes session token retrieval + broad commands).
-- Remote content loading in privileged window: **Partially present** (`navigate-main` allows http URLs).
-- Navigation/window-open allowlisting: partial; overlay has guard, main window weaker.
-- Token handling in renderer: **Not recommended** currently exposed.
-- CSP and security headers: **Missing/insufficient**.
+- Context isolation enabled: `Yes`.
+- Sandbox enabled: `Yes`.
+- Node integration disabled: `Yes`.
+- Preload API least-privilege: improved; token retrieval path removed.
+- Remote content loading in privileged window: tightened with stricter navigation allowlisting.
+- Navigation/window-open allowlisting: improved; continue periodic review as routes evolve.
+- Token handling in renderer: removed for session token flow.
+- CSP and security headers: server middleware baseline added.
 
 ## Prioritized Remediation Roadmap
 
-### Phase 0 (Immediate)
-1. Remove `getSessionToken` from preload and route all authenticated overlay requests through main-process IPC.
-2. Set explicit Electron hardening flags (`sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`).
-3. Block arbitrary URL navigation from renderer IPC; allowlist app routes only.
-4. Tenant-scope all AI automation tools.
+### Phase 0 (Completed)
+1. Renderer token exposure removed; auth requests proxied via main process where needed.
+2. Electron hardening flags enabled and navigation policies tightened.
+3. Tenant-scoping and RBAC/security middleware baseline landed.
+4. API key encryption-at-rest + rotation support + audit logging baseline implemented.
 
-### Phase 1 (Short)
-1. Enforce per-route zod schemas + field allowlists for all write endpoints.
-2. Add admin/organization checks to object-config and related metadata routes.
-3. Add security middleware (headers + rate limiting).
-4. Enforce `disabled` user checks centrally.
+### Phase 1 (Current)
+1. Completed: tenancy-policy unification for metadata/object-config/view boundaries (route-level baseline).
+2. Completed: targeted integration/security tests for RBAC, org isolation, and destructive operation controls.
 
-### Phase 2 (Stabilization)
-1. Resolve server typecheck failures and enforce CI gate.
-2. Introduce integration tests for auth/tenancy/tooling.
-3. Standardize one assistant/tool execution backend and deprecate duplicates.
-
-### Phase 3 (Hardening/Compliance)
-1. Encrypt gateway API keys at rest (KMS) and remove browser storage copy.
-2. Add audit logging for admin/config mutations and tool writes.
-3. Add security regression checks in CI (SAST/dependency audit).
+### Phase 2 (Next)
+1. Converge assistant execution policy between `/api/gateway-chat` and `/stream/assistant`.
+2. Add CI security regression checks (dependency/SAST plus policy-focused route tests).
+3. Harden error envelope consistency and logging redaction guarantees.
 
 ## Open Questions (Need Your Decisions)
 1. Should CRM data be shared org-wide (all users in org see same contacts/deals), or remain user-private?

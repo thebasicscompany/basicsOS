@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, or, isNull } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
 import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
@@ -15,21 +15,28 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
   app.get("/", async (c) => {
     const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
     if (!authz.ok) return authz.response;
+    const orgId = authz.crmUser.organizationId;
+    if (!orgId) return c.json({ error: "Organization not found" }, 404);
 
     const resource = c.req.query("resource");
     const order = [
       asc(schema.customFieldDefs.position),
       asc(schema.customFieldDefs.id),
     ] as const;
+    const baseFilter = or(
+      eq(schema.customFieldDefs.organizationId, orgId),
+      isNull(schema.customFieldDefs.organizationId)
+    );
     const rows = resource
       ? await db
           .select()
           .from(schema.customFieldDefs)
-          .where(eq(schema.customFieldDefs.resource, resource))
+          .where(and(eq(schema.customFieldDefs.resource, resource), baseFilter))
           .orderBy(...order)
       : await db
           .select()
           .from(schema.customFieldDefs)
+          .where(baseFilter)
           .orderBy(...order);
     return c.json(rows);
   });
@@ -60,6 +67,7 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
         label: body.label,
         fieldType: body.fieldType,
         options: body.options ?? null,
+        organizationId: authz.crmUser.organizationId,
       })
       .returning();
     return c.json(row, 201);
@@ -70,9 +78,19 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
     if (!authz.ok) return authz.response;
 
     const id = Number(c.req.param("id"));
-    await db
+    if (!authz.crmUser.organizationId) {
+      return c.json({ error: "Organization not found" }, 404);
+    }
+    const deleted = await db
       .delete(schema.customFieldDefs)
-      .where(eq(schema.customFieldDefs.id, id));
+      .where(
+        and(
+          eq(schema.customFieldDefs.id, id),
+          eq(schema.customFieldDefs.organizationId, authz.crmUser.organizationId)
+        )
+      )
+      .returning();
+    if (deleted.length === 0) return c.json({ error: "Not found" }, 404);
     return c.json({ ok: true });
   });
 

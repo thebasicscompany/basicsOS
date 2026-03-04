@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/frontend-React%2019-61DAFB?style=flat-square" alt="React 19" />
   <img src="https://img.shields.io/badge/backend-Hono%20%2B%20Drizzle-0EA5E9?style=flat-square" alt="Hono + Drizzle" />
   <img src="https://img.shields.io/badge/database-PostgreSQL-336791?style=flat-square" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT" />
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0" />
   <img src="https://img.shields.io/badge/version-0.1.0-green?style=flat-square" alt="v0.1.0" />
 </p>
 
@@ -200,7 +200,7 @@ pnpm db:studio
 
 ## OSS and Commercial
 
-BasicsOS is open-source under MIT in this repository.
+BasicsOS is open-source under AGPL-3.0 in this repository.
 
 Commercial offerings can include hosted deployments, managed operations, compliance support, and enterprise service layers on top of the OSS core.
 
@@ -216,4 +216,4 @@ See [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT. See [`LICENSE.md`](./LICENSE.md).
+AGPL-3.0. See [`LICENSE.md`](./LICENSE.md).

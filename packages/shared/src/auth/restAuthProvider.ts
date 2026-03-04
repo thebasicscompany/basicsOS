@@ -1,8 +1,20 @@
-import type { AuthProvider } from "ra-core";
 import { createAuthClient } from "better-auth/react";
 import { canAccess } from "./canAccess";
 
-export function createRestAuthProvider(apiUrl: string): AuthProvider {
+/** REST auth provider compatible with React Admin-style consumers. */
+export interface RestAuthProvider {
+  login: (params: { email: string; password: string }) => Promise<void>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  checkError: (error: unknown) => Promise<void>;
+  getIdentity: () => Promise<{ id: string; fullName?: string; avatar?: string }>;
+  getAuthorizationDetails: () => never;
+  approveAuthorization: () => never;
+  denyAuthorization: () => never;
+  canAccess: (params: unknown) => Promise<boolean>;
+}
+
+export function createRestAuthProvider(apiUrl: string): RestAuthProvider {
   const authClient = createAuthClient({
     baseURL: apiUrl || undefined,
   });

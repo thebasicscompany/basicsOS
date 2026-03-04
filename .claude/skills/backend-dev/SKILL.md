@@ -1,21 +1,22 @@
 ---
 name: backend-dev
-description: Coding practices for backend development in Basics CRM. Use when deciding whether backend logic is needed, or when creating/modifying database migrations, views, triggers, RLS policies, edge functions, or custom dataProvider methods that call Supabase APIs.
+description: Coding practices for backend development in Basics CRM. Use when deciding whether backend logic is needed, or when creating/modifying database migrations, Drizzle schema, Hono routes, or Better Auth configuration.
 ---
 
-There is no custom backend server. All server-side logic uses Supabase: PostgreSQL (tables, views, triggers, RLS), Auth API, Storage, and Edge Functions.
+Backend logic runs in `packages/server` using Node + Hono REST API, Drizzle ORM, PostgreSQL, and Better Auth.
 
-Prefer frontend-only solutions via custom dataProvider methods calling the PostgREST API.
+**Stack:**
+- **API**: Hono (`/api/*` routes)
+- **DB**: Drizzle ORM + PostgreSQL (schema in `packages/server/src/db/`)
+- **Auth**: Better Auth (session-based)
 
-When backend logic is needed:
+**When adding backend logic:**
+- **New tables/columns**: Add to Drizzle schema, then `pnpm db:generate` and `pnpm db:migrate`
+- **Read optimizations**: Create a Drizzle view or query helper; expose via a Hono route
+- **Complex mutations**: Add a Hono route handler; use Drizzle transactions for multi-table writes
+- **Auth-protected routes**: Use Better Auth middleware to require a session
 
-- **Aggregation/read optimization**: Create a database view (`CREATE OR REPLACE VIEW` in a new migration). PostgREST exposes views like tables. When underlying table columns change, update the `contacts_summary` and `companies_summary` views too.
-- **Complex mutations** (multi-table writes): Create a Supabase edge function in Deno. Stored procedures via RPC are less preferred (code lives in migrations, harder to maintain). On the frontend, expose the edge function as a custom dataProvider method (using `httpClient(`${supabaseUrl}/functions/v1/<name>`)`) and call it via react-query. (e.g. `salesCreate()` → `/functions/v1/users`, `mergeContacts()` → `/functions/v1/merge_contacts`)
-
-Edge function conventions:
-- Shared utils in `supabase/functions/_shared/` — reuse `authentication.ts`, `supabaseAdmin.ts`, `cors.ts`, `utils.ts`
-- Follow the middleware chain pattern: CORS preflight → `authenticate()` → handler
-- `verify_jwt = false` in config.toml, so JWT validation is manual via `authenticate()`
-
-Other conventions:
-- New tables need RLS policies and the auto-set `sales_id` trigger (see migration `20260108160722`)
+**Conventions:**
+- Migrations live in `packages/server/drizzle/`
+- API routes are organized by domain (e.g. `views`, `records`, `gateway-chat`)
+- DB is passed to route creators from `createApp(db, env)`; route handlers receive it via closure. Follow existing patterns in `routes/` and `data-access/` for queries and mutations

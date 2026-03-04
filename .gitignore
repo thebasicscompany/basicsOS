@@ -45,13 +45,6 @@ build/
 !.env.example
 !.env*.example
 
-# Supabase local
-supabase/.branches
-supabase/.temp
-
-# Exception: keep supabase/functions/.env (template)
-!supabase/functions/.env
-
 # =============================================================================
 # Testing & coverage
 # =============================================================================

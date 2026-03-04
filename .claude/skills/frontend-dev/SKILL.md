@@ -1,48 +1,31 @@
 ---
 name: frontend-dev
-description: Coding practices for frontend development in Basics CRM. Use when creating or modifying React components, forms, list pages, detail views, filters, data fetching, or responsive layouts.
+description: Coding practices for frontend development in Basics CRM. Use when creating or modifying React components, list pages, detail views, forms, data fetching, field types, or responsive layouts.
 ---
 
-The frontend uses ra-core (react-admin headless) for data fetching, routing, and CRUD logic, with shadcn-admin-kit and shadcn/ui for the UI layer.
+The frontend uses React 19, TanStack Query, React Router v7, and Shadcn UI. Data flows from the Hono REST API (`/api/*`) via custom hooks. There is no React Admin.
 
-## Component architecture
+## Architecture
 
-- Import form inputs (`TextInput`, `SelectInput`, `ReferenceInput`, etc.) from `@/components/admin/`, not from shadcn/ui directly. The admin layer wraps shadcn with ra-core integration (labels, validation, data binding).
-- Import pure UI components (`Card`, `Button`, `Badge`, `Sheet`, etc.) from `@/components/ui/`.
-- Domain configuration (deal stages, note statuses, task types, company sectors) comes from `useConfigurationContext()`, never hardcoded.
-
-## Resource (CRUD) conventions
-
-Each resource follows this file structure (e.g. `contacts/`):
-
-- `ContactList.tsx` — list page (desktop + mobile variants)
-- `ContactShow.tsx` — detail view
-- `ContactEdit.tsx` / `ContactCreate.tsx` — form pages
-- `ContactInputs.tsx` — shared form fields reused between create and edit
-- `index.tsx` — exports `{ list, show, edit, create, recordRepresentation }`
-
-Resources are registered in `root/CRM.tsx` via `<Resource name="contacts" {...contacts} />`.
+- **Object Registry**: Objects (contacts, companies, deals, tasks, etc.) are configured via DB. `ObjectRegistryProvider` wraps the app. Use `useObject(slug)`, `useAttributes(slug)`, `useObjects()` from `@/hooks/use-object-registry`.
+- **Generic list/detail**: `ObjectListPage` and `RecordDetailPage` serve `/objects/:objectSlug` and `/objects/:objectSlug/:recordId`. They are driven by the object registry and attributes.
+- **Views (NocoDB-style)**: Sorts, filters, and column config are persisted via `/api/views/*`. Use `useViews(objectSlug)` and `useViewState` from `@/hooks/use-views`.
 
 ## Data fetching
 
-- For standard CRUD, use ra-core hooks: `useListContext()`, `useShowContext()`, `useGetList()`, `useGetOne()`, `useGetIdentity()`.
-- When a query or mutation isn't covered by ra-core hooks, add a custom dataProvider method and call it via `useQuery`/`useMutation` with `useDataProvider<CrmDataProvider>()` (e.g. `dataProvider.getActivityLog()` in `ActivityLog.tsx`, `dataProvider.salesCreate()` in `SalesCreate.tsx`).
+- **Records**: `useRecords(objectSlug, params)`, `useRecord(objectSlug, recordId)` from `@/hooks/use-records`.
+- **Mutations**: `useCreateRecord`, `useUpdateRecord`, `useDeleteRecord` from `@/hooks/use-records`. All use TanStack Query (`useMutation`) and call `@/lib/api/crm`.
+- **Other API**: Use `fetchApi` from `@/lib/api` or `useQuery`/`useMutation` with custom query functions.
 
-## Forms
+## UI components
 
-- Forms use `Form` from ra-core + `FormToolbar` for submit/cancel actions.
-- Ra-core's `Form` uses React Hook Form under the hood. Use `useFormContext()` for imperative operations (`setValue`, `reset`, `getValues`).
-- Top-level resource forms use full-page `CreateBase`/`EditBase` with `Card` (e.g. contacts), or `Dialog` (e.g. deals).
-- On mobile, inline/sub-resource forms use `CreateSheet`/`EditSheet` from `misc/` (e.g. notes, tasks).
-- Split form fields into semantic sub-components (e.g. `ContactIdentityInputs`, `ContactPositionInputs`).
+- **Shadcn UI**: Import from `@/components/ui/` (Button, Card, Dialog, Sheet, etc.).
+- **Field types**: Each attribute has a `uiType` mapping to a field type. Use `getFieldType(uiType)` from `@/field-types`. Field types provide `CellDisplay`, `CellEditor`, `FormInput`, and optional `TypeConfig` for admin UI.
+- **Forms**: `RecordForm` renders a dynamic form from an `Attribute[]` and `values`/`onChange`. Used by `CreateRecordModal` and record detail inline edit.
 
-## Filters
+## Conventions
 
-- Use `ToggleFilterButton` / `ActiveFilterButton` components for filter UI.
-- Filters apply immediately, no "apply" button.
-
-## Responsive design
-
-- Major pages have desktop and mobile variants. Use `useIsMobile()` to branch.
-- Desktop: 2-column grid layouts. Mobile: single column with `MobileHeader`/`MobileContent`.
-- Mobile lists use `InfiniteListBase` for scroll pagination.
+- **Paths**: `@/` → `src/`. Use `basics-os/src` for packages importing from the main app.
+- **Data table**: `DataTable` + `useDataTable` for list views. Supports pagination, sorting, column resize, and view persistence.
+- **Responsive**: Use `useIsMobile()` (or similar) when branching layouts. Deals have a kanban toggle via `DealsLayoutToggle`.
+- **Auth**: Session-based via Better Auth. Use `authClient` from `@/lib/auth-client` for sign-in/sign-out/session checks.

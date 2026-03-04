@@ -22,8 +22,6 @@
         "faker@^5.5.3",
         "jsonexport@^3.2.0",
         "papaparse@^5.5.3",
-        "ra-supabase-core@^3.5.1",
-        "ra-supabase-language-english@^3.5.0",
         "zod@^4.0.5"
       ],
       "files": []

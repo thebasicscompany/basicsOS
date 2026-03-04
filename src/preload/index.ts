@@ -69,6 +69,20 @@ const overlayAPI = {
       startedAt: number;
     } | null>,
   showOverlay: () => ipcRenderer.invoke("show-overlay"),
+  hideOverlay: () => ipcRenderer.invoke("hide-overlay"),
+  getOverlayStatus: () =>
+    ipcRenderer.invoke("get-overlay-status") as Promise<{
+      visible: boolean;
+      active: boolean;
+    }>,
+  onOverlayStatusChanged: (
+    cb: (status: { visible: boolean; active: boolean }) => void
+  ) => {
+    ipcRenderer.on(
+      "overlay-visibility-changed",
+      (_e, status: { visible: boolean; active: boolean }) => cb(status)
+    );
+  },
   onSystemAudioTranscript: (
     cb: (speaker: number | undefined, text: string) => void
   ) => {
@@ -89,6 +103,7 @@ const overlayAPI = {
       "meeting-toggle",
       "meeting-started",
       "meeting-stopped",
+      "overlay-visibility-changed",
       "system-audio-silent",
       "system-audio-transcript",
     ];

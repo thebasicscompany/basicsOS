@@ -22,6 +22,10 @@ export type OverlayElectronAPI = {
   stopMeeting?: () => Promise<void>;
   getMeetingState?: () => Promise<unknown>;
   getPersistedMeeting?: () => Promise<unknown>;
+  showOverlay?: () => Promise<void>;
+  hideOverlay?: () => Promise<void>;
+  getOverlayStatus?: () => Promise<{ visible: boolean; active: boolean }>;
+  onOverlayStatusChanged?: (cb: (status: { visible: boolean; active: boolean }) => void) => void;
   onSystemAudioTranscript?: (cb: (s: number | undefined, t: string) => void) => void;
   removeAllListeners?: () => void;
 };

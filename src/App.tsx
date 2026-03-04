@@ -50,7 +50,7 @@ const queryClient = new QueryClient({
  *   - QueryClientProvider: shared TanStack Query client
  *   - BrowserRouter: top-level router
  *   - Public routes: / (StartPage), /sign-up (SignupPage)
- *   - Protected routes: inside HubLayout via ProtectedRoute
+ *   - Protected routes: inside AppLayout via ProtectedRoute
  */
 function AppRoutes() {
   const location = useLocation();
@@ -62,7 +62,7 @@ function AppRoutes() {
         <Route path="/" element={<StartPage />} />
         <Route path="/sign-up" element={<SignupPage />} />
 
-        {/* Protected — all inside HubLayout */}
+        {/* Protected — all inside AppLayout */}
         <Route
           element={
             <ProtectedRoute>

@@ -57,8 +57,8 @@ function buildChartData(
   }
 
   for (const deal of deals) {
-    // Raw NocoDB column name: created_at
-    const createdAt = deal.created_at ?? deal.CreatedAt;
+    // API returns camelCase (createdAt) from Drizzle; fallback for snake_case
+    const createdAt = deal.createdAt ?? deal.created_at ?? deal.CreatedAt;
     if (!createdAt) continue;
     const key = String(createdAt).slice(0, 10);
     const pt = points.find((p) => p.date === key);
@@ -72,7 +72,7 @@ function buildChartData(
 }
 
 export function ChartAreaInteractive() {
-  const [timeRange, setTimeRange] = React.useState("30d");
+  const [timeRange, setTimeRange] = React.useState("7d");
 
   const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
 
@@ -115,7 +115,7 @@ export function ChartAreaInteractive() {
               size="sm"
               aria-label="Select time range"
             >
-              <SelectValue placeholder="Last 30 days" />
+              <SelectValue placeholder="Last 7 days" />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="90d" className="rounded-lg">Last 3 months</SelectItem>

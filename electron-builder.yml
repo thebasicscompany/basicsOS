@@ -2,6 +2,10 @@ appId: com.basics-hub
 productName: Basics Hub
 directories:
   buildResources: build
+icon: public/favicon.png
+win:
+  icon: public/favicon.png
+  executableName: basics-hub
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -11,8 +15,6 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.app.json,tsconfig.electron.json}'
 asarUnpack:
   - resources/**
-win:
-  executableName: basics-hub
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

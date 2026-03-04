@@ -1,6 +1,6 @@
 /**
- * Stream assistant — CRM-aware AI streaming for the voice pill overlay.
- * POST /stream/assistant { message, history } → SSE data: {token}, data: [DONE]
+ * Stream assistant - CRM-aware AI for the voice pill overlay.
+ * POST /stream/assistant { message, history } -> SSE data: {token}, data: [DONE]
  */
 
 import { Hono } from "hono";
@@ -10,11 +10,26 @@ import type { Env } from "../env.js";
 import type { createAuth } from "../auth.js";
 import { buildCrmSummary, retrieveRelevantContext } from "../lib/context.js";
 import { resolveCrmUserWithApiKey } from "../lib/crm-user-auth.js";
+import { ASSISTANT_TOOLS, executeAssistantToolDrizzle } from "../assistant/tools.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
+type ChatMessage =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string }
+  | {
+      role: "assistant";
+      content: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: { name: string; arguments: string };
+      }>;
+    }
+  | { role: "tool"; tool_call_id: string; content: string };
+
 const ASSISTANT_SYSTEM_PROMPT =
-  "You are Basics OS Company Assistant — an AI grounded in this company's data. Answer questions based on the context provided. Be concise and helpful.";
+  "You are Basics OS Company Assistant - an AI grounded in this company's data. Answer questions based on the context provided. Be concise and helpful.";
 
 export function createStreamAssistantRoutes(
   db: Db,
@@ -59,101 +74,109 @@ export function createStreamAssistantRoutes(
     }
 
     const systemContent = `${ASSISTANT_SYSTEM_PROMPT}\n\n${contextText}`;
-    const messages = [
-      { role: "system" as const, content: systemContent },
+    const chatMessages: ChatMessage[] = [
+      { role: "system", content: systemContent },
       ...history,
-      { role: "user" as const, content: message },
+      { role: "user", content: message },
     ];
 
-    let gatewayRes: Response;
-    try {
-      gatewayRes = await fetch(`${env.BASICOS_API_URL}/v1/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "basics-chat-smart",
-          messages,
-          stream: true,
-        }),
+    let finalContent = "";
+    const maxIterations = 5;
+
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      let toolCallRes: Response;
+      try {
+        toolCallRes = await fetch(`${env.BASICOS_API_URL}/v1/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "basics-chat-smart",
+            messages: chatMessages,
+            tools: ASSISTANT_TOOLS,
+            tool_choice: "auto",
+            stream: false,
+          }),
+        });
+      } catch (err) {
+        console.error("[stream-assistant] fetch error:", err);
+        return c.json({ error: "Failed to reach AI gateway" }, 502);
+      }
+
+      if (!toolCallRes.ok) {
+        const errText = await toolCallRes.text().catch(() => "");
+        console.error(
+          "[stream-assistant] gateway error:",
+          toolCallRes.status,
+          errText
+        );
+        return c.json({ error: "Gateway error" }, 502);
+      }
+
+      const json = (await toolCallRes.json()) as {
+        choices?: Array<{
+          message?: {
+            content?: string | null;
+            tool_calls?: Array<{
+              id: string;
+              type: "function";
+              function: { name: string; arguments: string };
+            }>;
+          };
+        }>;
+      };
+
+      const aiMessage = json.choices?.[0]?.message;
+      const toolCalls = aiMessage?.tool_calls ?? [];
+
+      if (toolCalls.length === 0) {
+        finalContent = aiMessage?.content ?? "";
+        break;
+      }
+
+      chatMessages.push({
+        role: "assistant",
+        content: aiMessage?.content ?? null,
+        tool_calls: toolCalls,
       });
-    } catch (err) {
-      console.error("[stream-assistant] fetch error:", err);
-      return c.json({ error: "Failed to reach AI gateway" }, 502);
+
+      for (const tc of toolCalls) {
+        let args: Record<string, unknown> = {};
+        try {
+          args = JSON.parse(tc.function.arguments || "{}");
+        } catch {
+          // malformed tool args are treated as empty object
+        }
+
+        const result = await executeAssistantToolDrizzle(
+          db,
+          crmUser.id,
+          tc.function.name,
+          args
+        );
+
+        chatMessages.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: result,
+        });
+      }
     }
 
-    if (!gatewayRes.ok || !gatewayRes.body) {
-      const errText = await gatewayRes.text().catch(() => "");
-      console.error(
-        "[stream-assistant] gateway error:",
-        gatewayRes.status,
-        errText
-      );
-      return c.json({ error: "Gateway error" }, 502);
+    if (!finalContent) {
+      finalContent = "I could not complete that action yet. Please try again.";
     }
 
     const encoder = new TextEncoder();
-    const reader = gatewayRes.body.getReader();
-    const decoder = new TextDecoder();
-
     const outStream = new ReadableStream({
-      async start(controller) {
-        let buf = "";
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buf += decoder.decode(value, { stream: true });
-            const lines = buf.split("\n");
-            buf = lines.pop() ?? "";
-
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const data = line.slice(6).trim();
-
-              if (data === "[DONE]") {
-                controller.enqueue(
-                  encoder.encode('data: [DONE]\n\n')
-                );
-                return;
-              }
-
-              try {
-                const chunk = JSON.parse(data) as {
-                  choices?: Array<{
-                    delta?: { content?: string | null };
-                    finish_reason?: string | null;
-                  }>;
-                };
-                const choice = chunk.choices?.[0];
-                const content = choice?.delta?.content;
-                if (content) {
-                  controller.enqueue(
-                    encoder.encode(
-                      `data: ${JSON.stringify({ token: content })}\n\n`
-                    )
-                  );
-                }
-                if (choice?.finish_reason === "stop") {
-                  controller.enqueue(
-                    encoder.encode('data: [DONE]\n\n')
-                  );
-                  return;
-                }
-              } catch {
-                // skip malformed
-              }
-            }
-          }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        } catch (err) {
-          console.error("[stream-assistant] stream error:", err);
-        } finally {
-          controller.close();
-        }
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ token: finalContent })}\n\n`)
+        );
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
       },
     });
 

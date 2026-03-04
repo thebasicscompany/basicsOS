@@ -1,4 +1,4 @@
-import { app, globalShortcut, ipcMain, session, clipboard, BrowserWindow, shell, screen } from "electron";
+import { app, globalShortcut, ipcMain, session, clipboard, BrowserWindow, screen, shell } from "electron";
 import path from "path";
 import { exec } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -176,16 +176,27 @@ let holdDetector = null;
 let meetingMgr = null;
 let registeredMeetingAccelerator = null;
 const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:5173";
+const getOverlayStatus = () => ({
+  visible: !!overlayWindow?.isVisible(),
+  active: overlayActive
+});
+const broadcastOverlayStatus = () => {
+  const status = getOverlayStatus();
+  mainWindow?.webContents.send("overlay-visibility-changed", status);
+  overlayWindow?.webContents.send("overlay-visibility-changed", status);
+};
 const activateOverlay = (mode) => {
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = mode;
   overlayWindow.webContents.send("activate-overlay", mode);
+  broadcastOverlayStatus();
 };
 const deactivateOverlay = () => {
   if (!overlayWindow) return;
   overlayActive = false;
   overlayWindow.webContents.send("deactivate-overlay");
+  broadcastOverlayStatus();
 };
 const detectNotch = () => {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -198,6 +209,7 @@ const detectNotch = () => {
   };
 };
 function createMainWindow() {
+  const iconPath = path.join(process.cwd(), "public", "favicon.png");
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -205,6 +217,7 @@ function createMainWindow() {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
       sandbox: false
@@ -271,6 +284,13 @@ function createOverlayWindow() {
     return { action: "deny" };
   });
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  overlayWindow.on("show", broadcastOverlayStatus);
+  overlayWindow.on("hide", broadcastOverlayStatus);
+  overlayWindow.on("closed", () => {
+    overlayWindow = null;
+    overlayActive = false;
+    broadcastOverlayStatus();
+  });
   overlayWindow.webContents.on("did-finish-load", () => {
     overlayWindow?.webContents.send("notch-info", detectNotch());
   });
@@ -325,6 +345,7 @@ ipcMain.on("set-ignore-mouse", (_event, ignore) => {
 });
 ipcMain.on("overlay-dismissed", () => {
   overlayActive = false;
+  broadcastOverlayStatus();
 });
 ipcMain.on("navigate-main", (_event, urlOrPath) => {
   if (mainWindow) {
@@ -377,10 +398,22 @@ ipcMain.handle("get-persisted-meeting", () => {
   return meetingMgr?.getPersistedState() ?? null;
 });
 ipcMain.handle("show-overlay", () => {
-  if (overlayWindow) {
-    overlayWindow.show();
-    overlayWindow.focus();
+  if (!overlayWindow) {
+    createOverlayWindow();
   }
+  overlayWindow?.show();
+  overlayWindow?.focus();
+  broadcastOverlayStatus();
+});
+ipcMain.handle("hide-overlay", () => {
+  if (!overlayWindow) return;
+  overlayActive = false;
+  overlayWindow.webContents.send("deactivate-overlay");
+  overlayWindow.hide();
+  broadcastOverlayStatus();
+});
+ipcMain.handle("get-overlay-status", () => {
+  return getOverlayStatus();
 });
 const registerMeetingShortcut = (accelerator) => {
   if (registeredMeetingAccelerator) {
@@ -437,11 +470,9 @@ app.whenReady().then(() => {
   holdDetector.start();
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
   createMainWindow();
-  createOverlayWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
-      createOverlayWindow();
     }
   });
 });

@@ -43,6 +43,14 @@ const overlayAPI = {
   getMeetingState: () => ipcRenderer.invoke("meeting-state"),
   getPersistedMeeting: () => ipcRenderer.invoke("get-persisted-meeting"),
   showOverlay: () => ipcRenderer.invoke("show-overlay"),
+  hideOverlay: () => ipcRenderer.invoke("hide-overlay"),
+  getOverlayStatus: () => ipcRenderer.invoke("get-overlay-status"),
+  onOverlayStatusChanged: (cb) => {
+    ipcRenderer.on(
+      "overlay-visibility-changed",
+      (_e, status) => cb(status)
+    );
+  },
   onSystemAudioTranscript: (cb) => {
     ipcRenderer.on(
       "system-audio-transcript",
@@ -61,6 +69,7 @@ const overlayAPI = {
       "meeting-toggle",
       "meeting-started",
       "meeting-stopped",
+      "overlay-visibility-changed",
       "system-audio-silent",
       "system-audio-transcript"
     ];

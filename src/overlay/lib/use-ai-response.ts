@@ -87,13 +87,6 @@ export const useAIResponse = (
           });
           window.electronAPI?.navigateMain?.(cmd.url);
           return;
-        case "create_task":
-          dispatch({
-            type: "COMMAND_RESULT",
-            title: "Task Created",
-            lines: [cmd.title, "Added to your task list"],
-          });
-          return;
         case "search":
           dispatch({
             type: "COMMAND_RESULT",

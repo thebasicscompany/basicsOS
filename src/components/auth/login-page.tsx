@@ -37,9 +37,16 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-8">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-          <p className="text-sm text-muted-foreground">Basics CRM</p>
+        <div className="flex flex-col items-center gap-6">
+          <img
+            src="/basicos-wordmark.png"
+            alt="BasicsOS"
+            className="h-8 w-auto object-contain"
+          />
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+            <p className="text-sm text-muted-foreground">Basics CRM</p>
+          </div>
         </div>
         {error && (
           <p className="text-destructive text-sm text-center rounded-md bg-destructive/10 p-2">

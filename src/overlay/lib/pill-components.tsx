@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { MicrophoneIcon } from "@phosphor-icons/react";
 
 export const SPRING = {
   type: "spring" as const,
@@ -40,7 +41,7 @@ export const Sparkle = ({ active }: { active: boolean }) => (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <path
         d="M8 0C8.3 4.5 11.5 7.7 16 8C11.5 8.3 8.3 11.5 8 16C7.7 11.5 4.5 8.3 0 8C4.5 7.7 7.7 4.5 8 0Z"
-        fill="white"
+        fill="var(--overlay-text-primary)"
         fillOpacity={active ? 1 : 0.55}
       />
     </svg>
@@ -53,7 +54,7 @@ export const PencilIcon = () => (
     height="14"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="white"
+    stroke="var(--overlay-text-primary)"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -70,7 +71,7 @@ export const MicIcon = () => (
     height="14"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="white"
+    stroke="var(--overlay-text-primary)"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -83,22 +84,6 @@ export const MicIcon = () => (
 );
 
 export const CompanyLogo = ({ logoUrl }: { logoUrl: string | null }) => {
-  if (logoUrl) {
-    return (
-      <motion.img
-        src={logoUrl}
-        alt=""
-        animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.8, 0.5] }}
-        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          width: 15,
-          height: 15,
-          borderRadius: 3,
-          objectFit: "contain",
-        }}
-      />
-    );
-  }
   return (
     <motion.div
       animate={{ opacity: [0.45, 0.75, 0.45] }}
@@ -111,24 +96,7 @@ export const CompanyLogo = ({ logoUrl }: { logoUrl: string | null }) => {
         height: 15,
       }}
     >
-      <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-        <rect
-          x="1"
-          y="1"
-          width="18"
-          height="18"
-          rx="5"
-          fill="white"
-          fillOpacity="0.15"
-        />
-        <path
-          d="M7 5.5v9M7 10h2.5a2.5 2.5 0 0 0 0-5H7M7 10h3a2.5 2.5 0 0 1 0 5H7"
-          stroke="white"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <MicrophoneIcon size={13} weight="fill" color="var(--overlay-text-secondary)" />
     </motion.div>
   );
 };
@@ -158,7 +126,7 @@ export const Waveform = () => {
           style={{
             width: 2,
             borderRadius: 1,
-            background: "rgba(255,255,255,0.7)",
+            background: "var(--overlay-text-secondary)",
           }}
         />
       ))}
@@ -182,7 +150,7 @@ export const ThinkingDots = () => (
           width: 5,
           height: 5,
           borderRadius: "50%",
-          background: "#fff",
+          background: "var(--overlay-text-primary)",
         }}
       />
     ))}
@@ -197,8 +165,8 @@ export const ResponseBody = ({
   <div>
     <div
       style={{
-        color: "#fff",
-        fontSize: 13.5,
+        color: "var(--overlay-text-primary)",
+        fontSize: "var(--overlay-font-lg)",
         lineHeight: 1.5,
         fontWeight: 400,
       }}
@@ -209,8 +177,8 @@ export const ResponseBody = ({
       <div
         key={`${response.title}-${i}`}
         style={{
-          color: "rgba(255,255,255,0.6)",
-          fontSize: 12.5,
+          color: "var(--overlay-text-secondary)",
+          fontSize: "var(--overlay-font-md)",
           lineHeight: 1.5,
           marginTop: 2,
         }}
@@ -239,8 +207,8 @@ export const MeetingTimer = ({
   return (
     <span
       style={{
-        color: "rgba(255,255,255,0.5)",
-        fontSize: 11,
+        color: "var(--overlay-text-muted)",
+        fontSize: "var(--overlay-font-sm)",
         fontVariantNumeric: "tabular-nums",
       }}
     >

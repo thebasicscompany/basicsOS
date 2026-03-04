@@ -52,11 +52,18 @@ export function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Welcome to Basics CRM</h1>
-          <p className="text-muted-foreground text-sm">
-            Create the first user account to complete setup.
-          </p>
+        <div className="flex flex-col items-center gap-6">
+          <img
+            src="/basicos-wordmark.png"
+            alt="BasicsOS"
+            className="h-8 w-auto object-contain"
+          />
+          <div className="space-y-1 text-center">
+            <h1 className="text-2xl font-bold">Welcome to Basics CRM</h1>
+            <p className="text-muted-foreground text-sm">
+              Create the first user account to complete setup.
+            </p>
+          </div>
         </div>
         {error && (
           <p className="text-destructive text-sm rounded-md bg-destructive/10 p-2">{error}</p>

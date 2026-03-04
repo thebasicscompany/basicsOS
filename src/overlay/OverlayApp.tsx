@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState, useReducer } from "react";
+import { useEffect, useCallback, useRef, useState, useReducer, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type {
   OverlaySettings,
@@ -320,6 +320,15 @@ export const OverlayApp = () => {
     }
   }, [flash]);
 
+  const handleCloseOverlay = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      window.electronAPI?.hideOverlay?.();
+      dismissRef.current();
+    },
+    []
+  );
+
   return (
     <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
       <div
@@ -346,18 +355,49 @@ export const OverlayApp = () => {
         transition={SPRING}
         style={{
           width: "100%",
-          background: "#000",
-          borderRadius: pill.state === "idle" ? "0 0 8px 8px" : "0 0 16px 16px",
+          background: "var(--overlay-pill-bg)",
+          borderRadius:
+            pill.state === "idle"
+              ? `0 0 var(--overlay-radius-idle) var(--overlay-radius-idle)`
+              : `0 0 var(--overlay-radius-active) var(--overlay-radius-active)`,
           overflow: "hidden",
           position: "relative",
           cursor: pill.state === "idle" ? "pointer" : "default",
         }}
       >
+        <button
+          type="button"
+          aria-label="Close overlay"
+          onClick={handleCloseOverlay}
+          style={{
+            position: "absolute",
+            top: pill.state === "idle" ? 3 : topPad + 3,
+            right: 8,
+            width: 18,
+            height: 18,
+            borderRadius: "50%",
+            border: "none",
+            background: "var(--overlay-close-bg)",
+            color: "var(--overlay-text-primary)",
+            fontSize: 12,
+            lineHeight: "18px",
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--overlay-close-bg-hover)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--overlay-close-bg)";
+          }}
+        >
+          x
+        </button>
         <div
           style={{
             paddingTop: pill.state === "idle" ? 0 : topPad,
             paddingLeft: 16,
-            paddingRight: 16,
+            paddingRight: 30,
             paddingBottom: pill.state === "idle" ? 0 : 12,
           }}
         >
@@ -385,7 +425,7 @@ export const OverlayApp = () => {
                       width: 6,
                       height: 6,
                       borderRadius: "50%",
-                      background: "#ef4444",
+                      background: "var(--overlay-accent-danger)",
                       flexShrink: 0,
                     }}
                   />
@@ -408,8 +448,8 @@ export const OverlayApp = () => {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
-                  color: "#4ade80",
-                  fontSize: 13,
+                  color: "var(--overlay-accent-success)",
+                  fontSize: "var(--overlay-font-md)",
                   fontWeight: 600,
                 }}
               >
@@ -444,8 +484,8 @@ export const OverlayApp = () => {
                 >
                   <span
                     style={{
-                      color: "#fff",
-                      fontSize: 13.5,
+                      color: "var(--overlay-text-primary)",
+                      fontSize: "var(--overlay-font-lg)",
                       fontWeight: 500,
                       letterSpacing: "-0.01em",
                     }}
@@ -455,8 +495,8 @@ export const OverlayApp = () => {
                   {modeDetail() && (
                     <span
                       style={{
-                        color: "rgba(255,255,255,0.5)",
-                        fontSize: 11,
+                        color: "var(--overlay-text-muted)",
+                        fontSize: "var(--overlay-font-sm)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -488,8 +528,8 @@ export const OverlayApp = () => {
                 {pill.streamingText ? (
                   <span
                     style={{
-                      color: "rgba(255,255,255,0.8)",
-                      fontSize: 12.5,
+                      color: "var(--overlay-text-secondary)",
+                      fontSize: "var(--overlay-font-md)",
                       flex: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -521,8 +561,8 @@ export const OverlayApp = () => {
                 <ThinkingDots />
                 <span
                   style={{
-                    color: "rgba(255,255,255,0.8)",
-                    fontSize: 13.5,
+                    color: "var(--overlay-text-secondary)",
+                    fontSize: "var(--overlay-font-lg)",
                     fontWeight: 500,
                   }}
                 >
@@ -553,8 +593,8 @@ export const OverlayApp = () => {
                   <Sparkle active />
                   <span
                     style={{
-                      color: "#fff",
-                      fontSize: 13.5,
+                      color: "var(--overlay-text-primary)",
+                      fontSize: "var(--overlay-font-lg)",
                       fontWeight: 600,
                       letterSpacing: "-0.01em",
                     }}
@@ -583,8 +623,8 @@ export const OverlayApp = () => {
                   style={{
                     textAlign: "right",
                     marginTop: 6,
-                    fontSize: 11,
-                    color: "#fff",
+                    fontSize: "var(--overlay-font-sm)",
+                    color: "var(--overlay-text-done)",
                   }}
                 >
                   Done
@@ -603,7 +643,7 @@ export const OverlayApp = () => {
             width: "50%",
             height: 1,
             background:
-              "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+              "linear-gradient(90deg, transparent, var(--overlay-line-soft), transparent)",
           }}
         />
       </motion.div>

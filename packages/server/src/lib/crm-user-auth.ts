@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import * as schema from "../db/schema/index.js";
+import { resolveStoredApiKey } from "./api-key-crypto.js";
 
 export type CrmUserWithApiKey = {
   crmUser: typeof schema.crmUsers.$inferSelect;
@@ -40,7 +41,7 @@ export async function resolveCrmUserWithApiKey(
     };
   }
 
-  const apiKey = crmUser.basicsApiKey?.trim();
+  const apiKey = resolveStoredApiKey(crmUser);
 
   if (!apiKey) {
     return {

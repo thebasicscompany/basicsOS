@@ -10,8 +10,9 @@ import { executeSlack } from "./automation-actions/slack.js";
 import { executeGmailRead } from "./automation-actions/gmail-read.js";
 import { executeGmailSend } from "./automation-actions/gmail-send.js";
 import { executeAIAgent } from "./automation-actions/ai-agent.js";
+import { resolveStoredApiKey } from "./api-key-crypto.js";
 
-type CrmUserRow = { id: number; basicsApiKey?: string | null };
+type CrmUserRow = { id: number; basicsApiKey?: string | null; basicsApiKeyEnc?: string | null };
 
 export async function executeWorkflow(
   workflowDef: WorkflowDefinition,
@@ -34,7 +35,7 @@ export async function executeWorkflow(
     crm_user_id: crmUser.id,
   };
 
-  const apiKey = crmUser.basicsApiKey ?? "";
+  const apiKey = resolveStoredApiKey(crmUser) ?? "";
 
   for (const nodeId of order) {
     const node = nodes.find((n) => n.id === nodeId);

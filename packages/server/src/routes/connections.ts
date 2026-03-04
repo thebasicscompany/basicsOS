@@ -5,6 +5,7 @@ import type { Env } from "../env.js";
 import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
 import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import { resolveStoredApiKey } from "../lib/api-key-crypto.js";
 
 type Auth = ReturnType<typeof import("../auth.js").createAuth>;
 
@@ -13,11 +14,14 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
 
   async function getCrmUserApiKey(userId: string): Promise<string | null> {
     const rows = await db
-      .select({ basicsApiKey: schema.crmUsers.basicsApiKey })
+      .select({
+        basicsApiKey: schema.crmUsers.basicsApiKey,
+        basicsApiKeyEnc: schema.crmUsers.basicsApiKeyEnc,
+      })
       .from(schema.crmUsers)
       .where(eq(schema.crmUsers.userId, userId))
       .limit(1);
-    return rows[0]?.basicsApiKey ?? null;
+    return rows[0] ? resolveStoredApiKey(rows[0]) : null;
   }
 
   // List all connections for the authenticated user

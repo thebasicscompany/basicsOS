@@ -120,6 +120,20 @@
       "when": 1772837000000,
       "tag": "0017_rbac_manage_permission",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1772840000000,
+      "tag": "0018_api_key_encryption",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1772842000000,
+      "tag": "0019_audit_logs",
+      "breakpoints": true
     }
   ]
 }

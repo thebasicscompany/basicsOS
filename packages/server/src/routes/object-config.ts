@@ -7,6 +7,7 @@ import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq, and, asc } from "drizzle-orm";
 import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import { writeAuditLogSafe } from "../lib/audit-log.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -72,7 +73,7 @@ export function createObjectConfigRoutes(
     if (!authz.ok) return authz.response;
 
     try {
-      const session = c.get("session") as { user?: { id: string } };
+      const session = c.get("session");
       const userId = session?.user?.id;
       if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
@@ -95,6 +96,9 @@ export function createObjectConfigRoutes(
       if (!crmUserRow) {
         return c.json({ error: "User not found in CRM" }, 404);
       }
+      if (!crmUserRow.organizationId) {
+        return c.json({ error: "Organization not found" }, 404);
+      }
 
       // Check if favorite already exists
       const [existing] = await db
@@ -103,6 +107,7 @@ export function createObjectConfigRoutes(
         .where(
           and(
             eq(schema.recordFavorites.crmUserId, crmUserRow.id),
+            eq(schema.recordFavorites.organizationId, crmUserRow.organizationId),
             eq(schema.recordFavorites.objectSlug, body.objectSlug),
             eq(schema.recordFavorites.recordId, body.recordId),
           ),
@@ -120,6 +125,7 @@ export function createObjectConfigRoutes(
         // Add favorite
         await db.insert(schema.recordFavorites).values({
           crmUserId: crmUserRow.id,
+          organizationId: crmUserRow.organizationId,
           objectSlug: body.objectSlug,
           recordId: body.recordId,
         });
@@ -138,7 +144,7 @@ export function createObjectConfigRoutes(
     if (!authz.ok) return authz.response;
 
     try {
-      const session = c.get("session") as { user?: { id: string } };
+      const session = c.get("session");
       const userId = session?.user?.id;
       if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
@@ -152,10 +158,16 @@ export function createObjectConfigRoutes(
       if (!crmUserRow) {
         return c.json({ error: "User not found in CRM" }, 404);
       }
+      if (!crmUserRow.organizationId) {
+        return c.json({ error: "Organization not found" }, 404);
+      }
 
       const objectSlug = c.req.query("objectSlug");
 
-      const conditions = [eq(schema.recordFavorites.crmUserId, crmUserRow.id)];
+      const conditions = [
+        eq(schema.recordFavorites.crmUserId, crmUserRow.id),
+        eq(schema.recordFavorites.organizationId, crmUserRow.organizationId),
+      ];
       if (objectSlug) {
         conditions.push(eq(schema.recordFavorites.objectSlug, objectSlug));
       }
@@ -228,6 +240,20 @@ export function createObjectConfigRoutes(
         .where(eq(schema.objectConfig.slug, slug))
         .returning();
 
+      if (updated) {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (authz.ok) {
+          await writeAuditLogSafe(db, {
+            crmUserId: authz.crmUser.id,
+            organizationId: authz.crmUser.organizationId,
+            action: "object_config.updated",
+            entityType: "object_config",
+            entityId: updated.id,
+            metadata: { slug, updatedFields: Object.keys(updates) },
+          });
+        }
+      }
+
       return c.json(updated);
     } catch (err) {
       console.error("[object-config] update failed:", err);
@@ -297,6 +323,18 @@ export function createObjectConfigRoutes(
           .where(eq(schema.objectAttributeOverrides.id, existing.id))
           .returning();
 
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (authz.ok && updated) {
+          await writeAuditLogSafe(db, {
+            crmUserId: authz.crmUser.id,
+            organizationId: authz.crmUser.organizationId,
+            action: "object_attribute_override.updated",
+            entityType: "object_attribute_override",
+            entityId: updated.id,
+            metadata: { slug, columnName: body.columnName, updatedFields: Object.keys(updates) },
+          });
+        }
+
         return c.json(updated);
       } else {
         // Insert new override
@@ -313,6 +351,18 @@ export function createObjectConfigRoutes(
             config: body.config ?? {},
           })
           .returning();
+
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (authz.ok && created) {
+          await writeAuditLogSafe(db, {
+            crmUserId: authz.crmUser.id,
+            organizationId: authz.crmUser.organizationId,
+            action: "object_attribute_override.created",
+            entityType: "object_attribute_override",
+            entityId: created.id,
+            metadata: { slug, columnName: body.columnName },
+          });
+        }
 
         return c.json(created, 201);
       }

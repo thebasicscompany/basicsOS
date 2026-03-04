@@ -5,6 +5,7 @@ import {
   boolean,
   uuid,
   jsonb,
+  text,
 } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations";
 import { user } from "./auth";
@@ -24,4 +25,6 @@ export const crmUsers = pgTable("crm_users", {
   avatar: jsonb("avatar"), // { src: string }
   disabled: boolean("disabled").notNull().default(false),
   basicsApiKey: varchar("basics_api_key", { length: 255 }),
+  basicsApiKeyEnc: text("basics_api_key_enc"),
+  basicsApiKeyHash: varchar("basics_api_key_hash", { length: 64 }),
 });

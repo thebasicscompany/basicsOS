@@ -17,6 +17,8 @@ import {
 } from "../constants.js";
 import { snakeToCamel } from "../utils.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
+import { getWriteAllowlist } from "./field-allowlists.js";
+import { resolveStoredApiKey } from "../../../lib/api-key-crypto.js";
 
 export function createUpdateHandler(db: Db, env: Env) {
   return async (c: Context) => {
@@ -52,10 +54,18 @@ export function createUpdateHandler(db: Db, env: Env) {
 
     const rawBody = (await c.req.json()) as Record<string, unknown>;
     delete rawBody.id;
-    const body = snakeToCamel(rawBody) as Record<string, unknown>;
+    const bodyRaw = snakeToCamel(rawBody) as Record<string, unknown>;
+    const allowedFields = getWriteAllowlist(resource);
+    if (allowedFields.size === 0) {
+      return c.json({ error: "Update not supported for this resource" }, 400);
+    }
+    const body: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(bodyRaw)) {
+      if (allowedFields.has(key)) body[key] = value;
+    }
 
     if (Object.keys(body).length === 0) {
-      return c.json({ error: "No fields to update; request body is empty after removing id" }, 400);
+      return c.json({ error: "No writable fields to update" }, 400);
     }
 
     const table = TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">];
@@ -72,7 +82,7 @@ export function createUpdateHandler(db: Db, env: Env) {
     if (!updated) return c.json({ error: "Not found" }, 404);
 
     const entityTypeU = getEntityType(resource);
-    const apiKeyU = crmUserRows[0]?.basicsApiKey;
+    const apiKeyU = resolveStoredApiKey(crmUserRows[0] ?? {});
     if (entityTypeU && apiKeyU && typeof id === "number") {
       const chunkText = buildEntityText(entityTypeU, updated as Record<string, unknown>);
       upsertEntityEmbedding(db, env.BASICOS_API_URL, apiKeyU, crmUserId, entityTypeU, id, chunkText).catch(() => {});

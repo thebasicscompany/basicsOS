@@ -28,6 +28,16 @@ export async function executeAIAgent(
     apiKey,
   });
 
+  const [crmUser] = await db
+    .select({ organizationId: schema.crmUsers.organizationId })
+    .from(schema.crmUsers)
+    .where(eq(schema.crmUsers.id, crmUserId))
+    .limit(1);
+  const organizationId = crmUser?.organizationId;
+  if (!organizationId) {
+    throw new Error("Organization not found for CRM user");
+  }
+
   const { text } = await generateText({
     model: openai(model) as unknown as Parameters<typeof generateText>[0]["model"],
     maxSteps,
@@ -47,6 +57,7 @@ export async function executeAIAgent(
             .where(
               and(
                 eq(schema.contacts.crmUserId, crmUserId),
+                eq(schema.contacts.organizationId, organizationId),
                 or(
                   like(schema.contacts.firstName, `%${query}%`),
                   like(schema.contacts.lastName, `%${query}%`),
@@ -69,6 +80,7 @@ export async function executeAIAgent(
             .where(
               and(
                 eq(schema.deals.crmUserId, crmUserId),
+                eq(schema.deals.organizationId, organizationId),
                 like(schema.deals.name, `%${query}%`)
               )
             )
@@ -89,7 +101,8 @@ export async function executeAIAgent(
             .where(
               and(
                 eq(schema.contacts.id, contactId),
-                eq(schema.contacts.crmUserId, crmUserId)
+                eq(schema.contacts.crmUserId, crmUserId),
+                eq(schema.contacts.organizationId, organizationId)
               )
             )
             .limit(1);
@@ -99,7 +112,7 @@ export async function executeAIAgent(
 
           const [task] = await db
             .insert(schema.tasks)
-            .values({ crmUserId, text, contactId, type })
+            .values({ crmUserId, organizationId, text, contactId, type })
             .returning();
           return task;
         },
@@ -117,7 +130,8 @@ export async function executeAIAgent(
             .where(
               and(
                 eq(schema.deals.id, dealId),
-                eq(schema.deals.crmUserId, crmUserId)
+                eq(schema.deals.crmUserId, crmUserId),
+                eq(schema.deals.organizationId, organizationId)
               )
             )
             .returning();

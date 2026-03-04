@@ -18,6 +18,8 @@ import {
 } from "../constants.js";
 import { snakeToCamel } from "../utils.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
+import { getWriteAllowlist } from "./field-allowlists.js";
+import { resolveStoredApiKey } from "../../../lib/api-key-crypto.js";
 
 export function createCreateHandler(db: Db, env: Env) {
   return async (c: Context) => {
@@ -49,7 +51,19 @@ export function createCreateHandler(db: Db, env: Env) {
     const table = TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">];
     if (!table) return c.json({ error: "Unknown resource" }, 404);
 
-    const body = snakeToCamel(rawBody) as Record<string, unknown>;
+    const bodyRaw = snakeToCamel(rawBody) as Record<string, unknown>;
+    const allowedFields = getWriteAllowlist(resource);
+    if (allowedFields.size === 0) {
+      return c.json({ error: "Create not supported for this resource" }, 400);
+    }
+    const body: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(bodyRaw)) {
+      if (allowedFields.has(key)) body[key] = value;
+    }
+    if (Object.keys(body).length === 0) {
+      return c.json({ error: "No writable fields provided" }, 400);
+    }
+
     if (hasCrmUserId(resource)) {
       body.crmUserId = crmUserId;
     }
@@ -61,7 +75,7 @@ export function createCreateHandler(db: Db, env: Env) {
     if (!inserted) return c.json({ error: "Insert failed" }, 500);
 
     const entityType = getEntityType(resource);
-    const apiKey = crmUserRows[0]?.basicsApiKey;
+    const apiKey = resolveStoredApiKey(crmUserRows[0] ?? {});
     if (entityType && apiKey && inserted && typeof (inserted as { id?: unknown }).id === "number") {
       const chunkText = buildEntityText(entityType, inserted as Record<string, unknown>);
       upsertEntityEmbedding(db, env.BASICOS_API_URL, apiKey, crmUserId, entityType, (inserted as { id: number }).id, chunkText).catch(() => {});

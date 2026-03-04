@@ -7,6 +7,8 @@ import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { PERMISSIONS, getPermissionSetForUser, hasPermission, requirePermission } from "../lib/rbac.js";
+import { encryptApiKey, hashApiKey, hasApiKeyEncryptionConfigured } from "../lib/api-key-crypto.js";
+import { writeAuditLogSafe } from "../lib/audit-log.js";
 
 function generateInviteToken(): string {
   return randomBytes(24).toString("hex");
@@ -60,7 +62,7 @@ export function createAuthRoutes(
       email: crmUser.email,
       avatar: crmUser.avatar,
       administrator: hasPermission(permissions, PERMISSIONS.rbacManage),
-      hasApiKey: Boolean(crmUser.basicsApiKey?.trim()),
+      hasApiKey: Boolean(crmUser.basicsApiKeyEnc?.trim() || crmUser.basicsApiKey?.trim()),
     });
   });
 
@@ -93,11 +95,39 @@ export function createAuthRoutes(
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     const body = await c.req.json<{ basicsApiKey?: string | null }>();
+    const key = body.basicsApiKey?.trim() || null;
+
+    if (key && !hasApiKeyEncryptionConfigured()) {
+      return c.json({ error: "API key encryption is not configured on server" }, 500);
+    }
+
+    const encrypted = key ? encryptApiKey(key) : null;
+    const keyHash = key ? hashApiKey(key) : null;
 
     await db
       .update(schema.crmUsers)
-      .set({ basicsApiKey: body.basicsApiKey ?? null })
+      .set({
+        basicsApiKey: null,
+        basicsApiKeyEnc: encrypted,
+        basicsApiKeyHash: keyHash,
+      })
       .where(eq(schema.crmUsers.userId, userId));
+
+    const [crmUser] = await db
+      .select({ id: schema.crmUsers.id, organizationId: schema.crmUsers.organizationId })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.userId, userId))
+      .limit(1);
+    if (crmUser) {
+      await writeAuditLogSafe(db, {
+        crmUserId: crmUser.id,
+        organizationId: crmUser.organizationId,
+        action: "auth.settings.api_key.updated",
+        entityType: "crm_user",
+        entityId: crmUser.id,
+        metadata: { hasKey: Boolean(key) },
+      });
+    }
 
     return c.json({ ok: true });
   });
@@ -173,6 +203,15 @@ export function createAuthRoutes(
       .returning();
 
     if (!org) return c.json({ error: "Organization not found" }, 404);
+
+    await writeAuditLogSafe(db, {
+      crmUserId: crmUser.id,
+      organizationId: crmUser.organizationId,
+      action: "organization.updated",
+      entityType: "organization",
+      entityId: org.id,
+      metadata: { updatedFields: Object.keys(updates) },
+    });
 
     return c.json({
       id: org.id,
@@ -345,6 +384,16 @@ export function createAuthRoutes(
       .returning();
 
     if (!invite) return c.json({ error: "Failed to create invite" }, 500);
+
+    await writeAuditLogSafe(db, {
+      crmUserId: crmUser.id,
+      organizationId: crmUser.organizationId,
+      action: "invite.created",
+      entityType: "invite",
+      entityId: invite.id,
+      metadata: { email: invite.email, expiresAt: invite.expiresAt.toISOString() },
+    });
+
     return c.json({
       token: invite.token,
       email: invite.email,

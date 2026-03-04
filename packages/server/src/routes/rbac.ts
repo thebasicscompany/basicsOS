@@ -5,6 +5,7 @@ import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import { PERMISSIONS, requirePermission, wouldRemoveLastManager } from "../lib/rbac.js";
+import { writeAuditLogSafe } from "../lib/audit-log.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -245,6 +246,15 @@ export function createRbacRoutes(db: Db, auth: BetterAuthInstance) {
       .update(schema.crmUsers)
       .set({ administrator: newRoleHasManagePermission })
       .where(and(eq(schema.crmUsers.id, targetId), eq(schema.crmUsers.organizationId, crmUser.organizationId)));
+
+    await writeAuditLogSafe(db, {
+      crmUserId: crmUser.id,
+      organizationId: crmUser.organizationId,
+      action: "rbac.user_roles.updated",
+      entityType: "crm_user",
+      entityId: targetId,
+      metadata: { roleKeys },
+    });
 
     return c.json({ ok: true });
   });

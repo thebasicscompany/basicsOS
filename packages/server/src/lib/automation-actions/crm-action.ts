@@ -2,6 +2,20 @@ import type { Db } from "../../db/client.js";
 import * as schema from "../../db/schema/index.js";
 import { eq, and } from "drizzle-orm";
 
+async function getOrganizationIdForUser(db: Db, crmUserId: number): Promise<string> {
+  const [crmUser] = await db
+    .select({ organizationId: schema.crmUsers.organizationId })
+    .from(schema.crmUsers)
+    .where(eq(schema.crmUsers.id, crmUserId))
+    .limit(1);
+
+  if (!crmUser?.organizationId) {
+    throw new Error("CRM user is not associated with an organization");
+  }
+
+  return crmUser.organizationId;
+}
+
 export async function executeCrmAction(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
@@ -12,6 +26,7 @@ export async function executeCrmAction(
     action: string;
     params?: Record<string, unknown>;
   };
+  const organizationId = await getOrganizationIdForUser(db, crmUserId);
 
   switch (action) {
     case "create_task": {
@@ -23,9 +38,16 @@ export async function executeCrmAction(
       };
 
       if (!contactId) throw new Error("create_task requires a contactId");
+      const [contact] = await db
+        .select({ id: schema.contacts.id })
+        .from(schema.contacts)
+        .where(and(eq(schema.contacts.id, contactId), eq(schema.contacts.organizationId, organizationId)))
+        .limit(1);
+      if (!contact) throw new Error(`Contact ${contactId} not found or access denied`);
 
       const [task] = await db.insert(schema.tasks).values({
         crmUserId,
+        organizationId,
         text: text ?? "",
         type: type ?? "Todo",
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -44,6 +66,7 @@ export async function executeCrmAction(
 
       const [contact] = await db.insert(schema.contacts).values({
         crmUserId,
+        organizationId,
         firstName: firstName ?? null,
         lastName: lastName ?? null,
         email: email ?? null,
@@ -62,9 +85,16 @@ export async function executeCrmAction(
       };
 
       if (!contactId) throw new Error("create_note requires a contactId");
+      const [contact] = await db
+        .select({ id: schema.contacts.id })
+        .from(schema.contacts)
+        .where(and(eq(schema.contacts.id, contactId), eq(schema.contacts.organizationId, organizationId)))
+        .limit(1);
+      if (!contact) throw new Error(`Contact ${contactId} not found or access denied`);
 
       const [note] = await db.insert(schema.contactNotes).values({
         crmUserId,
+        organizationId,
         contactId,
         text: text ?? "",
         status: status ?? "none",
@@ -84,9 +114,16 @@ export async function executeCrmAction(
       if (dealId == null || Number.isNaN(dealId)) {
         throw new Error("create_deal_note requires a valid dealId (use {{trigger_data.id}} for deal.created)");
       }
+      const [deal] = await db
+        .select({ id: schema.deals.id })
+        .from(schema.deals)
+        .where(and(eq(schema.deals.id, dealId), eq(schema.deals.organizationId, organizationId)))
+        .limit(1);
+      if (!deal) throw new Error(`Deal ${dealId} not found or access denied`);
 
       const [note] = await db.insert(schema.dealNotes).values({
         crmUserId,
+        organizationId,
         dealId,
         text: text ?? "",
         type: type ?? null,
@@ -127,7 +164,7 @@ export async function executeCrmAction(
       const [deal] = await db
         .update(schema.deals)
         .set(updates)
-        .where(and(eq(schema.deals.id, dealId), eq(schema.deals.crmUserId, crmUserId)))
+        .where(and(eq(schema.deals.id, dealId), eq(schema.deals.organizationId, organizationId)))
         .returning();
 
       if (!deal) throw new Error(`Deal ${dealId} not found or access denied`);

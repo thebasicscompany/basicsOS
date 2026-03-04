@@ -3,6 +3,66 @@ Date: 2026-03-04
 Repo: `basicsOSnew`
 Scope: Electron desktop app, React frontend, Hono/Drizzle backend, AI/tooling/automation, auth/tenancy flows
 
+## Status Update (Implemented So Far)
+- Done:
+  - Electron hardening is in place (`sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`) with stricter navigation allowlisting.
+  - Renderer session-token exposure path was removed; overlay now uses main-process proxy requests for authenticated calls.
+  - Browser `localStorage` API key persistence was removed (key is in-memory only on client).
+  - Central auth middleware now enforces disabled-user denial.
+  - RBAC enforcement added across sensitive routes (including hard-delete restrictions and admin-gated config paths).
+  - Security middleware added in server app (rate limiting + security headers/CSP).
+  - Airtable route was removed/deprecated from active server routing.
+  - Server and workspace typecheck now pass; tests and production build pass.
+  - Deprecated `/assistant` route source was removed; active assistant paths are now `/api/gateway-chat` and `/stream/assistant`.
+  - Generic CRM create/update handlers now enforce explicit writable field allowlists (mass-assignment hardening baseline).
+  - Views now persist and verify `organization_id` consistently with the current user's org.
+  - Favorites now persist and filter by `organization_id`.
+  - Automation AI action queries/mutations now include organization scoping guards.
+  - Automation CRM action executor now resolves `organization_id` and enforces org-scoped checks for task/note/deal operations.
+  - API key at-rest protection baseline implemented:
+    - Added encrypted storage (`basics_api_key_enc`) + deterministic hash (`basics_api_key_hash`) in `crm_users`.
+    - API key writes now encrypt and hash; reads decrypt with legacy plaintext fallback.
+    - Added key-rotation decrypt support via `API_KEY_ENCRYPTION_KEY_PREVIOUS` (comma-separated prior keys).
+    - DB migration `0018_api_key_encryption.sql` applied.
+  - Audit logging baseline is now implemented for privileged/configuration and destructive CRM mutations.
+  - Added targeted server tests for API key crypto helpers (round-trip encryption, rotation decrypt, hashing, legacy fallback).
+- In progress:
+  - Final tenancy cleanup for object metadata tables and cross-route policy unification.
+- Remaining:
+  - Replace generic CRM mass-assignment allowlists with strict per-route zod schemas for all mutable resources.
+  - Expand end-to-end integration/security test coverage (RBAC, tenancy, destructive action boundaries).
+
+## Remediation Checklist (Tracked)
+- [x] Remove renderer session token exposure and proxy auth calls via main process.
+- [x] Electron hardening flags and stricter navigation allowlisting.
+- [x] Remove browser `localStorage` API key persistence.
+- [x] Enforce disabled-user denial in auth middleware.
+- [x] Add RBAC enforcement on sensitive/admin routes.
+- [x] Add security middleware (headers + rate limiting).
+- [x] Remove deprecated Airtable route.
+- [x] Remove deprecated `/assistant` route source.
+- [x] Add CRM write allowlists (mass-assignment baseline hardening).
+- [x] Enforce `organization_id` consistency in views and favorites.
+- [x] Tenant-scope AI automation tools.
+- [x] Tenant-scope CRM automation action executor.
+- [x] Encrypt gateway keys at rest (`basics_api_key_enc`) + key hash (`basics_api_key_hash`).
+- [x] Add API key decrypt rotation support (`API_KEY_ENCRYPTION_KEY_PREVIOUS`).
+- [x] Add audit logging baseline for privileged/config/destructive mutations.
+- [x] Add server crypto helper tests.
+- [ ] Replace write allowlists with strict per-route zod schemas for all mutable resources.
+- [ ] Add integration/security tests for RBAC, tenancy, and destructive boundaries.
+
+## Next Sprint Pickup
+Start here, in order:
+1. **Per-route zod schemas for mutable CRM routes**
+   - Add explicit create/update schemas per resource in `packages/server/src/routes/crm/handlers/*`.
+   - Remove implicit broad payload acceptance; keep/align allowlists only as defense-in-depth.
+2. **Integration/security test suite expansion**
+   - Add route-level tests for: org isolation, role-gated mutations, and hard-delete admin-only behavior.
+   - Add regression tests for views/object-config tenancy boundaries.
+3. **Close remaining audit doc drift**
+   - Update stale narrative sections (`Executive Summary`, `Code Quality Findings`, checklist notes) that still mention already-fixed items.
+
 ## Executive Summary
 The product direction is strong, but there are several high-risk gaps before this should be considered production-grade in a multi-tenant commercial environment.
 

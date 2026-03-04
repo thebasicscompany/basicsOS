@@ -4,6 +4,7 @@ import * as schema from "../../../db/schema/index.js";
 import { and, eq } from "drizzle-orm";
 import type { Resource } from "../constants.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
+import { writeAuditLogSafe } from "../../../lib/audit-log.js";
 
 export function createRestoreHandler(db: Db) {
   return async (c: Context) => {
@@ -40,6 +41,13 @@ export function createRestoreHandler(db: Db) {
       .returning();
 
     if (!restored) return c.json({ error: "Not found" }, 404);
+    await writeAuditLogSafe(db, {
+      crmUserId: crmUser.id,
+      organizationId: crmUser.organizationId,
+      action: "crm.record.restored",
+      entityType: "deals",
+      entityId: id,
+    });
     return c.json(restored);
   };
 }

@@ -6,6 +6,7 @@ import { getEntityType, deleteEntityEmbedding } from "../../../lib/embeddings.js
 import { fireEvent } from "../../../lib/automation-engine.js";
 import { CRM_RESOURCES, TABLE_MAP, hasOrganizationId, type Resource } from "../constants.js";
 import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
+import { writeAuditLogSafe } from "../../../lib/audit-log.js";
 
 export function createDeleteHandler(db: Db) {
   return async (c: Context) => {
@@ -54,6 +55,13 @@ export function createDeleteHandler(db: Db) {
         .where(and(eq(schema.deals.id, id), eq(schema.deals.organizationId, orgId)))
         .returning();
       if (!archived) return c.json({ error: "Not found" }, 404);
+      await writeAuditLogSafe(db, {
+        crmUserId,
+        organizationId: orgId,
+        action: "crm.record.archived",
+        entityType: resource,
+        entityId: id,
+      });
       return c.json({ archived: true, record: archived });
     }
 
@@ -69,6 +77,14 @@ export function createDeleteHandler(db: Db) {
     if (eventResourceDel) {
       fireEvent(`${eventResourceDel.replace(/s$/, "")}.deleted`, deleted as Record<string, unknown>, crmUserId).catch(() => {});
     }
+
+    await writeAuditLogSafe(db, {
+      crmUserId,
+      organizationId: orgId,
+      action: "crm.record.hard_deleted",
+      entityType: resource,
+      entityId: id,
+    });
 
     return c.json(deleted);
   };

@@ -92,7 +92,7 @@ export function createApp(db: Db, env: Env) {
         }
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization", "x-basics-api-key"],
+      allowHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     })
   );

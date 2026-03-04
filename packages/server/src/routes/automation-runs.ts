@@ -6,6 +6,7 @@ import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq, and, desc } from "drizzle-orm";
 import { triggerRunNow } from "../lib/automation-engine.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -16,8 +17,11 @@ export function createAutomationRunsRoutes(db: Db, auth: BetterAuthInstance, _en
 
   // POST /api/automation-runs/run — trigger manual run for a rule
   app.post("/run", async (c) => {
-    const body = await c.req.json<{ ruleId: number }>().catch(() => ({}));
-    const ruleId = body?.ruleId;
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
+    const rawBody = await c.req.json().catch(() => null);
+    const ruleId = (rawBody as { ruleId?: unknown } | null)?.ruleId;
     if (typeof ruleId !== "number") return c.json({ error: "ruleId required" }, 400);
 
     const session = c.get("session") as { user?: { id: string } };
@@ -42,6 +46,9 @@ export function createAutomationRunsRoutes(db: Db, auth: BetterAuthInstance, _en
 
   // GET /api/automation-runs?ruleId=X
   app.get("/", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const ruleIdParam = c.req.query("ruleId");
     if (!ruleIdParam) return c.json({ error: "ruleId query param required" }, 400);
 

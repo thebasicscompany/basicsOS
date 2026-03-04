@@ -29,7 +29,7 @@ export async function executeAIAgent(
   });
 
   const { text } = await generateText({
-    model: openai(model),
+    model: openai(model) as unknown as Parameters<typeof generateText>[0]["model"],
     maxSteps,
     system:
       "You are a CRM automation agent. You have access to CRM data and can perform actions on behalf of the user.",

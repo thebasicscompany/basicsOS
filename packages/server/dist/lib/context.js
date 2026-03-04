@@ -4,20 +4,20 @@ import * as schema from "../db/schema/index.js";
  * Builds a brief CRM state summary injected into every AI request.
  * Uses aggregate queries — never loads full records.
  */
-export async function buildCrmSummary(db, salesId) {
+export async function buildCrmSummary(db, organizationId) {
     const [dealStats, overdueStats, recentContacts] = await Promise.all([
         db
             .select({ count: count(), total: sum(schema.deals.amount) })
             .from(schema.deals)
-            .where(and(eq(schema.deals.salesId, salesId), isNull(schema.deals.archivedAt))),
+            .where(and(eq(schema.deals.organizationId, organizationId), isNull(schema.deals.archivedAt))),
         db
             .select({ count: count() })
             .from(schema.tasks)
-            .where(and(eq(schema.tasks.salesId, salesId), isNull(schema.tasks.doneDate), lt(schema.tasks.dueDate, new Date()))),
+            .where(and(eq(schema.tasks.organizationId, organizationId), isNull(schema.tasks.doneDate), lt(schema.tasks.dueDate, new Date()))),
         db
             .select({ firstName: schema.contacts.firstName, lastName: schema.contacts.lastName })
             .from(schema.contacts)
-            .where(eq(schema.contacts.salesId, salesId))
+            .where(eq(schema.contacts.organizationId, organizationId))
             .orderBy(desc(schema.contacts.id))
             .limit(5),
     ]);
@@ -40,7 +40,7 @@ export async function buildCrmSummary(db, salesId) {
  * Embeds the query and runs a pgvector similarity search against context_embeddings.
  * Returns formatted top-K results, or null if unavailable/empty.
  */
-export async function retrieveRelevantContext(db, gatewayUrl, apiKey, salesId, query, limit = 5) {
+export async function retrieveRelevantContext(db, gatewayUrl, apiKey, organizationId, query, limit = 5) {
     if (!query.trim())
         return null;
     try {
@@ -59,7 +59,13 @@ export async function retrieveRelevantContext(db, gatewayUrl, apiKey, salesId, q
         if (!embedding?.length)
             return null;
         const embeddingStr = `[${embedding.join(",")}]`;
-        const rows = await db.execute(sql.raw(`SELECT entity_type, chunk_text FROM match_context_embeddings(${salesId}, '${embeddingStr}'::vector, ${limit})`));
+        const rows = await db.execute(sql `
+      SELECT entity_type, chunk_text
+      FROM context_embeddings
+      WHERE organization_id = ${organizationId}
+      ORDER BY embedding <=> ${embeddingStr}::vector
+      LIMIT ${limit}
+    `);
         const results = (Array.isArray(rows) ? rows : (rows.rows ?? []));
         if (results.length === 0)
             return null;

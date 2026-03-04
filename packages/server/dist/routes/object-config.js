@@ -2,9 +2,16 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq, and, asc } from "drizzle-orm";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 export function createObjectConfigRoutes(db, auth, _env) {
     const app = new Hono();
-    app.use("*", authMiddleware(auth));
+    app.use("*", authMiddleware(auth, db));
+    const requireObjectConfigWrite = async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
+        return null;
+    };
     // GET / — List all objects with their attribute overrides
     app.get("/", async (c) => {
         try {
@@ -30,13 +37,16 @@ export function createObjectConfigRoutes(db, auth, _env) {
             return c.json(result);
         }
         catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return c.json({ error: message }, 500);
+            console.error("[object-config] list failed:", err);
+            return c.json({ error: "Failed to load object config" }, 500);
         }
     });
     // --- Favorites (static paths registered BEFORE dynamic :slug params) ---
     // POST /favorites — Toggle favorite (insert or delete)
     app.post("/favorites", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         try {
             const session = c.get("session");
             const userId = session?.user?.id;
@@ -46,20 +56,20 @@ export function createObjectConfigRoutes(db, auth, _env) {
             if (!body.objectSlug || body.recordId == null) {
                 return c.json({ error: "objectSlug and recordId are required" }, 400);
             }
-            // Look up the sales row for this user
-            const [salesRow] = await db
+            // Look up the CRM user for this user
+            const [crmUserRow] = await db
                 .select()
-                .from(schema.sales)
-                .where(eq(schema.sales.userId, userId))
+                .from(schema.crmUsers)
+                .where(eq(schema.crmUsers.userId, userId))
                 .limit(1);
-            if (!salesRow) {
+            if (!crmUserRow) {
                 return c.json({ error: "User not found in CRM" }, 404);
             }
             // Check if favorite already exists
             const [existing] = await db
                 .select()
                 .from(schema.recordFavorites)
-                .where(and(eq(schema.recordFavorites.salesId, salesRow.id), eq(schema.recordFavorites.objectSlug, body.objectSlug), eq(schema.recordFavorites.recordId, body.recordId)))
+                .where(and(eq(schema.recordFavorites.crmUserId, crmUserRow.id), eq(schema.recordFavorites.objectSlug, body.objectSlug), eq(schema.recordFavorites.recordId, body.recordId)))
                 .limit(1);
             if (existing) {
                 // Remove favorite
@@ -71,7 +81,7 @@ export function createObjectConfigRoutes(db, auth, _env) {
             else {
                 // Add favorite
                 await db.insert(schema.recordFavorites).values({
-                    salesId: salesRow.id,
+                    crmUserId: crmUserRow.id,
                     objectSlug: body.objectSlug,
                     recordId: body.recordId,
                 });
@@ -79,28 +89,31 @@ export function createObjectConfigRoutes(db, auth, _env) {
             }
         }
         catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return c.json({ error: message }, 500);
+            console.error("[object-config] toggle favorite failed:", err);
+            return c.json({ error: "Failed to update favorite" }, 500);
         }
     });
     // GET /favorites — List user's favorites
     app.get("/favorites", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         try {
             const session = c.get("session");
             const userId = session?.user?.id;
             if (!userId)
                 return c.json({ error: "Unauthorized" }, 401);
-            // Look up the sales row for this user
-            const [salesRow] = await db
+            // Look up the CRM user for this user
+            const [crmUserRow] = await db
                 .select()
-                .from(schema.sales)
-                .where(eq(schema.sales.userId, userId))
+                .from(schema.crmUsers)
+                .where(eq(schema.crmUsers.userId, userId))
                 .limit(1);
-            if (!salesRow) {
+            if (!crmUserRow) {
                 return c.json({ error: "User not found in CRM" }, 404);
             }
             const objectSlug = c.req.query("objectSlug");
-            const conditions = [eq(schema.recordFavorites.salesId, salesRow.id)];
+            const conditions = [eq(schema.recordFavorites.crmUserId, crmUserRow.id)];
             if (objectSlug) {
                 conditions.push(eq(schema.recordFavorites.objectSlug, objectSlug));
             }
@@ -112,14 +125,17 @@ export function createObjectConfigRoutes(db, auth, _env) {
             return c.json(favorites);
         }
         catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return c.json({ error: message }, 500);
+            console.error("[object-config] list favorites failed:", err);
+            return c.json({ error: "Failed to load favorites" }, 500);
         }
     });
     // --- Dynamic :slug routes ---
     // PUT /:slug — Update object config (partial)
     app.put("/:slug", async (c) => {
         const slug = c.req.param("slug");
+        const adminError = await requireObjectConfigWrite(c);
+        if (adminError)
+            return adminError;
         try {
             const body = await c.req.json();
             const [existing] = await db
@@ -161,13 +177,16 @@ export function createObjectConfigRoutes(db, auth, _env) {
             return c.json(updated);
         }
         catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return c.json({ error: message }, 500);
+            console.error("[object-config] update failed:", err);
+            return c.json({ error: "Failed to update object config" }, 500);
         }
     });
     // POST /:slug/overrides — Create/update attribute override (upsert by column_name)
     app.post("/:slug/overrides", async (c) => {
         const slug = c.req.param("slug");
+        const adminError = await requireObjectConfigWrite(c);
+        if (adminError)
+            return adminError;
         try {
             const body = await c.req.json();
             if (!body.columnName) {
@@ -229,8 +248,8 @@ export function createObjectConfigRoutes(db, auth, _env) {
             }
         }
         catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            return c.json({ error: message }, 500);
+            console.error("[object-config] override upsert failed:", err);
+            return c.json({ error: "Failed to save attribute override" }, 500);
         }
     });
     return app;

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import { sql, eq, and, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 const VIEW_TYPE_TO_NUMBER = {
     grid: 3,
     kanban: 2,
@@ -14,21 +15,21 @@ const NUMBER_TO_VIEW_TYPE = {
     4: "gallery",
     5: "form",
 };
-async function getSalesId(db, session) {
+async function getCrmUserId(db, session) {
     if (!session?.user?.id)
         return null;
     const [row] = await db
-        .select({ id: schema.sales.id })
-        .from(schema.sales)
-        .where(eq(schema.sales.userId, session.user.id))
+        .select({ id: schema.crmUsers.id })
+        .from(schema.crmUsers)
+        .where(eq(schema.crmUsers.userId, session.user.id))
         .limit(1);
     return row?.id ?? null;
 }
-async function getViewAndCheckOwnership(db, viewId, salesId) {
+async function getViewAndCheckOwnership(db, viewId, crmUserId) {
     const [row] = await db
         .select()
         .from(schema.views)
-        .where(and(eq(schema.views.id, viewId), eq(schema.views.salesId, salesId)))
+        .where(and(eq(schema.views.id, viewId), eq(schema.views.crmUserId, crmUserId)))
         .limit(1);
     return row ?? null;
 }
@@ -143,24 +144,27 @@ async function seedDefaultViewColumns(db, viewId, objectSlug) {
 }
 export function createViewRoutes(db, auth) {
     const app = new Hono();
-    app.use("*", authMiddleware(auth));
+    app.use("*", authMiddleware(auth, db));
     app.get("/:objectSlug", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const objectSlug = c.req.param("objectSlug");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
         let list = await db
             .select()
             .from(schema.views)
-            .where(and(eq(schema.views.objectSlug, objectSlug), eq(schema.views.salesId, salesId)))
+            .where(and(eq(schema.views.objectSlug, objectSlug), eq(schema.views.crmUserId, crmUserId)))
             .orderBy(asc(schema.views.displayOrder), asc(schema.views.createdAt));
         if (list.length === 0) {
             const [inserted] = await db
                 .insert(schema.views)
                 .values({
                 objectSlug,
-                salesId,
+                crmUserId,
                 title: "Grid View",
                 type: "grid",
                 displayOrder: 0,
@@ -187,10 +191,13 @@ export function createViewRoutes(db, auth) {
         return c.json({ list: list.map(viewRowToNocoRaw) });
     });
     app.post("/:objectSlug", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const objectSlug = c.req.param("objectSlug");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
         const body = await c.req.json();
         const typeNum = body.type ?? 3;
@@ -199,7 +206,7 @@ export function createViewRoutes(db, auth) {
             .insert(schema.views)
             .values({
             objectSlug,
-            salesId,
+            crmUserId,
             title: body.title ?? "Untitled",
             type: typeStr,
             displayOrder: 0,
@@ -212,7 +219,7 @@ export function createViewRoutes(db, auth) {
         const existingViews = await db
             .select()
             .from(schema.views)
-            .where(and(eq(schema.views.objectSlug, objectSlug), eq(schema.views.salesId, salesId)));
+            .where(and(eq(schema.views.objectSlug, objectSlug), eq(schema.views.crmUserId, crmUserId)));
         const defaultView = existingViews.find((v) => v.isDefault) ?? existingViews[0];
         if (defaultView && defaultView.id !== inserted.id) {
             await copyViewColumns(db, defaultView.id, inserted.id);
@@ -223,12 +230,15 @@ export function createViewRoutes(db, auth) {
         return c.json(viewRowToNocoRaw(inserted));
     });
     app.post("/view/:viewId/columns", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const body = await c.req.json();
@@ -272,12 +282,15 @@ export function createViewRoutes(db, auth) {
         return c.json(columnRowToNocoRaw(inserted));
     });
     app.get("/view/:viewId/columns", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const list = await db
@@ -288,13 +301,16 @@ export function createViewRoutes(db, auth) {
         return c.json({ list: list.map(columnRowToNocoRaw) });
     });
     app.patch("/view/:viewId/columns/:columnId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const columnId = c.req.param("columnId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const body = await c.req.json();
@@ -315,12 +331,15 @@ export function createViewRoutes(db, auth) {
         return c.json(columnRowToNocoRaw(updated));
     });
     app.get("/view/:viewId/sorts", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const list = await db
@@ -331,12 +350,15 @@ export function createViewRoutes(db, auth) {
         return c.json({ list: list.map(sortRowToNocoRaw) });
     });
     app.post("/view/:viewId/sorts", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const body = await c.req.json();
@@ -359,13 +381,16 @@ export function createViewRoutes(db, auth) {
         return c.json(sortRowToNocoRaw(inserted));
     });
     app.delete("/view/:viewId/sorts/:sortId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const sortId = c.req.param("sortId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         await db
@@ -374,12 +399,15 @@ export function createViewRoutes(db, auth) {
         return c.json({});
     });
     app.get("/view/:viewId/filters", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const list = await db
@@ -389,12 +417,15 @@ export function createViewRoutes(db, auth) {
         return c.json({ list: list.map(filterRowToNocoRaw) });
     });
     app.post("/view/:viewId/filters", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const body = await c.req.json();
@@ -413,13 +444,16 @@ export function createViewRoutes(db, auth) {
         return c.json(filterRowToNocoRaw(inserted));
     });
     app.delete("/view/:viewId/filters/:filterId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const filterId = c.req.param("filterId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         await db
@@ -429,12 +463,15 @@ export function createViewRoutes(db, auth) {
     });
     // PATCH /view/:viewId — rename view
     app.patch("/view/:viewId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         const body = await c.req.json();
@@ -452,12 +489,15 @@ export function createViewRoutes(db, auth) {
     });
     // DELETE /view/:viewId — delete view (cascades to view_columns, view_sorts, view_filters)
     app.delete("/view/:viewId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+        if (!authz.ok)
+            return authz.response;
         const viewId = c.req.param("viewId");
         const session = c.get("session");
-        const salesId = await getSalesId(db, session);
-        if (salesId == null)
+        const crmUserId = await getCrmUserId(db, session);
+        if (crmUserId == null)
             return c.json({ error: "User not found in CRM" }, 404);
-        const view = await getViewAndCheckOwnership(db, viewId, salesId);
+        const view = await getViewAndCheckOwnership(db, viewId, crmUserId);
         if (!view)
             return c.json({ error: "View not found" }, 404);
         await db.delete(schema.views).where(eq(schema.views.id, viewId));

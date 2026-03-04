@@ -1,7 +1,8 @@
 import * as schema from "../../../db/schema/index.js";
 import { eq, and, or, ilike, sql, desc, asc, } from "drizzle-orm";
-import { CRM_RESOURCES, TABLE_MAP, hasSalesId, } from "../constants.js";
+import { CRM_RESOURCES, TABLE_MAP, hasOrganizationId, } from "../constants.js";
 import { snakeToCamelField, buildGenericFilterCondition, } from "../utils.js";
+import { PERMISSIONS, getPermissionSetForUser } from "../../../lib/rbac.js";
 export function createListHandler(db) {
     return async (c) => {
         const resource = c.req.param("resource");
@@ -9,15 +10,22 @@ export function createListHandler(db) {
             return c.json({ error: "Unknown resource" }, 404);
         }
         const session = c.get("session");
-        const salesRow = await db
+        const crmUserRows = await db
             .select()
-            .from(schema.sales)
-            .where(eq(schema.sales.userId, session.user.id))
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.userId, session.user.id))
             .limit(1);
-        const salesId = salesRow[0]?.id;
-        const orgId = salesRow[0]?.organizationId;
-        if (!salesId)
+        const crmUser = crmUserRows[0];
+        const crmUserId = crmUser?.id;
+        const orgId = crmUser?.organizationId;
+        if (!crmUserId || !crmUser)
             return c.json({ error: "User not found in CRM" }, 404);
+        if (!orgId)
+            return c.json({ error: "Organization not found" }, 404);
+        const permissions = await getPermissionSetForUser(db, crmUser);
+        if (!permissions.has("*") && !permissions.has(PERMISSIONS.recordsRead)) {
+            return c.json({ error: "Forbidden" }, 403);
+        }
         const range = c.req.query("range");
         const sortParam = c.req.query("sort");
         const orderParam = c.req.query("order");
@@ -64,7 +72,7 @@ export function createListHandler(db) {
             }
         }
         if (resource === "companies_summary") {
-            const companyConds = [eq(schema.companies.salesId, salesId)];
+            const companyConds = [eq(schema.companies.organizationId, orgId)];
             if (q) {
                 companyConds.push(or(ilike(schema.companies.name, `%${q}%`), ilike(schema.companies.city, `%${q}%`), ilike(schema.companies.sector, `%${q}%`)));
             }
@@ -93,7 +101,7 @@ export function createListHandler(db) {
             return c.json(rows);
         }
         if (resource === "contacts_summary") {
-            const contactConds = [eq(schema.contacts.salesId, salesId)];
+            const contactConds = [eq(schema.contacts.organizationId, orgId)];
             if (q) {
                 contactConds.push(or(ilike(schema.contacts.firstName, `%${q}%`), ilike(schema.contacts.lastName, `%${q}%`), ilike(schema.contacts.email, `%${q}%`), ilike(schema.companies.name, `%${q}%`)));
             }
@@ -130,14 +138,16 @@ export function createListHandler(db) {
         if (!table)
             return c.json({ error: "Unknown resource" }, 404);
         const conditions = [];
-        if (resource === "sales") {
-            if (orgId)
-                conditions.push(eq(schema.sales.organizationId, orgId));
+        if (resource === "crm_users") {
+            conditions.push(eq(schema.crmUsers.organizationId, orgId));
         }
-        else if (hasSalesId(resource)) {
-            conditions.push(eq(table.salesId, salesId));
+        else if (hasOrganizationId(resource)) {
+            conditions.push(eq(table.organizationId, orgId));
         }
         if (resource === "deals") {
+            const includeArchived = filter.include_archived === true;
+            if (!includeArchived)
+                conditions.push(sql `${schema.deals.archivedAt} is null`);
             if (q)
                 conditions.push(ilike(schema.deals.name, `%${q}%`));
             if (filter.stage)

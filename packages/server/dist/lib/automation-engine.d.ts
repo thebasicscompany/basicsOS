@@ -18,7 +18,7 @@ export interface WorkflowDefinition {
 }
 export declare function startAutomationEngine(database: Db, environment: Env): Promise<void>;
 export declare function reloadRule(ruleId: number): Promise<void>;
-export declare function fireEvent(event: string, payload: Record<string, unknown>, salesId: number): Promise<void>;
+export declare function fireEvent(event: string, payload: Record<string, unknown>, crmUserId: number): Promise<void>;
 /** Trigger a manual run for a specific rule. Sends job to run-automation queue. */
-export declare function triggerRunNow(ruleId: number, salesId: number): Promise<boolean>;
+export declare function triggerRunNow(ruleId: number, crmUserId: number): Promise<boolean>;
 //# sourceMappingURL=automation-engine.d.ts.map

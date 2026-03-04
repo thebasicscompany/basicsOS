@@ -1,6 +1,7 @@
-import { pgTable, bigserial, varchar, text, boolean, timestamp, bigint, jsonb, } from "drizzle-orm/pg-core";
+import { pgTable, bigserial, varchar, text, boolean, timestamp, bigint, uuid, jsonb, index, } from "drizzle-orm/pg-core";
 import { companies } from "./companies";
-import { sales } from "./sales";
+import { crmUsers } from "./crm_users";
+import { organizations } from "./organizations";
 export const contacts = pgTable("contacts", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     firstName: varchar("first_name", { length: 255 }),
@@ -20,7 +21,15 @@ export const contacts = pgTable("contacts", {
     companyId: bigint("company_id", { mode: "number" }).references(() => companies.id, {
         onDelete: "cascade",
     }),
-    salesId: bigint("sales_id", { mode: "number" }).references(() => sales.id),
+    crmUserId: bigint("crm_user_id", { mode: "number" }).references(() => crmUsers.id),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+        onDelete: "cascade",
+    }),
     linkedinUrl: varchar("linkedin_url", { length: 512 }),
     customFields: jsonb("custom_fields").$type().default({}).notNull(),
-});
+}, (t) => [
+    index("contacts_crm_user_id_idx").on(t.crmUserId),
+    index("contacts_org_idx").on(t.organizationId),
+    index("contacts_company_id_idx").on(t.companyId),
+    index("contacts_status_idx").on(t.status),
+]);

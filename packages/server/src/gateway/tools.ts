@@ -211,11 +211,11 @@ const CRM_TOOL_SCHEMAS = [
 ];
 
 export function buildGatewayTools() {
-  const tools: Record<string, ReturnType<typeof tool>> = {};
+  const tools: Record<string, unknown> = {};
   for (const t of CRM_TOOL_SCHEMAS) {
     tools[t.name] = tool({
       description: t.description,
-      parameters: jsonSchema(t.parameters as Parameters<typeof jsonSchema>[0]),
+      parameters: jsonSchema(t.parameters as unknown as Parameters<typeof jsonSchema>[0]),
       execute: async (): Promise<unknown> => {
         // Not called: maxSteps: 1 streams tool calls to client for execution
         return "";

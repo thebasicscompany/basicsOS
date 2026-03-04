@@ -113,6 +113,13 @@
       "when": 1772835000000,
       "tag": "0016_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1772837000000,
+      "tag": "0017_rbac_manage_permission",
+      "breakpoints": true
     }
   ]
 }

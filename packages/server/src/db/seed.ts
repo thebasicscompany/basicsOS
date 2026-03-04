@@ -86,7 +86,7 @@ async function ensureAdminUser(db: ReturnType<typeof createDb>): Promise<number>
       });
     }
 
-    let orgId: number;
+    let orgId: string;
     const existingOrgs = await db
       .select()
       .from(schema.organizations)

@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGateway } from "@/hooks/useGateway";
 import { useMe } from "@/hooks/use-me";
 import { useOrganization } from "@/hooks/use-organization";
+import { useAssignRbacRole, useRbacRoles, useRbacUsers } from "@/hooks/use-rbac";
 import { ConnectionsContent } from "@/components/connections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,9 @@ export function SettingsPage() {
   const { apiKey, hasKey, setApiKey, clearApiKey } = useGateway();
   const { data: me } = useMe();
   const { data: organization } = useOrganization();
+  const { data: rbacRoles } = useRbacRoles(Boolean(me?.administrator));
+  const { data: rbacUsers } = useRbacUsers(Boolean(me?.administrator));
+  const assignRole = useAssignRbacRole();
   const [inputValue, setInputValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
@@ -90,6 +94,7 @@ export function SettingsPage() {
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [roleDrafts, setRoleDrafts] = useState<Record<number, string>>({});
 
   // Handle OAuth redirect from /connections?connected=slack (or google)
   useEffect(() => {
@@ -113,6 +118,16 @@ export function SettingsPage() {
     setOrgName(organization.name ?? "");
     setOrgLogoUrl(organization.logo?.src ?? "");
   }, [organization?.id, organization?.name, organization?.logo?.src]);
+
+  useEffect(() => {
+    if (!rbacUsers) return;
+    const next: Record<number, string> = {};
+    for (const user of rbacUsers) {
+      const current = user.roles[0]?.key;
+      if (current) next[user.id] = current;
+    }
+    setRoleDrafts(next);
+  }, [rbacUsers]);
 
   const handleSave = useCallback(async () => {
     const trimmed = inputValue.trim();
@@ -471,6 +486,70 @@ export function SettingsPage() {
                     )}
                   </div>
                 )}
+              </section>
+            </>
+          )}
+
+          {me?.administrator && (
+            <>
+              <Separator />
+              <section id="roles" className={sectionClass}>
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold">Roles and Access</h2>
+                  <p className="text-[12px] text-muted-foreground">Control who can manage settings and destructive actions.</p>
+                </div>
+                <div className="space-y-3">
+                  {(rbacUsers ?? []).map((user) => {
+                    const selected = roleDrafts[user.id] ?? user.roles[0]?.key ?? "";
+                    const isSelf = user.id === me?.id;
+                    return (
+                      <div key={user.id} className="rounded-lg border p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-[13px] font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-[12px] text-muted-foreground">{user.email}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={selected}
+                              onValueChange={(value) =>
+                                setRoleDrafts((prev) => ({ ...prev, [user.id]: value }))
+                              }
+                              disabled={isSelf || assignRole.isPending}
+                            >
+                              <SelectTrigger className="h-9 w-[200px]">
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(rbacRoles ?? []).map((role) => (
+                                  <SelectItem key={role.key} value={role.key}>
+                                    {role.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-9 text-[12px]"
+                              disabled={isSelf || assignRole.isPending || !selected || selected === (user.roles[0]?.key ?? "")}
+                              onClick={async () => {
+                                try {
+                                  await assignRole.mutateAsync({ crmUserId: user.id, roleKey: selected });
+                                  toast.success("Role updated");
+                                } catch (err) {
+                                  toast.error(err instanceof Error ? err.message : "Failed to update role");
+                                }
+                              }}
+                            >
+                              Save role
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </section>
             </>
           )}

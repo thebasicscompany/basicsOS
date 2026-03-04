@@ -43,6 +43,7 @@ export default defineConfig({
     preserveSymlinks: true,
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "basics-os/src": path.resolve(__dirname, "./src"),
     },
   },
 });

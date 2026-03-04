@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth.js";
-import { createAssistantRoutes } from "./routes/assistant.js";
 import { createAuthRoutes } from "./routes/auth.js";
 import { createAutomationRunsRoutes } from "./routes/automation-runs.js";
 import { createCrmRoutes } from "./routes/crm/index.js";
@@ -11,6 +10,51 @@ import { createGatewayChatRoutes } from "./routes/gateway-chat.js";
 import { createObjectConfigRoutes } from "./routes/object-config.js";
 import { createSchemaRoutes } from "./routes/schema.js";
 import { createViewRoutes } from "./routes/views.js";
+import { createVoiceProxyRoutes } from "./routes/voice-proxy.js";
+import { createStreamAssistantRoutes } from "./routes/stream-assistant.js";
+import { createRbacRoutes } from "./routes/rbac.js";
+const rateBuckets = new Map();
+const getClientKey = (c) => {
+    const xff = c.req.header("x-forwarded-for");
+    if (xff)
+        return xff.split(",")[0]?.trim() ?? "unknown";
+    const realIp = c.req.header("x-real-ip");
+    return realIp?.trim() || "unknown";
+};
+const isSensitivePath = (path) => {
+    return (path.startsWith("/api/auth/") ||
+        path === "/api/signup" ||
+        path === "/api/invites" ||
+        path === "/api/gateway-chat" ||
+        path === "/stream/assistant" ||
+        path.startsWith("/v1/audio/"));
+};
+const rateLimitMiddleware = async (c, next) => {
+    const now = Date.now();
+    const path = c.req.path;
+    const clientKey = getClientKey(c);
+    const windowMs = 60_000;
+    const max = isSensitivePath(path) ? 30 : 180;
+    const bucketKey = `${clientKey}:${path}`;
+    const current = rateBuckets.get(bucketKey);
+    if (!current || now >= current.resetAt) {
+        rateBuckets.set(bucketKey, { count: 1, resetAt: now + windowMs });
+    }
+    else {
+        current.count += 1;
+        rateBuckets.set(bucketKey, current);
+        if (current.count > max) {
+            const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+            c.header("Retry-After", String(retryAfter));
+            return c.json({ error: "Too many requests" }, 429);
+        }
+    }
+    for (const [key, value] of rateBuckets) {
+        if (value.resetAt <= now)
+            rateBuckets.delete(key);
+    }
+    await next();
+};
 export function createApp(db, env) {
     const auth = createAuth(db, env.BETTER_AUTH_URL, env.BETTER_AUTH_SECRET);
     const app = new Hono();
@@ -33,6 +77,17 @@ export function createApp(db, env) {
         allowHeaders: ["Content-Type", "Authorization", "x-basics-api-key"],
         credentials: true,
     }));
+    app.use("/*", async (c, next) => {
+        c.header("X-Content-Type-Options", "nosniff");
+        c.header("X-Frame-Options", "DENY");
+        c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+        c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        c.header("Cross-Origin-Opener-Policy", "same-origin");
+        c.header("Cross-Origin-Resource-Policy", "same-site");
+        c.header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://localhost:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        await next();
+    });
+    app.use("/*", rateLimitMiddleware);
     app.get("/health", (c) => c.json({ status: "ok" }));
     // Better Auth
     app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
@@ -52,9 +107,12 @@ export function createApp(db, env) {
     app.route("/api/schema", createSchemaRoutes(db, auth));
     // View persistence (before CRM so /api/views/* is not captured)
     app.route("/api/views", createViewRoutes(db, auth));
+    // RBAC management APIs
+    app.route("/api/rbac", createRbacRoutes(db, auth));
     // CRM REST API
     app.route("/api", createCrmRoutes(db, auth, env));
-    // Assistant
-    app.route("/assistant", createAssistantRoutes(db, auth, env));
+    // Voice pill BFF — /v1/audio/* and /stream/assistant
+    app.route("/v1/audio", createVoiceProxyRoutes(db, auth, env));
+    app.route("/stream", createStreamAssistantRoutes(db, auth, env));
     return app;
 }

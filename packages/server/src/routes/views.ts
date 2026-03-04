@@ -4,6 +4,7 @@ import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
 import { sql, eq, and, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -208,6 +209,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   app.use("*", authMiddleware(auth, db));
 
   app.get("/:objectSlug", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const objectSlug = c.req.param("objectSlug");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -257,6 +261,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.post("/:objectSlug", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const objectSlug = c.req.param("objectSlug");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -301,6 +308,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.post("/view/:viewId/columns", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -358,6 +368,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.get("/view/:viewId/columns", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -376,6 +389,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.patch("/view/:viewId/columns/:columnId", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const columnId = c.req.param("columnId");
     const session = c.get("session") as { user?: { id: string } };
@@ -407,6 +423,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.get("/view/:viewId/sorts", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -425,6 +444,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.post("/view/:viewId/sorts", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -455,6 +477,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.delete("/view/:viewId/sorts/:sortId", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const sortId = c.req.param("sortId");
     const session = c.get("session") as { user?: { id: string } };
@@ -476,6 +501,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.get("/view/:viewId/filters", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -493,6 +521,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.post("/view/:viewId/filters", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -524,6 +555,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.delete("/view/:viewId/filters/:filterId", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const filterId = c.req.param("filterId");
     const session = c.get("session") as { user?: { id: string } };
@@ -546,6 +580,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
 
   // PATCH /view/:viewId — rename view
   app.patch("/view/:viewId", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);
@@ -571,6 +608,9 @@ export function createViewRoutes(db: Db, auth: BetterAuthInstance) {
 
   // DELETE /view/:viewId — delete view (cascades to view_columns, view_sorts, view_filters)
   app.delete("/view/:viewId", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const viewId = c.req.param("viewId");
     const session = c.get("session") as { user?: { id: string } };
     const crmUserId = await getCrmUserId(db, session);

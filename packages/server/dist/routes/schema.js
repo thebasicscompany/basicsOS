@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import { sql, eq, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 const ALLOWED_TABLES = new Set([
     "contacts",
     "companies",
@@ -9,7 +10,7 @@ const ALLOWED_TABLES = new Set([
     "tasks",
     "contact_notes",
     "deal_notes",
-    "sales",
+    "crm_users",
     "tags",
     "contacts_summary",
     "companies_summary",
@@ -18,7 +19,7 @@ const SYSTEM_COLUMNS = new Set([
     "id",
     "created_at",
     "updated_at",
-    "sales_id",
+    "crm_user_id",
     "organization_id",
 ]);
 const PG_TYPE_TO_UIDT = {
@@ -102,8 +103,11 @@ function toNocoDBColumnShape(row, tableName, order) {
 }
 export function createSchemaRoutes(db, auth) {
     const app = new Hono();
-    app.use("*", authMiddleware(auth));
+    app.use("*", authMiddleware(auth, db));
     app.get("/:tableName", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const tableName = c.req.param("tableName");
         if (!ALLOWED_TABLES.has(tableName)) {
             return c.json({ error: "Table not found" }, 404);

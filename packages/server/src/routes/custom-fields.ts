@@ -4,6 +4,7 @@ import { eq, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
 import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -12,6 +13,9 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
   app.use("*", authMiddleware(auth, db));
 
   app.get("/", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const resource = c.req.query("resource");
     const order = [
       asc(schema.customFieldDefs.position),
@@ -31,6 +35,9 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.post("/", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+    if (!authz.ok) return authz.response;
+
     const body = await c.req.json<{
       resource: string;
       name: string;
@@ -59,6 +66,9 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
   });
 
   app.delete("/:id", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+    if (!authz.ok) return authz.response;
+
     const id = Number(c.req.param("id"));
     await db
       .delete(schema.customFieldDefs)

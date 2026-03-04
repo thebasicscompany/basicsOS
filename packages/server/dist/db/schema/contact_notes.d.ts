@@ -70,13 +70,30 @@ export declare const contactNotes: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        salesId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "sales_id";
+        crmUserId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "crm_user_id";
             tableName: "contact_notes";
             dataType: "number";
             columnType: "PgBigInt53";
             data: number;
             driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        organizationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "organization_id";
+            tableName: "contact_notes";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;

@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import type { Db } from "../db/client.js";
 import type { Env } from "../env.js";
+import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
+import { PERMISSIONS, getPermissionSetForUser, hasPermission, requirePermission } from "../lib/rbac.js";
 
 function generateInviteToken(): string {
   return randomBytes(24).toString("hex");
@@ -12,8 +14,8 @@ function generateInviteToken(): string {
 
 export function createAuthRoutes(
   db: Db,
-  auth: ReturnType<typeof import("../auth.js").createAuth>,
-  env: Env
+  auth: ReturnType<typeof createAuth>,
+  _env: Env
 ) {
   const app = new Hono();
 
@@ -23,10 +25,7 @@ export function createAuthRoutes(
   });
 
   app.get("/gateway-token", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as {
-      user?: { id: string };
-      session?: { token?: string; id?: string };
-    };
+    const session = c.get("session");
     const token = session?.session?.token ?? session?.session?.id;
     if (!token) {
       return c.json({ error: "No session token" }, 401);
@@ -36,20 +35,22 @@ export function createAuthRoutes(
 
   app.get("/me", authMiddleware(auth, db), async (c) => {
     const session = c.get("session");
-    if (!session?.user) {
+    const userId = session?.user?.id;
+    if (!userId) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
     const crmUserRows = await db
       .select()
       .from(schema.crmUsers)
-      .where(eq(schema.crmUsers.userId, session.user.id))
+      .where(eq(schema.crmUsers.userId, userId))
       .limit(1);
 
     const crmUser = crmUserRows[0];
     if (!crmUser) {
       return c.json({ error: "User not found in CRM" }, 404);
     }
+    const permissions = await getPermissionSetForUser(db, crmUser);
 
     return c.json({
       id: crmUser.id,
@@ -58,13 +59,13 @@ export function createAuthRoutes(
       lastName: crmUser.lastName,
       email: crmUser.email,
       avatar: crmUser.avatar,
-      administrator: crmUser.administrator,
+      administrator: hasPermission(permissions, PERMISSIONS.rbacManage),
       hasApiKey: Boolean(crmUser.basicsApiKey?.trim()),
     });
   });
 
   app.patch("/me", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as { user?: { id: string } };
+    const session = c.get("session");
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
@@ -87,7 +88,7 @@ export function createAuthRoutes(
   });
 
   app.patch("/settings", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as { user?: { id: string } };
+    const session = c.get("session");
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
@@ -102,7 +103,7 @@ export function createAuthRoutes(
   });
 
   app.get("/organization", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as { user?: { id: string } };
+    const session = c.get("session");
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
@@ -129,25 +130,16 @@ export function createAuthRoutes(
   });
 
   app.patch("/organization", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as { user?: { id: string } };
-    const userId = session?.user?.id;
-    if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-    const [crmUser] = await db
-      .select()
-      .from(schema.crmUsers)
-      .where(eq(schema.crmUsers.userId, userId))
-      .limit(1);
-    if (!crmUser) return c.json({ error: "User not found in CRM" }, 404);
-    if (!crmUser.administrator) return c.json({ error: "Admin access required" }, 403);
+    const authz = await requirePermission(c, db, PERMISSIONS.rbacManage);
+    if (!authz.ok) return authz.response;
+    const { crmUser } = authz;
     if (!crmUser.organizationId) return c.json({ error: "No organization found" }, 404);
 
-    const body = await c.req
-      .json<{
-        name?: string;
-        logo?: { src?: string } | null;
-      }>()
-      .catch(() => ({}));
+    const rawBody = await c.req.json().catch(() => null);
+    const body = (rawBody ?? {}) as {
+      name?: string;
+      logo?: { src?: string } | null;
+    };
 
     const updates: Partial<{
       name: string;
@@ -251,7 +243,7 @@ export function createAuthRoutes(
       organizationId = invite.organizationId;
     }
 
-    const signUpRes = await auth.api.signUpEmail({
+    const signUpRes = (await auth.api.signUpEmail({
       body: {
         email,
         password,
@@ -259,11 +251,16 @@ export function createAuthRoutes(
       },
       headers: c.req.raw.headers,
       returnHeaders: true,
-    });
+    })) as {
+      headers?: Headers;
+      error?: { message?: string };
+      data?: { user?: { id: string } };
+      response?: { user?: { id: string } };
+    };
 
-    if (!signUpRes || signUpRes.error) {
+    if (signUpRes.error) {
       return c.json(
-        { error: signUpRes?.error?.message ?? "Signup failed" },
+        { error: signUpRes.error.message ?? "Signup failed" },
         400
       );
     }
@@ -273,7 +270,7 @@ export function createAuthRoutes(
       c.header("Set-Cookie", resHeaders.get("set-cookie")!);
     }
 
-    const user = signUpRes.data?.user;
+    const user = signUpRes.data?.user ?? signUpRes.response?.user;
     if (!user) {
       return c.json({ error: "Signup failed" }, 400);
     }
@@ -317,25 +314,16 @@ export function createAuthRoutes(
   });
 
   app.post("/invites", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session") as { user?: { id: string } };
-    const userId = session?.user?.id;
-    if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-    const [crmUser] = await db
-      .select()
-      .from(schema.crmUsers)
-      .where(eq(schema.crmUsers.userId, userId))
-      .limit(1);
-    if (!crmUser) return c.json({ error: "User not found in CRM" }, 404);
-    if (!crmUser.administrator) return c.json({ error: "Admin access required" }, 403);
+    const authz = await requirePermission(c, db, PERMISSIONS.rbacManage);
+    if (!authz.ok) return authz.response;
+    const { crmUser } = authz;
     if (!crmUser.organizationId) return c.json({ error: "No organization found" }, 400);
 
-    const body = await c.req
-      .json<{
-        email?: string | null;
-        expiresInHours?: number;
-      }>()
-      .catch(() => ({}));
+    const rawBody = await c.req.json().catch(() => null);
+    const body = (rawBody ?? {}) as {
+      email?: string | null;
+      expiresInHours?: number;
+    };
 
     const expiresInHoursRaw = body.expiresInHours;
     const expiresInHours = Number.isFinite(expiresInHoursRaw)

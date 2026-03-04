@@ -6,7 +6,7 @@ export const CRM_RESOURCES = [
     "contact_notes",
     "deal_notes",
     "tasks",
-    "sales",
+    "crm_users",
     "tags",
     "configuration",
     "automation_rules",
@@ -20,19 +20,33 @@ export const TABLE_MAP = {
     contact_notes: schema.contactNotes,
     deal_notes: schema.dealNotes,
     tasks: schema.tasks,
-    sales: schema.sales,
+    crm_users: schema.crmUsers,
     tags: schema.tags,
     configuration: schema.configuration,
     automation_rules: schema.automationRules,
 };
-export function hasSalesId(resource) {
+export function hasCrmUserId(resource) {
     return [
+        "contacts",
         "companies",
         "deals",
         "contact_notes",
         "deal_notes",
         "tasks",
-        "sales",
+        "crm_users",
+        "automation_rules",
+    ].includes(resource);
+}
+export function hasOrganizationId(resource) {
+    return [
+        "contacts",
+        "companies",
+        "deals",
+        "contact_notes",
+        "deal_notes",
+        "tasks",
+        "crm_users",
+        "tags",
         "automation_rules",
     ].includes(resource);
 }

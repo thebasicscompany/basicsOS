@@ -8,11 +8,11 @@ export declare function getEntityType(resource: string): string | null;
 export declare function buildEntityText(entityType: string, record: Record<string, unknown>): string;
 /**
  * Generates an embedding for a CRM entity and upserts it into context_embeddings.
- * Safe to call fire-and-forget — all errors are swallowed.
+ * Safe to call fire-and-forget; all errors are swallowed.
  */
-export declare function upsertEntityEmbedding(db: Db, gatewayUrl: string, apiKey: string, salesId: number, entityType: string, entityId: number, chunkText: string): Promise<void>;
+export declare function upsertEntityEmbedding(db: Db, gatewayUrl: string, apiKey: string, crmUserId: number, entityType: string, entityId: number, chunkText: string): Promise<void>;
 /**
  * Removes context_embeddings row for a deleted entity.
  */
-export declare function deleteEntityEmbedding(db: Db, salesId: number, entityType: string, entityId: number): Promise<void>;
+export declare function deleteEntityEmbedding(db: Db, crmUserId: number, entityType: string, entityId: number): Promise<void>;
 //# sourceMappingURL=embeddings.d.ts.map

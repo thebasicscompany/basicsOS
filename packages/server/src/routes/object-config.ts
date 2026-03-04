@@ -68,6 +68,9 @@ export function createObjectConfigRoutes(
 
   // POST /favorites — Toggle favorite (insert or delete)
   app.post("/favorites", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     try {
       const session = c.get("session") as { user?: { id: string } };
       const userId = session?.user?.id;
@@ -131,6 +134,9 @@ export function createObjectConfigRoutes(
 
   // GET /favorites — List user's favorites
   app.get("/favorites", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     try {
       const session = c.get("session") as { user?: { id: string } };
       const userId = session?.user?.id;

@@ -5,7 +5,12 @@ import * as schema from "../db/schema/index.js";
 
 type AuthWithApi = {
   handler: (req: Request) => Promise<Response>;
-  api: { getSession: (opts: { headers: Headers }) => Promise<{ user?: unknown } | null> };
+  api: {
+    getSession: (opts: { headers: Headers }) => Promise<{
+      user?: { id?: string };
+      session?: { id?: string; token?: string };
+    } | null>;
+  };
 };
 
 /**
@@ -28,7 +33,7 @@ export function authMiddleware(auth: AuthWithApi, db: Db) {
     if (!session?.user) {
       return c.json({ error: "Unauthorized" }, 401);
     }
-    const userId = (session.user as { id?: string } | undefined)?.id;
+    const userId = session.user?.id;
     if (!userId) {
       return c.json({ error: "Unauthorized" }, 401);
     }

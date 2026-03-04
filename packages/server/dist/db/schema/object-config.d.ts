@@ -189,6 +189,23 @@ export declare const objectConfig: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        organizationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "organization_id";
+            tableName: "object_config";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
@@ -349,6 +366,23 @@ export declare const objectAttributeOverrides: import("drizzle-orm/pg-core").PgT
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        organizationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "organization_id";
+            tableName: "object_attribute_overrides";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
@@ -373,14 +407,31 @@ export declare const recordFavorites: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        salesId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "sales_id";
+        crmUserId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "crm_user_id";
             tableName: "record_favorites";
             dataType: "number";
             columnType: "PgBigInt53";
             data: number;
             driverParam: string | number;
             notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        organizationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "organization_id";
+            tableName: "record_favorites";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -451,6 +502,6 @@ export declare const objectAttributeOverridesRelations: import("drizzle-orm").Re
     objectConfig: import("drizzle-orm").One<"object_config", true>;
 }>;
 export declare const recordFavoritesRelations: import("drizzle-orm").Relations<"record_favorites", {
-    sales: import("drizzle-orm").One<"sales", true>;
+    crmUser: import("drizzle-orm").One<"crm_users", true>;
 }>;
 //# sourceMappingURL=object-config.d.ts.map

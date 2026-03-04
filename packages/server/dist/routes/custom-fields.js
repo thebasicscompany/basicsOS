@@ -2,10 +2,14 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import { eq, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 export function createCustomFieldRoutes(db, auth) {
     const app = new Hono();
-    app.use("*", authMiddleware(auth));
+    app.use("*", authMiddleware(auth, db));
     app.get("/", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const resource = c.req.query("resource");
         const order = [
             asc(schema.customFieldDefs.position),
@@ -24,6 +28,9 @@ export function createCustomFieldRoutes(db, auth) {
         return c.json(rows);
     });
     app.post("/", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         const body = await c.req.json();
         if (!body.resource || !body.name || !body.label || !body.fieldType) {
             return c.json({ error: "resource, name, label, fieldType are required" }, 400);
@@ -42,6 +49,9 @@ export function createCustomFieldRoutes(db, auth) {
         return c.json(row, 201);
     });
     app.delete("/:id", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         const id = Number(c.req.param("id"));
         await db
             .delete(schema.customFieldDefs)

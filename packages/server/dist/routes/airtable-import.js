@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 /**
  * Hono proxy for NocoDB's Airtable import API.
  *
@@ -15,7 +16,7 @@ import { authMiddleware } from "../middleware/auth.js";
  */
 export function createAirtableImportRoutes(db, auth, env) {
     const app = new Hono();
-    app.use("*", authMiddleware(auth));
+    app.use("*", authMiddleware(auth, db));
     /** Proxy helper: forward request to NocoDB API */
     async function nocoProxy(path, method, body) {
         const url = `${env.NOCODB_BASE_URL}${path}`;
@@ -42,6 +43,9 @@ export function createAirtableImportRoutes(db, auth, env) {
      * tables are created.
      */
     app.post("/sync", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         if (!env.NOCODB_BASE_ID) {
             return c.json({ error: "NOCODB_BASE_ID not configured" }, 503);
         }
@@ -71,6 +75,9 @@ export function createAirtableImportRoutes(db, auth, env) {
      * Expects: { syncId: string }
      */
     app.post("/trigger", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         const { syncId } = await c.req.json();
         if (!syncId) {
             return c.json({ error: "syncId is required" }, 400);
@@ -81,6 +88,9 @@ export function createAirtableImportRoutes(db, auth, env) {
      * Get import job status.
      */
     app.get("/status/:syncId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         const syncId = c.req.param("syncId");
         return nocoProxy(`/api/v2/meta/syncs/${syncId}`, "GET");
     });
@@ -88,6 +98,9 @@ export function createAirtableImportRoutes(db, auth, env) {
      * Abort a running import.
      */
     app.post("/abort/:syncId", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
         const syncId = c.req.param("syncId");
         return nocoProxy(`/api/v2/meta/syncs/${syncId}/abort`, "POST");
     });

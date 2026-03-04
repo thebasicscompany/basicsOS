@@ -7,6 +7,8 @@ export declare function createCreateHandler(db: Db, env: Env): (c: Context) => P
     error: string;
 }, 404, "json">) | (Response & import("hono").TypedResponse<{
     error: string;
+}, 403, "json">) | (Response & import("hono").TypedResponse<{
+    error: string;
 }, 500, "json">) | (Response & import("hono").TypedResponse<{
     [x: string]: any;
 }, 201, "json">)>;

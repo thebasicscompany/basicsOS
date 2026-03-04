@@ -7,7 +7,7 @@ export const EMBEDDABLE_RESOURCES = new Set([
     "contact_notes",
     "deal_notes",
 ]);
-// Maps CRM resource name → entity_type stored in context_embeddings
+// Maps CRM resource name to entity_type stored in context_embeddings.
 const ENTITY_TYPE_MAP = {
     contacts: "contact",
     companies: "company",
@@ -80,31 +80,46 @@ async function generateEmbedding(gatewayUrl, apiKey, text) {
 }
 /**
  * Generates an embedding for a CRM entity and upserts it into context_embeddings.
- * Safe to call fire-and-forget — all errors are swallowed.
+ * Safe to call fire-and-forget; all errors are swallowed.
  */
-export async function upsertEntityEmbedding(db, gatewayUrl, apiKey, salesId, entityType, entityId, chunkText) {
+export async function upsertEntityEmbedding(db, gatewayUrl, apiKey, crmUserId, entityType, entityId, chunkText) {
     if (!chunkText.trim())
         return;
     const embedding = await generateEmbedding(gatewayUrl, apiKey, chunkText);
     if (!embedding)
         return;
-    // embeddingStr is a JSON array of numbers — safe to inline as raw SQL
+    const [crmUser] = await db
+        .select({ organizationId: schema.crmUsers.organizationId })
+        .from(schema.crmUsers)
+        .where(eq(schema.crmUsers.id, crmUserId))
+        .limit(1);
+    if (!crmUser?.organizationId)
+        return;
     const embeddingStr = `[${embedding.join(",")}]`;
-    // Escape single quotes in user-provided text for raw SQL
-    const safeText = chunkText.replace(/'/g, "''");
-    const safeType = entityType.replace(/'/g, "''");
-    await db.execute(sql.raw(`
-      INSERT INTO context_embeddings (sales_id, entity_type, entity_id, chunk_text, embedding, updated_at)
-      VALUES (${salesId}, '${safeType}', ${entityId}, '${safeText}', '${embeddingStr}'::vector, now())
-      ON CONFLICT (sales_id, entity_type, entity_id)
-      DO UPDATE SET chunk_text = EXCLUDED.chunk_text, embedding = EXCLUDED.embedding, updated_at = now()
-    `));
+    await db.execute(sql `
+    INSERT INTO context_embeddings (crm_user_id, organization_id, entity_type, entity_id, chunk_text, embedding, updated_at)
+    VALUES (
+      ${crmUserId},
+      ${crmUser.organizationId},
+      ${entityType},
+      ${entityId},
+      ${chunkText},
+      ${embeddingStr}::vector,
+      now()
+    )
+    ON CONFLICT (crm_user_id, entity_type, entity_id)
+    DO UPDATE SET
+      chunk_text = EXCLUDED.chunk_text,
+      organization_id = EXCLUDED.organization_id,
+      embedding = EXCLUDED.embedding,
+      updated_at = now()
+  `);
 }
 /**
  * Removes context_embeddings row for a deleted entity.
  */
-export async function deleteEntityEmbedding(db, salesId, entityType, entityId) {
+export async function deleteEntityEmbedding(db, crmUserId, entityType, entityId) {
     await db
         .delete(schema.contextEmbeddings)
-        .where(and(eq(schema.contextEmbeddings.salesId, salesId), eq(schema.contextEmbeddings.entityType, entityType), eq(schema.contextEmbeddings.entityId, entityId)));
+        .where(and(eq(schema.contextEmbeddings.crmUserId, crmUserId), eq(schema.contextEmbeddings.entityType, entityType), eq(schema.contextEmbeddings.entityId, entityId)));
 }

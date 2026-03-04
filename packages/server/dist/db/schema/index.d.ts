@@ -1,9 +1,11 @@
 export * from "./auth.js";
 export * from "./organizations.js";
-export * from "./sales.js";
+export * from "./crm_users.js";
+export * from "./ai_memory.js";
 export * from "./companies.js";
 export * from "./contacts.js";
 export * from "./deals.js";
+export * from "./deal_contacts.js";
 export * from "./contact_notes.js";
 export * from "./deal_notes.js";
 export * from "./tasks.js";
@@ -17,4 +19,5 @@ export * from "./favicons_excluded_domains.js";
 export * from "./custom_field_defs.js";
 export * from "./object-config.js";
 export * from "./views.js";
+export * from "./rbac.js";
 //# sourceMappingURL=index.d.ts.map

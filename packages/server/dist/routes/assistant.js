@@ -22,26 +22,29 @@ export function createAssistantRoutes(db, auth, env) {
             return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
         }
         const { message, messages: history = [] } = parsed.data;
-        const salesRow = await db
+        const crmUserRows = await db
             .select()
-            .from(schema.sales)
-            .where(eq(schema.sales.userId, session.user.id))
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.userId, session.user.id))
             .limit(1);
-        const sale = salesRow[0];
-        if (!sale) {
+        const crmUser = crmUserRows[0];
+        if (!crmUser) {
             return c.json({ error: "User not found in CRM" }, 404);
         }
-        if (!sale.basicsApiKey) {
+        if (!crmUser.basicsApiKey) {
             return c.json({
                 error: "Basics API key not configured. Add your key in Settings.",
             }, 400);
         }
-        const salesInfo = { salesId: sale.id, apiKey: sale.basicsApiKey };
-        const queryEmbedding = await embedQuery(env.BASICOS_API_URL, salesInfo.apiKey, message);
+        const crmUserInfo = { crmUserId: crmUser.id, apiKey: crmUser.basicsApiKey };
+        if (!crmUser.organizationId) {
+            return c.json({ error: "Organization not found" }, 404);
+        }
+        const queryEmbedding = await embedQuery(env.BASICOS_API_URL, crmUserInfo.apiKey, message);
         if (!queryEmbedding) {
             return c.json({ error: "Failed to embed query" }, 502);
         }
-        const chunks = await similaritySearch(db, salesInfo.salesId, queryEmbedding, 5);
+        const chunks = await similaritySearch(db, crmUserInfo.crmUserId, queryEmbedding, 5);
         const contextText = chunks.length > 0
             ? chunks.map((ch) => ch.chunk_text).join("\n\n---\n\n")
             : "(No relevant context found in your CRM.)";
@@ -68,7 +71,7 @@ ${contextText}`;
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${salesInfo.apiKey}`,
+                    Authorization: `Bearer ${crmUserInfo.apiKey}`,
                 },
                 body: JSON.stringify({
                     model: "basics-chat-smart",
@@ -100,7 +103,7 @@ ${contextText}`;
                     catch {
                         /* ignore */
                     }
-                    const result = await executeAssistantToolDrizzle(db, salesInfo.salesId, tc.function.name, args);
+                    const result = await executeAssistantToolDrizzle(db, crmUserInfo.crmUserId, crmUser.organizationId, tc.function.name, args);
                     chatMessages.push({
                         role: "tool",
                         tool_call_id: tc.id,
@@ -136,9 +139,12 @@ function createStreamChunk(content) {
         },
     });
 }
-async function similaritySearch(db, salesId, queryEmbedding, limit) {
+async function similaritySearch(db, crmUserId, queryEmbedding, limit) {
     const embeddingStr = `[${queryEmbedding.join(",")}]`;
-    const result = await db.execute(sql.raw(`select entity_type, entity_id, chunk_text from match_context_embeddings(${salesId}, '${embeddingStr}'::vector, ${limit})`));
+    const result = await db.execute(sql `
+    select entity_type, entity_id, chunk_text
+    from match_context_embeddings(${crmUserId}, ${embeddingStr}::vector, ${limit})
+  `);
     const rows = Array.isArray(result) ? result : result.rows ?? [];
     return rows;
 }

@@ -17,8 +17,8 @@ export async function startAutomationEngine(database, environment) {
     await _boss.createQueue("run-automation");
     await _boss.work("run-automation", { localConcurrency: 3 }, async (jobs) => {
         for (const job of jobs) {
-            const { ruleId, salesId, triggerData } = job.data;
-            await runAutomation(ruleId, salesId, triggerData);
+            const { ruleId, crmUserId, triggerData } = job.data;
+            await runAutomation(ruleId, crmUserId, triggerData);
         }
     });
     // Load and register schedule-triggered rules
@@ -39,21 +39,21 @@ async function loadScheduleRules() {
         if (triggerNode) {
             const cron = triggerNode.data.cron;
             if (cron) {
-                await registerScheduleRule(rule.id, rule.salesId, cron);
+                await registerScheduleRule(rule.id, rule.crmUserId, cron);
             }
         }
     }
 }
-async function registerScheduleRule(ruleId, salesId, cron) {
+async function registerScheduleRule(ruleId, crmUserId, cron) {
     if (!_boss)
         return;
     const queueName = `rule-schedule-${ruleId}`;
     try {
-        await _boss.schedule(queueName, cron, { ruleId, salesId });
+        await _boss.schedule(queueName, cron, { ruleId, crmUserId });
         await _boss.work(queueName, async (jobs) => {
             for (const job of jobs) {
                 const data = job.data;
-                await runAutomation(data.ruleId, data.salesId, {});
+                await runAutomation(data.ruleId, data.crmUserId, {});
             }
         });
     }
@@ -84,12 +84,12 @@ export async function reloadRule(ruleId) {
         if (triggerNode) {
             const cron = triggerNode.data.cron;
             if (cron) {
-                await registerScheduleRule(ruleId, rule.salesId, cron);
+                await registerScheduleRule(ruleId, rule.crmUserId, cron);
             }
         }
     }
 }
-export async function fireEvent(event, payload, salesId) {
+export async function fireEvent(event, payload, crmUserId) {
     if (!_boss || !_db)
         return;
     try {
@@ -97,7 +97,7 @@ export async function fireEvent(event, payload, salesId) {
         const rules = await _db
             .select()
             .from(schema.automationRules)
-            .where(and(eq(schema.automationRules.salesId, salesId), eq(schema.automationRules.enabled, true)));
+            .where(and(eq(schema.automationRules.crmUserId, crmUserId), eq(schema.automationRules.enabled, true)));
         for (const rule of rules) {
             const def = rule.workflowDefinition;
             const triggerNode = def?.nodes?.find((n) => n.type === "trigger_event");
@@ -106,7 +106,7 @@ export async function fireEvent(event, payload, salesId) {
                 if (triggerEvent === event) {
                     await _boss.send("run-automation", {
                         ruleId: rule.id,
-                        salesId,
+                        crmUserId,
                         triggerData: payload,
                     });
                 }
@@ -118,13 +118,13 @@ export async function fireEvent(event, payload, salesId) {
     }
 }
 /** Trigger a manual run for a specific rule. Sends job to run-automation queue. */
-export async function triggerRunNow(ruleId, salesId) {
+export async function triggerRunNow(ruleId, crmUserId) {
     if (!_boss)
         return false;
     try {
         await _boss.send("run-automation", {
             ruleId,
-            salesId,
+            crmUserId,
             triggerData: { manual: true },
         });
         return true;
@@ -134,14 +134,14 @@ export async function triggerRunNow(ruleId, salesId) {
         return false;
     }
 }
-async function runAutomation(ruleId, salesId, triggerData) {
+async function runAutomation(ruleId, crmUserId, triggerData) {
     if (!_db || !_env)
         return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = _db;
     const [run] = await db
         .insert(schema.automationRuns)
-        .values({ ruleId, salesId, status: "running" })
+        .values({ ruleId, crmUserId, status: "running" })
         .returning();
     try {
         const rules = await db
@@ -152,15 +152,15 @@ async function runAutomation(ruleId, salesId, triggerData) {
         const rule = rules[0];
         if (!rule)
             throw new Error(`Rule ${ruleId} not found`);
-        const salesRows = await db
+        const crmUserRows = await db
             .select()
-            .from(schema.sales)
-            .where(eq(schema.sales.id, salesId))
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.id, crmUserId))
             .limit(1);
-        const salesRow = salesRows[0];
-        if (!salesRow)
-            throw new Error(`Sales user ${salesId} not found`);
-        const result = await executeWorkflow(rule.workflowDefinition, triggerData, { id: salesRow.id, basicsApiKey: salesRow.basicsApiKey }, _db, _env);
+        const crmUserRow = crmUserRows[0];
+        if (!crmUserRow)
+            throw new Error(`CRM user ${crmUserId} not found`);
+        const result = await executeWorkflow(rule.workflowDefinition, triggerData, { id: crmUserRow.id, basicsApiKey: crmUserRow.basicsApiKey }, _db, _env);
         await db
             .update(schema.automationRuns)
             .set({ status: "success", result, finishedAt: new Date() })

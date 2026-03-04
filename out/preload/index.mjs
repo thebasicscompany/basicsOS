@@ -20,8 +20,8 @@ const overlayAPI = {
   setIgnoreMouse: (ignore) => ipcRenderer.send("set-ignore-mouse", ignore),
   navigateMain: (path) => ipcRenderer.send("navigate-main", path),
   injectText: (text) => ipcRenderer.invoke("inject-text", text),
-  getSessionToken: () => ipcRenderer.invoke("get-session-token"),
   getApiUrl: () => ipcRenderer.invoke("get-api-url"),
+  proxyOverlayRequest: (req) => ipcRenderer.invoke("proxy-overlay-request", req),
   getOverlaySettings: () => ipcRenderer.invoke("get-overlay-settings"),
   onHoldStart: (cb) => {
     ipcRenderer.on("dictation-hold-start", cb);

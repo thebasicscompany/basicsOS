@@ -4,6 +4,7 @@ import type { Db } from "../db/client.js";
 import type { Env } from "../env.js";
 import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type Auth = ReturnType<typeof import("../auth.js").createAuth>;
 
@@ -21,6 +22,9 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
 
   // List all connections for the authenticated user
   app.get("/", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const session = c.get("session") as { user?: { id: string } };
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -37,6 +41,9 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
 
   // Initiate OAuth — fetches the provider URL and redirects the browser
   app.get("/:provider/authorize", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const session = c.get("session") as { user?: { id: string } };
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -62,6 +69,9 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
 
   // Delete / disconnect a provider
   app.delete("/:provider", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const session = c.get("session") as { user?: { id: string } };
     const userId = session?.user?.id;
     if (!userId) return c.json({ error: "Unauthorized" }, 401);

@@ -11,13 +11,26 @@ export const PERMISSIONS = {
   recordsDeleteHard: "records.delete.hard",
   recordsMerge: "records.merge",
   objectConfigWrite: "object_config.write",
+  rbacManage: "rbac.manage",
 } as const;
+
+export function hasPermission(permissions: Set<string>, permission: string): boolean {
+  return permissions.has("*") || permissions.has(permission);
+}
+
+export function wouldRemoveLastManager(params: {
+  targetHadManagePermission: boolean;
+  newRoleHasManagePermission: boolean;
+  currentManagerCount: number;
+}): boolean {
+  const { targetHadManagePermission, newRoleHasManagePermission, currentManagerCount } = params;
+  return targetHadManagePermission && !newRoleHasManagePermission && currentManagerCount <= 1;
+}
 
 export async function getPermissionSetForUser(
   db: Db,
   crmUser: typeof schema.crmUsers.$inferSelect
 ): Promise<Set<string>> {
-  if (crmUser.administrator) return new Set(["*"]);
   if (!crmUser.organizationId) return new Set();
 
   const roleRows = await db
@@ -74,7 +87,7 @@ export async function requirePermission(
     return { ok: false, response: c.json({ error: "User not found in CRM" }, 404) };
   }
   const permissions = await getPermissionSetForUser(db, crmUser);
-  if (!permissions.has("*") && !permissions.has(permission)) {
+  if (!hasPermission(permissions, permission)) {
     return { ok: false, response: c.json({ error: "Forbidden" }, 403) };
   }
   return { ok: true, crmUser, permissions };

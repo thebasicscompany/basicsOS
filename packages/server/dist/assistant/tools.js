@@ -1,5 +1,5 @@
 import * as schema from "../db/schema/index.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 export const ASSISTANT_TOOLS = [
     {
         type: "function",
@@ -78,7 +78,7 @@ export const ASSISTANT_TOOLS = [
         },
     },
 ];
-export async function executeAssistantToolDrizzle(db, salesId, toolName, args) {
+export async function executeAssistantToolDrizzle(db, crmUserId, organizationId, toolName, args) {
     try {
         if (toolName === "create_task") {
             const contactId = args.contact_id;
@@ -86,11 +86,19 @@ export async function executeAssistantToolDrizzle(db, salesId, toolName, args) {
             const type = args.type ?? "call";
             const dueDate = args.due_date ??
                 new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+            const [contact] = await db
+                .select({ id: schema.contacts.id })
+                .from(schema.contacts)
+                .where(and(eq(schema.contacts.id, contactId), eq(schema.contacts.organizationId, organizationId)))
+                .limit(1);
+            if (!contact)
+                return "Error: Contact not found";
             const [data] = await db
                 .insert(schema.tasks)
                 .values({
                 contactId,
-                salesId,
+                crmUserId,
+                organizationId,
                 type,
                 text,
                 dueDate: new Date(dueDate),
@@ -106,11 +114,19 @@ export async function executeAssistantToolDrizzle(db, salesId, toolName, args) {
             const dealId = args.deal_id;
             const text = args.text;
             if (contactId) {
+                const [contact] = await db
+                    .select({ id: schema.contacts.id })
+                    .from(schema.contacts)
+                    .where(and(eq(schema.contacts.id, contactId), eq(schema.contacts.organizationId, organizationId)))
+                    .limit(1);
+                if (!contact)
+                    return "Error: Contact not found";
                 const [data] = await db
                     .insert(schema.contactNotes)
                     .values({
                     contactId,
-                    salesId,
+                    crmUserId,
+                    organizationId,
                     text,
                 })
                     .returning({ id: schema.contactNotes.id });
@@ -120,11 +136,19 @@ export async function executeAssistantToolDrizzle(db, salesId, toolName, args) {
                 return `Note added to contact (id: ${data.id})`;
             }
             if (dealId) {
+                const [deal] = await db
+                    .select({ id: schema.deals.id })
+                    .from(schema.deals)
+                    .where(and(eq(schema.deals.id, dealId), eq(schema.deals.organizationId, organizationId)))
+                    .limit(1);
+                if (!deal)
+                    return "Error: Deal not found";
                 const [data] = await db
                     .insert(schema.dealNotes)
                     .values({
                     dealId,
-                    salesId,
+                    crmUserId,
+                    organizationId,
                     text,
                 })
                     .returning();
@@ -146,7 +170,7 @@ export async function executeAssistantToolDrizzle(db, salesId, toolName, args) {
             const [updated] = await db
                 .update(schema.deals)
                 .set(updateData)
-                .where(and(eq(schema.deals.id, dealId), eq(schema.deals.salesId, salesId)))
+                .where(and(eq(schema.deals.id, dealId), eq(schema.deals.organizationId, organizationId), isNull(schema.deals.archivedAt)))
                 .returning();
             if (!updated) {
                 return "Error: Deal not found or update failed";

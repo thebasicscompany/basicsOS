@@ -15,6 +15,7 @@ import { createSchemaRoutes } from "./routes/schema.js";
 import { createViewRoutes } from "./routes/views.js";
 import { createVoiceProxyRoutes } from "./routes/voice-proxy.js";
 import { createStreamAssistantRoutes } from "./routes/stream-assistant.js";
+import { createRbacRoutes } from "./routes/rbac.js";
 
 type RateBucket = {
   count: number;
@@ -141,6 +142,9 @@ export function createApp(db: Db, env: Env) {
 
   // View persistence (before CRM so /api/views/* is not captured)
   app.route("/api/views", createViewRoutes(db, auth));
+
+  // RBAC management APIs
+  app.route("/api/rbac", createRbacRoutes(db, auth));
 
   // CRM REST API
   app.route("/api", createCrmRoutes(db, auth, env));

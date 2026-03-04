@@ -1,1 +1,1 @@
-{"version":3,"file":"organizations.d.ts","sourceRoot":"","sources":["../../../src/db/schema/organizations.ts"],"names":[],"mappings":"AAEA,eAAO,MAAM,aAAa;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAKxB,CAAC"}
+{"version":3,"file":"organizations.d.ts","sourceRoot":"","sources":["../../../src/db/schema/organizations.ts"],"names":[],"mappings":"AAEA,eAAO,MAAM,aAAa;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;qBAGS,MAAM;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAGvC,CAAC"}

@@ -36,6 +36,25 @@ export declare const organizations: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        logo: import("drizzle-orm/pg-core").PgColumn<{
+            name: "logo";
+            tableName: "organizations";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: {
+                src: string;
+            } | null;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "organizations";

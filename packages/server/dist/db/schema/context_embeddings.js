@@ -1,10 +1,14 @@
-import { pgTable, bigserial, varchar, text, bigint, timestamp, vector, uniqueIndex, } from "drizzle-orm/pg-core";
-import { sales } from "./sales";
+import { pgTable, bigserial, varchar, text, bigint, uuid, timestamp, vector, uniqueIndex, index, } from "drizzle-orm/pg-core";
+import { crmUsers } from "./crm_users";
+import { organizations } from "./organizations";
 export const contextEmbeddings = pgTable("context_embeddings", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    salesId: bigint("sales_id", { mode: "number" })
+    crmUserId: bigint("crm_user_id", { mode: "number" })
         .notNull()
-        .references(() => sales.id, { onDelete: "cascade" }),
+        .references(() => crmUsers.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+        onDelete: "cascade",
+    }),
     entityType: varchar("entity_type", { length: 64 }).notNull(),
     entityId: bigint("entity_id", { mode: "number" }).notNull(),
     chunkText: text("chunk_text").notNull(),
@@ -12,5 +16,6 @@ export const contextEmbeddings = pgTable("context_embeddings", {
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-    uniqueIndex("context_embeddings_sales_entity_idx").on(t.salesId, t.entityType, t.entityId),
+    uniqueIndex("context_embeddings_crm_user_entity_idx").on(t.crmUserId, t.entityType, t.entityId),
+    index("context_embeddings_org_idx").on(t.organizationId),
 ]);

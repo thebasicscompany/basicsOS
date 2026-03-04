@@ -2,23 +2,27 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 export function createConnectionsRoutes(db, auth, env) {
     const app = new Hono();
-    async function getSalesApiKey(userId) {
+    async function getCrmUserApiKey(userId) {
         const rows = await db
-            .select({ basicsApiKey: schema.sales.basicsApiKey })
-            .from(schema.sales)
-            .where(eq(schema.sales.userId, userId))
+            .select({ basicsApiKey: schema.crmUsers.basicsApiKey })
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.userId, userId))
             .limit(1);
         return rows[0]?.basicsApiKey ?? null;
     }
     // List all connections for the authenticated user
-    app.get("/", authMiddleware(auth), async (c) => {
+    app.get("/", authMiddleware(auth, db), async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const session = c.get("session");
         const userId = session?.user?.id;
         if (!userId)
             return c.json({ error: "Unauthorized" }, 401);
-        const apiKey = await getSalesApiKey(userId);
+        const apiKey = await getCrmUserApiKey(userId);
         if (!apiKey)
             return c.json([]);
         const res = await fetch(`${env.BASICOS_API_URL}/v1/connections`, {
@@ -29,13 +33,16 @@ export function createConnectionsRoutes(db, auth, env) {
         return c.json(await res.json());
     });
     // Initiate OAuth — fetches the provider URL and redirects the browser
-    app.get("/:provider/authorize", authMiddleware(auth), async (c) => {
+    app.get("/:provider/authorize", authMiddleware(auth, db), async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const session = c.get("session");
         const userId = session?.user?.id;
         if (!userId)
             return c.json({ error: "Unauthorized" }, 401);
         const provider = c.req.param("provider");
-        const apiKey = await getSalesApiKey(userId);
+        const apiKey = await getCrmUserApiKey(userId);
         if (!apiKey)
             return c.json({ error: "Basics API key not configured" }, 400);
         const redirectAfter = encodeURIComponent(`${env.BETTER_AUTH_URL}/connections`);
@@ -48,13 +55,16 @@ export function createConnectionsRoutes(db, auth, env) {
         return c.redirect(url);
     });
     // Delete / disconnect a provider
-    app.delete("/:provider", authMiddleware(auth), async (c) => {
+    app.delete("/:provider", authMiddleware(auth, db), async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+        if (!authz.ok)
+            return authz.response;
         const session = c.get("session");
         const userId = session?.user?.id;
         if (!userId)
             return c.json({ error: "Unauthorized" }, 401);
         const provider = c.req.param("provider");
-        const apiKey = await getSalesApiKey(userId);
+        const apiKey = await getCrmUserApiKey(userId);
         if (!apiKey)
             return c.json({ error: "Basics API key not configured" }, 400);
         const res = await fetch(`${env.BASICOS_API_URL}/v1/connections/${provider}`, {

@@ -1,1 +1,1 @@
-{"version":3,"file":"tags.d.ts","sourceRoot":"","sources":["../../../src/db/schema/tags.ts"],"names":[],"mappings":"AAEA,eAAO,MAAM,IAAI;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAIf,CAAC"}
+{"version":3,"file":"tags.d.ts","sourceRoot":"","sources":["../../../src/db/schema/tags.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,IAAI;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAOf,CAAC"}

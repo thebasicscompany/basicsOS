@@ -82,5 +82,5 @@ export declare const ASSISTANT_TOOLS: ({
         };
     };
 })[];
-export declare function executeAssistantToolDrizzle(db: Db, salesId: number, toolName: string, args: Record<string, unknown>): Promise<string>;
+export declare function executeAssistantToolDrizzle(db: Db, crmUserId: number, organizationId: string, toolName: string, args: Record<string, unknown>): Promise<string>;
 //# sourceMappingURL=tools.d.ts.map

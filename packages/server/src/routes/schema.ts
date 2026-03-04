@@ -4,6 +4,7 @@ import type { Db } from "../db/client.js";
 import type { createAuth } from "../auth.js";
 import { sql, eq, asc } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -128,6 +129,9 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
   app.use("*", authMiddleware(auth, db));
 
   app.get("/:tableName", async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const tableName = c.req.param("tableName");
     if (!ALLOWED_TABLES.has(tableName)) {
       return c.json({ error: "Table not found" }, 404);

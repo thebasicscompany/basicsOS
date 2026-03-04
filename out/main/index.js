@@ -176,6 +176,43 @@ let holdDetector = null;
 let meetingMgr = null;
 let registeredMeetingAccelerator = null;
 const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:5173";
+const API_URL = process.env["BASICOS_API_URL"] ?? process.env["VITE_API_URL"] ?? "http://localhost:3001";
+const ALLOWED_PROXY_PATHS = /* @__PURE__ */ new Set([
+  "/v1/audio/transcriptions",
+  "/v1/audio/speech",
+  "/stream/assistant"
+]);
+const getAllowedOrigins = () => {
+  const origins = /* @__PURE__ */ new Set();
+  try {
+    origins.add(new URL(WEB_URL).origin);
+  } catch {
+  }
+  const rendererUrl = process.env["ELECTRON_RENDERER_URL"];
+  if (rendererUrl) {
+    try {
+      origins.add(new URL(rendererUrl).origin);
+    } catch {
+    }
+  }
+  return origins;
+};
+const resolveAllowedMainUrl = (urlOrPath) => {
+  if (!urlOrPath || typeof urlOrPath !== "string") return null;
+  const trimmed = urlOrPath.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("/")) {
+    return `${WEB_URL.replace(/\/$/, "")}${trimmed}`;
+  }
+  try {
+    const target = new URL(trimmed);
+    if (!["http:", "https:"].includes(target.protocol)) return null;
+    const allowedOrigins = getAllowedOrigins();
+    return allowedOrigins.has(target.origin) ? target.toString() : null;
+  } catch {
+    return null;
+  }
+};
 const getOverlayStatus = () => ({
   visible: !!overlayWindow?.isVisible(),
   active: overlayActive
@@ -220,7 +257,9 @@ function createMainWindow() {
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
-      sandbox: false
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
     }
   });
   mainWindow.on("ready-to-show", () => {
@@ -232,6 +271,12 @@ function createMainWindow() {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
     return { action: "deny" };
+  });
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    const allowed = resolveAllowedMainUrl(url);
+    if (!allowed) {
+      event.preventDefault();
+    }
   });
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
@@ -256,7 +301,9 @@ function createOverlayWindow() {
     movable: false,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
-      sandbox: false
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
     },
     hasShadow: false,
     backgroundColor: "#00000000"
@@ -272,8 +319,8 @@ function createOverlayWindow() {
   overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       const target = new URL(url);
-      const base = new URL(WEB_URL);
-      if (target.origin === base.origin && mainWindow) {
+      const allowedOrigins = getAllowedOrigins();
+      if (allowedOrigins.has(target.origin) && mainWindow) {
         mainWindow.show();
         mainWindow.loadURL(url).catch(() => void 0);
       } else if (target.protocol === "http:" || target.protocol === "https:") {
@@ -296,19 +343,7 @@ function createOverlayWindow() {
   });
   overlayWindow.showInactive();
 }
-ipcMain.handle("get-session-token", async () => {
-  try {
-    const cookies = await session.defaultSession.cookies.get({
-      name: "better-auth.session_token"
-    });
-    return cookies[0]?.value ?? null;
-  } catch {
-    return null;
-  }
-});
-ipcMain.handle("get-api-url", () => {
-  return process.env["BASICOS_API_URL"] ?? process.env["VITE_API_URL"] ?? "http://localhost:3001";
-});
+ipcMain.handle("get-api-url", () => API_URL);
 ipcMain.handle("get-overlay-settings", () => getOverlaySettings());
 ipcMain.handle("update-overlay-settings", (_event, partial) => {
   const updated = setOverlaySettings(partial);
@@ -350,10 +385,54 @@ ipcMain.on("overlay-dismissed", () => {
 ipcMain.on("navigate-main", (_event, urlOrPath) => {
   if (mainWindow) {
     mainWindow.show();
-    const fullUrl = urlOrPath.startsWith("http") ? urlOrPath : `${WEB_URL}${urlOrPath.startsWith("/") ? "" : "/"}${urlOrPath}`;
-    mainWindow.loadURL(fullUrl).catch(() => void 0);
+    const fullUrl = resolveAllowedMainUrl(urlOrPath);
+    if (fullUrl) {
+      mainWindow.loadURL(fullUrl).catch(() => void 0);
+    }
   }
 });
+ipcMain.handle(
+  "proxy-overlay-request",
+  async (_event, req) => {
+    const method = (req.method ?? "GET").toUpperCase();
+    const pathName = req.path?.trim();
+    if (!pathName || !ALLOWED_PROXY_PATHS.has(pathName)) {
+      return { ok: false, status: 400, statusText: "Bad request", headers: {}, body: "" };
+    }
+    if (!["GET", "POST"].includes(method)) {
+      return { ok: false, status: 405, statusText: "Method not allowed", headers: {}, body: "" };
+    }
+    const cookies = await session.defaultSession.cookies.get({
+      name: "better-auth.session_token"
+    });
+    const token = cookies[0]?.value;
+    if (!token) {
+      return { ok: false, status: 401, statusText: "Unauthorized", headers: {}, body: "" };
+    }
+    const headers = new Headers(req.headers ?? {});
+    headers.set("Authorization", `Bearer ${token}`);
+    const res = await fetch(`${API_URL}${pathName}`, {
+      method,
+      headers,
+      body: req.body
+    });
+    const contentType = res.headers.get("content-type") ?? "";
+    const isBinary = pathName === "/v1/audio/speech" || contentType.startsWith("audio/");
+    const textBody = isBinary ? Buffer.from(await res.arrayBuffer()).toString("base64") : await res.text();
+    const outHeaders = {};
+    res.headers.forEach((value, key) => {
+      outHeaders[key] = value;
+    });
+    return {
+      ok: res.ok,
+      status: res.status,
+      statusText: res.statusText,
+      headers: outHeaders,
+      body: textBody,
+      encoding: isBinary ? "base64" : "text"
+    };
+  }
+);
 ipcMain.handle("inject-text", (_event, text) => {
   return new Promise((resolve) => {
     clipboard.writeText(text);

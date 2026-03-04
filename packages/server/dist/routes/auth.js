@@ -2,13 +2,18 @@ import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth.js";
 import * as schema from "../db/schema/index.js";
 import { eq } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { PERMISSIONS, getPermissionSetForUser, hasPermission, requirePermission } from "../lib/rbac.js";
+function generateInviteToken() {
+    return randomBytes(24).toString("hex");
+}
 export function createAuthRoutes(db, auth, env) {
     const app = new Hono();
     app.get("/init", async (c) => {
         const orgs = await db.select().from(schema.organizations).limit(1);
         return c.json({ initialized: orgs.length > 0 });
     });
-    app.get("/gateway-token", authMiddleware(auth), async (c) => {
+    app.get("/gateway-token", authMiddleware(auth, db), async (c) => {
         const session = c.get("session");
         const token = session?.session?.token ?? session?.session?.id;
         if (!token) {
@@ -16,31 +21,33 @@ export function createAuthRoutes(db, auth, env) {
         }
         return c.json({ token });
     });
-    app.get("/me", authMiddleware(auth), async (c) => {
+    app.get("/me", authMiddleware(auth, db), async (c) => {
         const session = c.get("session");
         if (!session?.user) {
             return c.json({ error: "Unauthorized" }, 401);
         }
-        const salesRow = await db
+        const crmUserRows = await db
             .select()
-            .from(schema.sales)
-            .where(eq(schema.sales.userId, session.user.id))
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.userId, session.user.id))
             .limit(1);
-        const sale = salesRow[0];
-        if (!sale) {
+        const crmUser = crmUserRows[0];
+        if (!crmUser) {
             return c.json({ error: "User not found in CRM" }, 404);
         }
+        const permissions = await getPermissionSetForUser(db, crmUser);
         return c.json({
-            id: sale.id,
-            fullName: `${sale.firstName} ${sale.lastName}`,
-            firstName: sale.firstName,
-            lastName: sale.lastName,
-            email: sale.email,
-            avatar: sale.avatar,
-            administrator: sale.administrator,
+            id: crmUser.id,
+            fullName: `${crmUser.firstName} ${crmUser.lastName}`,
+            firstName: crmUser.firstName,
+            lastName: crmUser.lastName,
+            email: crmUser.email,
+            avatar: crmUser.avatar,
+            administrator: hasPermission(permissions, PERMISSIONS.rbacManage),
+            hasApiKey: Boolean(crmUser.basicsApiKey?.trim()),
         });
     });
-    app.patch("/me", authMiddleware(auth), async (c) => {
+    app.patch("/me", authMiddleware(auth, db), async (c) => {
         const session = c.get("session");
         const userId = session?.user?.id;
         if (!userId)
@@ -54,33 +61,133 @@ export function createAuthRoutes(db, auth, env) {
         if (Object.keys(updates).length === 0)
             return c.json({ error: "No valid fields to update" }, 400);
         await db
-            .update(schema.sales)
+            .update(schema.crmUsers)
             .set(updates)
-            .where(eq(schema.sales.userId, userId));
+            .where(eq(schema.crmUsers.userId, userId));
         return c.json({ ok: true });
     });
-    app.patch("/settings", authMiddleware(auth), async (c) => {
+    app.patch("/settings", authMiddleware(auth, db), async (c) => {
         const session = c.get("session");
         const userId = session?.user?.id;
         if (!userId)
             return c.json({ error: "Unauthorized" }, 401);
         const body = await c.req.json();
         await db
-            .update(schema.sales)
+            .update(schema.crmUsers)
             .set({ basicsApiKey: body.basicsApiKey ?? null })
-            .where(eq(schema.sales.userId, userId));
+            .where(eq(schema.crmUsers.userId, userId));
         return c.json({ ok: true });
+    });
+    app.get("/organization", authMiddleware(auth, db), async (c) => {
+        const session = c.get("session");
+        const userId = session?.user?.id;
+        if (!userId)
+            return c.json({ error: "Unauthorized" }, 401);
+        const [crmUser] = await db
+            .select()
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.userId, userId))
+            .limit(1);
+        if (!crmUser)
+            return c.json({ error: "User not found in CRM" }, 404);
+        if (!crmUser.organizationId)
+            return c.json({ error: "No organization found" }, 404);
+        const [org] = await db
+            .select()
+            .from(schema.organizations)
+            .where(eq(schema.organizations.id, crmUser.organizationId))
+            .limit(1);
+        if (!org)
+            return c.json({ error: "Organization not found" }, 404);
+        return c.json({
+            id: org.id,
+            name: org.name,
+            logo: org.logo,
+        });
+    });
+    app.patch("/organization", authMiddleware(auth, db), async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.rbacManage);
+        if (!authz.ok)
+            return authz.response;
+        const { crmUser } = authz;
+        if (!crmUser.organizationId)
+            return c.json({ error: "No organization found" }, 404);
+        const body = await c.req
+            .json()
+            .catch(() => ({}));
+        const updates = {};
+        if (typeof body.name === "string") {
+            const name = body.name.trim();
+            if (!name)
+                return c.json({ error: "Organization name cannot be empty" }, 400);
+            updates.name = name.slice(0, 255);
+        }
+        if (body.logo === null) {
+            updates.logo = null;
+        }
+        else if (body.logo && typeof body.logo.src === "string") {
+            const src = body.logo.src.trim();
+            updates.logo = src ? { src } : null;
+        }
+        if (Object.keys(updates).length === 0) {
+            return c.json({ error: "No valid fields to update" }, 400);
+        }
+        updates.updatedAt = new Date();
+        const [org] = await db
+            .update(schema.organizations)
+            .set(updates)
+            .where(eq(schema.organizations.id, crmUser.organizationId))
+            .returning();
+        if (!org)
+            return c.json({ error: "Organization not found" }, 404);
+        return c.json({
+            id: org.id,
+            name: org.name,
+            logo: org.logo,
+        });
     });
     app.post("/signup", async (c) => {
         const body = await c.req.json();
-        const { email, password, first_name, last_name } = body;
+        const { email, password, first_name, last_name, invite_token } = body;
         if (!email || !password || !first_name || !last_name) {
             return c.json({ error: "Missing required fields" }, 400);
         }
         const orgs = await db.select().from(schema.organizations).limit(1);
         const isFirstUser = orgs.length === 0;
-        if (!isFirstUser) {
-            return c.json({ error: "Organization already exists. Use an invite link to join." }, 400);
+        let organizationId = null;
+        if (isFirstUser) {
+            const [org] = await db
+                .insert(schema.organizations)
+                .values({ name: `${first_name}'s Organization` })
+                .returning();
+            if (!org) {
+                return c.json({ error: "Failed to create organization" }, 500);
+            }
+            organizationId = org.id;
+        }
+        else {
+            const inviteToken = invite_token?.trim();
+            if (!inviteToken) {
+                return c.json({ error: "Organization already exists. You need an invite token to sign up." }, 400);
+            }
+            const inviteRows = await db
+                .select()
+                .from(schema.invites)
+                .where(eq(schema.invites.token, inviteToken))
+                .limit(1);
+            const invite = inviteRows[0];
+            if (!invite) {
+                return c.json({ error: "Invalid invite token" }, 400);
+            }
+            if (invite.expiresAt.getTime() < Date.now()) {
+                await db.delete(schema.invites).where(eq(schema.invites.id, invite.id));
+                return c.json({ error: "Invite token has expired" }, 400);
+            }
+            if (invite.email &&
+                invite.email.trim().toLowerCase() !== email.trim().toLowerCase()) {
+                return c.json({ error: "This invite is restricted to a different email" }, 400);
+            }
+            organizationId = invite.organizationId;
         }
         const signUpRes = await auth.api.signUpEmail({
             body: {
@@ -102,24 +209,72 @@ export function createAuthRoutes(db, auth, env) {
         if (!user) {
             return c.json({ error: "Signup failed" }, 400);
         }
-        const [org] = await db
-            .insert(schema.organizations)
-            .values({ name: `${first_name}'s Organization` })
-            .returning();
-        if (!org) {
-            return c.json({ error: "Failed to create organization" }, 500);
-        }
-        await db.insert(schema.sales).values({
+        const [createdCrmUser] = await db.insert(schema.crmUsers).values({
             firstName: first_name,
             lastName: last_name,
             email,
             userId: user.id,
-            organizationId: org.id,
-            administrator: true,
-        });
+            organizationId,
+            administrator: isFirstUser,
+        }).returning({ id: schema.crmUsers.id, organizationId: schema.crmUsers.organizationId });
+        if (createdCrmUser?.organizationId) {
+            const roleKey = isFirstUser ? "org_admin" : "member";
+            const [role] = await db
+                .select({ id: schema.rbacRoles.id })
+                .from(schema.rbacRoles)
+                .where(eq(schema.rbacRoles.key, roleKey))
+                .limit(1);
+            if (role) {
+                await db
+                    .insert(schema.rbacUserRoles)
+                    .values({
+                    crmUserId: createdCrmUser.id,
+                    roleId: role.id,
+                    organizationId: createdCrmUser.organizationId,
+                })
+                    .onConflictDoNothing();
+            }
+        }
+        if (!isFirstUser && invite_token?.trim()) {
+            await db.delete(schema.invites).where(eq(schema.invites.token, invite_token.trim()));
+        }
         return c.json({
             id: user.id,
             email,
+        });
+    });
+    app.post("/invites", authMiddleware(auth, db), async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.rbacManage);
+        if (!authz.ok)
+            return authz.response;
+        const { crmUser } = authz;
+        if (!crmUser.organizationId)
+            return c.json({ error: "No organization found" }, 400);
+        const body = await c.req
+            .json()
+            .catch(() => ({}));
+        const expiresInHoursRaw = body.expiresInHours;
+        const expiresInHours = Number.isFinite(expiresInHoursRaw)
+            ? Math.min(Math.max(Math.floor(expiresInHoursRaw), 1), 24 * 30)
+            : 24 * 7;
+        const email = body.email?.trim() ? body.email.trim().toLowerCase() : null;
+        const token = generateInviteToken();
+        const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
+        const [invite] = await db
+            .insert(schema.invites)
+            .values({
+            token,
+            organizationId: crmUser.organizationId,
+            email,
+            expiresAt,
+        })
+            .returning();
+        if (!invite)
+            return c.json({ error: "Failed to create invite" }, 500);
+        return c.json({
+            token: invite.token,
+            email: invite.email,
+            expiresAt: invite.expiresAt,
         });
     });
     return app;

@@ -9,6 +9,7 @@ import type { Db } from "../db/client.js";
 import type { Env } from "../env.js";
 import type { createAuth } from "../auth.js";
 import { resolveCrmUserWithApiKey } from "../lib/crm-user-auth.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -28,6 +29,9 @@ export function createVoiceProxyRoutes(
   const app = new Hono();
 
   app.post("/transcriptions", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const crmUserAuth = await resolveCrmUserWithApiKey(c, db);
     if (!crmUserAuth.ok) return crmUserAuth.response;
     const { apiKey } = crmUserAuth.data;
@@ -58,7 +62,10 @@ export function createVoiceProxyRoutes(
     if (!proxyRes.ok) {
       const errText = await proxyRes.text().catch(() => "");
       console.error("[voice-proxy] transcriptions error:", proxyRes.status, errText);
-      return c.json({ error: "Transcription failed" }, proxyRes.status);
+      return new Response(JSON.stringify({ error: "Transcription failed" }), {
+        status: proxyRes.status,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const providerJson = (await proxyRes.json()) as DeepgramTranscriptionResult;
@@ -69,6 +76,9 @@ export function createVoiceProxyRoutes(
   });
 
   app.post("/speech", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
+    if (!authz.ok) return authz.response;
+
     const crmUserAuth = await resolveCrmUserWithApiKey(c, db);
     if (!crmUserAuth.ok) return crmUserAuth.response;
     const { apiKey } = crmUserAuth.data;
@@ -100,7 +110,10 @@ export function createVoiceProxyRoutes(
     if (!proxyRes.ok) {
       const errText = await proxyRes.text().catch(() => "");
       console.error("[voice-proxy] speech error:", proxyRes.status, errText);
-      return c.json({ error: "TTS failed" }, proxyRes.status);
+      return new Response(JSON.stringify({ error: "TTS failed" }), {
+        status: proxyRes.status,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const audioBuffer = await proxyRes.arrayBuffer();

@@ -1,3 +1,4 @@
+import { topologicalSort } from "@basics-os/shared";
 import { executeEmail } from "./automation-actions/email.js";
 import { executeAI } from "./automation-actions/ai-task.js";
 import { executeWebSearch } from "./automation-actions/web-search.js";
@@ -6,43 +7,16 @@ import { executeSlack } from "./automation-actions/slack.js";
 import { executeGmailRead } from "./automation-actions/gmail-read.js";
 import { executeGmailSend } from "./automation-actions/gmail-send.js";
 import { executeAIAgent } from "./automation-actions/ai-agent.js";
-export async function executeWorkflow(workflowDef, triggerData, sales, db, env) {
+export async function executeWorkflow(workflowDef, triggerData, crmUser, db, env) {
     const { nodes, edges } = workflowDef;
     if (!nodes?.length)
         return { trigger_data: triggerData };
-    // Build adjacency list and in-degree map for topological sort
-    const adjacency = new Map();
-    const inDegree = new Map();
-    for (const node of nodes) {
-        adjacency.set(node.id, []);
-        inDegree.set(node.id, 0);
-    }
-    for (const edge of edges ?? []) {
-        adjacency.get(edge.source)?.push(edge.target);
-        inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-    }
-    // Kahn's topological sort
-    const queue = [];
-    for (const [nodeId, deg] of inDegree) {
-        if (deg === 0)
-            queue.push(nodeId);
-    }
-    const order = [];
-    while (queue.length > 0) {
-        const nodeId = queue.shift();
-        order.push(nodeId);
-        for (const neighbor of adjacency.get(nodeId) ?? []) {
-            const newDeg = (inDegree.get(neighbor) ?? 0) - 1;
-            inDegree.set(neighbor, newDeg);
-            if (newDeg === 0)
-                queue.push(neighbor);
-        }
-    }
+    const order = topologicalSort(nodes.map((n) => n.id), edges ?? []);
     const context = {
         trigger_data: triggerData,
-        sales_id: sales.id,
+        crm_user_id: crmUser.id,
     };
-    const apiKey = sales.basicsApiKey ?? "";
+    const apiKey = crmUser.basicsApiKey ?? "";
     for (const nodeId of order) {
         const node = nodes.find((n) => n.id === nodeId);
         if (!node)
@@ -67,7 +41,7 @@ export async function executeWorkflow(workflowDef, triggerData, sales, db, env) 
                 break;
             }
             case "action_crm": {
-                const crmResult = await executeCrmAction(data, context, db, sales.id);
+                const crmResult = await executeCrmAction(data, context, db, crmUser.id);
                 context.crm_result = crmResult.crm_result;
                 break;
             }
@@ -85,7 +59,7 @@ export async function executeWorkflow(workflowDef, triggerData, sales, db, env) 
                 await executeGmailSend(data, context, apiKey, env);
                 break;
             case "action_ai_agent": {
-                const agentResult = await executeAIAgent(data, context, db, sales.id, apiKey, env);
+                const agentResult = await executeAIAgent(data, context, db, crmUser.id, apiKey, env);
                 context.ai_agent_result = agentResult.ai_agent_result;
                 break;
             }
@@ -99,28 +73,34 @@ function resolveTemplates(data, context) {
     const result = {};
     for (const [key, value] of Object.entries(data)) {
         if (typeof value === "string") {
-            result[key] = value.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, varPath) => {
-                const parts = varPath.split(".");
-                let val = context;
-                for (const part of parts) {
-                    if (val && typeof val === "object") {
-                        val = val[part];
-                    }
-                    else {
-                        val = undefined;
-                        break;
-                    }
-                }
-                if (val === undefined)
-                    return `{{${varPath}}}`;
-                if (typeof val === "string")
-                    return val;
-                return JSON.stringify(val);
-            });
+            result[key] = resolveString(value, context);
+        }
+        else if (value && typeof value === "object" && !Array.isArray(value)) {
+            result[key] = resolveTemplates(value, context);
         }
         else {
             result[key] = value;
         }
     }
     return result;
+}
+function resolveString(str, context) {
+    return str.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, varPath) => {
+        const parts = varPath.split(".");
+        let val = context;
+        for (const part of parts) {
+            if (val && typeof val === "object") {
+                val = val[part];
+            }
+            else {
+                val = undefined;
+                break;
+            }
+        }
+        if (val === undefined)
+            return `{{${varPath}}}`;
+        if (typeof val === "string")
+            return val;
+        return JSON.stringify(val);
+    });
 }

@@ -1,5 +1,6 @@
-import { pgTable, bigserial, varchar, text, smallint, json, jsonb, timestamp, bigint, } from "drizzle-orm/pg-core";
-import { sales } from "./sales";
+import { pgTable, bigserial, varchar, text, smallint, json, jsonb, timestamp, bigint, uuid, index, } from "drizzle-orm/pg-core";
+import { crmUsers } from "./crm_users";
+import { organizations } from "./organizations";
 export const companies = pgTable("companies", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -18,7 +19,14 @@ export const companies = pgTable("companies", {
     revenue: varchar("revenue", { length: 64 }),
     taxIdentifier: varchar("tax_identifier", { length: 64 }),
     logo: jsonb("logo"), // { src: string }
-    salesId: bigint("sales_id", { mode: "number" }).references(() => sales.id),
+    crmUserId: bigint("crm_user_id", { mode: "number" }).references(() => crmUsers.id),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+        onDelete: "cascade",
+    }),
     contextLinks: json("context_links"),
     customFields: jsonb("custom_fields").$type().default({}).notNull(),
-});
+}, (t) => [
+    index("companies_crm_user_id_idx").on(t.crmUserId),
+    index("companies_org_idx").on(t.organizationId),
+    index("companies_sector_idx").on(t.sector),
+]);

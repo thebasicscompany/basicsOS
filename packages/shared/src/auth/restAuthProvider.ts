@@ -33,6 +33,12 @@ export function createRestAuthProvider(apiUrl: string): AuthProvider {
         throw { redirectTo: "/login", message: false };
       }
     },
+    checkError: async (error) => {
+      const status = (error as { status?: number } | undefined)?.status;
+      if (status === 401 || status === 403) {
+        throw { redirectTo: "/login", message: false };
+      }
+    },
     getIdentity: async () => {
       const res = await fetch(`${apiUrl || ""}/api/me`, {
         credentials: "include",

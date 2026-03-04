@@ -8,6 +8,7 @@ import type { createAuth } from "../auth.js";
 import * as schema from "../db/schema/index.js";
 import { buildCrmSummary, retrieveRelevantContext } from "../lib/context.js";
 import { resolveCrmUserWithApiKey } from "../lib/crm-user-auth.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -702,6 +703,9 @@ export function createGatewayChatRoutes(db: Db, auth: BetterAuthInstance, env: E
   const app = new Hono();
 
   app.post("/", authMiddleware(auth, db), async (c) => {
+    const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
+    if (!authz.ok) return authz.response;
+
     const crmUserAuth = await resolveCrmUserWithApiKey(c, db);
     if (!crmUserAuth.ok) return crmUserAuth.response;
     const { crmUser, apiKey } = crmUserAuth.data;

@@ -10,8 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.basicsos.com/">Website</a> &bull;
-  <a href="https://github.com/thebasicscompany/basicsOSnew">GitHub</a>
+  <a href="https://www.basicsos.com/">Website</a>
 </p>
 
 <p align="center">

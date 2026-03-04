@@ -1,7 +1,10 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -11,6 +14,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import {
   HouseIcon,
   UserIcon,
@@ -42,6 +46,7 @@ export function CommandPalette() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const shortcutLabel = getCommandPaletteShortcutLabel();
+  const shortcutKeys = shortcutLabel.split("+");
   const [recentItems] = useRecentItems();
   const objects = useObjects();
 
@@ -114,18 +119,21 @@ export function CommandPalette() {
 
   return (
     <CommandDialog
-      shouldFilter={false}
       open={open}
       onOpenChange={setOpen}
       title="Command palette"
       description="Search contacts, companies, and deals. Navigate or create records."
     >
-      <CommandInput
-        placeholder="Search or run a command..."
-        value={search}
-        onValueChange={setSearch}
-      />
-      <CommandList>
+      <Command
+        shouldFilter={false}
+        className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group]]:px-1.5 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input]]:h-10 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-1.5"
+      >
+        <CommandInput
+          placeholder="Type a command or search..."
+          value={search}
+          onValueChange={setSearch}
+        />
+        <CommandList>
         {isSearching ? (
           <>
             {!hasResults && (
@@ -380,13 +388,22 @@ export function CommandPalette() {
             <CommandSeparator />
             <CommandGroup>
               <CommandItem className="text-muted-foreground" disabled>
-                <CommandShortcut>{shortcutLabel}</CommandShortcut>
+                <CommandShortcut>
+                  <KbdGroup>
+                    {shortcutKeys.map((key) => (
+                      <Kbd key={key} className="h-4 min-w-4 px-1 text-[10px] font-medium">
+                        {key}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
+                </CommandShortcut>
                 Open palette
               </CommandItem>
             </CommandGroup>
           </>
         )}
-      </CommandList>
+        </CommandList>
+      </Command>
     </CommandDialog>
   );
 }

@@ -1,4 +1,4 @@
-import { SortAscendingIcon, ColumnsIcon, FunnelIcon, DotsThreeVerticalIcon, XIcon } from "@phosphor-icons/react"
+import { SortAscendingIcon, ColumnsIcon, FunnelIcon, DotsThreeVerticalIcon } from "@phosphor-icons/react"
 import * as React from "react";
 import {
   DndContext,
@@ -19,7 +19,6 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import {
   Popover,
@@ -32,6 +31,7 @@ import type { ViewSort, ViewFilter, ViewColumn } from "@/types/views";
 import { cn } from "@/lib/utils";
 import { SortPopover } from "./SortPopover";
 import { FilterPopover } from "./FilterPopover";
+import { SortFilterPills } from "./SortFilterPills";
 
 export interface DataTableToolbarProps {
   objectSlug: string;
@@ -177,67 +177,14 @@ export function DataTableToolbar({
 
       {/* Row 2: Active sort/filter pills */}
       {(hasActiveSorts || hasActiveFilters) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Sort pills */}
-          {sorts.map((sort) => {
-            const attr = attrMap.get(sort.fieldId);
-            return (
-              <Badge
-                key={sort.id}
-                variant="outline"
-                className="gap-1 pl-2 pr-1 py-0.5 text-xs font-normal"
-              >
-                <SortAscendingIcon className="size-3 text-muted-foreground" />
-                <span>{attr?.name ?? sort.fieldId}</span>
-                <span className="text-muted-foreground">
-                  {sort.direction === "asc" ? "A-Z" : "Z-A"}
-                </span>
-                <button
-                  className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
-                  onClick={() => onRemoveSort(sort.id)}
-                >
-                  <XIcon className="size-3" />
-                </button>
-              </Badge>
-            );
-          })}
-
-          {hasActiveSorts && hasActiveFilters && (
-            <Separator orientation="vertical" className="h-4" />
-          )}
-
-          {/* Filter pills */}
-          {filters.map((filter, idx) => {
-            const attr = attrMap.get(filter.fieldId);
-            return (
-              <Badge
-                key={filter.id}
-                variant="outline"
-                className="gap-1 pl-2 pr-1 py-0.5 text-xs font-normal"
-              >
-                {idx > 0 && (
-                  <span className="text-muted-foreground mr-0.5">
-                    {filter.logicalOp}
-                  </span>
-                )}
-                <FunnelIcon className="size-3 text-muted-foreground" />
-                <span>{attr?.name ?? filter.fieldId}</span>
-                <span className="text-muted-foreground">{filter.operator}</span>
-                {filter.value !== undefined &&
-                  filter.value !== null &&
-                  filter.value !== "" && (
-                    <span className="font-medium">{String(filter.value)}</span>
-                  )}
-                <button
-                  className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
-                  onClick={() => onRemoveFilter(filter.id)}
-                >
-                  <XIcon className="size-3" />
-                </button>
-              </Badge>
-            );
-          })}
-        </div>
+        <SortFilterPills
+          sorts={sorts}
+          filters={filters}
+          getAttributeName={(fieldId) => attrMap.get(fieldId)?.name ?? fieldId}
+          onRemoveSort={onRemoveSort}
+          onRemoveFilter={onRemoveFilter}
+          className="flex flex-wrap items-center gap-1.5"
+        />
       )}
     </div>
   );
@@ -288,12 +235,14 @@ export function ColumnsPopover({
   totalCount,
   onToggle,
   onReorder,
+  triggerClassName,
 }: {
   items: ColumnItem[];
   visibleCount: number;
   totalCount: number;
   onToggle: (columnId: string, show: boolean) => void;
   onReorder?: (columnId: string, newOrder: number) => void;
+  triggerClassName?: string;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -325,7 +274,11 @@ export function ColumnsPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("h-7 gap-1.5 text-xs", triggerClassName)}
+        >
           <ColumnsIcon className="size-3.5" />
           Columns
           <Badge

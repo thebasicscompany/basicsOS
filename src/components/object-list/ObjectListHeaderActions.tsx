@@ -63,102 +63,179 @@ export function ObjectListHeaderActions({
   return (
     <>
       {showTableActions && attributes.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-              Actions
-              {actionsCount > 0 && (
-                <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
-                  {actionsCount}
-                </Badge>
-              )}
-              <CaretDownIcon className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-auto min-w-[280px] p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <SortPopover
-                attributes={attributes}
-                sorts={viewState.sorts}
-                onAdd={onAddSort}
-                onRemove={viewState.removeSort}
-                onUpdate={(sortId, updates) => {
-                  viewState.removeSort(sortId);
-                  if (updates.fieldId && updates.direction) {
-                    viewState.addSort(updates.fieldId, updates.direction);
-                  }
-                }}
-              >
-                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-                  <SortAscendingIcon className="size-3.5" />
-                  Sort
-                  {hasActiveSorts && (
-                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
-                      {viewState.sorts.length}
-                    </Badge>
-                  )}
-                </Button>
-              </SortPopover>
-              <FilterPopover
-                attributes={attributes}
-                filters={viewState.filters}
-                onAdd={onAddFilter}
-                onRemove={viewState.removeFilter}
-                onUpdate={(filterId, updates) => {
-                  viewState.removeFilter(filterId);
-                  if (updates.fieldId && updates.operator) {
-                    viewState.addFilter(
-                      updates.fieldId,
-                      updates.operator,
-                      updates.value,
-                      updates.logicalOp,
-                    );
-                  }
-                }}
-              >
-                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
-                  <FunnelIcon className="size-3.5" />
-                  Filter
-                  {hasActiveFilters && (
-                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
-                      {viewState.filters.length}
-                    </Badge>
-                  )}
-                </Button>
-              </FilterPopover>
-              <ColumnsPopover
-                items={columnItems}
-                visibleCount={columnVisibleCount}
-                totalCount={columnItems.length}
-                onToggle={(columnId, show) => viewState.updateColumn(columnId, { show })}
-                onReorder={(columnId, newOrder) =>
-                  viewState.updateColumn(columnId, { order: newOrder })
-                }
-              />
-              {viewState.isDirty && (
-                <>
-                  <div className="flex-1" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={viewState.discard}
-                  >
-                    Discard changes
-                  </Button>
-                  <Button size="sm" className="h-7 text-xs" onClick={viewState.save}>
-                    Save for everyone
-                  </Button>
-                </>
-              )}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TableActionsMenu
+          actionsCount={actionsCount}
+          attributes={attributes}
+          sorts={viewState.sorts}
+          filters={viewState.filters}
+          hasActiveSorts={hasActiveSorts}
+          hasActiveFilters={hasActiveFilters}
+          onAddSort={onAddSort}
+          onRemoveSort={viewState.removeSort}
+          onAddFilter={onAddFilter}
+          onRemoveFilter={viewState.removeFilter}
+          onAddFilterRaw={viewState.addFilter}
+          onAddSortRaw={viewState.addSort}
+          columnItems={columnItems}
+          onUpdateColumn={viewState.updateColumn}
+          isDirty={viewState.isDirty}
+          onDiscard={viewState.discard}
+          onSave={viewState.save}
+          columnVisibleCount={columnVisibleCount}
+        />
       )}
       <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">
         <PlusIcon className="h-4 w-4" />
         New {singularName}
       </Button>
     </>
+  );
+}
+
+function TableActionsMenu({
+  actionsCount,
+  attributes,
+  sorts,
+  filters,
+  hasActiveSorts,
+  hasActiveFilters,
+  onAddSort,
+  onRemoveSort,
+  onAddFilter,
+  onRemoveFilter,
+  onAddFilterRaw,
+  onAddSortRaw,
+  columnItems,
+  onUpdateColumn,
+  isDirty,
+  onDiscard,
+  onSave,
+  columnVisibleCount,
+}: {
+  actionsCount: number;
+  attributes: Attribute[];
+  sorts: ViewSort[];
+  filters: ViewFilter[];
+  hasActiveSorts: boolean;
+  hasActiveFilters: boolean;
+  onAddSort: (sort: Omit<ViewSort, "id">) => void;
+  onRemoveSort: (sortId: string) => void;
+  onAddFilter: (filter: Omit<ViewFilter, "id">) => void;
+  onRemoveFilter: (filterId: string) => void;
+  onAddFilterRaw: (
+    fieldId: string,
+    operator: string,
+    value: unknown,
+    logicalOp?: "and" | "or",
+  ) => void;
+  onAddSortRaw: (fieldId: string, direction: "asc" | "desc") => void;
+  columnItems: ColumnItem[];
+  onUpdateColumn: (
+    columnId: string,
+    updates: Partial<{ show?: boolean; order?: number; width?: string }>,
+  ) => void;
+  isDirty: boolean;
+  onDiscard: () => void;
+  onSave: () => Promise<void>;
+  columnVisibleCount: number;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          Actions
+          {actionsCount > 0 && (
+            <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+              {actionsCount}
+            </Badge>
+          )}
+          <CaretDownIcon className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[min(92vw,420px)] p-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-center">
+          <SortPopover
+            attributes={attributes}
+            sorts={sorts}
+            onAdd={onAddSort}
+            onRemove={onRemoveSort}
+            onUpdate={(sortId, updates) => {
+              onRemoveSort(sortId);
+              if (updates.fieldId && updates.direction) {
+                onAddSortRaw(updates.fieldId, updates.direction);
+              }
+            }}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 w-full justify-between gap-1.5 text-xs sm:w-auto sm:justify-start"
+            >
+              <SortAscendingIcon className="size-3.5" />
+              Sort
+              {hasActiveSorts && (
+                <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                  {sorts.length}
+                </Badge>
+              )}
+            </Button>
+          </SortPopover>
+          <FilterPopover
+            attributes={attributes}
+            filters={filters}
+            onAdd={onAddFilter}
+            onRemove={onRemoveFilter}
+            onUpdate={(filterId, updates) => {
+              onRemoveFilter(filterId);
+              if (updates.fieldId && updates.operator) {
+                onAddFilterRaw(
+                  updates.fieldId,
+                  updates.operator,
+                  updates.value,
+                  updates.logicalOp,
+                );
+              }
+            }}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 w-full justify-between gap-1.5 text-xs sm:w-auto sm:justify-start"
+            >
+              <FunnelIcon className="size-3.5" />
+              Filter
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 px-1 text-[10px]">
+                  {filters.length}
+                </Badge>
+              )}
+            </Button>
+          </FilterPopover>
+          <ColumnsPopover
+            items={columnItems}
+            visibleCount={columnVisibleCount}
+            totalCount={columnItems.length}
+            onToggle={(columnId, show) => onUpdateColumn(columnId, { show })}
+            onReorder={(columnId, newOrder) => onUpdateColumn(columnId, { order: newOrder })}
+            triggerClassName="w-full justify-between sm:w-auto sm:justify-start"
+          />
+        </div>
+        {isDirty && (
+          <div className="mt-2 flex items-center justify-end gap-2 border-t pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={onDiscard}
+            >
+              Discard changes
+            </Button>
+            <Button size="sm" className="h-7 text-xs" onClick={onSave}>
+              Save for everyone
+            </Button>
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

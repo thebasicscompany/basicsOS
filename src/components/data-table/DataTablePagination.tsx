@@ -34,11 +34,13 @@ export function DataTablePagination({
 }: DataTablePaginationProps) {
   const canPrevPage = page > 1;
   const canNextPage = page < totalPages;
+  const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const rangeEnd = Math.min(page * perPage, total);
 
   return (
     <div className="flex items-center justify-between gap-4 px-1 py-2 text-sm">
       <div className="text-muted-foreground whitespace-nowrap text-xs">
-        {total}{" "}
+        {rangeStart}-{rangeEnd} of {total}{" "}
         {total === 1 ? singularName.toLowerCase() : pluralName.toLowerCase()}
       </div>
 

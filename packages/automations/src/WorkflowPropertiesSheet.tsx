@@ -29,8 +29,13 @@ export interface WorkflowPropertiesSheetProps {
   expandedNodeIds: string[];
   onExpandedNodeIdsChange: (ids: string[]) => void;
   onUpdateNode: (nodeId: string, data: Record<string, unknown>) => void;
-  onReplaceNode: (nodeId: string, newType: string, newData: Record<string, unknown>) => void;
+  onReplaceNode: (
+    nodeId: string,
+    newType: string,
+    newData: Record<string, unknown>,
+  ) => void;
   onRequestDeleteNode: (nodeId: string) => void;
+  onDuplicateNode: (nodeId: string) => void;
   onOpenSettings: () => void;
   nodeTypeLabels: Record<string, string>;
 }
@@ -46,6 +51,7 @@ export function WorkflowPropertiesSheet({
   onUpdateNode,
   onReplaceNode,
   onRequestDeleteNode,
+  onDuplicateNode,
   onOpenSettings,
   nodeTypeLabels,
 }: WorkflowPropertiesSheetProps) {
@@ -63,7 +69,10 @@ export function WorkflowPropertiesSheet({
     if (!selectedNodeId || !open) return;
     // Defer to let the DOM settle (panel may have just mounted or node just expanded)
     const id = requestAnimationFrame(() => {
-      selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      selectedRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     });
     return () => cancelAnimationFrame(id);
   }, [selectedNodeId, open]);
@@ -76,18 +85,21 @@ export function WorkflowPropertiesSheet({
         onExpandedNodeIdsChange(expandedNodeIds.filter((id) => id !== nodeId));
       }
     },
-    [expandedNodeIds, onExpandedNodeIdsChange]
+    [expandedNodeIds, onExpandedNodeIdsChange],
   );
 
   if (!open) return null;
 
   const orderedIds = getWorkflowNodeOrder(nodes, edges);
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const selectedNode = selectedNodeId
+    ? (nodeMap.get(selectedNodeId) ?? null)
+    : null;
 
   return (
-    <div className="w-80 shrink-0 flex flex-col border-l border-border/60 bg-background">
+    <div className="flex h-full w-[22rem] min-w-[22rem] max-w-[22rem] flex-none flex-col border-l border-border/60 bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 shrink-0">
+      <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-4 py-2.5">
         <span className="text-sm font-semibold tracking-tight">Workflow</span>
         <Button
           variant="ghost"
@@ -100,8 +112,8 @@ export function WorkflowPropertiesSheet({
       </div>
 
       {/* Node list */}
-      <div className="flex-1 overflow-y-auto pl-6 pr-4 pt-6 pb-6">
-        <div className="flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-3 py-3">
+        <div className="flex flex-col gap-2.5">
           {orderedIds.map((nodeId, index) => {
             const node = nodeMap.get(nodeId);
             if (!node) return null;
@@ -115,18 +127,24 @@ export function WorkflowPropertiesSheet({
                 onOpenChange={(v: boolean) => setExpanded(nodeId, v)}
               >
                 <div
-                  ref={isSelected ? (el) => { selectedRef.current = el; } : undefined}
+                  ref={
+                    isSelected
+                      ? (el) => {
+                          selectedRef.current = el;
+                        }
+                      : undefined
+                  }
                   className={`overflow-hidden rounded-xl transition-all duration-200 ${
                     isSelected
                       ? "ring-1 ring-primary/40 shadow-sm shadow-primary/5"
                       : "ring-1 ring-border/50 hover:ring-border"
                   } ${isExpanded ? "bg-card/50" : "bg-muted/30 hover:bg-muted/40"}`}
                 >
-                  <div className="flex items-center gap-2 px-4 py-2.5">
+                  <div className="flex items-center gap-2 px-2.5 py-2">
                     <CollapsibleTrigger asChild>
                       <button
                         type="button"
-                        className="flex flex-1 items-center gap-2.5 min-w-0 text-left rounded-lg transition-colors py-0.5"
+                        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-0.5 text-left transition-colors"
                       >
                         <span className="flex size-6 shrink-0 items-center justify-center rounded bg-background/80 text-[10px] font-semibold tabular-nums text-muted-foreground">
                           {index + 1}
@@ -137,33 +155,70 @@ export function WorkflowPropertiesSheet({
                         <CaretDownIcon
                           className={`size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                         />
-                    </button>
-                  </CollapsibleTrigger>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 shrink-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    title="Delete node"
-                    onClick={() => onRequestDeleteNode(nodeId)}
-                  >
-                    <TrashIcon className="size-3.5" />
-                  </Button>
-                </div>
-                <CollapsibleContent>
-                  <div className="border-t border-border/30 bg-background/60 rounded-b-xl px-4 pt-4 pb-4">
-                    <NodeConfigPanel
-                      node={node}
-                      onUpdate={(data) => onUpdateNode(nodeId, data)}
-                      onReplaceNode={(newType, newData) => onReplaceNode(nodeId, newType, newData)}
-                      onOpenSettings={onOpenSettings}
-                    />
+                      </button>
+                    </CollapsibleTrigger>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 shrink-0 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Delete node"
+                      onClick={() => onRequestDeleteNode(nodeId)}
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </Button>
                   </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          );
-        })}
+                  <CollapsibleContent>
+                    <div className="rounded-b-xl border-t border-border/30 bg-background/60 px-2.5 pb-2.5 pt-2.5">
+                      <NodeConfigPanel
+                        node={node}
+                        onUpdate={(data) => onUpdateNode(nodeId, data)}
+                        onReplaceNode={(newType, newData) =>
+                          onReplaceNode(nodeId, newType, newData)
+                        }
+                        onOpenSettings={onOpenSettings}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            );
+          })}
         </div>
+      </div>
+
+      <div className="shrink-0 border-t border-border/40 bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        {selectedNode ? (
+          <div className="space-y-2">
+            <p className="truncate text-xs text-muted-foreground">
+              Selected:{" "}
+              <span className="font-medium text-foreground">
+                {nodeTypeLabels[selectedNode.type ?? ""] ?? "Step"}
+              </span>
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onDuplicateNode(selectedNode.id)}
+              >
+                Duplicate
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onRequestDeleteNode(selectedNode.id)}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Select a step to edit or use quick actions.
+          </p>
+        )}
       </div>
     </div>
   );

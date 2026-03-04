@@ -2,7 +2,7 @@
 
 ## Route Decomposition (PR #Production Review)
 
-Priority decomposition targets per PRODUCTION_ARCHITECTURE_CODE_REVIEW_2026-03-04:
+Priority decomposition targets:
 
 - [x] **auth.ts** – Done. Split into `auth/init-signup-invite-routes`, `auth/me-settings-routes`, `auth/organization-routes`.
 - [ ] **gateway-chat.ts** – Split into `schemas`, `tool-defs`, `tool-executors`, `thread-store`, `orchestrator`, `route`.

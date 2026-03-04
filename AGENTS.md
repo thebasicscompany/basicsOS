@@ -50,7 +50,6 @@ pnpm db:studio
 ### Registry (Shadcn Components)
 
 ```bash
-pnpm run registry:gen
 pnpm run registry:build
 ```
 
@@ -130,7 +129,7 @@ Views, columns, sorts, and filters are persisted via `/api/views/*` and used by 
 
 ### Git Hooks
 
-- Pre-commit (husky): `pnpm run registry:gen`
+- Pre-commit (husky): lint-staged
 
 ### Local Services
 

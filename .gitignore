@@ -88,6 +88,7 @@ storybook-static/
 # Claude / Cursor
 .claude/settings.local.json
 
-# Package manager lockfiles in nested packages (use root lockfile)
+# Package manager lockfiles (use pnpm; ignore npm lockfile)
+package-lock.json
 packages/*/package-lock.json
 packages/*/.package-lock.json

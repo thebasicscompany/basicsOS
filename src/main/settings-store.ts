@@ -32,7 +32,7 @@ export const OVERLAY_DEFAULTS: OverlaySettings = {
 };
 
 const getSettingsPath = (): string =>
-  path.join(app.getPath("userData"), "basicos-overlay-settings.json");
+  path.join(app.getPath("userData"), "basicsos-overlay-settings.json");
 
 export const getOverlaySettings = (): OverlaySettings => {
   try {

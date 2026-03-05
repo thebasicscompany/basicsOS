@@ -117,7 +117,7 @@ Views, columns, sorts, and filters are persisted via `/api/views/*` and used by 
 
 #### Gateway Configuration (Self-Hosting)
 
-- `BASICOS_API_URL` defaults to `https://api.basicsos.com`. All gateway traffic (chat, embeddings, voice) goes through the server.
+- `BASICSOS_API_URL` defaults to `https://api.basicsos.com`. All gateway traffic (chat, embeddings, voice) goes through the server.
 - Forkers can override it to point at their own gateway. No UI changes; users still add their API key in Settings.
 - Key format validation is in `GatewayProvider.tsx` (line 11) and `SettingsPage.tsx` (line 58). Different gateways may need different prefixes.
 

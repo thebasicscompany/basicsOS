@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/logos/basicos-wordmark-basics-white.png" width="220" alt="BasicsOS" />
+  <img src="./public/logos/basicsos-wordmark-basics-white.png" width="220" alt="BasicsOS" />
 </p>
 
 <h3 align="center">Open-Source CRM Desktop App for Modern Teams</h3>
@@ -28,6 +28,8 @@
 BasicsOS is an Electron-first CRM desktop app built with React, Vite, and a Node/Hono REST API. It supports configurable CRM objects, custom fields, generic list/detail views, workflow automations, and AI-assisted operations.
 
 This repository is the open-source codebase. Commercial offerings may include hosted infrastructure, support SLAs, and managed services.
+
+**Stack:** Data is stored in **PostgreSQL** (Drizzle ORM); auth is **Better Auth**. Use your own Postgres by setting `DATABASE_URL` to your connection string (e.g. Supabase, Neon, or any Postgres host)—no lock-in. Custom auth backends are not supported out of the box; fork and adapt if needed.
 
 ---
 
@@ -122,15 +124,13 @@ The Electron app will open. Log in with:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5435/crm` | PostgreSQL connection string |
+| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5435/crm` | Your PostgreSQL connection string. Use your own database (e.g. [Supabase](https://supabase.com), [Neon](https://neon.tech), or any Postgres host)—no lock-in. |
 | `BETTER_AUTH_SECRET` | Yes | N/A | Better Auth secret (min 32 chars) |
 | `BETTER_AUTH_URL` | No | `http://localhost:5173` | Auth callback base URL (see Production) |
-| `BASICOS_API_URL` | No | `https://api.basicsos.com` | AI gateway URL (chat, embeddings, voice) |
+| `BASICSOS_API_URL` | No | `https://api.basicsos.com` | **Gateway** URL: where the server sends AI/chat, embeddings, voice, email, Slack. Leave default to use Basics gateway (BYOK supported). Set only if you run your own gateway. |
 | `ALLOWED_ORIGINS` | No | (empty) | Comma-separated origins for CORS + Better Auth (e.g. `https://api.acme.com`) |
 | `API_KEY_ENCRYPTION_KEY` | Prod | N/A | 32-byte base64/hex key for encrypting user API keys. Required for production. |
 | `PORT` | No | `3001` | API server port |
-
-*For self-hosting: set `BASICOS_API_URL` to your gateway. Users add their API key in Settings.*
 
 ---
 
@@ -143,7 +143,7 @@ The Electron app will open. Log in with:
    cd packages/server && pnpm db:migrate
    ```
 
-2. **Do not run `pnpm db:seed` in production.** Seed creates a default admin and is blocked when `NODE_ENV=production`. Create users via signup or your own provisioning.
+2. **Do not run `pnpm db:seed` in production.** Seed creates a default admin and is blocked when `NODE_ENV=production`.
 
 3. **Required production env vars:**
    - `DATABASE_URL` – Production Postgres (use SSL, strong credentials).
@@ -151,6 +151,11 @@ The Electron app will open. Log in with:
    - `BETTER_AUTH_URL` – Your production API base URL (e.g. `https://api.yourcompany.com`).
    - `ALLOWED_ORIGINS` – Origins for auth callbacks and CORS (e.g. your API URL).
    - `API_KEY_ENCRYPTION_KEY` – 32-byte key for encrypting stored API keys.
+
+### Users and admins in production
+
+- **First account = admin.** The first user to sign up (via the app’s signup page) creates the organization and becomes an administrator. There is no separate “create admin” step—whoever signs up first is the admin.
+- **Everyone else needs an invite.** After the first user exists, signup is invite-only. Admins create invite links/tokens from the app (e.g. Settings or team/invites); new users sign up using that invite. So only the first account is open; all later accounts require an admin to invite them.
 
 ### Docker
 
@@ -168,33 +173,29 @@ docker run -p 3001:3001 \
 
 Use `docker compose` with the included `docker-compose.yml` for Postgres; add a `server` service that uses this image.
 
-### Electron app (production API URL)
+### Electron app (CRM API URL)
 
-The desktop app connects to the API using `BASICOS_API_URL` or `VITE_API_URL`. For packaged builds:
+The desktop app talks to **your CRM API server** (the Hono server), not the gateway. For packaged builds:
 
-- **Same machine:** If the API runs on localhost, the default `http://localhost:3001` works.
-- **Remote API:** Set `BASICOS_API_URL` when launching the app:
+- **Same machine:** Default `http://localhost:3001` is used if unset.
+- **Remote CRM server:** Set `BASICSOS_API_URL` (or `VITE_API_URL`) when launching the app so it points at your server, e.g. `https://api.yourcompany.com`:
   ```sh
   # macOS / Linux
-  BASICOS_API_URL=https://api.yourcompany.com open "Basics Hub.app"
-  # Or create a wrapper script that exports the env and launches the app
+  BASICSOS_API_URL=https://api.yourcompany.com open "Basics Hub.app"
   ```
-  On Windows, set the env in a shortcut or batch file before starting the app.
+  On Windows, set the variable in a shortcut or batch file before starting the app.
 
-- **Build-time:** For a fixed API URL in the packaged app, set `VITE_API_URL` during the Electron build so it gets baked into the renderer. The main process reads `process.env.BASICOS_API_URL` at runtime, which is empty in a packaged app unless set at launch.
+- **Build-time:** Set `VITE_API_URL` during the Electron build to bake the CRM API URL into the renderer. The main process uses `process.env.BASICSOS_API_URL` at runtime (often empty in a packaged app unless set at launch).
 
 ---
 
 ## API Keys and BYOK
 
-The app uses the Basics API gateway. **We recommend a Basics API key** — one key for chat, embeddings, and voice. Get one at [basicsos.com/dashboard](https://basicsos.com/dashboard) and add it in Settings.
+AI features (chat, embeddings, voice) go through the **Basics gateway** (default `https://api.basicsos.com`). You can:
 
-To run against your own gateway (self-hosting):
+- **Use a Basics API key** — Get one at [basicsos.com/dashboard](https://basicsos.com/dashboard) and add it in **Settings**. One key for chat, embeddings, and voice.
+- **BYOK (bring your own key)** — The default gateway supports your own provider keys (OpenAI, Anthropic, Gemini, Deepgram) via `x-byok-provider` and `x-byok-api-key` when calling the API. See [gateway API docs](https://basicsos.com/api-docs). (The Settings UI accepts a Basics key; BYOK via headers is for direct API use.)
 
-1. Set `BASICOS_API_URL` in `packages/server/.env` to your gateway URL.
-2. Users add their API key in Settings as usual. Your gateway must accept the same key format (`bos_live_sk_` / `bos_test_sk_`) or you'll need to adjust validation in `GatewayProvider` and `SettingsPage`.
-
-You can also use your own provider keys (OpenAI, Anthropic, Gemini, Deepgram) with our gateway by passing `x-byok-provider` and `x-byok-api-key` headers when calling the API—you still get observability, logging, and unified usage tracking. See the [gateway API documentation](https://basicsos.com/api-docs) for details. (CRM Settings accepts Basics key only; BYOK via headers is for direct API integrations.)
 
 ---
 

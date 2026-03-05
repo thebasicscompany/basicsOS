@@ -37,7 +37,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     const apiKey = await getCrmUserApiKey(userId);
     if (!apiKey) return c.json([]);
 
-    const res = await fetch(`${env.BASICOS_API_URL}/v1/connections`, {
+    const res = await fetch(`${env.BASICSOS_API_URL}/v1/connections`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) return c.json([]);
@@ -61,7 +61,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
       `${env.BETTER_AUTH_URL}/connections`,
     );
     const res = await fetch(
-      `${env.BASICOS_API_URL}/v1/connections/${provider}/authorize?redirect_after=${redirectAfter}`,
+      `${env.BASICSOS_API_URL}/v1/connections/${provider}/authorize?redirect_after=${redirectAfter}`,
       { headers: { Authorization: `Bearer ${apiKey}` } },
     );
 
@@ -88,7 +88,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     if (!apiKey) return c.json({ error: "Basics API key not configured" }, 400);
 
     const res = await fetch(
-      `${env.BASICOS_API_URL}/v1/connections/${provider}`,
+      `${env.BASICSOS_API_URL}/v1/connections/${provider}`,
       {
         method: "DELETE",
         headers: { Authorization: `Bearer ${apiKey}` },

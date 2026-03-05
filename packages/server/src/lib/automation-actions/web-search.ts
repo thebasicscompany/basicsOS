@@ -1,7 +1,7 @@
 export async function executeWebSearch(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
   apiKey: string,
 ): Promise<Array<{ title: string; url: string; text?: string }>> {
   const { query, numResults = 5 } = config as {
@@ -9,7 +9,7 @@ export async function executeWebSearch(
     numResults?: number;
   };
 
-  const res = await fetch(`${env.BASICOS_API_URL}/v1/execute/web/search`, {
+  const res = await fetch(`${env.BASICSOS_API_URL}/v1/execute/web/search`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -58,7 +58,7 @@ export async function updateRecordService(
     const chunkText = buildEntityText(entityType, updated);
     upsertEntityEmbedding(
       db,
-      env.BASICOS_API_URL,
+      env.BASICSOS_API_URL,
       apiKey,
       crmUserId,
       entityType,

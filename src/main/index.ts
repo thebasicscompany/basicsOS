@@ -29,9 +29,9 @@ let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
 let meetingMgr: ReturnType<typeof createMeetingManager> | null = null;
 let registeredMeetingAccelerator: string | null = null;
 
-const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:5173";
+const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
 const API_URL =
-  process.env["BASICOS_API_URL"] ??
+  process.env["BASICSOS_API_URL"] ??
   process.env["VITE_API_URL"] ??
   "http://localhost:3001";
 const ALLOWED_PROXY_PATHS = new Set([
@@ -392,7 +392,7 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
 
 ipcMain.handle("start-meeting", async () => {
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
@@ -403,7 +403,7 @@ ipcMain.handle("start-meeting", async () => {
 
 ipcMain.handle("stop-meeting", async () => {
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   await meetingMgr.stop(apiUrl);
 });
 

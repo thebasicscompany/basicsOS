@@ -2,7 +2,7 @@ export async function executeGmailSend(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
 ): Promise<void> {
   const { to, subject, body } = config as {
     to: string;
@@ -11,7 +11,7 @@ export async function executeGmailSend(
   };
 
   const response = await fetch(
-    `${env.BASICOS_API_URL}/v1/execute/gmail/send`,
+    `${env.BASICSOS_API_URL}/v1/execute/gmail/send`,
     {
       method: "POST",
       headers: {

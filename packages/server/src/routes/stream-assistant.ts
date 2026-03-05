@@ -75,7 +75,7 @@ export function createStreamAssistantRoutes(
       buildCrmSummary(db, crmUser.organizationId),
       retrieveRelevantContext(
         db,
-        env.BASICOS_API_URL,
+        env.BASICSOS_API_URL,
         apiKey,
         crmUser.organizationId,
         message,
@@ -101,7 +101,7 @@ export function createStreamAssistantRoutes(
       let toolCallRes: Response;
       try {
         toolCallRes = await fetch(
-          `${env.BASICOS_API_URL}/v1/chat/completions`,
+          `${env.BASICSOS_API_URL}/v1/chat/completions`,
           {
             method: "POST",
             headers: {

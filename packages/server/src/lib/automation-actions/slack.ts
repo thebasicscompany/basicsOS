@@ -2,12 +2,12 @@ export async function executeSlack(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
 ): Promise<Record<string, unknown>> {
   const { channel, message } = config as { channel: string; message: string };
 
   const response = await fetch(
-    `${env.BASICOS_API_URL}/v1/execute/slack/message`,
+    `${env.BASICSOS_API_URL}/v1/execute/slack/message`,
     {
       method: "POST",
       headers: {

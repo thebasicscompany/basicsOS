@@ -11,7 +11,7 @@ export async function executeAIAgent(
   db: Db,
   crmUserId: number,
   apiKey: string,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
 ): Promise<Record<string, unknown>> {
   const {
     objective = "",
@@ -24,7 +24,7 @@ export async function executeAIAgent(
   };
 
   const openai = createOpenAI({
-    baseURL: `${env.BASICOS_API_URL}/v1`,
+    baseURL: `${env.BASICSOS_API_URL}/v1`,
     apiKey,
   });
 

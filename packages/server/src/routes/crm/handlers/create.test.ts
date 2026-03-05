@@ -100,7 +100,7 @@ describe("createCreateHandler security boundaries", () => {
     });
     const { db } = makeDb({ crmUser });
     const handler = createCreateHandler(db, {
-      BASICOS_API_URL: "http://localhost",
+      BASICSOS_API_URL: "http://localhost",
     } as any);
     const c = makeContext(
       { resource: "contacts" },
@@ -122,7 +122,7 @@ describe("createCreateHandler security boundaries", () => {
     } as any);
     const { db } = makeDb({ crmUser });
     const handler = createCreateHandler(db, {
-      BASICOS_API_URL: "http://localhost",
+      BASICSOS_API_URL: "http://localhost",
     } as any);
     const c = makeContext(
       { resource: "contacts" },
@@ -148,7 +148,7 @@ describe("createCreateHandler security boundaries", () => {
       insertReturning: [{ id: 101, firstName: "Ava" }],
     });
     const handler = createCreateHandler(db, {
-      BASICOS_API_URL: "http://localhost",
+      BASICSOS_API_URL: "http://localhost",
     } as any);
     const c = makeContext(
       { resource: "contacts" },

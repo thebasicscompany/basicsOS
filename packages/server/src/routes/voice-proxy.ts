@@ -54,7 +54,7 @@ export function createVoiceProxyRoutes(
     const { audio, mime_type } = parsed.data;
 
     const proxyRes = await fetch(
-      `${env.BASICOS_API_URL}/v1/audio/transcriptions`,
+      `${env.BASICSOS_API_URL}/v1/audio/transcriptions`,
       {
         method: "POST",
         headers: {
@@ -109,7 +109,7 @@ export function createVoiceProxyRoutes(
     }
     const { text } = parsed.data;
 
-    const proxyRes = await fetch(`${env.BASICOS_API_URL}/v1/audio/speech`, {
+    const proxyRes = await fetch(`${env.BASICSOS_API_URL}/v1/audio/speech`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

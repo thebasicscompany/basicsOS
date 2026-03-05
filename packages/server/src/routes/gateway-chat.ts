@@ -1,4 +1,4 @@
-﻿import { Hono } from "hono";
+import { Hono } from "hono";
 import { authMiddleware } from "@/middleware/auth.js";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
@@ -74,7 +74,7 @@ export function createGatewayChatRoutes(
       buildCrmSummary(db, crmUser.organizationId),
       retrieveRelevantContext(
         db,
-        env.BASICOS_API_URL,
+        env.BASICSOS_API_URL,
         apiKey,
         crmUser.organizationId,
         queryText,
@@ -95,7 +95,7 @@ export function createGatewayChatRoutes(
     for (let i = 0; i < 5; i++) {
       let res: Response;
       try {
-        res = await fetch(`${env.BASICOS_API_URL}/v1/chat/completions`, {
+        res = await fetch(`${env.BASICSOS_API_URL}/v1/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -2,7 +2,7 @@ export async function executeEmail(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
 ): Promise<void> {
   const { to, subject, body } = config as {
     to: string;
@@ -10,7 +10,7 @@ export async function executeEmail(
     body: string;
   };
 
-  const response = await fetch(`${env.BASICOS_API_URL}/v1/email/send`, {
+  const response = await fetch(`${env.BASICSOS_API_URL}/v1/email/send`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

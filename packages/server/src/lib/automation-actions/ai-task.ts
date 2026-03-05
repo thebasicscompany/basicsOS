@@ -2,14 +2,14 @@ export async function executeAI(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
-  env: { BASICOS_API_URL: string },
+  env: { BASICSOS_API_URL: string },
 ): Promise<string> {
   const { prompt, model = "claude-sonnet-4-5-20251001" } = config as {
     prompt: string;
     model?: string;
   };
 
-  const response = await fetch(`${env.BASICOS_API_URL}/v1/chat/completions`, {
+  const response = await fetch(`${env.BASICSOS_API_URL}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

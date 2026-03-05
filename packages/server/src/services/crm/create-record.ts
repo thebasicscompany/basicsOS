@@ -58,7 +58,7 @@ export async function createRecord(
     const chunkText = buildEntityText(entityType, inserted);
     upsertEntityEmbedding(
       db,
-      env.BASICOS_API_URL,
+      env.BASICSOS_API_URL,
       apiKey,
       crmUserId,
       entityType,

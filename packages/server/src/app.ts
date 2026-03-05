@@ -16,6 +16,7 @@ import { createViewRoutes } from "@/routes/views.js";
 import { createVoiceProxyRoutes } from "@/routes/voice-proxy.js";
 import { createStreamAssistantRoutes } from "@/routes/stream-assistant.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
+import { sql } from "drizzle-orm";
 
 type RateBucket = {
   count: number;
@@ -74,15 +75,19 @@ const rateLimitMiddleware = async (
 };
 
 export function createApp(db: Db, env: Env) {
-  const auth = createAuth(db, env.BETTER_AUTH_URL, env.BETTER_AUTH_SECRET);
+  const allowedOrigins = env.ALLOWED_ORIGINS
+    ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+    : [];
+  const auth = createAuth(
+    db,
+    env.BETTER_AUTH_URL,
+    env.BETTER_AUTH_SECRET,
+    allowedOrigins,
+  );
 
   const app = new Hono();
 
-  const allowedOriginSet = new Set(
-    env.ALLOWED_ORIGINS
-      ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
-      : []
-  );
+  const allowedOriginSet = new Set(allowedOrigins);
 
   app.use(
     "/*",
@@ -124,6 +129,15 @@ export function createApp(db: Db, env: Env) {
   app.use("/*", rateLimitMiddleware);
 
   app.get("/health", (c) => c.json({ status: "ok" }));
+
+  app.get("/health/ready", async (c) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return c.json({ status: "ok" });
+    } catch (err) {
+      return c.json({ status: "unhealthy", error: "Database unreachable" }, 503);
+    }
+  });
 
   // Better Auth
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));

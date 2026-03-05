@@ -17,6 +17,11 @@ export function snakeToCamelField(field: string): string {
   return field.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
 
+/** Escape % and _ for use in SQL ILIKE patterns (they are wildcards). */
+function escapeIlikeValue(value: string): string {
+  return value.replace(/[%_\\]/g, (char) => (char === "\\" ? "\\\\" : `\\${char}`));
+}
+
 export interface GenericFilter {
   field: string;
   op: string;
@@ -37,9 +42,9 @@ export function buildGenericFilterCondition(
     case "neq":
       return ne(c, f.value);
     case "like":
-      return ilike(c, `%${f.value}%`);
+      return ilike(c, `%${escapeIlikeValue(f.value)}%`);
     case "nlike":
-      return not(ilike(c, `%${f.value}%`));
+      return not(ilike(c, `%${escapeIlikeValue(f.value)}%`));
     case "gt":
       return gt(c, f.value);
     case "lt":

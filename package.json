@@ -96,6 +96,7 @@
     "defu": "^6.1.4",
     "diacritic": "^0.0.2",
     "dompurify": "^3.3.1",
+    "electron-updater": "^6.8.3",
     "es-toolkit": "^1.39.3",
     "faker": "^5.5.3",
     "hast-util-to-jsx-runtime": "^2.3.6",

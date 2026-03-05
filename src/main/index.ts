@@ -8,6 +8,7 @@ import {
   globalShortcut,
   shell,
 } from "electron";
+import { autoUpdater } from "electron-updater";
 import path from "path";
 import { exec } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -450,6 +451,14 @@ const registerMeetingShortcut = (accelerator: string): void => {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.basics-hub");
+
+  // Auto-update (skip in dev)
+  if (!is.dev) {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {
+      // Ignore update errors (e.g. no network, no publish configured)
+    });
+  }
+
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });

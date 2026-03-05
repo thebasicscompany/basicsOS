@@ -1,5 +1,9 @@
 appId: com.basics-hub
 productName: Basics Hub
+publish:
+  provider: github
+  owner: thebasicscompany
+  repo: basicsOSnew
 directories:
   buildResources: build
 icon: public/favicon.png

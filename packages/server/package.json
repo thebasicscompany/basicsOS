@@ -32,7 +32,7 @@
     "@types/node": "^22.0.0",
     "pino-pretty": "^13.0.0",
     "drizzle-kit": "^0.28.0",
-    "tsc-alias": "^1.8.17",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.19.0",
     "typescript": "~5.8.3"
   }

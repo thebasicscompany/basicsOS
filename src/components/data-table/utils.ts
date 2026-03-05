@@ -1,5 +1,6 @@
 import type { Attribute } from "@/field-types/types";
 import type { ViewColumn } from "@/types/views";
+import { getRecordValue } from "@/lib/crm/field-mapper";
 
 export function isValueEmpty(val: unknown): boolean {
   return val == null || val === "" || val === false;
@@ -24,17 +25,22 @@ export function getVisibleAttributes(
     })
     .filter(Boolean) as Array<{ attribute: Attribute; viewColumn: ViewColumn }>;
 
+  // Never show organization_id in grids — it's internal tenant scope, not user-relevant
+  const colsWithoutOrgId = allCols.filter(
+    (item) => item.attribute.columnName !== "organization_id",
+  );
+
   if (data.length === 0) {
-    return { visible: allCols, hiddenEmptyCount: 0 };
+    return { visible: colsWithoutOrgId, hiddenEmptyCount: 0 };
   }
 
   const visible: typeof allCols = [];
   let hiddenEmptyCount = 0;
 
-  for (const item of allCols) {
+  for (const item of colsWithoutOrgId) {
     const { attribute } = item;
     const hasNonEmpty = data.some(
-      (row) => !isValueEmpty(row[attribute.columnName]),
+      (row) => !isValueEmpty(getRecordValue(row, attribute.columnName)),
     );
     if (attribute.isPrimary || hasNonEmpty) {
       visible.push(item);

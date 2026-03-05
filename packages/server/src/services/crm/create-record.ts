@@ -1,12 +1,27 @@
+import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import { buildEntityText, getEntityType, upsertEntityEmbedding } from "@/lib/embeddings.js";
 import { fireEvent, reloadRule } from "@/lib/automation-engine.js";
-import { resolveStoredApiKey } from "@/lib/api-key-crypto.js";
+import { decryptApiKey } from "@/lib/api-key-crypto.js";
+import * as schema from "@/db/schema/index.js";
 import { insertRecord } from "@/data-access/crm/create.js";
 import { getWriteAllowlist } from "@/routes/crm/handlers/field-allowlists.js";
 import { validateWritePayload } from "@/schemas/crm/write-payloads.js";
 import type { Resource } from "@/routes/crm/constants.js";
+
+async function resolveOrgApiKey(db: Db, env: Env, orgId: string): Promise<string | null> {
+  const [config] = await db
+    .select()
+    .from(schema.orgAiConfig)
+    .where(eq(schema.orgAiConfig.organizationId, orgId))
+    .limit(1);
+  if (config?.apiKeyEnc) {
+    const decrypted = decryptApiKey(config.apiKeyEnc);
+    if (decrypted) return decrypted;
+  }
+  return env.SERVER_BASICS_API_KEY ?? env.SERVER_BYOK_API_KEY ?? null;
+}
 
 export interface CreateRecordInput {
   resource: Resource;
@@ -52,7 +67,7 @@ export async function createRecord(
   if (!inserted) return { success: false, error: "Insert failed" };
 
   const entityType = getEntityType(resource);
-  const apiKey = resolveStoredApiKey(crmUserRow);
+  const apiKey = await resolveOrgApiKey(db, env, orgId);
   const insertedId = (inserted as { id?: number }).id;
   if (entityType && apiKey && insertedId != null && typeof insertedId === "number") {
     const chunkText = buildEntityText(entityType, inserted);

@@ -21,6 +21,7 @@ export const deals = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     companyId: bigint("company_id", { mode: "number" }).references(
       () => companies.id,
+      { onDelete: "set null" },
     ),
     contactIds: jsonb("contact_ids").$type<number[]>(),
     category: varchar("category", { length: 128 }),

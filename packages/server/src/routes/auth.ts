@@ -10,7 +10,7 @@ import { registerOrganizationRoutes } from "@/routes/auth/organization-routes.js
 export function createAuthRoutes(
   db: Db,
   auth: ReturnType<typeof createAuth>,
-  _env: Env,
+  env: Env,
 ) {
   const app = new Hono();
 
@@ -24,7 +24,7 @@ export function createAuthRoutes(
   });
 
   registerInitSignupInviteRoutes(app, db, auth);
-  registerMeSettingsRoutes(app, db, auth);
+  registerMeSettingsRoutes(app, db, auth, env);
   registerOrganizationRoutes(app, db, auth);
 
   return app;

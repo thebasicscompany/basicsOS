@@ -134,6 +134,27 @@
       "when": 1772842000000,
       "tag": "0019_audit_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1772900000000,
+      "tag": "0020_org_ai_config_and_usage",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1772950000000,
+      "tag": "0021_transcription_byok",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1772960000000,
+      "tag": "0022_deals_company_fk_set_null",
+      "breakpoints": true
     }
   ]
 }

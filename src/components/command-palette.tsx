@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ComponentType } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -36,9 +37,38 @@ import { useRecentItems } from "@/hooks/use-recent-items";
 import { DealStageBadge } from "@/components/status-badge";
 import { useObjects } from "@/hooks/use-object-registry";
 import { getObjectIcon } from "@/lib/object-icon-map";
-import { getCommandPaletteShortcutLabel } from "@/lib/keyboard-shortcuts";
+import {
+  getCommandPaletteShortcutLabel,
+  OPEN_COMMAND_PALETTE_EVENT,
+} from "@/lib/keyboard-shortcuts";
 
 const COMMAND_PALETTE_KEY = "k";
+
+/** Static nav items that can be matched when user types in the palette */
+const STATIC_NAV_ITEMS: Array<{
+  id: string;
+  label: string;
+  keywords?: string;
+  path: string;
+  icon: ComponentType<{ className?: string }>;
+}> = [
+  { id: "crm", label: "Dashboard", path: ROUTES.CRM, icon: HouseIcon },
+  { id: "contacts", label: "Contacts", path: "/objects/contacts", icon: UserIcon },
+  { id: "companies", label: "Companies", path: "/objects/companies", icon: BuildingIcon },
+  { id: "deals", label: "Deals", path: "/objects/deals", icon: HandshakeIcon },
+  { id: "tasks", label: "Tasks", path: ROUTES.TASKS, icon: ListChecksIcon },
+  { id: "chat", label: "AI Chat", keywords: "chat ai", path: ROUTES.CHAT, icon: RobotIcon },
+  { id: "connections", label: "Connections", path: ROUTES.CONNECTIONS, icon: LinkIcon },
+  { id: "profile", label: "Profile", path: ROUTES.PROFILE, icon: UserIcon },
+  { id: "settings", label: "Settings", path: ROUTES.SETTINGS, icon: GearIcon },
+  { id: "import", label: "Import data", keywords: "import", path: ROUTES.IMPORT, icon: UploadSimpleIcon },
+];
+
+function matchesSearch(text: string, q: string): boolean {
+  if (!q.trim()) return true;
+  const lower = q.toLowerCase().trim();
+  return text.toLowerCase().includes(lower);
+}
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -50,6 +80,15 @@ export function CommandPalette() {
   const objects = useObjects();
 
   const isSearching = search.length >= 2;
+  const q = search.trim().toLowerCase();
+
+  const matchingNavItems = isSearching
+    ? STATIC_NAV_ITEMS.filter(
+        (item) =>
+          matchesSearch(item.label, q) ||
+          (item.keywords && matchesSearch(item.keywords, q)),
+      )
+    : [];
 
   // clear on close
   useEffect(() => {
@@ -57,14 +96,19 @@ export function CommandPalette() {
   }, [open]);
 
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === COMMAND_PALETTE_KEY && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((o) => !o);
       }
     };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    const onOpenPalette = () => setOpen(true);
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpenPalette);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpenPalette);
+    };
   }, []);
 
   const { data: contactsData } = useQuery({
@@ -75,7 +119,7 @@ export function CommandPalette() {
         pagination: { page: 1, perPage: 5 },
       });
       return {
-        data: mapRecords(result.data) as ContactSummary[],
+        data: mapRecords(result.data) as unknown as ContactSummary[],
         total: result.total,
       };
     },
@@ -91,7 +135,7 @@ export function CommandPalette() {
         pagination: { page: 1, perPage: 5 },
       });
       return {
-        data: mapRecords(result.data) as CompanySummary[],
+        data: mapRecords(result.data) as unknown as CompanySummary[],
         total: result.total,
       };
     },
@@ -106,7 +150,7 @@ export function CommandPalette() {
         filter: { q: search },
         pagination: { page: 1, perPage: 5 },
       });
-      return { data: mapRecords(result.data) as Deal[], total: result.total };
+      return { data: mapRecords(result.data) as unknown as Deal[], total: result.total };
     },
     enabled: isSearching,
     staleTime: 10_000,
@@ -115,8 +159,20 @@ export function CommandPalette() {
   const contacts = contactsData?.data ?? [];
   const companies = companiesData?.data ?? [];
   const deals = dealsData?.data ?? [];
+
+  const matchingObjectNav = isSearching
+    ? objects.filter(
+        (obj) =>
+          matchesSearch(obj.pluralName, q) || matchesSearch(obj.singularName, q),
+      )
+    : [];
+  const hasNavResults =
+    matchingNavItems.length > 0 || matchingObjectNav.length > 0;
   const hasResults =
-    contacts.length > 0 || companies.length > 0 || deals.length > 0;
+    hasNavResults ||
+    contacts.length > 0 ||
+    companies.length > 0 ||
+    deals.length > 0;
 
   const run = (fn: () => void) => {
     fn();
@@ -147,6 +203,51 @@ export function CommandPalette() {
                   No results for &ldquo;{search}&rdquo;
                 </p>
               )}
+              {matchingNavItems.length > 0 && (
+                <CommandGroup heading="Go to">
+                  {matchingNavItems.map((item) => {
+                    const IconComponent = item.icon;
+                    return (
+                      <CommandItem
+                        key={item.id}
+                        value={`nav-${item.id}-${item.label}`}
+                        onSelect={() => run(() => navigate(item.path))}
+                        className="gap-2"
+                      >
+                        <IconComponent className="size-4 shrink-0" />
+                        <span className="flex-1 truncate">{item.label}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              )}
+              {matchingObjectNav.length > 0 && (
+                <>
+                  {matchingNavItems.length > 0 && <CommandSeparator />}
+                  <CommandGroup heading="Navigate to object">
+                    {matchingObjectNav.map((obj) => {
+                      const IconComponent = getObjectIcon(obj.icon);
+                      return (
+                        <CommandItem
+                          key={`nav-obj-${obj.id}`}
+                          value={`navigate-object-${obj.slug}-${obj.pluralName}`}
+                          onSelect={() =>
+                            run(() => navigate(`/objects/${obj.slug}`))
+                          }
+                          className="gap-2"
+                        >
+                          <IconComponent className="size-4 shrink-0" />
+                          <span className="flex-1 truncate">
+                            Go to {obj.pluralName}
+                          </span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </>
+              )}
+              {(matchingNavItems.length > 0 || matchingObjectNav.length > 0) &&
+                contacts.length > 0 && <CommandSeparator />}
               {contacts.length > 0 && (
                 <CommandGroup heading="Contacts">
                   {contacts.map((c) => {

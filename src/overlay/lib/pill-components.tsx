@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { MicrophoneIcon } from "@phosphor-icons/react";
 
@@ -86,16 +86,25 @@ export const CompanyLogo = () => {
   );
 };
 
-export const Waveform = () => {
-  const [heights, setHeights] = useState([4, 8, 6, 10, 5]);
+export const Waveform = ({ level = 0 }: { level?: number }) => {
+  const [heights, setHeights] = useState([2, 2, 2, 2, 2]);
+  const levelRef = useRef(level);
+  levelRef.current = level;
+
   useEffect(() => {
-    const iv = setInterval(
-      () =>
-        setHeights(Array.from({ length: 5 }, () => 3 + Math.random() * 13)),
-      100
-    );
+    const iv = setInterval(() => {
+      // Scale the 0–~0.1 RMS range to 0–1; clamp above 0.07 as "loud"
+      const scaled = Math.min(1, levelRef.current / 0.065);
+      setHeights(
+        Array.from({ length: 5 }, () => {
+          const base = 2 + scaled * 13;
+          return Math.max(2, base * (0.6 + Math.random() * 0.7));
+        })
+      );
+    }, 80);
     return () => clearInterval(iv);
   }, []);
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 2, height: 16 }}>
       {heights.map((h, i) => (

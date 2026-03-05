@@ -10,14 +10,9 @@ export function getPrimaryModifierLabel(): "Cmd" | "Ctrl" {
   return isMacPlatform() ? "Cmd" : "Ctrl";
 }
 
+export const OPEN_COMMAND_PALETTE_EVENT = "open-command-palette";
+
+/** Opens the command palette (e.g. from sidebar Search button). Prefer this over simulating keydown. */
 export function dispatchCommandPaletteShortcut(): void {
-  const useMeta = isMacPlatform();
-  document.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      key: "k",
-      metaKey: useMeta,
-      ctrlKey: !useMeta,
-      bubbles: true,
-    }),
-  );
+  document.dispatchEvent(new CustomEvent(OPEN_COMMAND_PALETTE_EVENT, { bubbles: true }));
 }

@@ -10,6 +10,7 @@ export interface Identity {
   avatar?: string;
   administrator?: boolean;
   hasApiKey?: boolean;
+  hasOrgAiConfig?: boolean;
 }
 
 export function useMe() {

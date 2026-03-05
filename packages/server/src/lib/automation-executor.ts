@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { WorkflowDefinition } from "@/lib/automation-engine.js";
@@ -10,9 +11,32 @@ import { executeSlack } from "@/lib/automation-actions/slack.js";
 import { executeGmailRead } from "@/lib/automation-actions/gmail-read.js";
 import { executeGmailSend } from "@/lib/automation-actions/gmail-send.js";
 import { executeAIAgent } from "@/lib/automation-actions/ai-agent.js";
-import { resolveStoredApiKey } from "@/lib/api-key-crypto.js";
+import { decryptApiKey } from "@/lib/api-key-crypto.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
+import * as schema from "@/db/schema/index.js";
 
-type CrmUserRow = { id: number; basicsApiKey?: string | null; basicsApiKeyEnc?: string | null };
+type CrmUserRow = { id: number; organizationId?: string | null };
+
+async function resolveApiKeyForOrg(
+  db: Db,
+  env: Env,
+  organizationId: string | null | undefined,
+): Promise<string> {
+  if (organizationId) {
+    const [orgConfig] = await db
+      .select()
+      .from(schema.orgAiConfig)
+      .where(eq(schema.orgAiConfig.organizationId, organizationId))
+      .limit(1);
+    if (orgConfig?.apiKeyEnc) {
+      const decrypted = decryptApiKey(orgConfig.apiKeyEnc);
+      if (decrypted) return decrypted;
+    }
+  }
+  if (env.SERVER_BASICS_API_KEY) return env.SERVER_BASICS_API_KEY;
+  if (env.SERVER_BYOK_API_KEY) return env.SERVER_BYOK_API_KEY;
+  return "";
+}
 
 export async function executeWorkflow(
   workflowDef: WorkflowDefinition,
@@ -35,7 +59,7 @@ export async function executeWorkflow(
     crm_user_id: crmUser.id,
   };
 
-  const apiKey = resolveStoredApiKey(crmUser) ?? "";
+  const apiKey = await resolveApiKeyForOrg(db, env, crmUser.organizationId);
 
   for (const nodeId of order) {
     const node = nodes.find((n) => n.id === nodeId);
@@ -49,13 +73,31 @@ export async function executeWorkflow(
         // Trigger nodes just initialize context
         break;
 
-      case "action_email":
+      case "action_email": {
         await executeEmail(data, context, apiKey, env);
+        if (crmUser.organizationId) {
+          writeUsageLogSafe(db, {
+            organizationId: crmUser.organizationId,
+            crmUserId: crmUser.id,
+            feature: "automation_email",
+          });
+        }
         break;
+      }
 
       case "action_ai": {
-        const result = await executeAI(data, context, apiKey, env);
-        context.ai_result = result;
+        const aiResult = await executeAI(data, context, apiKey, env);
+        context.ai_result = aiResult.result;
+        if (crmUser.organizationId) {
+          writeUsageLogSafe(db, {
+            organizationId: crmUser.organizationId,
+            crmUserId: crmUser.id,
+            feature: "automation_ai",
+            model: aiResult.usage.model,
+            inputTokens: aiResult.usage.inputTokens,
+            outputTokens: aiResult.usage.outputTokens,
+          });
+        }
         break;
       }
 
@@ -90,6 +132,16 @@ export async function executeWorkflow(
       case "action_ai_agent": {
         const agentResult = await executeAIAgent(data, context, db, crmUser.id, apiKey, env);
         context.ai_agent_result = agentResult.ai_agent_result;
+        if (crmUser.organizationId) {
+          writeUsageLogSafe(db, {
+            organizationId: crmUser.organizationId,
+            crmUserId: crmUser.id,
+            feature: "automation_ai_agent",
+            model: agentResult.usage.model,
+            inputTokens: agentResult.usage.inputTokens,
+            outputTokens: agentResult.usage.outputTokens,
+          });
+        }
         break;
       }
 

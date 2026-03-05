@@ -13,6 +13,7 @@ import {
   ObjectListViewTabs,
 } from "@/components/object-list";
 import { DealsKanbanBoard } from "@/components/deals/DealsKanbanBoard";
+import { getRecordValue } from "@/lib/crm/field-mapper";
 import { useObject, useAttributes } from "@/hooks/use-object-registry";
 import { useRecords, useUpdateRecord, useDeleteRecord } from "@/hooks/use-records";
 import { useViews, useViewState } from "@/hooks/use-views";
@@ -142,7 +143,7 @@ export function ObjectListPage() {
   const deleteDisplayName = deleteTarget
     ? (() => {
         if (!primaryAttr) return "Unnamed";
-        const val = deleteTarget.record[primaryAttr.columnName];
+        const val = getRecordValue(deleteTarget.record, primaryAttr.columnName);
         return typeof val === "string" && val ? val : "Unnamed";
       })()
     : "";

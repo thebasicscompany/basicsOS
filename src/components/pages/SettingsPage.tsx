@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowSquareOutIcon,
   EyeIcon,
   EyeSlashIcon,
   SunIcon,
@@ -12,20 +11,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router";
 import { useTheme } from "next-themes";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
-
-async function persistApiKey(key: string | null) {
-  await fetch(`${API_URL}/api/settings`, {
-    method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ basicsApiKey: key }),
-  });
-}
-
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGateway } from "@/hooks/useGateway";
 import { useMe } from "@/hooks/use-me";
 import { useOrganization } from "@/hooks/use-organization";
 import {
@@ -33,6 +20,12 @@ import {
   useRbacRoles,
   useRbacUsers,
 } from "@/hooks/use-rbac";
+import {
+  useAdminAiConfig,
+  useSaveAdminAiConfig,
+  useClearAdminAiConfig,
+  useSaveAdminTranscriptionByok,
+} from "@/hooks/use-admin";
 import { ConnectionsContent } from "@/components/connections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,18 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
-const VALID_PREFIXES = ["bos_live_sk_", "bos_test_sk_"] as const;
-
-function isValidApiKey(key: string): boolean {
-  return VALID_PREFIXES.some((p) => key.startsWith(p));
-}
-
-function maskApiKey(key: string): string {
-  if (key.length <= 16) return key.slice(0, 12) + "****";
-  return key.slice(0, 12) + "..." + key.slice(-4);
-}
-
-const DASHBOARD_URL = "https://basics.so/dashboard";
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: SunIcon },
@@ -81,15 +63,35 @@ export function SettingsPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { theme, setTheme } = useTheme();
-  const { apiKey, hasKey, setApiKey, clearApiKey } = useGateway();
   const { data: me } = useMe();
   const { data: organization } = useOrganization();
   const { data: rbacRoles } = useRbacRoles(Boolean(me?.administrator));
   const { data: rbacUsers } = useRbacUsers(Boolean(me?.administrator));
   const assignRole = useAssignRbacRole();
-  const [inputValue, setInputValue] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+  // Admin AI config
+  const isAdmin = Boolean(me?.administrator);
+  const { data: aiConfigData } = useAdminAiConfig(isAdmin);
+  const saveAiConfig = useSaveAdminAiConfig();
+  const clearAiConfig = useClearAdminAiConfig();
+  const [aiKeyType, setAiKeyType] = useState<string>("basicsos");
+  const [aiByokProvider, setAiByokProvider] = useState<string>("openai");
+  const [aiKeyInput, setAiKeyInput] = useState("");
+  const [showAiKey, setShowAiKey] = useState(false);
+  const [clearAiDialogOpen, setClearAiDialogOpen] = useState(false);
+  const saveTranscriptionByok = useSaveAdminTranscriptionByok();
+  const [transcriptionKeyInput, setTranscriptionKeyInput] = useState("");
+  const [showTranscriptionKey, setShowTranscriptionKey] = useState(false);
+  const [clearTranscriptionDialogOpen, setClearTranscriptionDialogOpen] =
+    useState(false);
+
+  useEffect(() => {
+    if (!aiConfigData?.config) return;
+    setAiKeyType(aiConfigData.config.keyType);
+    if (aiConfigData.config.byokProvider)
+      setAiByokProvider(aiConfigData.config.byokProvider);
+  }, [aiConfigData]);
+
   const [orgName, setOrgName] = useState("");
   const [orgLogoUrl, setOrgLogoUrl] = useState("");
   const [savingOrg, setSavingOrg] = useState(false);
@@ -100,7 +102,6 @@ export function SettingsPage() {
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [roleDrafts, setRoleDrafts] = useState<Record<number, string>>({});
 
-  // OAuth callback from /connections?connected=slack
   useEffect(() => {
     const connected = searchParams.get("connected");
     if (connected) {
@@ -133,33 +134,38 @@ export function SettingsPage() {
     setRoleDrafts(next);
   }, [rbacUsers]);
 
-  const handleSave = useCallback(async () => {
-    const trimmed = inputValue.trim();
+  const handleSaveAiConfig = useCallback(async () => {
+    const trimmed = aiKeyInput.trim();
     if (!trimmed) {
       toast.error("Please enter an API key");
       return;
     }
-    if (!isValidApiKey(trimmed)) {
-      toast.error("API key must start with bos_live_sk_ or bos_test_sk_");
-      return;
-    }
     try {
-      setApiKey(trimmed);
-      setInputValue("");
-      await persistApiKey(trimmed);
-      toast.success("API key saved");
+      await saveAiConfig.mutateAsync({
+        keyType: aiKeyType,
+        byokProvider: aiKeyType === "byok" ? aiByokProvider : null,
+        apiKey: trimmed,
+      });
+      setAiKeyInput("");
+      toast.success("AI configuration saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save key");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save AI config",
+      );
     }
-  }, [inputValue, setApiKey]);
+  }, [aiKeyInput, aiKeyType, aiByokProvider, saveAiConfig]);
 
-  const handleClear = useCallback(async () => {
-    clearApiKey();
-    setInputValue("");
-    setClearDialogOpen(false);
-    await persistApiKey(null);
-    toast.success("API key cleared");
-  }, [clearApiKey]);
+  const handleClearAiConfig = useCallback(async () => {
+    try {
+      await clearAiConfig.mutateAsync();
+      setClearAiDialogOpen(false);
+      toast.success("AI configuration cleared");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to clear AI config",
+      );
+    }
+  }, [clearAiConfig]);
 
   const handleCreateInvite = useCallback(async () => {
     setCreatingInvite(true);
@@ -199,11 +205,38 @@ export function SettingsPage() {
 
   const copyText = useCallback(
     async (value: string, successMessage: string) => {
+      const fallbackCopy = (): boolean => {
+        try {
+          const el = document.createElement("textarea");
+          el.value = value;
+          el.setAttribute("readonly", "");
+          el.style.position = "absolute";
+          el.style.left = "-9999px";
+          document.body.appendChild(el);
+          el.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(el);
+          return ok;
+        } catch {
+          return false;
+        }
+      };
       try {
-        await navigator.clipboard.writeText(value);
+        const electronCopy = (window as unknown as { electronAPI?: { copyToClipboard?: (t: string) => Promise<void> } }).electronAPI?.copyToClipboard;
+        if (electronCopy) {
+          await electronCopy(value);
+        } else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(value);
+        } else if (!fallbackCopy()) {
+          throw new Error("Copy not supported");
+        }
         toast.success(successMessage);
       } catch {
-        toast.error("Failed to copy");
+        if (fallbackCopy()) {
+          toast.success(successMessage);
+        } else {
+          toast.error("Failed to copy");
+        }
       }
     },
     [],
@@ -247,20 +280,17 @@ export function SettingsPage() {
     }
   }, [orgLogoUrl, orgName, queryClient]);
 
-  const apiDirty = inputValue.trim().length > 0;
   const orgDirty = !!(
     me?.administrator &&
     organization &&
     (orgName.trim() !== (organization.name ?? "") ||
       orgLogoUrl.trim() !== (organization.logo?.src ?? ""))
   );
-  const hasPendingChanges = apiDirty || orgDirty;
-  const configuredApiLabel = apiKey
-    ? maskApiKey(apiKey)
-    : "Stored securely on server";
+  const aiConfigDirty = aiKeyInput.trim().length > 0;
+  const hasPendingChanges = aiConfigDirty || orgDirty;
 
   const handleResetPending = useCallback(() => {
-    setInputValue("");
+    setAiKeyInput("");
     setOrgName(organization?.name ?? "");
     setOrgLogoUrl(organization?.logo?.src ?? "");
   }, [organization?.logo?.src, organization?.name]);
@@ -313,120 +343,379 @@ export function SettingsPage() {
             </div>
           </section>
 
-          <Separator />
-
-          <section id="api" className={sectionClass}>
-            <div className="mb-4">
-              <h2 className="text-[15px] font-semibold">API Configuration</h2>
-              <p className="text-[12px] text-muted-foreground">
-                Manage API access used by assistant, voice, and automations.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
-              <Label
-                htmlFor="api-key"
-                className="pt-2 text-[12px] text-muted-foreground"
-              >
-                API key
-              </Label>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="api-key"
-                      type={showPassword ? "text" : "password"}
-                      placeholder={
-                        hasKey
-                          ? configuredApiLabel
-                          : "Paste your bos_live_sk_... key"
-                      }
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      className="h-9 pr-9 text-[13px]"
-                      autoComplete="off"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
-                      onClick={() => setShowPassword((p) => !p)}
-                      aria-label={showPassword ? "Hide key" : "Show key"}
-                    >
-                      {showPassword ? (
-                        <EyeSlashIcon className="size-3.5" />
-                      ) : (
-                        <EyeIcon className="size-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="h-9 text-[13px]"
-                    onClick={handleSave}
-                    disabled={!inputValue.trim()}
-                  >
-                    Save
-                  </Button>
+          {!isAdmin && me?.hasOrgAiConfig && (
+            <>
+              <Separator />
+              <section id="api" className={sectionClass}>
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold">
+                    AI Configuration
+                  </h2>
+                  <p className="text-[12px] text-muted-foreground">
+                    AI features are configured by your organization
+                    administrator. No action needed.
+                  </p>
                 </div>
-                {hasKey && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] text-muted-foreground">
-                      Configured: {configuredApiLabel}
-                    </span>
-                    <Dialog
-                      open={clearDialogOpen}
-                      onOpenChange={setClearDialogOpen}
-                    >
-                      <DialogTrigger asChild>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <p className="text-[12px] text-muted-foreground">
+                    AI chat, voice, and automations are active and managed at
+                    the organization level.
+                  </p>
+                </div>
+              </section>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <Separator />
+              <section id="ai-config" className={sectionClass}>
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold">
+                    AI Configuration
+                  </h2>
+                  <p className="text-[12px] text-muted-foreground">
+                    Configure the API key used by all users for AI chat, voice,
+                    and automations. This key is shared across your
+                    organization.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
+                  <Label className="pt-2 text-[12px] text-muted-foreground">
+                    Key type
+                  </Label>
+                  <Select value={aiKeyType} onValueChange={setAiKeyType}>
+                    <SelectTrigger className="h-9 w-full sm:max-w-[260px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basicsos">
+                        BasicsOS key (bos_live_sk_...)
+                      </SelectItem>
+                      <SelectItem value="byok">
+                        BYOK (your own provider key)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {aiKeyType === "byok" && (
+                    <>
+                      <Label className="pt-2 text-[12px] text-muted-foreground">
+                        Provider
+                      </Label>
+                      <Select
+                        value={aiByokProvider}
+                        onValueChange={setAiByokProvider}
+                      >
+                        <SelectTrigger className="h-9 w-full sm:max-w-[260px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai">OpenAI</SelectItem>
+                          <SelectItem value="anthropic">Anthropic</SelectItem>
+                          <SelectItem value="gemini">Gemini</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+
+                  <Label
+                    htmlFor="ai-api-key"
+                    className="pt-2 text-[12px] text-muted-foreground"
+                  >
+                    API key
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="ai-api-key"
+                          type={showAiKey ? "text" : "password"}
+                          placeholder={
+                            aiConfigData?.config?.hasKey
+                              ? "Key configured — enter new key to replace"
+                              : aiKeyType === "basicsos"
+                                ? "bos_live_sk_..."
+                                : "Paste your provider API key"
+                          }
+                          value={aiKeyInput}
+                          onChange={(e) => setAiKeyInput(e.target.value)}
+                          className="h-9 pr-9 text-[13px]"
+                          autoComplete="off"
+                        />
                         <Button
+                          type="button"
                           variant="ghost"
-                          size="sm"
-                          className="h-7 text-[12px] text-destructive hover:text-destructive"
+                          size="icon"
+                          className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
+                          onClick={() => setShowAiKey((p) => !p)}
+                          aria-label={showAiKey ? "Hide key" : "Show key"}
                         >
-                          Clear
+                          {showAiKey ? (
+                            <EyeSlashIcon className="size-3.5" />
+                          ) : (
+                            <EyeIcon className="size-3.5" />
+                          )}
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-sm">
-                        <DialogHeader>
-                          <DialogTitle>Clear API key?</DialogTitle>
-                          <DialogDescription>
-                            Chat and voice features will stop working until you
-                            add a new key.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setClearDialogOpen(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleClear}
-                          >
-                            Clear key
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-9 text-[13px]"
+                        onClick={handleSaveAiConfig}
+                        disabled={
+                          !aiKeyInput.trim() || saveAiConfig.isPending
+                        }
+                      >
+                        {saveAiConfig.isPending ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                    {aiConfigData?.config?.hasKey && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] text-muted-foreground">
+                          Active:{" "}
+                          {aiConfigData.config.keyType === "byok"
+                            ? `BYOK (${aiConfigData.config.byokProvider})`
+                            : "BasicsOS key"}{" "}
+                          — last updated{" "}
+                          {new Date(
+                            aiConfigData.config.updatedAt,
+                          ).toLocaleDateString()}
+                        </span>
+                        <Dialog
+                          open={clearAiDialogOpen}
+                          onOpenChange={setClearAiDialogOpen}
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-[12px] text-destructive hover:text-destructive"
+                            >
+                              Clear
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-sm">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Clear AI configuration?
+                              </DialogTitle>
+                              <DialogDescription>
+                                Chat, voice, and automation features will stop
+                                working for all users until a new key is
+                                configured.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setClearAiDialogOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleClearAiConfig}
+                              >
+                                Clear config
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
+                    {aiConfigData?.hasEnvFallback && (
+                      <p className="text-[12px] text-muted-foreground">
+                        Server env fallback active (
+                        {aiConfigData.envFallbackType === "byok"
+                          ? `BYOK: ${aiConfigData.envByokProvider}`
+                          : "BasicsOS key"}
+                        ). UI config will take priority.
+                      </p>
+                    )}
                   </div>
-                )}
-                <a
-                  href={DASHBOARD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Get an API key from basics.so
-                  <ArrowSquareOutIcon className="size-3" />
-                </a>
-              </div>
-            </div>
-          </section>
+                </div>
+
+                <div className="mt-6 border-t pt-6">
+                  <h3 className="text-[13px] font-medium mb-1">
+                    Transcription (BYOK)
+                  </h3>
+                  <p className="text-[12px] text-muted-foreground mb-3">
+                    Optional: use your own Deepgram key for voice transcription
+                    (speech-to-text). Leave empty to use the main AI key for
+                    transcription.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
+                    <Label className="pt-2 text-[12px] text-muted-foreground">
+                      Provider
+                    </Label>
+                    <Select
+                      value="deepgram"
+                      disabled
+                      onValueChange={() => {}}
+                    >
+                      <SelectTrigger className="h-9 w-full sm:max-w-[260px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deepgram">Deepgram</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Label
+                      htmlFor="transcription-api-key"
+                      className="pt-2 text-[12px] text-muted-foreground"
+                    >
+                      Deepgram API key
+                    </Label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="transcription-api-key"
+                            type={
+                              showTranscriptionKey ? "text" : "password"
+                            }
+                            placeholder={
+                              aiConfigData?.config?.hasTranscriptionKey
+                                ? "Key configured — enter new key to replace"
+                                : "Paste your Deepgram API key"
+                            }
+                            value={transcriptionKeyInput}
+                            onChange={(e) =>
+                              setTranscriptionKeyInput(e.target.value)
+                            }
+                            className="h-9 pr-9 text-[13px]"
+                            autoComplete="off"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
+                            onClick={() =>
+                              setShowTranscriptionKey((p) => !p)
+                            }
+                            aria-label={
+                              showTranscriptionKey ? "Hide key" : "Show key"
+                            }
+                          >
+                            {showTranscriptionKey ? (
+                              <EyeSlashIcon className="size-3.5" />
+                            ) : (
+                              <EyeIcon className="size-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-9 text-[13px]"
+                          onClick={async () => {
+                            const trimmed = transcriptionKeyInput.trim();
+                            if (!trimmed) {
+                              toast.error("Please enter a Deepgram API key");
+                              return;
+                            }
+                            try {
+                              await saveTranscriptionByok.mutateAsync({
+                                provider: "deepgram",
+                                apiKey: trimmed,
+                              });
+                              setTranscriptionKeyInput("");
+                              toast.success(
+                                "Transcription BYOK (Deepgram) saved",
+                              );
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to save transcription key",
+                              );
+                            }
+                          }}
+                          disabled={
+                            !transcriptionKeyInput.trim() ||
+                            saveTranscriptionByok.isPending
+                          }
+                        >
+                          {saveTranscriptionByok.isPending
+                            ? "Saving..."
+                            : "Save"}
+                        </Button>
+                      </div>
+                      {aiConfigData?.config?.hasTranscriptionKey && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[12px] text-muted-foreground">
+                            Active: Deepgram — transcription uses your key
+                          </span>
+                          <Dialog
+                            open={clearTranscriptionDialogOpen}
+                            onOpenChange={setClearTranscriptionDialogOpen}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-[12px] text-destructive hover:text-destructive"
+                              >
+                                Clear
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-sm">
+                              <DialogHeader>
+                                <DialogTitle>
+                                  Clear transcription BYOK?
+                                </DialogTitle>
+                                <DialogDescription>
+                                  Voice transcription will use the main AI key
+                                  again.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setClearTranscriptionDialogOpen(false)
+                                  }
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await saveTranscriptionByok.mutateAsync({
+                                        provider: null,
+                                        apiKey: "",
+                                      });
+                                      setClearTranscriptionDialogOpen(false);
+                                      toast.success(
+                                        "Transcription BYOK cleared",
+                                      );
+                                    } catch (err) {
+                                      toast.error(
+                                        err instanceof Error
+                                          ? err.message
+                                          : "Failed to clear",
+                                      );
+                                    }
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
 
           {me?.administrator && (
             <>
@@ -722,14 +1011,14 @@ export function SettingsPage() {
                   >
                     Discard
                   </Button>
-                  {apiDirty && (
+                  {aiConfigDirty && isAdmin && (
                     <Button
                       size="sm"
                       className="h-8 text-[12px]"
-                      onClick={handleSave}
-                      disabled={!inputValue.trim()}
+                      onClick={handleSaveAiConfig}
+                      disabled={!aiKeyInput.trim() || saveAiConfig.isPending}
                     >
-                      Save API key
+                      Save AI config
                     </Button>
                   )}
                   {orgDirty && (

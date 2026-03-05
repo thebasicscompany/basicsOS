@@ -48,8 +48,8 @@ export function RecordForm({
           <div key={attribute.id} className="flex flex-col gap-1.5">
             <Label htmlFor={`field-${attribute.id}`}>
               {attribute.name}
-              {attribute.isPrimary && (
-                <span className="text-destructive ml-0.5">*</span>
+              {(attribute.isPrimary || attribute.isRequired) && (
+                <span className="text-destructive ml-0.5" title="Required">*</span>
               )}
             </Label>
 

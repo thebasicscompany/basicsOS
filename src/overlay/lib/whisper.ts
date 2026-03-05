@@ -32,13 +32,13 @@ const playStartChime = () => playChime(880, 0.15);
 const playStopChime = () => playChime(440, 0.2);
 
 /** Adaptive RMS-based VAD tuning constants. */
-const VAD_POLL_MS = 60;
-const VAD_CALIBRATION_MS = 350;
-const VAD_MIN_SPEECH_MS = 180;
-const VAD_NOISE_MARGIN = 0.004;
-const VAD_MIN_THRESHOLD = 0.006;
-const VAD_MAX_THRESHOLD = 0.04;
-const VAD_INITIAL_NO_SPEECH_GRACE_MS = 2500;
+const VAD_POLL_MS = 50;
+const VAD_CALIBRATION_MS = 500;
+const VAD_MIN_SPEECH_MS = 120;
+const VAD_NOISE_MARGIN = 0.003;
+const VAD_MIN_THRESHOLD = 0.004;
+const VAD_MAX_THRESHOLD = 0.035;
+const VAD_INITIAL_NO_SPEECH_GRACE_MS = 5000;
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -46,7 +46,8 @@ const clamp = (value: number, min: number, max: number): number =>
 const runVoiceActivityDetection = (
   stream: MediaStream,
   silenceTimeoutMs: number,
-  onSilence: () => void
+  onSilence: () => void,
+  onLevel?: (rms: number) => void
 ): (() => void) => {
   const ctx = new AudioContext();
   const source = ctx.createMediaStreamSource(stream);
@@ -86,7 +87,7 @@ const runVoiceActivityDetection = (
       calibrationSamples.reduce((acc, v) => acc + v, 0) /
       calibrationSamples.length;
     threshold = clamp(
-      avgNoise * 2.1 + VAD_NOISE_MARGIN,
+      avgNoise * 1.8 + VAD_NOISE_MARGIN,
       VAD_MIN_THRESHOLD,
       VAD_MAX_THRESHOLD
     );
@@ -103,7 +104,8 @@ const runVoiceActivityDetection = (
 
     const now = Date.now();
     const rms = getRms();
-    smoothedRms = smoothedRms > 0 ? smoothedRms * 0.7 + rms * 0.3 : rms;
+    const alpha = rms > smoothedRms ? 0.5 : 0.3;
+    smoothedRms = smoothedRms > 0 ? smoothedRms * (1 - alpha) + rms * alpha : rms;
 
     if (now - startedAt <= VAD_CALIBRATION_MS) {
       calibrationSamples.push(smoothedRms);
@@ -111,6 +113,8 @@ const runVoiceActivityDetection = (
       finalizeCalibration();
       calibrationSamples.length = 0;
     }
+
+    onLevel?.(smoothedRms);
 
     const isVoice = smoothedRms >= threshold;
 
@@ -147,12 +151,22 @@ const runVoiceActivityDetection = (
 export type SpeechRecognitionOptions = {
   onSilence?: () => void;
   silenceTimeoutMs?: number;
+  /** Called when getUserMedia fails (e.g. permission denied). */
+  onMicError?: (message: string) => void;
+  /** Preferred microphone device ID (from enumerateDevices); omit/null = system default. */
+  preferredDeviceId?: string | null;
+  /** Called every ~60ms with the current RMS audio level (0–~0.1 range). */
+  onAudioLevel?: (level: number) => void;
+  /** Called when transcription fails (API error, no key, etc.). */
+  onTranscriptionError?: (message: string) => void;
 };
 
 export type SpeechRecognitionState = {
   isListening: boolean;
   transcript: string;
   interimText: string;
+  /** Current RMS audio level from the mic (0–~0.1). 0 when not listening. */
+  audioLevel: number;
   startListening: () => void;
   stopListening: () => Promise<string>;
 };
@@ -160,10 +174,20 @@ export type SpeechRecognitionState = {
 export const useSpeechRecognition = (
   options?: SpeechRecognitionOptions
 ): SpeechRecognitionState => {
-  const { onSilence, silenceTimeoutMs = 2000 } = options ?? {};
+  const {
+    onSilence,
+    silenceTimeoutMs = 2000,
+    onMicError,
+    preferredDeviceId,
+    onAudioLevel,
+    onTranscriptionError,
+  } = options ?? {};
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimText, setInterimText] = useState("");
+  const [audioLevel, setAudioLevel] = useState(0);
+  const onTranscriptionErrorRef = useRef(onTranscriptionError);
+  onTranscriptionErrorRef.current = onTranscriptionError;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -205,14 +229,16 @@ export const useSpeechRecognition = (
     vadCleanupRef.current?.();
     vadCleanupRef.current = null;
 
+    const audioConstraints: MediaTrackConstraints = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: true,
+    };
+    if (preferredDeviceId) {
+      audioConstraints.deviceId = { ideal: preferredDeviceId };
+    }
     navigator.mediaDevices
-      .getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: true,
-        },
-      })
+      .getUserMedia({ audio: audioConstraints })
       .then((stream) => {
         if (listenSessionRef.current !== sessionId) {
           for (const track of stream.getTracks()) track.stop();
@@ -248,7 +274,11 @@ export const useSpeechRecognition = (
           vadCleanupRef.current = runVoiceActivityDetection(
             stream,
             silenceTimeoutMs,
-            onSilence
+            onSilence,
+            (rms) => {
+              setAudioLevel(rms);
+              onAudioLevel?.(rms);
+            }
           );
         }
       })
@@ -259,8 +289,9 @@ export const useSpeechRecognition = (
         log.error("getUserMedia failed:", msg);
         setIsListening(false);
         setInterimText(msg);
+        onMicError?.(msg);
       });
-  }, [onSilence, silenceTimeoutMs]);
+  }, [onSilence, silenceTimeoutMs, onMicError, preferredDeviceId]);
 
   const stopMediaTracks = useCallback(() => {
     if (streamRef.current) {
@@ -300,6 +331,7 @@ export const useSpeechRecognition = (
 
       playStopChime();
       setIsListening(false);
+      setAudioLevel(0);
       stopMediaTracks();
       setInterimText("Transcribing...");
 
@@ -312,9 +344,17 @@ export const useSpeechRecognition = (
       let text = "";
       try {
         const result = await transcribeAudioBlob(blob);
+        if (result === null) {
+          onTranscriptionErrorRef.current?.(
+            "Transcription failed — check your API key in Settings"
+          );
+        }
         text = result ?? "";
-      } catch (err) {
+      } catch (err: unknown) {
         log.error("Transcription error:", err);
+        const msg =
+          err instanceof Error ? err.message : "Transcription request failed";
+        onTranscriptionErrorRef.current?.(msg);
       }
       setTranscript(text);
       setInterimText("");
@@ -327,5 +367,5 @@ export const useSpeechRecognition = (
     });
   }, [stopMediaTracks]);
 
-  return { isListening, transcript, interimText, startListening, stopListening };
+  return { isListening, transcript, interimText, audioLevel, startListening, stopListening };
 };

@@ -150,6 +150,15 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
     );
   }
 
+  if (resource === "companies" && q) {
+    conditions.push(
+      or(
+        ilike(schema.companies.name, `%${q}%`),
+        ilike(schema.companies.city, `%${q}%`),
+        ilike(schema.companies.sector, `%${q}%`),
+      ) as SQL,
+    );
+  }
   if (resource === "deals") {
     const includeArchived = filter.include_archived === true;
     if (!includeArchived)

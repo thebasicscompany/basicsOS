@@ -8,8 +8,10 @@ import {
   globalShortcut,
   shell,
 } from "electron";
-import { autoUpdater } from "electron-updater";
+import electronUpdater from "electron-updater";
+const { autoUpdater } = electronUpdater;
 import path from "path";
+import fs from "fs";
 import { exec } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import { getOverlaySettings, setOverlaySettings } from "./settings-store";
@@ -28,6 +30,8 @@ let shortcutMgr: ShortcutManager | null = null;
 let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
 let meetingMgr: ReturnType<typeof createMeetingManager> | null = null;
 let registeredMeetingAccelerator: string | null = null;
+let registeredDictationAccelerator: string | null = null;
+let dictationToggleActive = false;
 
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
 const API_URL =
@@ -77,6 +81,29 @@ const resolveAllowedMainUrl = (urlOrPath: string): string | null => {
   }
 };
 
+/** Absolute path to the preload script (CJS; sandbox does not support ESM). */
+function getPreloadPath(): string {
+  const filename = "index.cjs";
+  const relative = path.join(__dirname, "../preload", filename);
+  const absolute = path.resolve(relative);
+  if (fs.existsSync(absolute)) {
+    if (!app.isPackaged) {
+      console.log("[main] preload path:", absolute);
+    }
+    return absolute;
+  }
+  const fromAppPath = path.join(app.getAppPath(), "out", "preload", filename);
+  const resolvedAppPath = path.resolve(fromAppPath);
+  if (fs.existsSync(resolvedAppPath)) {
+    if (!app.isPackaged) {
+      console.log("[main] preload path (from app path):", resolvedAppPath);
+    }
+    return resolvedAppPath;
+  }
+  console.warn("[main] preload not found at", absolute, "or", resolvedAppPath);
+  return absolute;
+}
+
 const getOverlayStatus = () => ({
   visible: !!overlayWindow?.isVisible(),
   active: overlayActive,
@@ -92,6 +119,8 @@ const activateOverlay = (mode: ActivationMode): void => {
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = mode;
+  overlayWindow.show();
+  overlayWindow.focus();
   overlayWindow.webContents.send("activate-overlay", mode);
   broadcastOverlayStatus();
 };
@@ -125,7 +154,7 @@ function createMainWindow(): void {
     autoHideMenuBar: true,
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.mjs"),
+      preload: getPreloadPath(),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -176,7 +205,7 @@ function createOverlayWindow(): void {
     resizable: false,
     movable: false,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.mjs"),
+      preload: getPreloadPath(),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -263,6 +292,29 @@ ipcMain.handle(
         holdThresholdMs: updated.behavior.holdThresholdMs,
       });
     }
+    if (process.platform === "win32") {
+      if (registeredDictationAccelerator) {
+        globalShortcut.unregister(registeredDictationAccelerator);
+        registeredDictationAccelerator = null;
+        dictationToggleActive = false;
+      }
+      globalShortcut.register(
+        updated.shortcuts.dictationHoldKey,
+        () => {
+          if (!overlayWindow) return;
+          if (!dictationToggleActive) {
+            overlayWindow.show();
+            overlayWindow.focus();
+            overlayWindow.webContents.send("dictation-hold-start");
+            dictationToggleActive = true;
+          } else {
+            overlayWindow.webContents.send("dictation-hold-end");
+            dictationToggleActive = false;
+          }
+        },
+      );
+      registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
+    }
     overlayWindow?.webContents.send("settings-changed", updated);
     return updated;
   },
@@ -278,6 +330,7 @@ ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
 
 ipcMain.on("overlay-dismissed", () => {
   overlayActive = false;
+  dictationToggleActive = false;
   broadcastOverlayStatus();
 });
 
@@ -390,6 +443,10 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
   });
 });
 
+ipcMain.handle("copy-to-clipboard", (_event, text: string): void => {
+  clipboard.writeText(text ?? "");
+});
+
 ipcMain.handle("start-meeting", async () => {
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
@@ -418,12 +475,17 @@ ipcMain.handle("get-persisted-meeting", () => {
 });
 
 ipcMain.handle("show-overlay", () => {
-  if (!overlayWindow) {
-    createOverlayWindow();
+  try {
+    if (!overlayWindow) {
+      createOverlayWindow();
+    }
+    overlayWindow?.show();
+    overlayWindow?.focus();
+    broadcastOverlayStatus();
+  } catch (e) {
+    console.error("[main] show-overlay failed:", e);
+    throw e;
   }
-  overlayWindow?.show();
-  overlayWindow?.focus();
-  broadcastOverlayStatus();
 });
 
 ipcMain.handle("hide-overlay", () => {
@@ -451,6 +513,14 @@ const registerMeetingShortcut = (accelerator: string): void => {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.basics-hub");
+
+  // Allow microphone (and camera) for voice overlay and main window
+  session.defaultSession.setPermissionRequestHandler(
+    (_, permission, callback) => {
+      const allowed = permission === "media";
+      callback(allowed);
+    },
+  );
 
   // Auto-update (skip in dev)
   if (!is.dev) {
@@ -511,6 +581,25 @@ app.whenReady().then(() => {
   holdDetector.start();
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
 
+  if (process.platform === "win32") {
+    globalShortcut.register(
+      settings.shortcuts.dictationHoldKey,
+      () => {
+        if (!overlayWindow) return;
+        if (!dictationToggleActive) {
+          overlayWindow.show();
+          overlayWindow.focus();
+          overlayWindow.webContents.send("dictation-hold-start");
+          dictationToggleActive = true;
+        } else {
+          overlayWindow.webContents.send("dictation-hold-end");
+          dictationToggleActive = false;
+        }
+      },
+    );
+    registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+  }
+
   createMainWindow();
 
   app.on("activate", () => {
@@ -529,4 +618,8 @@ app.on("window-all-closed", () => {
 app.on("will-quit", () => {
   shortcutMgr?.unregisterAll();
   holdDetector?.stop();
+  if (registeredDictationAccelerator) {
+    globalShortcut.unregister(registeredDictationAccelerator);
+    registeredDictationAccelerator = null;
+  }
 });

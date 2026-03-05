@@ -76,6 +76,8 @@ export interface Attribute {
   sqlType: string;
   config: Record<string, any>;
   isPrimary: boolean;
+  /** Whether the field is required (non-nullable in schema) */
+  isRequired?: boolean;
   isSystem: boolean;
   isHiddenByDefault: boolean;
   icon?: string;

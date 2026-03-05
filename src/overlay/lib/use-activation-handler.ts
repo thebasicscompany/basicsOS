@@ -62,10 +62,13 @@ export const useActivationHandler = (deps: {
         }
 
         if (cur.interactionMode === "continuous" && mode === "continuous") {
-          void s.stopListening().then((transcript) => {
-            if (transcript) dispatch({ type: "LISTENING_COMPLETE", transcript });
-            else dismissRef.current();
-          });
+          dispatch({ type: "TRANSCRIBING_START" });
+          s.stopListening()
+            .then((transcript) => {
+              if (transcript) dispatch({ type: "LISTENING_COMPLETE", transcript });
+              else dismissRef.current();
+            })
+            .catch(() => dismissRef.current());
           return;
         }
 
@@ -74,11 +77,14 @@ export const useActivationHandler = (deps: {
           mode === "assistant" &&
           cur.state === "listening"
         ) {
-          void s.stopListening().then((transcript) => {
-            if (transcript)
-              dispatch({ type: "LISTENING_COMPLETE", transcript });
-            else dismissRef.current();
-          });
+          dispatch({ type: "TRANSCRIBING_START" });
+          s.stopListening()
+            .then((transcript) => {
+              if (transcript)
+                dispatch({ type: "LISTENING_COMPLETE", transcript });
+              else dismissRef.current();
+            })
+            .catch(() => dismissRef.current());
           return;
         }
 

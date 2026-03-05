@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import * as schema from "@/db/schema/index.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
 
 export const EMBEDDABLE_RESOURCES = new Set([
   "contacts",
@@ -72,7 +73,7 @@ async function generateEmbedding(
   gatewayUrl: string,
   apiKey: string,
   text: string
-): Promise<number[] | null> {
+): Promise<{ embedding: number[] | null; inputTokens: number }> {
   try {
     const res = await fetch(`${gatewayUrl}/v1/embeddings`, {
       method: "POST",
@@ -82,11 +83,22 @@ async function generateEmbedding(
       },
       body: JSON.stringify({ model: "basics-embed", input: text }),
     });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: Array<{ embedding?: number[] }> };
-    return json.data?.[0]?.embedding ?? null;
+    if (!res.ok) return { embedding: null, inputTokens: 0 };
+    const json = (await res.json()) as {
+      data?: Array<{ embedding?: number[] }>;
+      usage?: { prompt_tokens?: number; total_tokens?: number };
+    };
+    const fromApi =
+      json.usage?.prompt_tokens ?? json.usage?.total_tokens ?? 0;
+    // Gateway often returns 0 for embeddings; estimate from text when so (≈4 chars/token)
+    const inputTokens =
+      fromApi > 0 ? fromApi : Math.max(1, Math.ceil(text.length / 4));
+    return {
+      embedding: json.data?.[0]?.embedding ?? null,
+      inputTokens,
+    };
   } catch {
-    return null;
+    return { embedding: null, inputTokens: 0 };
   }
 }
 
@@ -105,7 +117,7 @@ export async function upsertEntityEmbedding(
 ): Promise<void> {
   if (!chunkText.trim()) return;
 
-  const embedding = await generateEmbedding(gatewayUrl, apiKey, chunkText);
+  const { embedding, inputTokens } = await generateEmbedding(gatewayUrl, apiKey, chunkText);
   if (!embedding) return;
 
   const [crmUser] = await db
@@ -114,6 +126,14 @@ export async function upsertEntityEmbedding(
     .where(eq(schema.crmUsers.id, crmUserId))
     .limit(1);
   if (!crmUser?.organizationId) return;
+
+  writeUsageLogSafe(db, {
+    organizationId: crmUser.organizationId,
+    crmUserId,
+    feature: "embedding_record",
+    model: "basics-embed",
+    inputTokens,
+  });
 
   const embeddingStr = `[${embedding.join(",")}]`;
   await db.execute(sql`

@@ -1,8 +1,9 @@
 import { app, globalShortcut, ipcMain, session, clipboard, BrowserWindow, screen, shell } from "electron";
+import electronUpdater from "electron-updater";
 import path from "path";
-import { exec } from "child_process";
-import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import fs from "fs";
+import { exec } from "child_process";
+import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
@@ -28,9 +29,10 @@ const OVERLAY_DEFAULTS = {
   },
   voice: {
     language: "en-US",
-    silenceTimeoutMs: 2e3,
+    silenceTimeoutMs: 3e3,
     ttsEnabled: true,
-    ttsRate: 1.05
+    ttsRate: 1.05,
+    audioInputDeviceId: null
   },
   behavior: {
     doubleTapWindowMs: 400,
@@ -43,14 +45,18 @@ const OVERLAY_DEFAULTS = {
     chunkIntervalMs: 5e3
   }
 };
-const getSettingsPath = () => path.join(app.getPath("userData"), "basicos-overlay-settings.json");
+const getSettingsPath = () => path.join(app.getPath("userData"), "basicsos-overlay-settings.json");
 const getOverlaySettings = () => {
   try {
     const raw = fs.readFileSync(getSettingsPath(), "utf8");
     const parsed = JSON.parse(raw);
     return {
       shortcuts: { ...OVERLAY_DEFAULTS.shortcuts, ...parsed.shortcuts },
-      voice: { ...OVERLAY_DEFAULTS.voice, ...parsed.voice },
+      voice: {
+        ...OVERLAY_DEFAULTS.voice,
+        ...parsed.voice,
+        audioInputDeviceId: parsed.voice?.audioInputDeviceId ?? OVERLAY_DEFAULTS.voice.audioInputDeviceId
+      },
       behavior: { ...OVERLAY_DEFAULTS.behavior, ...parsed.behavior },
       meeting: { ...OVERLAY_DEFAULTS.meeting, ...parsed.meeting }
     };
@@ -167,6 +173,7 @@ function createMeetingManager(options) {
 }
 const PILL_WIDTH = 400;
 const PILL_HEIGHT = 200;
+const { autoUpdater } = electronUpdater;
 let mainWindow = null;
 let overlayWindow = null;
 let overlayActive = false;
@@ -175,8 +182,10 @@ let shortcutMgr = null;
 let holdDetector = null;
 let meetingMgr = null;
 let registeredMeetingAccelerator = null;
-const WEB_URL = process.env["BASICOS_URL"] ?? "http://localhost:5173";
-const API_URL = process.env["BASICOS_API_URL"] ?? process.env["VITE_API_URL"] ?? "http://localhost:3001";
+let registeredDictationAccelerator = null;
+let dictationToggleActive = false;
+const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
+const API_URL = process.env["BASICSOS_API_URL"] ?? process.env["VITE_API_URL"] ?? "http://localhost:3001";
 const ALLOWED_PROXY_PATHS = /* @__PURE__ */ new Set([
   "/v1/audio/transcriptions",
   "/v1/audio/speech",
@@ -213,6 +222,27 @@ const resolveAllowedMainUrl = (urlOrPath) => {
     return null;
   }
 };
+function getPreloadPath() {
+  const filename = "index.cjs";
+  const relative = path.join(__dirname, "../preload", filename);
+  const absolute = path.resolve(relative);
+  if (fs.existsSync(absolute)) {
+    if (!app.isPackaged) {
+      console.log("[main] preload path:", absolute);
+    }
+    return absolute;
+  }
+  const fromAppPath = path.join(app.getAppPath(), "out", "preload", filename);
+  const resolvedAppPath = path.resolve(fromAppPath);
+  if (fs.existsSync(resolvedAppPath)) {
+    if (!app.isPackaged) {
+      console.log("[main] preload path (from app path):", resolvedAppPath);
+    }
+    return resolvedAppPath;
+  }
+  console.warn("[main] preload not found at", absolute, "or", resolvedAppPath);
+  return absolute;
+}
 const getOverlayStatus = () => ({
   visible: !!overlayWindow?.isVisible(),
   active: overlayActive
@@ -226,6 +256,8 @@ const activateOverlay = (mode) => {
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = mode;
+  overlayWindow.show();
+  overlayWindow.focus();
   overlayWindow.webContents.send("activate-overlay", mode);
   broadcastOverlayStatus();
 };
@@ -256,7 +288,7 @@ function createMainWindow() {
     autoHideMenuBar: true,
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.mjs"),
+      preload: getPreloadPath(),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false
@@ -300,7 +332,7 @@ function createOverlayWindow() {
     resizable: false,
     movable: false,
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.mjs"),
+      preload: getPreloadPath(),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false
@@ -372,6 +404,29 @@ ipcMain.handle(
         holdThresholdMs: updated.behavior.holdThresholdMs
       });
     }
+    if (process.platform === "win32") {
+      if (registeredDictationAccelerator) {
+        globalShortcut.unregister(registeredDictationAccelerator);
+        registeredDictationAccelerator = null;
+        dictationToggleActive = false;
+      }
+      globalShortcut.register(
+        updated.shortcuts.dictationHoldKey,
+        () => {
+          if (!overlayWindow) return;
+          if (!dictationToggleActive) {
+            overlayWindow.show();
+            overlayWindow.focus();
+            overlayWindow.webContents.send("dictation-hold-start");
+            dictationToggleActive = true;
+          } else {
+            overlayWindow.webContents.send("dictation-hold-end");
+            dictationToggleActive = false;
+          }
+        }
+      );
+      registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
+    }
     overlayWindow?.webContents.send("settings-changed", updated);
     return updated;
   }
@@ -385,6 +440,7 @@ ipcMain.on("set-ignore-mouse", (_event, ignore) => {
 });
 ipcMain.on("overlay-dismissed", () => {
   overlayActive = false;
+  dictationToggleActive = false;
   broadcastOverlayStatus();
 });
 ipcMain.on("navigate-main", (_event, urlOrPath) => {
@@ -478,9 +534,12 @@ ipcMain.handle("inject-text", (_event, text) => {
     }
   });
 });
+ipcMain.handle("copy-to-clipboard", (_event, text) => {
+  clipboard.writeText(text ?? "");
+});
 ipcMain.handle("start-meeting", async () => {
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token"
   });
@@ -490,7 +549,7 @@ ipcMain.handle("start-meeting", async () => {
 });
 ipcMain.handle("stop-meeting", async () => {
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   await meetingMgr.stop(apiUrl);
 });
 ipcMain.handle("meeting-state", () => {
@@ -500,12 +559,17 @@ ipcMain.handle("get-persisted-meeting", () => {
   return meetingMgr?.getPersistedState() ?? null;
 });
 ipcMain.handle("show-overlay", () => {
-  if (!overlayWindow) {
-    createOverlayWindow();
+  try {
+    if (!overlayWindow) {
+      createOverlayWindow();
+    }
+    overlayWindow?.show();
+    overlayWindow?.focus();
+    broadcastOverlayStatus();
+  } catch (e) {
+    console.error("[main] show-overlay failed:", e);
+    throw e;
   }
-  overlayWindow?.show();
-  overlayWindow?.focus();
-  broadcastOverlayStatus();
 });
 ipcMain.handle("hide-overlay", () => {
   if (!overlayWindow) return;
@@ -529,6 +593,16 @@ const registerMeetingShortcut = (accelerator) => {
 };
 app.whenReady().then(() => {
   electronApp.setAppUserModelId("com.basics-hub");
+  session.defaultSession.setPermissionRequestHandler(
+    (_, permission, callback) => {
+      const allowed = permission === "media";
+      callback(allowed);
+    }
+  );
+  if (!is.dev) {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {
+    });
+  }
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
@@ -571,6 +645,24 @@ app.whenReady().then(() => {
   );
   holdDetector.start();
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
+  if (process.platform === "win32") {
+    globalShortcut.register(
+      settings.shortcuts.dictationHoldKey,
+      () => {
+        if (!overlayWindow) return;
+        if (!dictationToggleActive) {
+          overlayWindow.show();
+          overlayWindow.focus();
+          overlayWindow.webContents.send("dictation-hold-start");
+          dictationToggleActive = true;
+        } else {
+          overlayWindow.webContents.send("dictation-hold-end");
+          dictationToggleActive = false;
+        }
+      }
+    );
+    registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+  }
   createMainWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -586,4 +678,8 @@ app.on("window-all-closed", () => {
 app.on("will-quit", () => {
   shortcutMgr?.unregisterAll();
   holdDetector?.stop();
+  if (registeredDictationAccelerator) {
+    globalShortcut.unregister(registeredDictationAccelerator);
+    registeredDictationAccelerator = null;
+  }
 });

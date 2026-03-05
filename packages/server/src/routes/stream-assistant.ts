@@ -9,7 +9,8 @@ import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
-import { resolveCrmUserWithApiKey } from "@/lib/crm-user-auth.js";
+import { resolveOrgAiConfig, buildGatewayHeaders } from "@/lib/org-ai-config.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
 import {
   ASSISTANT_TOOLS,
   executeAssistantToolDrizzle,
@@ -47,11 +48,10 @@ export function createStreamAssistantRoutes(
     const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
     if (!authz.ok) return authz.response;
 
-    const crmUserAuth = await resolveCrmUserWithApiKey(c, db);
-    if (!crmUserAuth.ok) return crmUserAuth.response;
-    const { crmUser, apiKey } = crmUserAuth.data;
-    if (!crmUser.organizationId)
-      return c.json({ error: "Organization not found" }, 404);
+    const aiResult = await resolveOrgAiConfig(c, db, env);
+    if (!aiResult.ok) return aiResult.response;
+    const { crmUser, aiConfig } = aiResult.data;
+    const gatewayHeaders = buildGatewayHeaders(aiConfig);
 
     let rawBody: unknown;
     try {
@@ -72,13 +72,15 @@ export function createStreamAssistantRoutes(
     }));
 
     const [crmSummary, ragContext] = await Promise.all([
-      buildCrmSummary(db, crmUser.organizationId),
+      buildCrmSummary(db, crmUser.organizationId!),
       retrieveRelevantContext(
         db,
         env.BASICSOS_API_URL,
-        apiKey,
-        crmUser.organizationId,
+        gatewayHeaders,
+        crmUser.organizationId!,
         message,
+        5,
+        crmUser.id,
       ),
     ]);
 
@@ -96,6 +98,9 @@ export function createStreamAssistantRoutes(
 
     let finalContent = "";
     const maxIterations = 5;
+    const requestStart = Date.now();
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
       let toolCallRes: Response;
@@ -104,10 +109,7 @@ export function createStreamAssistantRoutes(
           `${env.BASICSOS_API_URL}/v1/chat/completions`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
+            headers: gatewayHeaders,
             body: JSON.stringify({
               model: "basics-chat-smart",
               messages: chatMessages,
@@ -143,7 +145,11 @@ export function createStreamAssistantRoutes(
             }>;
           };
         }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
+
+      totalInputTokens += json.usage?.prompt_tokens ?? 0;
+      totalOutputTokens += json.usage?.completion_tokens ?? 0;
 
       const aiMessage = json.choices?.[0]?.message;
       const toolCalls = aiMessage?.tool_calls ?? [];
@@ -170,7 +176,7 @@ export function createStreamAssistantRoutes(
         const result = await executeAssistantToolDrizzle(
           db,
           crmUser.id,
-          crmUser.organizationId,
+          crmUser.organizationId!,
           tc.function.name,
           args,
         );
@@ -186,6 +192,16 @@ export function createStreamAssistantRoutes(
     if (!finalContent) {
       finalContent = "I could not complete that action yet. Please try again.";
     }
+
+    writeUsageLogSafe(db, {
+      organizationId: crmUser.organizationId!,
+      crmUserId: crmUser.id,
+      feature: "assistant",
+      model: "basics-chat-smart",
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      durationMs: Date.now() - requestStart,
+    });
 
     const encoder = new TextEncoder();
     const outStream = new ReadableStream({

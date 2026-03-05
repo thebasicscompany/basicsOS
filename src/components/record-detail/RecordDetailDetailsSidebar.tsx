@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DetailField } from "@/components/cells";
+import { getRecordValue } from "@/lib/crm/field-mapper";
 import type { Attribute } from "@/types/objects";
 
 export interface RecordDetailDetailsSidebarProps {
@@ -34,7 +35,7 @@ export function RecordDetailDetailsSidebar({
         <DetailField
           key={attr.id}
           attribute={attr}
-          value={record[attr.columnName]}
+          value={getRecordValue(record, attr.columnName)}
           onSave={onFieldSave(attr)}
         />
       ))}
@@ -74,7 +75,7 @@ export function RecordDetailDetailsSidebar({
             <DetailField
               key={attr.id}
               attribute={attr}
-              value={record[attr.columnName]}
+              value={getRecordValue(record, attr.columnName)}
               onSave={onFieldSave(attr)}
               isReadOnly
             />

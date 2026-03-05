@@ -164,12 +164,20 @@ export const transcribeAudioBlob = async (
           mime_type: blob.type || "audio/webm",
         }),
       },
-      { retries: 1 },
+      { retries: 1, timeoutMs: 25_000 },
     );
-    const json = JSON.parse(res.body) as { transcript?: string };
-    return json.transcript ?? null;
-  } catch {
-    return null;
+    const json = JSON.parse(res.body) as {
+      transcript?: string;
+      text?: string;
+    };
+    return json.transcript ?? json.text ?? null;
+  } catch (err) {
+    console.error("[voice] transcribeAudioBlob failed:", err);
+    if (err instanceof VoiceApiError) throw err;
+    throw new VoiceApiError(
+      err instanceof Error ? err.message : "Transcription request failed",
+      500,
+    );
   }
 };
 

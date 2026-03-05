@@ -1,9 +1,11 @@
+export type EmailResult = { emailsSent: number };
+
 export async function executeEmail(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
-): Promise<void> {
+): Promise<EmailResult> {
   const { to, subject, body } = config as {
     to: string;
     subject: string;
@@ -16,11 +18,13 @@ export async function executeEmail(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ to, subject, body }),
+    body: JSON.stringify({ to, subject, content: body }),
   });
 
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Email send failed (${response.status}): ${text}`);
   }
+
+  return { emailsSent: 1 };
 }

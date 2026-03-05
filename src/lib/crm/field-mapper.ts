@@ -5,6 +5,25 @@
  * The React frontend uses camelCase.
  */
 
+/** Convert a single snake_case column name to camelCase (e.g. first_name → firstName). */
+export function columnNameToCamel(columnName: string): string {
+  const normalized = columnName === "Id" ? "id" : columnName;
+  return normalized.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+/**
+ * Get a value from a record by column name. List API returns camelCase keys (Drizzle)
+ * while schema/attributes use snake_case (DB column names). Tries both.
+ */
+export function getRecordValue(
+  record: Record<string, unknown>,
+  columnName: string,
+): unknown {
+  if (record[columnName] !== undefined) return record[columnName];
+  const camel = columnNameToCamel(columnName);
+  return record[camel];
+}
+
 export function snakeToCamel(
   obj: Record<string, unknown>,
 ): Record<string, unknown> {

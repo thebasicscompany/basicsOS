@@ -25,6 +25,7 @@ import { SignupPage } from "@/components/auth/signup-page";
 import { DashboardPage } from "@/components/pages/DashboardPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { SettingsPage } from "@/components/pages/SettingsPage";
+import { UsagePage } from "@/components/pages/UsagePage";
 import { ImportPage } from "@/components/pages/ImportPage";
 import { ChatPage } from "@/components/pages/ChatPage";
 import { TasksPage } from "@/components/pages/TasksPage";
@@ -95,6 +96,7 @@ function AppRoutes() {
             <Route path={ROUTES.CHAT} element={<ChatPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+            <Route path={ROUTES.ADMIN_USAGE} element={<UsagePage />} />
             <Route
               path={ROUTES.CONNECTIONS}
               element={<RedirectToSettingsConnections />}

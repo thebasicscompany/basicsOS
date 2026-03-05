@@ -57,6 +57,7 @@ function formatColumnName(col: NocoDBColumn): string {
 function mergeAttributes(
   columns: SchemaColumn[],
   overrides: AttributeOverride[],
+  slug: string,
 ): Attribute[] {
   const overrideByColumn = new Map<string, AttributeOverride>();
   for (const o of overrides) {
@@ -65,7 +66,17 @@ function mergeAttributes(
 
   return columns.map((col) => {
     const override = overrideByColumn.get(col.column_name);
-    const mappedUiType = mapUidtToFieldType(col.uidt);
+    let mappedUiType = mapUidtToFieldType(col.uidt);
+    let displayName = override?.displayName ?? formatColumnName(col);
+
+    // Deals & contacts: show company picker (searchable companies) instead of company ID number
+    if (
+      (slug === "deals" || slug === "contacts") &&
+      col.column_name === "company_id"
+    ) {
+      mappedUiType = "company";
+      displayName = "Company";
+    }
 
     // dtxp -> select options
     const isSelectType =
@@ -75,7 +86,7 @@ function mergeAttributes(
 
     return {
       id: col.id,
-      name: override?.displayName ?? formatColumnName(col),
+      name: displayName,
       columnName: col.column_name,
       uiType: override?.uiType ?? mappedUiType,
       sqlType: col.uidt,
@@ -86,6 +97,7 @@ function mergeAttributes(
         ...(override?.config ?? {}),
       },
       isPrimary: override?.isPrimary ?? col.pv,
+      isRequired: (col as SchemaColumn).rqd ?? false,
       isSystem: col.system,
       isHiddenByDefault: override?.isHiddenByDefault ?? col.system,
       icon: override?.icon,
@@ -144,7 +156,7 @@ export function ObjectRegistryProvider({ children }: { children: ReactNode }) {
 
     return activeConfigs.map((cfg) => {
       const columns = columnsBySlug.get(cfg.slug) ?? [];
-      const attributes = mergeAttributes(columns, cfg.attributes);
+      const attributes = mergeAttributes(columns, cfg.attributes, cfg.slug);
 
       return {
         id: cfg.id,

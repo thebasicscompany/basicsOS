@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
+import { getRecordValue } from "@/lib/crm/field-mapper";
 import type { ViewColumn, ViewSort } from "@/types/views";
 import { PlusIcon } from "@phosphor-icons/react";
 import { Cell } from "@/components/cells";
@@ -126,7 +127,7 @@ export function useDataTable(props: DataTableProps) {
 
       cols.push({
         id: attribute.id,
-        accessorFn: (row) => row[attribute.columnName],
+        accessorFn: (row) => getRecordValue(row, attribute.columnName),
         size: colWidth,
         minSize: hasExplicitWidth ? 60 : 1,
         enableResizing: true,
@@ -157,7 +158,7 @@ export function useDataTable(props: DataTableProps) {
           return (
             <Cell
               attribute={attribute}
-              value={row.original[attribute.columnName]}
+              value={getRecordValue(row.original, attribute.columnName)}
               isSelected={isSel}
               isEditing={isEdit}
               onStartEditing={() => setEditingCell({ rowIndex, colId })}

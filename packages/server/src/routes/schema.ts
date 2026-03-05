@@ -27,6 +27,8 @@ const SYSTEM_COLUMNS = new Set([
   "updated_at",
   "crm_user_id",
   "organization_id",
+  // Internal JSONB bucket for user-defined custom fields; not edited directly
+  "custom_fields",
 ]);
 
 const PG_TYPE_TO_UIDT: Record<string, string> = {

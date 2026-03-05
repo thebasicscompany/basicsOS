@@ -4,7 +4,6 @@ import type { Env } from "@/env.js";
 import * as schema from "@/db/schema/index.js";
 import { eq, and } from "drizzle-orm";
 import { executeWorkflow } from "@/lib/automation-executor.js";
-import { resolveStoredApiKey } from "@/lib/api-key-crypto.js";
 import { logger } from "@/lib/logger.js";
 
 const log = logger.child({ component: "automation-engine" });
@@ -222,11 +221,10 @@ async function runAutomation(
 
     if (!crmUserRow) throw new Error(`CRM user ${crmUserId} not found`);
 
-    const apiKey = resolveStoredApiKey(crmUserRow as { basicsApiKey?: string | null; basicsApiKeyEnc?: string | null });
     const result = await executeWorkflow(
       rule.workflowDefinition as WorkflowDefinition,
       triggerData,
-      { id: crmUserRow.id as number, basicsApiKey: apiKey },
+      { id: crmUserRow.id as number, organizationId: (crmUserRow.organizationId ?? crmUserRow.organization_id ?? null) as string | null },
       _db!,
       _env!,
     );

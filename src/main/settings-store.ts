@@ -15,9 +15,10 @@ export const OVERLAY_DEFAULTS: OverlaySettings = {
   },
   voice: {
     language: "en-US",
-    silenceTimeoutMs: 2000,
+    silenceTimeoutMs: 3000,
     ttsEnabled: true,
     ttsRate: 1.05,
+    audioInputDeviceId: null as string | null,
   },
   behavior: {
     doubleTapWindowMs: 400,
@@ -40,7 +41,12 @@ export const getOverlaySettings = (): OverlaySettings => {
     const parsed = JSON.parse(raw) as Partial<OverlaySettings>;
     return {
       shortcuts: { ...OVERLAY_DEFAULTS.shortcuts, ...parsed.shortcuts },
-      voice: { ...OVERLAY_DEFAULTS.voice, ...parsed.voice },
+      voice: {
+        ...OVERLAY_DEFAULTS.voice,
+        ...parsed.voice,
+        audioInputDeviceId:
+          parsed.voice?.audioInputDeviceId ?? OVERLAY_DEFAULTS.voice.audioInputDeviceId,
+      },
       behavior: { ...OVERLAY_DEFAULTS.behavior, ...parsed.behavior },
       meeting: { ...OVERLAY_DEFAULTS.meeting, ...parsed.meeting },
     };

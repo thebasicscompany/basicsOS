@@ -5,6 +5,11 @@ import type { Db } from "@/db/client.js";
 import * as schema from "@/db/schema/index.js";
 import { and, eq, like, or } from "drizzle-orm";
 
+export type AiAgentResult = {
+  ai_agent_result: string;
+  usage: { inputTokens: number; outputTokens: number; model: string };
+};
+
 export async function executeAIAgent(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
@@ -12,7 +17,7 @@ export async function executeAIAgent(
   crmUserId: number,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
-): Promise<Record<string, unknown>> {
+): Promise<AiAgentResult> {
   const {
     objective = "",
     model = "basics-chat-smart",
@@ -38,7 +43,7 @@ export async function executeAIAgent(
     throw new Error("Organization not found for CRM user");
   }
 
-  const { text } = await generateText({
+  const { text, usage } = await generateText({
     model: openai(model) as unknown as Parameters<typeof generateText>[0]["model"],
     maxSteps,
     system:
@@ -144,5 +149,12 @@ export async function executeAIAgent(
     },
   });
 
-  return { ai_agent_result: text };
+  return {
+    ai_agent_result: text,
+    usage: {
+      inputTokens: usage?.promptTokens ?? 0,
+      outputTokens: usage?.completionTokens ?? 0,
+      model,
+    },
+  };
 }

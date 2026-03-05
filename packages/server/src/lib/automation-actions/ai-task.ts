@@ -1,9 +1,14 @@
+export type AiTaskResult = {
+  result: string;
+  usage: { inputTokens: number; outputTokens: number; model: string };
+};
+
 export async function executeAI(
   config: Record<string, unknown>,
   _context: Record<string, unknown>,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
-): Promise<string> {
+): Promise<AiTaskResult> {
   const { prompt, model = "claude-sonnet-4-5-20251001" } = config as {
     prompt: string;
     model?: string;
@@ -29,7 +34,15 @@ export async function executeAI(
 
   const data = (await response.json()) as {
     choices: Array<{ message: { content: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
-  return data.choices[0]?.message?.content ?? "";
+  return {
+    result: data.choices[0]?.message?.content ?? "",
+    usage: {
+      inputTokens: data.usage?.prompt_tokens ?? 0,
+      outputTokens: data.usage?.completion_tokens ?? 0,
+      model,
+    },
+  };
 }

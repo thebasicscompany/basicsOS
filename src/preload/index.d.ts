@@ -10,6 +10,7 @@ export type OverlayElectronAPI = {
   setIgnoreMouse?: (ignore: boolean) => void;
   navigateMain?: (path: string) => void;
   injectText?: (text: string) => Promise<void>;
+  copyToClipboard?: (text: string) => Promise<void>;
   getApiUrl?: () => Promise<string>;
   proxyOverlayRequest?: (req: {
     path: string;
@@ -25,6 +26,7 @@ export type OverlayElectronAPI = {
     encoding: "text" | "base64";
   }>;
   getOverlaySettings?: () => Promise<unknown>;
+  updateOverlaySettings?: (partial: Record<string, unknown>) => Promise<unknown>;
   onHoldStart?: (cb: () => void) => void;
   onHoldEnd?: (cb: () => void) => void;
   onMeetingToggle?: (cb: () => void) => void;

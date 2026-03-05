@@ -101,7 +101,10 @@ export function CreateRecordModal({
         newErrors[attr.columnName] = result.message ?? "Invalid value";
       }
 
-      if (attr.isPrimary && fieldType.isEmpty(values[attr.columnName])) {
+      if (
+        (attr.isPrimary || attr.isRequired) &&
+        fieldType.isEmpty(values[attr.columnName])
+      ) {
         newErrors[attr.columnName] = `${attr.name} is required`;
       }
     }
@@ -158,11 +161,12 @@ export function CreateRecordModal({
           <DialogTitle>Create {objectName}</DialogTitle>
           <DialogDescription>
             Fill in the fields below to create a new {objectName.toLowerCase()}.
+            Required fields are marked with <span className="text-destructive">*</span>.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-3">
-          <div ref={formRef}>
+        <ScrollArea className="max-h-[70vh] pr-3">
+          <div ref={formRef} className="pb-6">
             <RecordForm
               attributes={attributes}
               values={values}

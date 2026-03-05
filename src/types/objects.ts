@@ -6,6 +6,8 @@ export interface Attribute {
   sqlType: string; // schema-derived type (e.g. SingleLineText, DateTime)
   config: Record<string, unknown>;
   isPrimary: boolean;
+  /** Whether the field is required (non-nullable in schema) */
+  isRequired: boolean;
   isSystem: boolean;
   isHiddenByDefault: boolean;
   icon?: string;

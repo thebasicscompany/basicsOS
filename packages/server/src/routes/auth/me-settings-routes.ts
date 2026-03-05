@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
+import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import * as schema from "@/db/schema/index.js";
 import {
@@ -8,22 +9,14 @@ import {
   hasPermission,
   PERMISSIONS,
 } from "@/lib/rbac.js";
-import {
-  mePatchSchema,
-  settingsPatchSchema,
-} from "@/schemas/auth.js";
-import {
-  encryptApiKey,
-  hashApiKey,
-  hasApiKeyEncryptionConfigured,
-} from "@/lib/api-key-crypto.js";
-import { writeAuditLogSafe } from "@/lib/audit-log.js";
+import { mePatchSchema } from "@/schemas/auth.js";
 import { authMiddleware } from "@/middleware/auth.js";
 
 export function registerMeSettingsRoutes(
   app: Hono,
   db: Db,
   auth: ReturnType<typeof createAuth>,
+  env?: Env,
 ): void {
   app.get("/me", authMiddleware(auth, db), async (c) => {
     const session = c.get("session");
@@ -44,6 +37,21 @@ export function registerMeSettingsRoutes(
     }
     const permissions = await getPermissionSetForUser(db, crmUser);
 
+    let hasOrgAiConfig = false;
+    if (crmUser.organizationId) {
+      const [orgConfig] = await db
+        .select({ id: schema.orgAiConfig.id })
+        .from(schema.orgAiConfig)
+        .where(
+          eq(schema.orgAiConfig.organizationId, crmUser.organizationId),
+        )
+        .limit(1);
+      hasOrgAiConfig =
+        Boolean(orgConfig) ||
+        Boolean(env?.SERVER_BASICS_API_KEY) ||
+        Boolean(env?.SERVER_BYOK_PROVIDER && env?.SERVER_BYOK_API_KEY);
+    }
+
     return c.json({
       id: crmUser.id,
       fullName: `${crmUser.firstName} ${crmUser.lastName}`,
@@ -52,9 +60,8 @@ export function registerMeSettingsRoutes(
       email: crmUser.email,
       avatar: crmUser.avatar,
       administrator: hasPermission(permissions, PERMISSIONS.rbacManage),
-      hasApiKey: Boolean(
-        crmUser.basicsApiKeyEnc?.trim() || crmUser.basicsApiKey?.trim(),
-      ),
+      hasApiKey: hasOrgAiConfig,
+      hasOrgAiConfig,
     });
   });
 
@@ -89,62 +96,4 @@ export function registerMeSettingsRoutes(
     return c.json({ ok: true });
   });
 
-  app.patch("/settings", authMiddleware(auth, db), async (c) => {
-    const session = c.get("session");
-    const userId = session?.user?.id;
-    if (!userId) return c.json({ error: "Unauthorized" }, 401);
-
-    let rawBody: unknown;
-    try {
-      rawBody = await c.req.json();
-    } catch {
-      return c.json({ error: "Invalid JSON body" }, 400);
-    }
-    const parsed = settingsPatchSchema.safeParse(rawBody);
-    if (!parsed.success) {
-      const msg = parsed.error.issues[0]?.message ?? "Validation failed";
-      return c.json({ error: msg }, 400);
-    }
-    const key = parsed.data.basicsApiKey?.trim() || null;
-
-    if (key && !hasApiKeyEncryptionConfigured()) {
-      return c.json(
-        { error: "API key encryption is not configured on server" },
-        500,
-      );
-    }
-
-    const encrypted = key ? encryptApiKey(key) : null;
-    const keyHash = key ? hashApiKey(key) : null;
-
-    await db
-      .update(schema.crmUsers)
-      .set({
-        basicsApiKey: null,
-        basicsApiKeyEnc: encrypted,
-        basicsApiKeyHash: keyHash,
-      })
-      .where(eq(schema.crmUsers.userId, userId));
-
-    const [crmUser] = await db
-      .select({
-        id: schema.crmUsers.id,
-        organizationId: schema.crmUsers.organizationId,
-      })
-      .from(schema.crmUsers)
-      .where(eq(schema.crmUsers.userId, userId))
-      .limit(1);
-    if (crmUser) {
-      await writeAuditLogSafe(db, {
-        crmUserId: crmUser.id,
-        organizationId: crmUser.organizationId,
-        action: "auth.settings.api_key.updated",
-        entityType: "crm_user",
-        entityId: crmUser.id,
-        metadata: { hasKey: Boolean(key) },
-      });
-    }
-
-    return c.json({ ok: true });
-  });
 }

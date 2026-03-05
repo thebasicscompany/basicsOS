@@ -16,6 +16,13 @@ const envSchema = z.object({
   // Comma-separated origins for CORS (e.g. https://app.example.com,https://admin.example.com)
   // If set, used in addition to localhost. If empty, only localhost is allowed.
   ALLOWED_ORIGINS: z.string().optional().default(""),
+  // Server-level AI key fallbacks (used when no org_ai_config row exists)
+  SERVER_BASICS_API_KEY: z.string().optional(),
+  SERVER_BYOK_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+  SERVER_BYOK_API_KEY: z.string().optional(),
+  // Optional transcription BYOK (e.g. Deepgram) for voice STT when no org-level key
+  SERVER_TRANSCRIPTION_BYOK_PROVIDER: z.enum(["deepgram"]).optional(),
+  SERVER_TRANSCRIPTION_BYOK_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

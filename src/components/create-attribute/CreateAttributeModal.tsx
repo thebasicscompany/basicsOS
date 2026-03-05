@@ -219,7 +219,8 @@ export function CreateAttributeModal({
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="max-h-[60vh]">
+            <ScrollArea className="max-h-[70vh]">
+              <div className="pb-6 space-y-0">
               {/* Standard section */}
               <div className="space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -252,6 +253,7 @@ export function CreateAttributeModal({
                     />
                   ))}
                 </div>
+              </div>
               </div>
             </ScrollArea>
           </>

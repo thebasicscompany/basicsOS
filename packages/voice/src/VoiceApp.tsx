@@ -5,13 +5,45 @@ import {
 } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
 import { Kbd } from "basics-os/src/components/ui/kbd";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "basics-os/src/components/ui/select";
+import { Label } from "basics-os/src/components/ui/label";
 import { getPrimaryModifierLabel } from "basics-os/src/lib/keyboard-shortcuts";
+import { toast } from "sonner";
 
-const isElectron = () => typeof window !== "undefined" && !!window.electronAPI;
+/** Shape of overlay settings used for microphone selection (matches shared-overlay types). */
+type OverlaySettings = {
+  voice: {
+    audioInputDeviceId: string | null;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+const isElectron = () =>
+  typeof window !== "undefined" &&
+  (!!window.electronAPI || /electron/i.test(navigator.userAgent));
+
+const isWindows = () =>
+  typeof navigator !== "undefined" && /Win/i.test(navigator.userAgent);
+
+/** Sentinel value for "system default" — Radix Select disallows empty string. */
+const DEFAULT_MIC_VALUE = "__default__";
+
+type AudioDevice = { deviceId: string; label: string };
 
 export function VoiceApp() {
   usePageTitle("Voice");
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlaySettings, setOverlaySettings] = useState<OverlaySettings | null>(
+    null,
+  );
+  const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([]);
   const primaryModifier = getPrimaryModifierLabel();
 
   useEffect(() => {
@@ -24,22 +56,95 @@ export function VoiceApp() {
     });
   }, []);
 
-  const handleOverlayToggle = useCallback(() => {
-    if (overlayVisible) {
-      window.electronAPI?.hideOverlay?.();
+  useEffect(() => {
+    if (!isElectron()) return;
+    const api = window.electronAPI as
+      | {
+          getOverlaySettings?: () => Promise<OverlaySettings>;
+          onSettingsChanged?: (cb: (s: OverlaySettings) => void) => void;
+        }
+      | undefined;
+    if (!api?.getOverlaySettings) return;
+    void api.getOverlaySettings().then(setOverlaySettings);
+    api.onSettingsChanged?.(setOverlaySettings);
+  }, []);
+
+  useEffect(() => {
+    if (!isElectron()) return;
+    const load = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const inputs = devices
+          .filter((d) => d.kind === "audioinput")
+          .map((d) => ({
+            deviceId: d.deviceId,
+            label: d.label || `Microphone ${d.deviceId.slice(0, 8)}`,
+          }));
+        setAudioInputs(inputs);
+      } catch {
+        setAudioInputs([]);
+      }
+    };
+    void load();
+  }, []);
+
+  const handleMicChange = useCallback(
+    (value: string) => {
+      const api = window.electronAPI as
+        | {
+            updateOverlaySettings?: (
+              partial: Partial<OverlaySettings>,
+            ) => Promise<OverlaySettings>;
+          }
+        | undefined;
+      if (!api?.updateOverlaySettings || !overlaySettings) return;
+      const deviceId =
+        value === DEFAULT_MIC_VALUE ? null : value;
+      void api
+        .updateOverlaySettings({
+          voice: {
+            ...overlaySettings.voice,
+            audioInputDeviceId: deviceId,
+          },
+        })
+        .then((updated: OverlaySettings) => setOverlaySettings(updated));
+    },
+    [overlaySettings],
+  );
+
+  const handleOverlayToggle = useCallback(async () => {
+    const api = window.electronAPI;
+    if (!api?.showOverlay || typeof api.showOverlay !== "function") {
+      toast.error("Voice overlay is not available in this window. Restart the desktop app.");
       return;
     }
-    window.electronAPI?.showOverlay?.();
+    if (overlayVisible) {
+      try {
+        await api.hideOverlay?.();
+      } catch (e) {
+        console.error("[Voice] hideOverlay failed:", e);
+        toast.error("Could not close overlay");
+      }
+      return;
+    }
+    try {
+      setOverlayVisible(true);
+      await api.showOverlay();
+    } catch (e) {
+      console.error("[Voice] showOverlay failed:", e);
+      setOverlayVisible(false);
+      toast.error("Could not launch voice overlay. Run the desktop app and try again.");
+    }
   }, [overlayVisible]);
 
-  const headerActionsNode = useMemo(() => {
-    if (!isElectron()) return null;
-    return (
-      <Button onClick={handleOverlayToggle}>
+  const headerActionsNode = useMemo(
+    () => (
+      <Button onClick={() => void handleOverlayToggle()}>
         {overlayVisible ? "Close active" : "Launch Voice Overlay"}
       </Button>
-    );
-  }, [handleOverlayToggle, overlayVisible]);
+    ),
+    [handleOverlayToggle, overlayVisible],
+  );
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
 
   if (!isElectron()) {
@@ -65,74 +170,146 @@ export function VoiceApp() {
     );
   }
 
+  const dictationShortcutText = isWindows()
+    ? "Press once to start recording, press again to stop and paste into the focused field."
+    : "Hold the key to record; release to transcribe and paste into the focused field.";
+
   return (
     <>
       {headerActionsPortal}
-      <div className="flex h-full flex-col overflow-auto py-4">
-        <p className="mb-4 text-[12px] text-muted-foreground">
-          Voice overlay configuration
-        </p>
-
-        <div className="max-w-lg space-y-4">
-          <div className="rounded-lg border p-4">
-            <h2 className="text-[13px] font-medium">Voice overlay</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              The voice pill is a separate overlay window that floats at the top
-              of your screen. Use global shortcuts to activate it, or launch it
-              from the header button.
-            </p>
-            <p className="mt-3 text-[12px] text-muted-foreground">
-              Use <Kbd>{`${primaryModifier}+Space`}</Kbd> to activate the AI
-              assistant.
+      <div className="flex h-full flex-col overflow-auto bg-background">
+        <div className="container max-w-5xl mx-auto py-10 px-6 space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Voice Overlay</h1>
+            <p className="mt-2 text-lg text-muted-foreground">
+              Configure the floating voice pill and global shortcuts.
             </p>
           </div>
 
-          <div className="rounded-lg border p-4">
-            <h2 className="text-[13px] font-medium">Current capabilities</h2>
-            <ul className="mt-2 space-y-1 text-[12px] text-muted-foreground">
-              <li>
-                Ask CRM-aware questions (pipeline, deals, contacts, tasks)
-              </li>
-              <li>Dictation and transcription shortcuts</li>
-              <li>
-                Navigation voice commands (open contacts, deals, settings)
-              </li>
-              <li>
-                CRM write actions from voice (create task, add note, update deal
-                stage)
-              </li>
-            </ul>
-          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Microphone Section */}
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+              <div className="flex flex-col space-y-1.5 p-6">
+                <h3 className="font-semibold leading-none tracking-tight">Microphone</h3>
+                <p className="text-sm text-muted-foreground">
+                  Select the input device for the voice overlay.
+                </p>
+              </div>
+              <div className="p-6 pt-0">
+                <div className="space-y-2">
+                  <Label htmlFor="voice-mic" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Input device
+                  </Label>
+                  <Select
+                    value={
+                      overlaySettings?.voice?.audioInputDeviceId ||
+                      DEFAULT_MIC_VALUE
+                    }
+                    onValueChange={handleMicChange}
+                  >
+                    <SelectTrigger id="voice-mic" className="w-full">
+                      <SelectValue placeholder="System default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DEFAULT_MIC_VALUE}>
+                        System default
+                      </SelectItem>
+                      {audioInputs.map((d) => (
+                        <SelectItem key={d.deviceId} value={d.deviceId}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
 
-          <div className="rounded-lg border p-4">
-            <h2 className="text-[13px] font-medium">Shortcuts</h2>
-            <ul className="mt-2 space-y-1.5 text-[12px] text-muted-foreground">
-              <li>
-                <Kbd>{`${primaryModifier}+Space`}</Kbd> — AI Assistant (tap to
-                listen, auto-stops after silence)
-              </li>
-              <li>
-                Double-tap <Kbd>{`${primaryModifier}+Space`}</Kbd> — Continuous
-                listening
-              </li>
-              <li>
-                <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd> — Dictation (hold
-                to record, release to transcribe and paste)
-              </li>
-              <li>
-                <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd> — Meeting toggle
-                (stub)
-              </li>
-            </ul>
-          </div>
+            {/* Shortcuts Section */}
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm row-span-2">
+              <div className="flex flex-col space-y-1.5 p-6">
+                <h3 className="font-semibold leading-none tracking-tight">Shortcuts</h3>
+                <p className="text-sm text-muted-foreground">
+                  Global keyboard shortcuts to control the overlay.
+                </p>
+              </div>
+              <div className="p-6 pt-0">
+                <ul className="space-y-4 text-sm">
+                  <li className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Kbd>{`${primaryModifier}+Space`}</Kbd>
+                      <span className="font-medium">AI Assistant</span>
+                    </div>
+                    <span className="text-muted-foreground">Tap to listen, auto-stops after silence.</span>
+                  </li>
+                  <li className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Double Tap</span>
+                      <Kbd>{`${primaryModifier}+Space`}</Kbd>
+                    </div>
+                    <span className="text-muted-foreground">Continuous listening mode.</span>
+                  </li>
+                  <li className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd>
+                      <span className="font-medium">Dictation</span>
+                    </div>
+                    <span className="text-muted-foreground">{dictationShortcutText}</span>
+                  </li>
+                  <li className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd>
+                      <span className="font-medium">Meetings</span>
+                    </div>
+                    <span className="text-muted-foreground">Toggle meeting mode (stub).</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
 
-          <div className="rounded-lg border p-4">
-            <h2 className="text-[13px] font-medium">Requirements</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Add your Basics API key in Settings for transcription, TTS, and AI
-              streaming. The overlay uses session auth from your logged-in CRM
-              session.
-            </p>
+            {/* Capabilities Section */}
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+              <div className="flex flex-col space-y-1.5 p-6">
+                <h3 className="font-semibold leading-none tracking-tight">Capabilities</h3>
+                <p className="text-sm text-muted-foreground">
+                  What you can do with the voice assistant.
+                </p>
+              </div>
+              <div className="p-6 pt-0">
+                <ul className="grid gap-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span>Ask CRM questions (pipeline, deals, contacts)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span>Dictation & transcription anywhere</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span>Navigate to pages (contacts, settings)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span>Create tasks, notes, update deals</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Requirements Section */}
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm md:col-span-2">
+              <div className="flex flex-col space-y-1.5 p-6">
+                <h3 className="font-semibold leading-none tracking-tight">Requirements</h3>
+              </div>
+              <div className="p-6 pt-0">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Add your <strong>Basics API key</strong> in Settings for transcription, TTS, and AI streaming.
+                  Optionally, you can configure a custom <strong>Deepgram key</strong> (Settings → AI Configuration → Transcription BYOK)
+                  to use your own API key for speech-to-text. The overlay authenticates using your active CRM session.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

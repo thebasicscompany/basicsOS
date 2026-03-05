@@ -18,6 +18,8 @@ export type OverlaySettings = {
     silenceTimeoutMs: number;
     ttsEnabled: boolean;
     ttsRate: number;
+    /** Preferred audio input device ID from navigator.mediaDevices.enumerateDevices(); null = system default. */
+    audioInputDeviceId: string | null;
   };
   behavior: {
     doubleTapWindowMs: number;

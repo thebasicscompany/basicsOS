@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { ROUTES } from "@basics-os/hub";
+import basicsIcon from "@/assets/basicos-icon.png";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -81,9 +82,9 @@ export function SignupPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-6">
           <img
-            src="/logos/basicsos-wordmark.png"
+            src={basicsIcon}
             alt="BasicsOS"
-            className="h-8 w-auto object-contain"
+            className="h-12 w-12 object-contain"
           />
           <div className="space-y-1 text-center">
             <h1 className="text-2xl font-bold">

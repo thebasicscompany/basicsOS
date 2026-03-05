@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { ROUTES } from "@basics-os/hub";
+import basicsIcon from "@/assets/basicos-icon.png";
 
 interface LoginForm {
   email: string;
@@ -40,9 +41,9 @@ export function LoginPage() {
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="flex flex-col items-center gap-6">
           <img
-            src="/logos/basicsos-wordmark.png"
+            src={basicsIcon}
             alt="BasicsOS"
-            className="h-8 w-auto object-contain"
+            className="h-12 w-12 object-contain"
           />
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>

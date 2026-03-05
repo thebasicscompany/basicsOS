@@ -129,8 +129,11 @@ The Electron app will open. Log in with:
 | `BETTER_AUTH_URL` | No | `http://localhost:5173` | Auth callback base URL (see Production) |
 | `BASICSOS_API_URL` | No | `https://api.basicsos.com` | **Gateway** URL: where the server sends AI/chat, embeddings, voice, email, Slack. Leave default to use Basics gateway (BYOK supported). Set only if you run your own gateway. |
 | `ALLOWED_ORIGINS` | No | (empty) | Comma-separated origins for CORS + Better Auth (e.g. `https://api.acme.com`) |
-| `API_KEY_ENCRYPTION_KEY` | Prod | N/A | 32-byte base64/hex key for encrypting user API keys. Required for production. |
+| `API_KEY_ENCRYPTION_KEY` | Prod | N/A | 32-byte base64/hex key for encrypting stored API keys. Required for production. |
 | `PORT` | No | `3001` | API server port |
+| `SERVER_BASICS_API_KEY` | No | N/A | Server-level BasicsOS key for all users (env fallback). Overridden by admin UI config. |
+| `SERVER_BYOK_PROVIDER` | No | N/A | BYOK provider (`openai`, `anthropic`, `gemini`). Used with `SERVER_BYOK_API_KEY`. |
+| `SERVER_BYOK_API_KEY` | No | N/A | BYOK API key. Requires `SERVER_BYOK_PROVIDER`. |
 
 ---
 
@@ -191,10 +194,20 @@ The desktop app talks to **your CRM API server** (the Hono server), not the gate
 
 ## API Keys and BYOK
 
-AI features (chat, embeddings, voice) go through the **Basics gateway** (default `https://api.basicsos.com`). You can:
+AI features (chat, embeddings, voice) go through the **Basics gateway** (default `https://api.basicsos.com`). Keys are configured **once by the admin**, shared across all users in the organization.
 
-- **Use a Basics API key** — Get one at [basicsos.com/dashboard](https://basicsos.com/dashboard) and add it in **Settings**. One key for chat, embeddings, and voice.
-- **BYOK (bring your own key)** — The default gateway supports your own provider keys (OpenAI, Anthropic, Gemini, Deepgram) via `x-byok-provider` and `x-byok-api-key` when calling the API. See [gateway API docs](https://basicsos.com/api-docs). (The Settings UI accepts a Basics key; BYOK via headers is for direct API use.)
+### How it works
+
+1. **Admin configures** a single API key for the organization — either a BasicsOS key or a BYOK provider key (OpenAI, Anthropic, Gemini).
+2. **All users** get AI features automatically — no per-user key setup needed.
+3. **Usage tracking** — admins can see per-user token and request usage from the AI Usage dashboard (sidebar → Admin → AI Usage).
+
+### Configuration options (pick one)
+
+- **Admin UI** (recommended): The admin configures the key from **Settings → AI Configuration** in the app. Supports switching between BasicsOS and BYOK.
+- **Environment variables** (fallback): Set `SERVER_BASICS_API_KEY` or `SERVER_BYOK_PROVIDER` + `SERVER_BYOK_API_KEY` in `packages/server/.env`. Admin UI config takes priority when both are set.
+- **BYOK (bring your own key)** — The default gateway supports your own provider keys (OpenAI, Anthropic, Gemini) via `x-byok-provider` and `x-byok-api-key` headers. See [gateway API docs](https://basicsos.com/api-docs).
+- **Transcription BYOK** — Voice transcription (speech-to-text) can use a separate Deepgram key. In **Settings → AI Configuration** use the optional "Transcription (BYOK)" section, or set `SERVER_TRANSCRIPTION_BYOK_PROVIDER=deepgram` and `SERVER_TRANSCRIPTION_BYOK_API_KEY` in `.env`.
 
 
 ---

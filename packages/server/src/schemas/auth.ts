@@ -33,6 +33,3 @@ export const mePatchSchema = z.object({
   lastName: z.string().trim().min(1).max(255).optional(),
 });
 
-export const settingsPatchSchema = z.object({
-  basicsApiKey: z.string().trim().nullable().optional(),
-});

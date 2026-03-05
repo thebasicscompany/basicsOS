@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getList } from "@/lib/api/crm";
+import { getList, getOne } from "@/lib/api/crm";
 import { usePageTitle } from "@/contexts/page-header";
 const PER_PAGE = 25;
 
@@ -72,9 +72,8 @@ export function NotesPage() {
     const data = dealNotesData?.data ?? [];
     const ids = new Set<number>();
     for (const n of data) {
-      const id =
-        (n as Record<string, unknown>).dealId ??
-        (n as Record<string, unknown>).deal_id;
+      const row = n as unknown as Record<string, unknown>;
+      const id = row.dealId ?? row.deal_id;
       if (id != null) ids.add(Number(id));
     }
     return Array.from(ids);
@@ -84,9 +83,8 @@ export function NotesPage() {
     const data = contactNotesData?.data ?? [];
     const ids = new Set<number>();
     for (const n of data) {
-      const id =
-        (n as Record<string, unknown>).contactId ??
-        (n as Record<string, unknown>).contact_id;
+      const row = n as unknown as Record<string, unknown>;
+      const id = row.contactId ?? row.contact_id;
       if (id != null) ids.add(Number(id));
     }
     return Array.from(ids);
@@ -95,7 +93,6 @@ export function NotesPage() {
   const { data: dealsData } = useQuery({
     queryKey: ["deals", "batch", dealIds],
     queryFn: async () => {
-      const { getOne } = await import("@/lib/api/crm");
       const entries = await Promise.all(
         dealIds.map(async (id) => {
           try {
@@ -114,7 +111,6 @@ export function NotesPage() {
   const { data: contactsData } = useQuery({
     queryKey: ["contacts", "batch", contactIds],
     queryFn: async () => {
-      const { getOne } = await import("@/lib/api/crm");
       const entries = await Promise.all(
         contactIds.map(async (id) => {
           try {
@@ -183,7 +179,7 @@ export function NotesPage() {
                   </thead>
                   <tbody>
                     {dealNotes.map((note) => {
-                      const n = note as Record<string, unknown>;
+                      const n = note as unknown as Record<string, unknown>;
                       const dealId = (n.dealId ?? n.deal_id) as number;
                       const name = dealsData?.[dealId]?.name ?? "…";
                       const text = (n.text ?? "") as string;
@@ -265,7 +261,7 @@ export function NotesPage() {
                   </thead>
                   <tbody>
                     {contactNotes.map((note) => {
-                      const n = note as Record<string, unknown>;
+                      const n = note as unknown as Record<string, unknown>;
                       const contactId = (n.contactId ?? n.contact_id) as number;
                       const name = contactsData?.[contactId]?.name ?? "…";
                       const text = (n.text ?? "") as string;

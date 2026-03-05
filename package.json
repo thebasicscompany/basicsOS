@@ -18,7 +18,7 @@
     "test": "vitest",
     "dev": "vite --force",
     "dev:demo": "vite --config vite.demo.config --force",
-    "build": "tsc && vite build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc && vite build",
     "start": "vite preview",
     "build:demo": "tsc && vite build --config vite.demo.config",
     "typecheck": "tsc --noEmit",

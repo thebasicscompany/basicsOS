@@ -120,7 +120,7 @@ function formatColumnName(col: NocoDBColumn): string {
 function mergeAttributes(
   columns: SchemaColumn[],
   overrides: AttributeOverride[],
-  slug: string,
+  _slug: string,
 ): Attribute[] {
   const overrideByColumn = new Map<string, AttributeOverride>();
   for (const o of overrides) {

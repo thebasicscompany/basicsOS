@@ -92,7 +92,7 @@ interface ActivityItem {
 const ACTIVITY_META: Record<
   ActivityKind,
   {
-    icon: ComponentType<{ className?: string; weight?: string }>;
+    icon: ComponentType<{ className?: string }>;
     accent: string;
     statusColor?: string;
   }
@@ -200,23 +200,19 @@ interface AutomationRun {
 }
 
 function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
-  // Preview mode — return mock data
-  if (USE_MOCK_ACTIVITY) {
-    return { items: MOCK_ACTIVITY, isLoading: false };
-  }
-
-  // Automation runs
+  // Always call hooks unconditionally (React rules of hooks)
   const { data: automationRuns, isLoading: loadingRuns } = useQuery({
     queryKey: ["home-automation-runs"],
     queryFn: () =>
       fetchApi<AutomationRun[]>("/api/automation-runs?limit=5&sort=desc"),
     staleTime: 30_000,
+    enabled: !USE_MOCK_ACTIVITY,
   });
 
-  // Recent AI threads
-  const { data: threads, isLoading: loadingThreads } = useThreads(3);
+  const { data: threads, isLoading: loadingThreads } = useThreads(
+    USE_MOCK_ACTIVITY ? 0 : 3,
+  );
 
-  // Recent CRM records across objects (contacts, deals, companies)
   const { data: contactsData } = useRecords("contacts", {
     page: 1,
     perPage: 3,
@@ -229,6 +225,7 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
   });
 
   const items = useMemo(() => {
+    if (USE_MOCK_ACTIVITY) return MOCK_ACTIVITY;
     const feed: ActivityItem[] = [];
 
     // AI chat threads → agent_chat
@@ -317,7 +314,10 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
     }).slice(0, 6);
   }, [threads, automationRuns, contactsData, dealsData]);
 
-  return { items, isLoading: loadingRuns || loadingThreads };
+  return {
+    items,
+    isLoading: USE_MOCK_ACTIVITY ? false : (loadingRuns || loadingThreads),
+  };
 }
 
 function ActivityRow({ item }: { item: ActivityItem }) {

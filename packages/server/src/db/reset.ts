@@ -19,12 +19,12 @@ const DATABASE_URL =
   "postgresql://postgres:postgres@localhost:5435/crm";
 
 async function main() {
-  console.log("Connecting to database...");
+  console.warn("Connecting to database...");
   const { db, close } = createDb(DATABASE_URL);
 
   try {
     // ── 1. Truncate everything ──────────────────────────────────────────
-    console.log("Truncating all tables...");
+    console.warn("Truncating all tables...");
     await db.execute(sql`
       TRUNCATE TABLE
         "user",
@@ -42,10 +42,10 @@ async function main() {
         "rbac_roles"
       RESTART IDENTITY CASCADE
     `);
-    console.log("All tables truncated.");
+    console.warn("All tables truncated.");
 
     // ── 2. Create admin user + org ──────────────────────────────────────
-    console.log("Creating admin user...");
+    console.warn("Creating admin user...");
     const now = new Date();
     const userId = randomUUID();
     const passwordHash = await hashPassword("admin123");
@@ -86,10 +86,10 @@ async function main() {
       })
       .returning();
 
-    console.log(`Admin user created (CRM user ID: ${crmUser!.id})`);
+    console.warn(`Admin user created (CRM user ID: ${crmUser!.id})`);
 
     // ── 3. Seed RBAC ────────────────────────────────────────────────────
-    console.log("Seeding RBAC...");
+    console.warn("Seeding RBAC...");
     await db.execute(sql`
       INSERT INTO "rbac_permissions" ("key", "description") VALUES
         ('records.read', 'Read CRM records'),
@@ -125,7 +125,7 @@ async function main() {
     `);
 
     // ── 4. Seed object config ───────────────────────────────────────────
-    console.log("Seeding object config...");
+    console.warn("Seeding object config...");
     const orgId = org!.id;
 
     const [companiesConfig] = await db
@@ -180,7 +180,7 @@ async function main() {
       .returning();
 
     // ── 5. Seed attribute overrides ─────────────────────────────────────
-    console.log("Seeding attribute overrides...");
+    console.warn("Seeding attribute overrides...");
 
     const categoryOptions = [
       { id: "b2b", label: "B2B", color: "blue", order: 0 },
@@ -225,9 +225,9 @@ async function main() {
       { objectConfigId: dealsConfig!.id, columnName: "amount", displayName: "Deal Value", uiType: "currency", config: { currencyCode: "USD", currencySymbol: "$", decimalPlaces: 2, stepAmount: 1000 }, organizationId: orgId },
     ]);
 
-    console.log("\nReset complete. Database is clean.");
-    console.log("Login: admin@example.com / admin123");
-    console.log("Zero demo records — start fresh.\n");
+    console.warn("\nReset complete. Database is clean.");
+    console.warn("Login: admin@example.com / admin123");
+    console.warn("Zero demo records — start fresh.\n");
   } finally {
     await close();
   }

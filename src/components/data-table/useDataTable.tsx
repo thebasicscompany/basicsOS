@@ -73,6 +73,7 @@ export function useDataTable(props: DataTableProps) {
     onSwapColumns,
     onAddSort,
     onHideColumn,
+    onShowColumn,
     onRenameColumn,
     pagination,
     onPaginationChange,
@@ -236,7 +237,7 @@ export function useDataTable(props: DataTableProps) {
       });
     }
 
-    const hasColumnActions = onAddColumn || props.onShowColumn;
+    const hasColumnActions = onAddColumn || onShowColumn;
     if (hasColumnActions) {
       cols.push({
         id: "_addColumn",
@@ -261,7 +262,7 @@ export function useDataTable(props: DataTableProps) {
                   {hiddenColumns.map((attr) => (
                     <DropdownMenuItem
                       key={attr.id}
-                      onSelect={() => props.onShowColumn?.(attr.id)}
+                      onSelect={() => onShowColumn?.(attr.id)}
                     >
                       {attr.name}
                     </DropdownMenuItem>
@@ -285,7 +286,7 @@ export function useDataTable(props: DataTableProps) {
     }
 
     return cols;
-  }, [visibleCols, hiddenEmptyCount, hiddenColumns, columnWidths, onCellUpdate, onAddColumn, props.onShowColumn, singularName, attributes]);
+  }, [visibleCols, hiddenEmptyCount, hiddenColumns, columnWidths, onCellUpdate, onAddColumn, onShowColumn, singularName, attributes, firstNameAttr, usesSplitName]);
 
   const table = useReactTable({
     data,

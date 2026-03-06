@@ -104,7 +104,7 @@ export function useRecordDetail(): UseRecordDetailReturn {
     typeof recordId === "number"
       ? recordId
       : parseInt(String(recordId), 10) || 0;
-  const isFavorite = useIsFavorite(objectSlug, numericRecordId);
+  const _isFavorite = useIsFavorite(objectSlug, numericRecordId);
   const toggleFavoriteMutation = useToggleFavorite();
 
   const [, addRecentItem] = useRecentItems();
@@ -183,7 +183,7 @@ export function useRecordDetail(): UseRecordDetailReturn {
       ? listIds[currentIndex + 1]
       : null;
 
-  const handleToggleFavorite = useCallback(() => {
+  const _handleToggleFavorite = useCallback(() => {
     if (!numericRecordId) return;
     toggleFavoriteMutation.mutate({
       objectSlug,

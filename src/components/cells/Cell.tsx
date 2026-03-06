@@ -36,7 +36,7 @@ export function Cell({
   isEditing,
   isSelected,
   isProtected = false,
-  onStartEditing,
+  onStartEditing: _onStartEditing,
   onSave,
   onCancel,
   cellRect: _cellRect,

@@ -57,7 +57,7 @@ export async function executeCrmAction(
     }
 
     case "create_contact": {
-      const { firstName, lastName, email, status } = params as {
+      const { firstName, lastName, email, status: _status } = params as {
         firstName?: string;
         lastName?: string;
         email?: string;

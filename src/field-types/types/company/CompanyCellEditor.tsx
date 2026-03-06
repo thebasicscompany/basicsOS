@@ -35,7 +35,7 @@ export function CompanyCellEditor({ value, onSave, onCancel }: CellEditorProps) 
   });
 
   const companyId = value != null ? Number(value) : null;
-  const { data: selectedCompany } = useQuery({
+  const { data: _selectedCompany } = useQuery({
     queryKey: ["companies", companyId],
     queryFn: async () => {
       const row = await getOne<Record<string, unknown>>("companies", companyId!);

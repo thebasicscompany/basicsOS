@@ -14,7 +14,7 @@ export function LongTextCellEditor({
 }: CellEditorProps) {
   const [draft, setDraft] = useState<string>(value ?? "");
   const [open, setOpen] = useState(true);
-  const [didCommit, setDidCommit] = useState(false);
+  const [_didCommit, setDidCommit] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

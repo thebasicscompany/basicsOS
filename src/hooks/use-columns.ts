@@ -176,7 +176,7 @@ export function useCreateColumn() {
         },
       } as SchemaColumn;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_, _vars) => {
       qc.invalidateQueries({ queryKey: ["columns"] });
       qc.invalidateQueries({ queryKey: ["object-config"] });
     },
@@ -240,7 +240,7 @@ export function useDeleteColumn() {
         method: "DELETE",
       });
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_, _vars) => {
       qc.invalidateQueries({ queryKey: ["columns"] });
     },
   });

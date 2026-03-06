@@ -16,7 +16,7 @@ import {
   useRegisterTitleSlotContainer,
   useTitleSlotInUse,
 } from "@/contexts/page-header";
-import { useRecentPages, type RecentPage } from "@/hooks/use-recent-pages";
+import { useRecentPages } from "@/hooks/use-recent-pages";
 import { useObjects } from "@/hooks/use-object-registry";
 
 function PageErrorFallback({
@@ -46,8 +46,8 @@ function PageErrorFallback({
 
 function LayoutHeader() {
   const location = useLocation();
-  const { state } = useSidebar();
-  const title = usePageHeaderTitle();
+  const { state: _state } = useSidebar();
+  usePageHeaderTitle();
   const titleSlotInUse = useTitleSlotInUse();
   const registerBreadcrumbContainer = useRegisterBreadcrumbContainer();
   const registerTitleSlotContainer = useRegisterTitleSlotContainer();

@@ -269,7 +269,6 @@ export function ObjectListPage() {
     viewState,
     handleAddSort,
     handleAddFilter,
-    objectSlug,
     layout,
     isDeals,
     setLayout,

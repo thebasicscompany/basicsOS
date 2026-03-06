@@ -481,13 +481,13 @@ export function RecentChatsSection() {
   if (recentThreads.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-xl border border-border/40 p-3">
       <SectionHeader
         title="Recent Chats"
         count={recentThreads.length}
         action={<SectionLink to="/chat" label="New chat" />}
       />
-      <div className="space-y-1.5">
+      <div className="mt-3 space-y-1.5">
         {recentThreads.map((thread) => (
           <ThreadRow key={thread.id} thread={thread} />
         ))}
@@ -501,7 +501,7 @@ function ThreadRow({ thread }: { thread: Thread }) {
   return (
     <Link
       to={`/chat/${thread.id}`}
-      className="group flex items-center gap-3 rounded-lg bg-card px-3.5 py-2.5 transition-all hover:bg-accent"
+      className="group flex items-center gap-3 rounded-lg px-3.5 py-2.5 transition-all hover:bg-muted/50"
     >
       <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary dark:bg-primary/10">
         <ChatCircleIcon className="size-4" />

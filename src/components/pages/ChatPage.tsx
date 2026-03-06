@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
 import type { Message } from "@ai-sdk/react";
@@ -244,7 +244,18 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
             {displayMessages.map((m) => (
               <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
                 <MessageContent>
-                  <MessageResponse>{getTextContent(m)}</MessageResponse>
+                  <MessageResponse
+                    animated={
+                      m.role === "assistant"
+                        ? { animation: "blurIn" }
+                        : undefined
+                    }
+                    isAnimating={
+                      m.role === "assistant" && status === "streaming"
+                    }
+                  >
+                    {getTextContent(m)}
+                  </MessageResponse>
                 </MessageContent>
               </MessageEl>
             ))}

@@ -356,6 +356,20 @@ ipcMain.handle(
   },
 );
 
+ipcMain.handle("resize-overlay", (_event, height: number) => {
+  if (!overlayWindow) return;
+  const { height: screenH } = screen.getPrimaryDisplay().workAreaSize;
+  const maxH = Math.round(screenH * 0.4);
+  const clampedH = Math.max(PILL_HEIGHT, Math.min(maxH, Math.round(height)));
+  const bounds = overlayWindow.getBounds();
+  overlayWindow.setBounds({
+    x: bounds.x,
+    y: 0,
+    width: PILL_WIDTH,
+    height: clampedH,
+  });
+});
+
 ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
   if (ignore) {
     overlayWindow?.setIgnoreMouseEvents(true, { forward: true });

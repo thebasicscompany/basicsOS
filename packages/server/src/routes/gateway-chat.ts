@@ -4,7 +4,7 @@ import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
-import { resolveCrmUserWithApiKey } from "@/lib/crm-user-auth.js";
+import { resolveOrgAiConfig } from "@/lib/org-ai-config.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import {
   BASE_SYSTEM_PROMPT,
@@ -36,9 +36,10 @@ export function createGatewayChatRoutes(
     const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
     if (!authz.ok) return authz.response;
 
-    const crmUserAuth = await resolveCrmUserWithApiKey(c, db);
-    if (!crmUserAuth.ok) return crmUserAuth.response;
-    const { crmUser, apiKey } = crmUserAuth.data;
+    const orgAi = await resolveOrgAiConfig(c, db, env);
+    if (!orgAi.ok) return orgAi.response;
+    const { crmUser, aiConfig } = orgAi.data;
+    const apiKey = aiConfig.apiKey;
     if (!crmUser.organizationId)
       return c.json({ error: "Organization not found" }, 404);
 
@@ -75,11 +76,20 @@ export function createGatewayChatRoutes(
     );
     await persistMessage(db, threadId, "user", queryText);
 
-    // Auto-title thread with first user message (truncated to 80 chars)
+    // Auto-title thread: immediate fallback, then async smart title via LLM
     if (!parsed.data.threadId?.trim()) {
-      const title =
+      const fallback =
         queryText.length > 80 ? queryText.slice(0, 77) + "..." : queryText;
-      await updateThreadTitle(db, threadId, title);
+      await updateThreadTitle(db, threadId, fallback);
+
+      // Fire-and-forget: generate a 2-4 word summary title
+      generateSmartTitle(
+        db,
+        threadId,
+        queryText,
+        apiKey,
+        env.BASICSOS_API_URL,
+      ).catch(() => {});
     }
 
     const [crmSummary, ragContext] = await Promise.all([
@@ -234,4 +244,41 @@ export function createGatewayChatRoutes(
   });
 
   return app;
+}
+
+async function generateSmartTitle(
+  db: Db,
+  threadId: string,
+  queryText: string,
+  apiKey: string,
+  gatewayUrl: string,
+): Promise<void> {
+  const res = await fetch(`${gatewayUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "basics-chat-smart",
+      messages: [
+        {
+          role: "user",
+          content: `Summarize this conversation topic in 2-4 words. Reply with ONLY the title, no quotes or punctuation.\n\nUser: ${queryText.slice(0, 500)}`,
+        },
+      ],
+      stream: false,
+      max_tokens: 20,
+    }),
+  });
+
+  if (!res.ok) return;
+
+  const json = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  const title = json.choices?.[0]?.message?.content?.trim();
+  if (title && title.length > 0 && title.length <= 80) {
+    await updateThreadTitle(db, threadId, title);
+  }
 }

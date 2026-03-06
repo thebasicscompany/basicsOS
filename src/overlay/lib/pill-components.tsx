@@ -157,7 +157,10 @@ export const ResponseBody = ({
   response: { title: string; lines: string[] };
 }) => (
   <div>
-    <div
+    <motion.div
+      initial={{ opacity: 0, filter: "blur(4px)" }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
       style={{
         color: "#fff",
         fontSize: 13.5,
@@ -166,10 +169,17 @@ export const ResponseBody = ({
       }}
     >
       {response.lines[0]}
-    </div>
+    </motion.div>
     {response.lines.slice(1).map((line, i) => (
-      <div
+      <motion.div
         key={`${response.title}-${i}`}
+        initial={{ opacity: 0, filter: "blur(4px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        transition={{
+          duration: 0.35,
+          delay: (i + 1) * 0.08,
+          ease: "easeOut",
+        }}
         style={{
           color: "rgba(255,255,255,0.7)",
           fontSize: 12.5,
@@ -178,7 +188,7 @@ export const ResponseBody = ({
         }}
       >
         {line}
-      </div>
+      </motion.div>
     ))}
   </div>
 );

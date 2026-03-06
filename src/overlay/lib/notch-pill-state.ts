@@ -38,6 +38,8 @@ export type PillContext = {
   meetingActive: boolean;
   meetingId: string | null;
   meetingStartedAt: number | null;
+  lastResponseTitle: string;
+  lastResponseLines: string[];
 };
 
 export const initialPillContext: PillContext = {
@@ -50,6 +52,8 @@ export const initialPillContext: PillContext = {
   meetingActive: false,
   meetingId: null,
   meetingStartedAt: null,
+  lastResponseTitle: "",
+  lastResponseLines: [],
 };
 
 export const pillReducer = (
@@ -74,6 +78,8 @@ export const pillReducer = (
         responseTitle: "",
         responseLines: [],
         streamingText: "",
+        lastResponseTitle: "",
+        lastResponseLines: [],
       };
 
     case "DEACTIVATE":
@@ -82,6 +88,12 @@ export const pillReducer = (
         ...ctx,
         state: "idle",
         transcript: "",
+        lastResponseTitle:
+          ctx.responseTitle || ctx.lastResponseTitle,
+        lastResponseLines:
+          ctx.responseLines.length > 0
+            ? ctx.responseLines
+            : ctx.lastResponseLines,
         responseTitle: "",
         responseLines: [],
         streamingText: "",

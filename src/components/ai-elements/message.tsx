@@ -27,6 +27,7 @@ import {
   useState,
 } from "react";
 import { Streamdown } from "streamdown";
+import "streamdown/styles.css";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -332,7 +333,9 @@ export const MessageResponse = memo(
       {...props}
     />
   ),
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.isAnimating === nextProps.isAnimating,
 );
 
 MessageResponse.displayName = "MessageResponse";

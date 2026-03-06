@@ -117,16 +117,24 @@ export function ObjectListHeaderActions({
             onAddColumn={onAddColumn}
           />
           {viewState.isDirty && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 border border-blue-400/30 px-3 py-1.5 animate-in fade-in slide-in-from-right-2">
+              <div className="size-2 shrink-0 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                Unsaved changes
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-7 text-xs text-muted-foreground"
                 onClick={viewState.discard}
               >
-                Discard changes
+                Discard
               </Button>
-              <Button size="sm" className="h-8 text-xs" onClick={viewState.save}>
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={viewState.save}
+              >
                 Save for everyone
               </Button>
             </div>

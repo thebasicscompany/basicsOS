@@ -35,6 +35,7 @@ import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import type { ViewSort, ViewFilter, ViewColumn } from "@/types/views";
 import { cn } from "@/lib/utils";
+import { getAttributeDisplayName, isNameFieldId } from "@/lib/crm/display-name";
 import { buildColumnItems, type ColumnItem } from "./column-items";
 import { SortPopover } from "./SortPopover";
 import { FilterPopover } from "./FilterPopover";
@@ -176,7 +177,13 @@ export function DataTableToolbar({
         <SortFilterPills
           sorts={sorts}
           filters={filters}
-          getAttributeName={(fieldId) => attrMap.get(fieldId)?.name ?? fieldId}
+          getAttributeName={(fieldId) => {
+            const attr = attrMap.get(fieldId);
+            if (isNameFieldId(fieldId, attributes)) {
+              return getAttributeDisplayName(attr, attributes, true);
+            }
+            return getAttributeDisplayName(attr, attributes) || fieldId;
+          }}
           onRemoveSort={onRemoveSort}
           onRemoveFilter={onRemoveFilter}
           className="flex flex-wrap items-center gap-1.5"

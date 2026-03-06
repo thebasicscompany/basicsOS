@@ -24,6 +24,10 @@ import {
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import type { ViewFilter } from "@/types/views";
+import {
+  getAttributeDisplayName,
+  shouldHideSplitNameAttribute,
+} from "@/lib/crm/display-name";
 export interface FilterPopoverProps {
   attributes: Attribute[];
   filters: ViewFilter[];
@@ -45,7 +49,10 @@ export function FilterPopover({
   const [isAddingFilter, setIsAddingFilter] = React.useState(false);
 
   const filterableAttributes = React.useMemo(
-    () => attributes.filter((a) => !a.isSystem),
+    () =>
+      attributes.filter(
+        (a) => !a.isSystem && !shouldHideSplitNameAttribute(a, attributes),
+      ),
     [attributes],
   );
 
@@ -142,13 +149,13 @@ export function FilterPopover({
                     >
                       <SelectTrigger className="h-7 w-28 text-xs shrink-0">
                         <SelectValue>
-                          {attr?.name ?? filter.fieldId}
+                          {getAttributeDisplayName(attr, attributes) || filter.fieldId}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {filterableAttributes.map((a) => (
                           <SelectItem key={a.id} value={a.id}>
-                            {a.name}
+                            {getAttributeDisplayName(a, attributes)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -219,10 +226,10 @@ export function FilterPopover({
                       {filterableAttributes.map((a) => (
                         <CommandItem
                           key={a.id}
-                          value={a.name}
+                          value={getAttributeDisplayName(a, attributes)}
                           onSelect={() => handleAddFilter(a.id)}
                         >
-                          {a.name}
+                          {getAttributeDisplayName(a, attributes)}
                         </CommandItem>
                       ))}
                     </CommandList>

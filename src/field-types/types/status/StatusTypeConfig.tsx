@@ -1,13 +1,11 @@
-import { DotsThreeVerticalIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
+import { PlusIcon, XIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import type { TypeConfigProps, StatusOption } from "@/field-types/types";
 import { Input } from "@/components/ui/input";
-import {
-  TAG_COLOR_PALETTE,
-  getNextAvailableColor,
-  getStatusDotClass,
-} from "@/field-types/colors";
+import { getNextAvailableColor, getStatusDotClass } from "@/field-types/colors";
+import { ColorPickerDot } from "@/field-types/components/ColorPickerDot";
 import { cn } from "@/lib/utils";
+
 export function StatusTypeConfig({ config, onChange }: TypeConfigProps) {
   const [newLabel, setNewLabel] = useState("");
   const options: StatusOption[] = config.options ?? [];
@@ -34,15 +32,6 @@ export function StatusTypeConfig({ config, onChange }: TypeConfigProps) {
     });
   };
 
-  const toggleTerminal = (id: string) => {
-    onChange({
-      ...config,
-      options: options.map((o) =>
-        o.id === id ? { ...o, isTerminal: !o.isTerminal } : o,
-      ),
-    });
-  };
-
   const updateOptionColor = (id: string, color: string) => {
     onChange({
       ...config,
@@ -53,45 +42,28 @@ export function StatusTypeConfig({ config, onChange }: TypeConfigProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-medium text-muted-foreground">Options</p>
+      <div className="flex flex-col gap-1">
         {options.map((option) => {
           const dotColor = getStatusDotClass(option.label, option.color);
           return (
-            <div key={option.id} className="flex items-center gap-2">
-              <DotsThreeVerticalIcon className="text-muted-foreground h-4 w-4 shrink-0 cursor-grab" />
-              <span
-                className={cn("h-2.5 w-2.5 shrink-0 rounded-full", dotColor)}
+            <div
+              key={option.id}
+              className="group flex h-8 items-center gap-2.5 rounded-md px-2 hover:bg-muted/50"
+            >
+              <ColorPickerDot
+                currentColor={option.color ?? "gray"}
+                dotClass={cn("h-3 w-3", dotColor)}
+                onSelect={(color) => updateOptionColor(option.id, color)}
               />
-              <span className="flex-1 text-sm">{option.label}</span>
-              <div className="flex flex-wrap gap-1">
-                {TAG_COLOR_PALETTE.map((color) => (
-                  <button
-                    key={color.name}
-                    type="button"
-                    onClick={() => updateOptionColor(option.id, color.name)}
-                    className={cn(
-                      "h-4 w-4 rounded-full border",
-                      color.bg,
-                      color.border,
-                      option.color === color.name && "ring-primary ring-2 ring-offset-1",
-                    )}
-                  />
-                ))}
-              </div>
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
-                  checked={!!option.isTerminal}
-                  onChange={() => toggleTerminal(option.id)}
-                  className="h-3 w-3"
-                />
-                Terminal
-              </label>
+              <span className="min-w-0 flex-1 truncate text-sm">
+                {option.label}
+              </span>
               <button
                 type="button"
                 onClick={() => removeOption(option.id)}
-                className="text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
               >
                 <XIcon className="h-3 w-3" />
               </button>
@@ -115,7 +87,7 @@ export function StatusTypeConfig({ config, onChange }: TypeConfigProps) {
         <button
           type="button"
           onClick={addOption}
-          className="text-muted-foreground hover:text-foreground"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
         >
           <PlusIcon className="h-4 w-4" />
         </button>

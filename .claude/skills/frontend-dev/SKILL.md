@@ -29,3 +29,5 @@ The frontend uses React 19, TanStack Query, React Router v7, and Shadcn UI. Data
 - **Data table**: `DataTable` + `useDataTable` for list views. Supports pagination, sorting, column resize, and view persistence.
 - **Responsive**: Use `useIsMobile()` (or similar) when branching layouts. Deals have a kanban toggle via `DealsLayoutToggle`.
 - **Auth**: Session-based via Better Auth. Use `authClient` from `@/lib/auth-client` for sign-in/sign-out/session checks.
+
+For complete UI architecture reference (all pages, components, hooks, field types, interactions): see UI-REFERENCE.md in this directory.

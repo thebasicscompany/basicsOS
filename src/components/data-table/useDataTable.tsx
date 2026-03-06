@@ -8,8 +8,20 @@ import {
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import { getRecordValue } from "@/lib/crm/field-mapper";
+import {
+  getNameAttributes,
+  getRecordDisplayName,
+  shouldHideSplitNameAttribute,
+} from "@/lib/crm/display-name";
 import type { ViewColumn, ViewSort } from "@/types/views";
 import { PlusIcon } from "@phosphor-icons/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Cell } from "@/components/cells";
 import { getVisibleAttributes, parseWidth } from "./utils";
 
@@ -31,7 +43,9 @@ export interface DataTableProps {
   onSwapColumns?: (fieldIdA: string, fieldIdB: string) => void;
   onAddSort?: (fieldId: string, direction: "asc" | "desc") => void;
   onHideColumn?: (fieldId: string) => void;
+  onShowColumn?: (fieldId: string) => void;
   onRenameColumn?: (fieldId: string, title: string) => void;
+  onEditAttribute?: (fieldId: string) => void;
   pagination: { page: number; perPage: number };
   onPaginationChange: (page: number, perPage: number) => void;
   sorts?: ViewSort[];
@@ -106,6 +120,23 @@ export function useDataTable(props: DataTableProps) {
     [attributes, viewColumns, data],
   );
 
+  const hiddenColumns = React.useMemo(() => {
+    const visibleFieldIds = new Set(visibleCols.map((c) => c.attribute.id));
+    return attributes.filter(
+      (a) =>
+        !a.isSystem &&
+        a.columnName !== "organization_id" &&
+        a.columnName !== "Id" &&
+        !visibleFieldIds.has(a.id) &&
+        !shouldHideSplitNameAttribute(a, attributes),
+    );
+  }, [attributes, visibleCols]);
+
+  const { firstNameAttr, usesSplitName } = React.useMemo(
+    () => getNameAttributes(attributes),
+    [attributes],
+  );
+
   const sortableColumnIds = React.useMemo(
     () => visibleCols.map((c) => c.attribute.id),
     [visibleCols],
@@ -116,6 +147,10 @@ export function useDataTable(props: DataTableProps) {
 
     for (const { attribute, viewColumn } of visibleCols) {
       const fieldType = getFieldType(attribute.uiType);
+      const isCombinedNameColumn =
+        usesSplitName &&
+        firstNameAttr != null &&
+        attribute.columnName === firstNameAttr.columnName;
       const hasExplicitWidth =
         (columnWidths[attribute.id] ?? 0) > 0 ||
         (viewColumn.width != null && viewColumn.width !== "");
@@ -125,22 +160,25 @@ export function useDataTable(props: DataTableProps) {
 
       cols.push({
         id: attribute.id,
-        accessorFn: (row) => getRecordValue(row, attribute.columnName),
+        accessorFn: (row) =>
+          isCombinedNameColumn
+            ? getRecordDisplayName(row, attributes)
+            : getRecordValue(row, attribute.columnName),
         size: colWidth,
         minSize: hasExplicitWidth ? 60 : 1,
         enableResizing: true,
         meta: { fitContent: !hasExplicitWidth } as Record<string, unknown>,
         header: () => {
-          const displayName = attribute.isPrimary
-            ? singularName
+          const displayName = isCombinedNameColumn
+            ? "Name"
+            : attribute.isPrimary
+              ? singularName
             : (viewColumn.title || attribute.name);
+          const HeaderIcon = fieldType.icon;
           return (
             <div className="flex items-center gap-1.5 text-xs font-medium truncate">
               <span className="text-muted-foreground">
-                {attribute.icon ??
-                  (fieldType.icon ? (
-                    <fieldType.icon className="size-3.5" />
-                  ) : null)}
+                {HeaderIcon ? <HeaderIcon className="size-3.5" /> : null}
               </span>
               <span className="truncate">{displayName}</span>
             </div>
@@ -159,7 +197,11 @@ export function useDataTable(props: DataTableProps) {
           return (
             <Cell
               attribute={attribute}
-              value={getRecordValue(row.original, attribute.columnName)}
+              value={
+                isCombinedNameColumn
+                  ? getRecordDisplayName(row.original, attributes)
+                  : getRecordValue(row.original, attribute.columnName)
+              }
               isSelected={isSel}
               isEditing={isEdit}
               onStartEditing={() => setEditingCell({ rowIndex, colId })}
@@ -194,26 +236,56 @@ export function useDataTable(props: DataTableProps) {
       });
     }
 
-    cols.push({
-      id: "_addColumn",
-      size: 40,
-      minSize: 40,
-      maxSize: 40,
-      enableResizing: false,
-      header: () =>
-        onAddColumn ? (
-          <button
-            className="flex items-center justify-center w-full h-full text-muted-foreground hover:text-foreground"
-            onClick={onAddColumn}
-          >
-            <PlusIcon className="size-4" />
-          </button>
-        ) : null,
-      cell: () => null,
-    });
+    const hasColumnActions = onAddColumn || props.onShowColumn;
+    if (hasColumnActions) {
+      cols.push({
+        id: "_addColumn",
+        size: 120,
+        minSize: 80,
+        enableResizing: false,
+        meta: { fitContent: true } as Record<string, unknown>,
+        header: () => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 w-full h-full text-muted-foreground hover:text-foreground text-xs">
+                <PlusIcon className="size-3.5" />
+                <span>Add column</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
+              {hiddenColumns.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
+                    Show column
+                  </div>
+                  {hiddenColumns.map((attr) => (
+                    <DropdownMenuItem
+                      key={attr.id}
+                      onSelect={() => props.onShowColumn?.(attr.id)}
+                    >
+                      {attr.name}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {hiddenColumns.length > 0 && onAddColumn && (
+                <DropdownMenuSeparator />
+              )}
+              {onAddColumn && (
+                <DropdownMenuItem onSelect={onAddColumn}>
+                  <PlusIcon className="size-3.5 mr-2" />
+                  Create new field
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        cell: () => null,
+      });
+    }
 
     return cols;
-  }, [visibleCols, hiddenEmptyCount, columnWidths, onCellUpdate, onAddColumn, singularName]);
+  }, [visibleCols, hiddenEmptyCount, hiddenColumns, columnWidths, onCellUpdate, onAddColumn, props.onShowColumn, singularName, attributes]);
 
   const table = useReactTable({
     data,
@@ -392,5 +464,7 @@ export function useDataTable(props: DataTableProps) {
     onAddSort,
     onHideColumn,
     onRenameColumn,
+    onEditAttribute: props.onEditAttribute,
+    onShowColumn: props.onShowColumn,
   };
 }

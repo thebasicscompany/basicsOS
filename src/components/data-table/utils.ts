@@ -1,5 +1,6 @@
 import type { Attribute } from "@/field-types/types";
 import type { ViewColumn } from "@/types/views";
+import { getNameAttributes } from "@/lib/crm/display-name";
 export function getVisibleAttributes(
   attributes: Attribute[],
   viewColumns: ViewColumn[],
@@ -24,7 +25,15 @@ export function getVisibleAttributes(
     (item) => item.attribute.columnName !== "organization_id",
   );
 
-  const visible = [...colsWithoutOrgId];
+  const { lastNameAttr, usesSplitName } = getNameAttributes(attributes);
+  const visible = colsWithoutOrgId.filter(
+    (item) =>
+      !(
+        usesSplitName &&
+        lastNameAttr &&
+        item.attribute.columnName === lastNameAttr.columnName
+      ),
+  );
 
   // Ensure primary attribute is always first
   const primaryIdx = visible.findIndex((item) => item.attribute.isPrimary);

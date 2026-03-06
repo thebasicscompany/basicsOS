@@ -5,6 +5,7 @@ import {
   type HeaderGroup,
 } from "@tanstack/react-table";
 import { TableHeader, TableRow, TableHead } from "@/components/ui/table";
+import { getNameAttributes } from "@/lib/crm/display-name";
 import { ColumnHeaderMenu } from "./ColumnHeaderMenu";
 import { ColumnResizeHandle } from "./ColumnResizeHandle";
 import type { Attribute } from "@/field-types/types";
@@ -19,6 +20,7 @@ interface DataTableHeaderProps<T> {
   onHideColumn?: (fieldId: string) => void;
   onRenameColumn?: (fieldId: string, title: string) => void;
   onMoveColumn?: (fieldId: string, direction: "left" | "right") => void;
+  onEditAttribute?: (fieldId: string) => void;
 }
 
 export function DataTableHeader<T extends Record<string, unknown>>({
@@ -31,7 +33,13 @@ export function DataTableHeader<T extends Record<string, unknown>>({
   onHideColumn,
   onRenameColumn,
   onMoveColumn,
+  onEditAttribute,
 }: DataTableHeaderProps<T>) {
+  const { firstNameAttr, usesSplitName } = React.useMemo(
+    () => getNameAttributes(visibleCols.map((col) => col.attribute)),
+    [visibleCols],
+  );
+
   return (
     <TableHeader>
       {headerGroups.map((headerGroup) => (
@@ -74,8 +82,14 @@ export function DataTableHeader<T extends Record<string, unknown>>({
                 );
 
             if (isDataColumn && visCol) {
-              const displayTitle = visCol.attribute.isPrimary
-                ? singularName
+              const isCombinedNameColumn =
+                usesSplitName &&
+                firstNameAttr != null &&
+                visCol.attribute.columnName === firstNameAttr.columnName;
+              const displayTitle = isCombinedNameColumn
+                ? "Name"
+                : visCol.attribute.isPrimary
+                  ? singularName
                 : (visCol.viewColumn.title || visCol.attribute.name);
 
               return (
@@ -97,6 +111,11 @@ export function DataTableHeader<T extends Record<string, unknown>>({
                     onMoveRight={() => onMoveColumn?.(header.id, "right")}
                     onRename={(title) => onRenameColumn?.(header.id, title)}
                     onHide={() => onHideColumn?.(header.id)}
+                    onEditAttribute={
+                      onEditAttribute
+                        ? () => onEditAttribute(header.id)
+                        : undefined
+                    }
                   >
                     {headerContent}
                   </ColumnHeaderMenu>

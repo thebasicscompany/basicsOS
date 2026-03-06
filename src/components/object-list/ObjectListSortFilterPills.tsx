@@ -1,6 +1,7 @@
 import { SortFilterPills } from "@/components/data-table/SortFilterPills";
 import type { ViewSort, ViewFilter } from "@/types/views";
 import type { Attribute } from "@/field-types/types";
+import { getAttributeDisplayName, isNameFieldId } from "@/lib/crm/display-name";
 
 export interface ObjectListSortFilterPillsProps {
   sorts: ViewSort[];
@@ -21,7 +22,14 @@ export function ObjectListSortFilterPills({
     <SortFilterPills
       sorts={sorts}
       filters={filters}
-      getAttributeName={(fieldId) => attrMap.get(fieldId)?.name ?? fieldId}
+      getAttributeName={(fieldId) => {
+        const allAttrs = Array.from(attrMap.values());
+        const attr = attrMap.get(fieldId);
+        if (isNameFieldId(fieldId, allAttrs)) {
+          return getAttributeDisplayName(attr, allAttrs, true);
+        }
+        return getAttributeDisplayName(attr, allAttrs) || fieldId;
+      }}
       onRemoveSort={onRemoveSort}
       onRemoveFilter={onRemoveFilter}
       className="flex shrink-0 flex-wrap items-center gap-1.5"

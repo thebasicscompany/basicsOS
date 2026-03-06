@@ -5,6 +5,7 @@ import { showError } from "@/lib/show-error";
 import { DataTable, buildColumnItems } from "@/components/data-table";
 import { CreateRecordModal } from "@/components/create-record/CreateRecordModal";
 import { CreateAttributeModal } from "@/components/create-attribute/CreateAttributeModal";
+import { EditAttributeDialog } from "@/components/create-attribute/EditAttributeDialog";
 import { RecordDetailDeleteDialog } from "@/components/record-detail";
 import {
   DealsLayoutToggle,
@@ -13,9 +14,14 @@ import {
   ObjectListViewTabs,
 } from "@/components/object-list";
 import { DealsKanbanBoard } from "@/components/deals/DealsKanbanBoard";
-import { getRecordValue } from "@/lib/crm/field-mapper";
+import {
+  getNameAttributes,
+  getRecordDisplayName,
+  parseCombinedName,
+} from "@/lib/crm/display-name";
 import {
   buildAttributeWritePayload,
+  buildRecordWritePayload,
   normalizeFilterOperator,
   normalizeFilterValue,
 } from "@/lib/crm/field-utils";
@@ -36,6 +42,7 @@ export function ObjectListPage() {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
+  const [editAttrFieldId, setEditAttrFieldId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     recordId: number;
     record: Record<string, unknown>;
@@ -54,9 +61,25 @@ export function ObjectListPage() {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const perPage = parseInt(searchParams.get("perPage") ?? "25", 10) || 25;
 
-  const layout = searchParams.get("layout") === "kanban" ? "kanban" : "table";
+  const isDeals = objectSlug === "deals";
+  const layoutKey = `basics-os:layout:${objectSlug}`;
+  const layout = (() => {
+    const fromParams = searchParams.get("layout");
+    if (fromParams === "kanban") return "kanban" as const;
+    if (fromParams === "table") return "table" as const;
+    if (isDeals) {
+      try {
+        const stored = localStorage.getItem(layoutKey);
+        if (stored === "kanban") return "kanban" as const;
+      } catch { /* ignore */ }
+    }
+    return "table" as const;
+  })();
   const setLayout = useCallback(
     (newLayout: "table" | "kanban") => {
+      try {
+        localStorage.setItem(layoutKey, newLayout);
+      } catch { /* ignore */ }
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -67,9 +90,8 @@ export function ObjectListPage() {
         { replace: true },
       );
     },
-    [setSearchParams],
+    [setSearchParams, layoutKey],
   );
-  const isDeals = objectSlug === "deals";
 
   const sortParam = useMemo(
     () =>
@@ -130,6 +152,25 @@ export function ObjectListPage() {
       const attribute = attributes.find((attr) => attr.columnName === columnName);
       if (!attribute) return;
 
+      const { firstNameAttr, lastNameAttr, usesSplitName } =
+        getNameAttributes(attributes);
+
+      if (
+        usesSplitName &&
+        firstNameAttr &&
+        attribute.columnName === firstNameAttr.columnName
+      ) {
+        const parsed = parseCombinedName(value);
+        updateRecord.mutate({
+          id: recordId,
+          data: buildRecordWritePayload(attributes, {
+            [firstNameAttr.columnName]: parsed.firstName,
+            ...(lastNameAttr && { [lastNameAttr.columnName]: parsed.lastName }),
+          }),
+        });
+        return;
+      }
+
       updateRecord.mutate({
         id: recordId,
         data: buildAttributeWritePayload(attribute, value),
@@ -152,16 +193,9 @@ export function ObjectListPage() {
     [],
   );
 
-  const primaryAttr = useMemo(
-    () => attributes.find((a) => a.isPrimary),
-    [attributes],
-  );
-
   const deleteDisplayName = deleteTarget
     ? (() => {
-        if (!primaryAttr) return "Unnamed";
-        const val = getRecordValue(deleteTarget.record, primaryAttr.columnName);
-        return typeof val === "string" && val ? val : "Unnamed";
+        return getRecordDisplayName(deleteTarget.record, attributes);
       })()
     : "";
 
@@ -382,6 +416,15 @@ export function ObjectListPage() {
                 const vc = viewState.columns.find((c) => c.fieldId === fieldId);
                 if (vc) viewState.updateColumn(vc.id, { title });
               }}
+              onEditAttribute={(fieldId) => setEditAttrFieldId(fieldId)}
+              onShowColumn={(fieldId) => {
+                const vc = viewState.columns.find((c) => c.fieldId === fieldId);
+                if (vc) {
+                  viewState.updateColumn(vc.id, { show: true });
+                } else {
+                  viewState.updateColumn(`virtual-${fieldId}`, { show: true });
+                }
+              }}
               pagination={{ page, perPage }}
               onPaginationChange={handlePaginationChange}
               sorts={viewState.sorts}
@@ -416,6 +459,17 @@ export function ObjectListPage() {
           displayName={deleteDisplayName}
           onConfirm={handleDeleteConfirm}
           isDeleting={deleteRecord.isPending}
+        />
+
+        <EditAttributeDialog
+          attribute={
+            editAttrFieldId
+              ? attributes.find((a) => a.id === editAttrFieldId) ?? null
+              : null
+          }
+          objectSlug={objectSlug}
+          open={editAttrFieldId != null}
+          onOpenChange={(open) => !open && setEditAttrFieldId(null)}
         />
       </div>
     </>

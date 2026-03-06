@@ -184,6 +184,48 @@ export function useCreateColumn() {
 }
 
 /**
+ * Update a custom field's label or options.
+ * PATCH /api/custom_field_defs/:id
+ */
+export function useUpdateColumn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      columnId: string;
+      name?: string;
+      label?: string;
+      options?: Array<
+        | string
+        | {
+            id: string;
+            label: string;
+            color?: string;
+            order?: number;
+            isTerminal?: boolean;
+          }
+      >;
+    }) => {
+      const id = params.columnId.startsWith("custom_")
+        ? params.columnId.slice(7)
+        : params.columnId;
+      const body: Record<string, unknown> = {};
+      if (params.name !== undefined) body.name = params.name;
+      if (params.label !== undefined) body.label = params.label;
+      if (params.options !== undefined) body.options = params.options;
+      return fetchApi<CustomFieldDef>(`/api/custom_field_defs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["columns"] });
+      qc.invalidateQueries({ queryKey: ["object-config"] });
+      qc.invalidateQueries({ queryKey: ["records"] });
+    },
+  });
+}
+
+/**
  * Delete a custom field.
  * DELETE /api/custom_field_defs/:id (columnId is "custom_42" or numeric string)
  */

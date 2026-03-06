@@ -6,11 +6,13 @@ import {
   ArrowRightIcon,
   PencilSimpleIcon,
   EyeSlashIcon,
+  GearIcon,
 } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,7 @@ interface ColumnHeaderMenuProps {
   onMoveRight: () => void;
   onRename: (title: string) => void;
   onHide: () => void;
+  onEditAttribute?: () => void;
   children: React.ReactNode;
 }
 
@@ -41,6 +44,7 @@ export function ColumnHeaderMenu({
   onMoveRight,
   onRename,
   onHide,
+  onEditAttribute,
   children,
 }: ColumnHeaderMenuProps) {
   const [isEditing, setIsEditing] = React.useState(false);
@@ -121,6 +125,15 @@ export function ColumnHeaderMenu({
               <PencilSimpleIcon className="size-4 mr-2" />
               Edit column label
             </DropdownMenuItem>
+            {onEditAttribute && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={onEditAttribute}>
+                  <GearIcon className="size-4 mr-2" />
+                  Edit field
+                </DropdownMenuItem>
+              </>
+            )}
             {!isPrimary && (
               <DropdownMenuItem onSelect={onHide}>
                 <EyeSlashIcon className="size-4 mr-2" />

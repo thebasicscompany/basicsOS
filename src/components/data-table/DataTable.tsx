@@ -34,6 +34,7 @@ export function DataTable(props: DataTableProps) {
     onAddSort,
     onHideColumn,
     onRenameColumn,
+    onEditAttribute,
   } = useDataTable(props);
 
   return (
@@ -77,6 +78,7 @@ export function DataTable(props: DataTableProps) {
               onHideColumn={onHideColumn}
               onRenameColumn={onRenameColumn}
               onMoveColumn={handleMoveColumn}
+              onEditAttribute={onEditAttribute}
             />
             <DataTableBody
               table={table}

@@ -1,11 +1,27 @@
-import { useParams, Link } from "react-router";
-import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { useParams, Link, useNavigate } from "react-router";
+import {
+  ArrowLeftIcon,
+  NoteIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  CaretRightIcon,
+  CaretLeftIcon,
+  DotsThreeIcon,
+  CopyIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DetailField } from "@/components/cells";
 import { getRecordValue } from "@/lib/crm/field-mapper";
 import {
   DetailSkeleton,
+  EditableRecordName,
   NotesTabContent,
   RecordDetailDetailsSidebar,
   RecordDetailDeleteDialog,
@@ -14,6 +30,7 @@ import {
 
 export function RecordDetailPage() {
   const { objectSlug = "" } = useParams<{ objectSlug: string }>();
+  const navigate = useNavigate();
   const {
     objectSlug: objSlug,
     numericRecordId,
@@ -22,6 +39,11 @@ export function RecordDetailPage() {
     isPending,
     isError,
     displayName,
+    nameFieldLabel,
+    nameEditorMode,
+    nameSingleValue,
+    nameFirstValue,
+    nameLastValue,
     activeTab,
     setActiveTab,
     confirmDeleteOpen,
@@ -34,8 +56,15 @@ export function RecordDetailPage() {
     emptyFieldsCount,
     breadcrumbPortal,
     headerActionsPortal,
+    handleNameSave,
     handleFieldSave,
     handleDelete,
+    handleDuplicate,
+    listIdsLength,
+    prevId,
+    nextId,
+    onPrev,
+    onNext,
     deleteRecord,
   } = useRecordDetail();
 
@@ -47,9 +76,9 @@ export function RecordDetailPage() {
           No object with slug &ldquo;{objectSlug}&rdquo; exists.
         </p>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/dashboard">
+          <Link to="/home">
             <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
-            Back to dashboard
+            Back to home
           </Link>
         </Button>
       </div>
@@ -80,8 +109,79 @@ export function RecordDetailPage() {
     <>
       {breadcrumbPortal}
       {headerActionsPortal}
-      <div className="space-y-6 pt-4 pb-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+
+      <div className="space-y-5 pb-8">
+        {/* Record header — single line with inline actions */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            onClick={() => navigate(`/objects/${objectSlug}`)}
+          >
+            <ArrowLeftIcon className="size-4" />
+          </Button>
+          <EditableRecordName
+            variant="heading"
+            displayName={displayName}
+            label={nameFieldLabel}
+            mode={nameEditorMode}
+            singleValue={nameSingleValue}
+            firstName={nameFirstValue}
+            lastName={nameLastValue}
+            onSave={handleNameSave}
+          />
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {obj.singularName}
+          </span>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {listIdsLength > 1 && (
+              <div className="flex">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-r-none"
+                  disabled={prevId == null}
+                  onClick={onPrev}
+                >
+                  <CaretLeftIcon className="size-3.5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 rounded-l-none border-l-0"
+                  disabled={nextId == null}
+                  onClick={onNext}
+                >
+                  <CaretRightIcon className="size-3.5" />
+                </Button>
+              </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-7 w-7">
+                  <DotsThreeIcon className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleDuplicate}>
+                  <CopyIcon className="mr-2 h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  <TrashIcon className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Main content grid */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_440px]">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -90,37 +190,54 @@ export function RecordDetailPage() {
               <TabsTrigger value="tasks">Tasks</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-4 space-y-6">
-              <div className="space-y-0.5">
-                {visibleEditableAttributes.map((attr) => (
-                  <DetailField
-                    key={attr.id}
-                    attribute={attr}
-                    value={getRecordValue(rec, attr.columnName)}
-                    onSave={handleFieldSave(attr)}
-                  />
-                ))}
-                {!showAllFields && hiddenCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-muted-foreground -ml-1"
-                    onClick={() => setShowAllFields(true)}
-                  >
-                    Show {hiddenCount} empty{" "}
-                    {hiddenCount === 1 ? "field" : "fields"}
-                  </Button>
-                )}
-                {showAllFields && emptyFieldsCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-muted-foreground -ml-1"
-                    onClick={() => setShowAllFields(false)}
-                  >
-                    Hide empty fields
-                  </Button>
-                )}
+            {/* Overview: recent activity feed + quick links */}
+            <TabsContent value="overview" className="mt-4 space-y-5">
+              {/* Recent Activity */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("activity")}
+                  className="group mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                >
+                  <ClockIcon className="size-3.5" />
+                  Activity
+                  <CaretRightIcon className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+                <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  No recent activity.
+                </div>
+              </div>
+
+              {/* Recent Notes */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("notes")}
+                  className="group mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                >
+                  <NoteIcon className="size-3.5" />
+                  Notes
+                  <CaretRightIcon className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+                <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  No notes yet.
+                </div>
+              </div>
+
+              {/* Recent Tasks */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("tasks")}
+                  className="group mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                >
+                  <CheckCircleIcon className="size-3.5" />
+                  Tasks
+                  <CaretRightIcon className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+                <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  No tasks yet.
+                </div>
               </div>
             </TabsContent>
 
@@ -145,11 +262,18 @@ export function RecordDetailPage() {
           </Tabs>
 
           <RecordDetailDetailsSidebar
+            displayName={displayName}
+            nameFieldLabel={nameFieldLabel}
+            nameEditorMode={nameEditorMode}
+            nameSingleValue={nameSingleValue}
+            nameFirstValue={nameFirstValue}
+            nameLastValue={nameLastValue}
             record={rec}
             visibleEditableAttributes={visibleEditableAttributes}
             systemAttributes={systemAttributes}
             showAllFields={showAllFields}
             hiddenCount={hiddenCount}
+            onNameSave={handleNameSave}
             onFieldSave={handleFieldSave}
             onShowAllFields={() => setShowAllFields(true)}
             onHideEmptyFields={() => setShowAllFields(false)}

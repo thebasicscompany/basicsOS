@@ -6,6 +6,10 @@ import { showError } from "@/lib/show-error";
 import { getFieldType } from "@/field-types";
 import { getRecordValue } from "@/lib/crm/field-mapper";
 import {
+  getNameAttributes,
+  getRecordDisplayName,
+} from "@/lib/crm/display-name";
+import {
   buildAttributeWritePayload,
   buildRecordWritePayload,
 } from "@/lib/crm/field-utils";
@@ -27,7 +31,6 @@ import {
   usePageHeaderActions,
 } from "@/contexts/page-header";
 import { RecordDetailBreadcrumb } from "./RecordDetailBreadcrumb";
-import { RecordDetailHeaderActions } from "./RecordDetailHeaderActions";
 import type { ObjectConfig } from "@/types/objects";
 import type { UseMutationResult } from "@tanstack/react-query";
 
@@ -41,6 +44,11 @@ export interface UseRecordDetailReturn {
   isPending: boolean;
   isError: boolean;
   displayName: string;
+  nameFieldLabel: string;
+  nameEditorMode: "single" | "split" | "none";
+  nameSingleValue: string;
+  nameFirstValue: string;
+  nameLastValue: string;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   confirmDeleteOpen: boolean;
@@ -54,8 +62,19 @@ export interface UseRecordDetailReturn {
   emptyFieldsCount: number;
   breadcrumbPortal: ReactNode;
   headerActionsPortal: ReactNode;
+  handleNameSave: (value: {
+    singleValue?: string;
+    firstName?: string;
+    lastName?: string;
+  }) => void;
   handleFieldSave: (attr: Attribute) => (value: unknown) => void;
   handleDelete: () => Promise<void>;
+  handleDuplicate: () => Promise<void>;
+  listIdsLength: number;
+  prevId: number | null;
+  nextId: number | null;
+  onPrev: () => void;
+  onNext: () => void;
   deleteRecord: UseMutationResult<unknown, Error, string | number, unknown>;
 }
 
@@ -103,16 +122,46 @@ export function useRecordDetail(): UseRecordDetailReturn {
     if (hash === "#notes") setActiveTab("notes");
   }, []);
 
-  const primaryAttr = useMemo(
-    () => attributes.find((a) => a.isPrimary),
+  const { primaryAttr, firstNameAttr, lastNameAttr, usesSplitName } = useMemo(
+    () => getNameAttributes(attributes),
     [attributes],
   );
 
   const displayName = useMemo(() => {
-    if (!record || !primaryAttr) return "\u2026";
-    const val = (record as Record<string, unknown>)[primaryAttr.columnName];
-    return typeof val === "string" && val ? val : "Unnamed";
-  }, [record, primaryAttr]);
+    if (!record) return "\u2026";
+    return getRecordDisplayName(record as Record<string, unknown>, attributes);
+  }, [record, attributes]);
+  const nameFieldLabel = usesSplitName ? "Name" : primaryAttr?.name ?? "Name";
+  const nameEditorMode = usesSplitName
+    ? "split"
+    : primaryAttr
+      ? "single"
+      : "none";
+  const nameSingleValue =
+    record && primaryAttr
+      ? String(
+          getRecordValue(record as Record<string, unknown>, primaryAttr.columnName) ??
+            "",
+        )
+      : "";
+  const nameFirstValue =
+    record && firstNameAttr
+      ? String(
+          getRecordValue(
+            record as Record<string, unknown>,
+            firstNameAttr.columnName,
+          ) ?? "",
+        )
+      : "";
+  const nameLastValue =
+    record && lastNameAttr
+      ? String(
+          getRecordValue(
+            record as Record<string, unknown>,
+            lastNameAttr.columnName,
+          ) ?? "",
+        )
+      : "";
 
   usePageTitle("");
 
@@ -184,43 +233,12 @@ export function useRecordDetail(): UseRecordDetailReturn {
       <RecordDetailBreadcrumb
         objectSlug={objectSlug}
         obj={obj}
-        recordName={
-          primaryAttr
-            ? typeof (record as Record<string, unknown>)[
-                primaryAttr.columnName
-              ] === "string" &&
-              (record as Record<string, unknown>)[primaryAttr.columnName]
-              ? String(
-                  (record as Record<string, unknown>)[primaryAttr.columnName],
-                )
-              : "Unnamed"
-            : "\u2026"
-        }
+        recordName={displayName}
       />
     ) : null;
   const breadcrumbPortal = usePageHeaderBreadcrumb(breadcrumbForHeader);
 
-  const headerActionsNode =
-    obj && record ? (
-      <RecordDetailHeaderActions
-        listIdsLength={listIds.length}
-        prevId={prevId}
-        nextId={nextId}
-        isFavorite={isFavorite}
-        onBack={() => navigate(`/objects/${objectSlug}`)}
-        onPrev={() =>
-          prevId != null && navigate(`/objects/${objectSlug}/${prevId}`)
-        }
-        onNext={() =>
-          nextId != null && navigate(`/objects/${objectSlug}/${nextId}`)
-        }
-        onToggleFavorite={handleToggleFavorite}
-        onEdit={() => navigate(`/objects/${objectSlug}/${recordId}`)}
-        onDuplicate={handleDuplicate}
-        onDeleteOpen={() => setConfirmDeleteOpen(true)}
-      />
-    ) : null;
-  const headerActionsPortal = usePageHeaderActions(headerActionsNode);
+  const headerActionsPortal = usePageHeaderActions(null);
 
   useEffect(() => {
     if (!record || !obj || !recordId) return;
@@ -268,6 +286,42 @@ export function useRecordDetail(): UseRecordDetailReturn {
     return () => window.removeEventListener("keydown", handler);
   }, [navigate, objectSlug, confirmDeleteOpen]);
 
+  const handleNameSave = useCallback(
+    (value: {
+      singleValue?: string;
+      firstName?: string;
+      lastName?: string;
+    }) => {
+      if (!recordId) return;
+
+      const data =
+        usesSplitName && (firstNameAttr || lastNameAttr)
+          ? buildRecordWritePayload(attributes, {
+              ...(firstNameAttr && {
+                [firstNameAttr.columnName]: value.firstName ?? "",
+              }),
+              ...(lastNameAttr && {
+                [lastNameAttr.columnName]: value.lastName ?? "",
+              }),
+            })
+          : primaryAttr
+            ? buildAttributeWritePayload(primaryAttr, value.singleValue ?? "")
+            : null;
+
+      if (!data) return;
+
+      updateRecord.mutate(
+        { id: recordId, data },
+        {
+          onError: () => {
+            toast.error("Failed to save name");
+          },
+        },
+      );
+    },
+    [recordId, usesSplitName, firstNameAttr, lastNameAttr, attributes, primaryAttr, updateRecord],
+  );
+
   const handleFieldSave = useCallback(
     (attr: Attribute) => (value: unknown) => {
       if (!recordId) return;
@@ -296,12 +350,24 @@ export function useRecordDetail(): UseRecordDetailReturn {
     }
   }, [recordId, deleteRecord, navigate, objectSlug, obj]);
 
+  const hiddenNameColumns = useMemo(
+    () =>
+      new Set(
+        [
+          primaryAttr?.columnName,
+          usesSplitName ? firstNameAttr?.columnName : undefined,
+          usesSplitName ? lastNameAttr?.columnName : undefined,
+        ].filter((columnName): columnName is string => Boolean(columnName)),
+      ),
+    [primaryAttr, usesSplitName, firstNameAttr, lastNameAttr],
+  );
+
   const editableAttributes = useMemo(
     () =>
       attributes
-        .filter((a) => !a.isSystem && !a.isPrimary)
+        .filter((a) => !a.isSystem && !hiddenNameColumns.has(a.columnName))
         .sort((a, b) => a.order - b.order),
-    [attributes],
+    [attributes, hiddenNameColumns],
   );
 
   const systemAttributes = useMemo(
@@ -350,6 +416,11 @@ export function useRecordDetail(): UseRecordDetailReturn {
     isPending,
     isError,
     displayName,
+    nameFieldLabel,
+    nameEditorMode,
+    nameSingleValue,
+    nameFirstValue,
+    nameLastValue,
     activeTab,
     setActiveTab,
     confirmDeleteOpen,
@@ -363,8 +434,15 @@ export function useRecordDetail(): UseRecordDetailReturn {
     emptyFieldsCount,
     breadcrumbPortal,
     headerActionsPortal,
+    handleNameSave,
     handleFieldSave,
     handleDelete,
+    handleDuplicate,
+    listIdsLength: listIds.length,
+    prevId,
+    nextId,
+    onPrev: () => prevId != null && navigate(`/objects/${objectSlug}/${prevId}`),
+    onNext: () => nextId != null && navigate(`/objects/${objectSlug}/${nextId}`),
     updateRecord,
     deleteRecord,
   };

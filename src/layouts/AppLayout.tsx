@@ -5,6 +5,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
@@ -44,17 +45,34 @@ function PageErrorFallback({
 }
 
 function LayoutHeader() {
+  const location = useLocation();
+  const { state } = useSidebar();
   const title = usePageHeaderTitle();
   const titleSlotInUse = useTitleSlotInUse();
   const registerBreadcrumbContainer = useRegisterBreadcrumbContainer();
   const registerTitleSlotContainer = useRegisterTitleSlotContainer();
+  const isBuilder = /^\/automations\/(create|\d+)/.test(location.pathname);
+  const isRecordDetail = /^\/objects\/[^/]+\/\d+/.test(location.pathname);
   return (
     <header className="drag-region flex h-[52px] shrink-0 items-center gap-3 bg-surface-canvas">
-      {/* Traffic light zone (0-76px), 24px gap, then toggle — matches Wispr Flow ratios */}
-      <div className="flex items-center pl-[92px]">
+      <div
+        className={
+          state === "collapsed"
+            ? "flex w-(--sidebar-width-icon) shrink-0 items-center justify-center"
+            : "flex w-(--sidebar-width) shrink-0 items-center pl-[92px]"
+        }
+      >
         <SidebarTrigger className="size-8 shrink-0" />
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div
+        className={
+          isBuilder
+            ? "flex min-w-0 flex-1 items-center gap-2 pl-0 pr-14"
+            : isRecordDetail
+              ? "flex min-w-0 flex-1 items-center gap-2 px-6"
+              : "flex min-w-0 flex-1 items-center gap-2 px-14"
+        }
+      >
         {titleSlotInUse && (
           <div
             ref={registerTitleSlotContainer}
@@ -76,18 +94,21 @@ function LayoutContent() {
   const title = usePageHeaderTitle();
   const registerActionsContainer = useRegisterActionsContainer();
   const isBuilder = /^\/automations\/(create|\d+)/.test(location.pathname);
+  const isRecordDetail = /^\/objects\/[^/]+\/\d+/.test(location.pathname);
   return (
     <div className="flex flex-1 min-h-0 flex-col">
       <div
         className={
           isBuilder
             ? "flex w-full flex-1 flex-col min-h-0 pl-0 pr-14 pt-8"
-            : "flex w-full flex-1 flex-col px-14 pt-8 min-h-0"
+            : isRecordDetail
+              ? "flex w-full flex-1 flex-col px-6 pt-6 min-h-0"
+              : "flex w-full flex-1 flex-col px-14 pt-8 min-h-0"
         }
         id="main-content"
       >
         {/* Page title + actions bar */}
-        <div className="flex shrink-0 items-center gap-2.5 pb-6 empty:hidden">
+        <div className="flex shrink-0 items-center gap-2.5 [&:has(>:not(:empty))]:pb-6">
           {title && (
             <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
           )}

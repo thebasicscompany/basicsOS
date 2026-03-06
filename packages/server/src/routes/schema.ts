@@ -25,6 +25,7 @@ const SYSTEM_COLUMNS = new Set([
   "id",
   "created_at",
   "updated_at",
+  "archived_at",
   "crm_user_id",
   "organization_id",
   "attachments",

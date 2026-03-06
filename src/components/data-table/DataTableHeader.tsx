@@ -90,7 +90,7 @@ export function DataTableHeader<T extends Record<string, unknown>>({
                 ? "Name"
                 : visCol.attribute.isPrimary
                   ? singularName
-                : (visCol.viewColumn.title || visCol.attribute.name);
+                : (visCol.attribute.name || visCol.viewColumn.title);
 
               return (
                 <TableHead

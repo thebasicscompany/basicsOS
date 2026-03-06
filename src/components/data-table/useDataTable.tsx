@@ -173,7 +173,7 @@ export function useDataTable(props: DataTableProps) {
             ? "Name"
             : attribute.isPrimary
               ? singularName
-            : (viewColumn.title || attribute.name);
+            : (attribute.name || viewColumn.title);
           const HeaderIcon = fieldType.icon;
           return (
             <div className="flex items-center gap-1.5 text-xs font-medium truncate">

@@ -241,12 +241,17 @@ export const OverlayApp = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Measure response content height using ResizeObserver for reliable layout measurement
   useEffect(() => {
-    if ((pill.state === "response" || showLastResponse) && measureRef.current) {
-      const h = measureRef.current.offsetHeight;
+    const el = measureRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight;
       if (h > 0) setMeasuredHeight(h);
-    }
-  }, [pill.state, pill.responseTitle, showLastResponse, pill.lastResponseTitle]);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const hasNotch = config?.hasNotch ?? false;
   const notchHeight = config?.notchHeight ?? 0;
@@ -259,12 +264,16 @@ export const OverlayApp = () => {
   const maxResponseBodyHeight = Math.round(screenH * 0.33) - 80;
 
   let pillHeight: number;
+  const responseContentH = Math.min(
+    Math.max(measuredHeight, 40), // at least 40px while measuring
+    maxResponseBodyHeight,
+  );
   if (pill.state === "idle" && showLastResponse) {
-    pillHeight = topPad + 24 + 12 + Math.min(measuredHeight, maxResponseBodyHeight) + 12;
+    pillHeight = topPad + 24 + 12 + responseContentH + 12;
   } else if (pill.state === "idle") {
     pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
-    pillHeight = topPad + 24 + 12 + Math.min(measuredHeight, maxResponseBodyHeight) + 12;
+    pillHeight = topPad + 24 + 12 + responseContentH + 12;
   } else {
     pillHeight = topPad + ACTIVE_HEIGHT;
   }

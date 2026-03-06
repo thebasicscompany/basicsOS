@@ -169,6 +169,13 @@
       "when": 1773050000000,
       "tag": "0024_notes_tasks_overhaul",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1773060000000,
+      "tag": "0025_contacts_created_at",
+      "breakpoints": true
     }
   ]
 }

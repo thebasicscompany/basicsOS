@@ -135,7 +135,7 @@ const ACTIVITY_META: Record<
 /* ------------------------------------------------------------------ */
 
 // Set to true to preview the Recents section with mock data
-const USE_MOCK_ACTIVITY = true;
+const USE_MOCK_ACTIVITY = false;
 
 const MOCK_ACTIVITY: ActivityItem[] = [
   {
@@ -223,6 +223,21 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
     perPage: 3,
     sort: { field: "created_at", order: "DESC" },
   });
+  const { data: companiesData } = useRecords("companies", {
+    page: 1,
+    perPage: 3,
+    sort: { field: "created_at", order: "DESC" },
+  });
+  const { data: contactNotesData } = useRecords("contact_notes", {
+    page: 1,
+    perPage: 3,
+    sort: { field: "date", order: "DESC" },
+  });
+  const { data: dealNotesData } = useRecords("deal_notes", {
+    page: 1,
+    perPage: 3,
+    sort: { field: "date", order: "DESC" },
+  });
 
   const items = useMemo(() => {
     if (USE_MOCK_ACTIVITY) return MOCK_ACTIVITY;
@@ -267,17 +282,21 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
     // Recently created contacts → record_created
     for (const r of (contactsData?.data ?? []).slice(0, 2)) {
       const rec = r as Record<string, unknown>;
-      const id = rec.Id as number;
+      const id = (rec.id ?? rec.Id) as number;
+      if (id == null) continue;
+      const firstName = (rec.firstName ?? rec.first_name ?? "") as string;
+      const lastName = (rec.lastName ?? rec.last_name ?? "") as string;
       const name =
-        (rec.FullName ?? rec.full_name ?? rec.Name ?? rec.name ?? "") as string;
-      const createdAt = (rec.created_at ?? rec.CreatedAt ?? "") as string;
-      if (!name || !createdAt) continue;
+        [firstName, lastName].filter(Boolean).join(" ").trim() ||
+        ((rec.FullName ?? rec.full_name ?? rec.Name ?? rec.name ?? "") as string);
+      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+      if (!name) continue;
       feed.push({
         id: `contact-${id}`,
         kind: "record_created",
         title: name,
         detail: "Contact created",
-        timestamp: createdAt,
+        timestamp: createdAt || new Date().toISOString(),
         href: `/objects/contacts/${id}`,
       });
     }
@@ -285,17 +304,76 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
     // Recently created deals → record_created
     for (const r of (dealsData?.data ?? []).slice(0, 2)) {
       const rec = r as Record<string, unknown>;
-      const id = rec.Id as number;
+      const id = (rec.id ?? rec.Id) as number;
+      if (id == null) continue;
       const name = (rec.Name ?? rec.name ?? rec.Title ?? rec.title ?? "") as string;
-      const createdAt = (rec.created_at ?? rec.CreatedAt ?? "") as string;
-      if (!name || !createdAt) continue;
+      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+      if (!name) continue;
       feed.push({
         id: `deal-${id}`,
         kind: "record_created",
         title: name,
         detail: "Deal created",
-        timestamp: createdAt,
+        timestamp: createdAt || new Date().toISOString(),
         href: `/objects/deals/${id}`,
+      });
+    }
+
+    // Recently created companies → record_created
+    for (const r of (companiesData?.data ?? []).slice(0, 2)) {
+      const rec = r as Record<string, unknown>;
+      const id = (rec.id ?? rec.Id) as number;
+      if (id == null) continue;
+      const name = (rec.name ?? rec.Name ?? rec.title ?? rec.Title ?? "") as string;
+      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+      if (!name) continue;
+      feed.push({
+        id: `company-${id}`,
+        kind: "record_created",
+        title: name,
+        detail: "Company created",
+        timestamp: createdAt || new Date().toISOString(),
+        href: `/objects/companies/${id}`,
+      });
+    }
+
+    // Recently added contact notes → note_added
+    for (const r of (contactNotesData?.data ?? []).slice(0, 2)) {
+      const rec = r as Record<string, unknown>;
+      const id = (rec.id ?? rec.Id) as number;
+      const contactId = (rec.contactId ?? rec.contact_id) as number;
+      const title = (rec.title ?? rec.Title ?? "") as string;
+      const text = (rec.text ?? rec.Text ?? "") as string;
+      const date = (rec.date ?? rec.Date ?? rec.createdAt ?? rec.created_at ?? "") as string;
+      const name = title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
+      if (id == null) continue;
+      feed.push({
+        id: `contact-note-${id}`,
+        kind: "note_added",
+        title: name,
+        detail: "Contact note",
+        timestamp: date || new Date().toISOString(),
+        href: contactId ? `/objects/contacts/${contactId}` : undefined,
+      });
+    }
+
+    // Recently added deal notes → note_added
+    for (const r of (dealNotesData?.data ?? []).slice(0, 2)) {
+      const rec = r as Record<string, unknown>;
+      const id = (rec.id ?? rec.Id) as number;
+      const dealId = (rec.dealId ?? rec.deal_id) as number;
+      const title = (rec.title ?? rec.Title ?? "") as string;
+      const text = (rec.text ?? rec.Text ?? "") as string;
+      const date = (rec.date ?? rec.Date ?? rec.createdAt ?? rec.created_at ?? "") as string;
+      const name = title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
+      if (id == null) continue;
+      feed.push({
+        id: `deal-note-${id}`,
+        kind: "note_added",
+        title: name,
+        detail: "Deal note",
+        timestamp: date || new Date().toISOString(),
+        href: dealId ? `/objects/deals/${dealId}` : undefined,
       });
     }
 
@@ -312,7 +390,15 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       seen.add(item.id);
       return true;
     }).slice(0, 6);
-  }, [threads, automationRuns, contactsData, dealsData]);
+  }, [
+    threads,
+    automationRuns,
+    contactsData,
+    dealsData,
+    companiesData,
+    contactNotesData,
+    dealNotesData,
+  ]);
 
   return {
     items,

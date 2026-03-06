@@ -6,6 +6,7 @@ import {
   bigint,
   uuid,
   jsonb,
+  timestamp,
   index,
 } from "drizzle-orm/pg-core";
 import { companies } from "@/db/schema/companies";
@@ -31,6 +32,9 @@ export const contacts = pgTable(
     organizationId: uuid("organization_id").references(() => organizations.id, {
       onDelete: "cascade",
     }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     linkedinUrl: varchar("linkedin_url", { length: 512 }),
     customFields: jsonb("custom_fields")
       .$type<Record<string, unknown>>()

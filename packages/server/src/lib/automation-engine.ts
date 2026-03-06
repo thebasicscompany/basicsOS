@@ -96,6 +96,7 @@ async function registerScheduleRule(ruleId: number, crmUserId: number, cron: str
   const queueName = `rule-schedule-${ruleId}`;
 
   try {
+    await _boss.createQueue(queueName);
     await _boss.schedule(queueName, cron, { ruleId, crmUserId });
     await _boss.work(queueName, async (jobs: Array<{ data: unknown }>) => {
       for (const job of jobs) {
@@ -194,24 +195,38 @@ async function runAutomation(
 ) {
   if (!_db || !_env) return;
 
-   
   const db = _db as any;
+
+  const rules: any[] = await db
+    .select()
+    .from(schema.automationRules)
+    .where(eq(schema.automationRules.id, ruleId))
+    .limit(1);
+  const rule = rules[0];
+
+  if (!rule) throw new Error(`Rule ${ruleId} not found`);
+
+  let orgId = rule.organizationId ?? rule.organization_id ?? null;
+  if (orgId == null) {
+    const [crmUser] = await db
+      .select({ organizationId: schema.crmUsers.organizationId })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.id, crmUserId))
+      .limit(1);
+    orgId = crmUser?.organizationId ?? null;
+  }
 
   const [run] = await db
     .insert(schema.automationRuns)
-    .values({ ruleId, crmUserId, status: "running" })
+    .values({
+      ruleId,
+      crmUserId,
+      organizationId: orgId,
+      status: "running",
+    })
     .returning();
 
   try {
-    const rules: any[] = await db
-      .select()
-      .from(schema.automationRules)
-      .where(eq(schema.automationRules.id, ruleId))
-      .limit(1);
-    const rule = rules[0];
-
-    if (!rule) throw new Error(`Rule ${ruleId} not found`);
-
     const crmUserRows: any[] = await db
       .select()
       .from(schema.crmUsers)

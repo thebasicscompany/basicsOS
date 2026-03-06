@@ -5,7 +5,7 @@ export const runPostSchema = z.object({
 });
 
 export const runsListQuerySchema = z.object({
-  ruleId: z.string().min(1),
+  ruleId: z.string().optional(),
   limit: z
     .string()
     .optional()

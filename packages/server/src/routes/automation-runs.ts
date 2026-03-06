@@ -66,7 +66,8 @@ export function createAutomationRunsRoutes(
     return c.json({ triggered: true });
   });
 
-  // GET /api/automation-runs?ruleId=X
+  // GET /api/automation-runs?ruleId=X&limit=N
+  // When ruleId omitted: returns org-wide recent runs (for home activity feed).
   app.get("/", async (c) => {
     const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
     if (!authz.ok) return authz.response;
@@ -77,11 +78,9 @@ export function createAutomationRunsRoutes(
     });
     if (!queryParsed.success) {
       const msg =
-        queryParsed.error.issues[0]?.message ?? "ruleId query param required";
+        queryParsed.error.issues[0]?.message ?? "Invalid query params";
       return c.json({ error: msg }, 400);
     }
-    const ruleId = parseInt(queryParsed.data.ruleId, 10);
-    if (isNaN(ruleId)) return c.json({ error: "Invalid ruleId" }, 400);
 
     const session = c.get("session") as { user?: { id: string } };
     const [crmUserRow] = await db
@@ -91,25 +90,58 @@ export function createAutomationRunsRoutes(
       .limit(1);
     if (!crmUserRow) return c.json({ error: "User not found in CRM" }, 404);
 
-    // Verify rule belongs to this user
-    const [rule] = await db
-      .select()
-      .from(schema.automationRules)
-      .where(
-        and(
-          eq(schema.automationRules.id, ruleId),
-          eq(schema.automationRules.crmUserId, crmUserRow.id),
-        ),
-      )
-      .limit(1);
-    if (!rule) return c.json({ error: "Rule not found" }, 404);
+    const limit = queryParsed.data.limit ?? 20;
+    const ruleIdParam = queryParsed.data.ruleId;
+    const ruleId =
+      ruleIdParam != null && ruleIdParam !== ""
+        ? parseInt(ruleIdParam, 10)
+        : null;
 
-    const limit = queryParsed.data.limit;
+    if (ruleId != null && !isNaN(ruleId)) {
+      // Single-rule runs (existing behavior)
+      const [rule] = await db
+        .select()
+        .from(schema.automationRules)
+        .where(
+          and(
+            eq(schema.automationRules.id, ruleId),
+            eq(schema.automationRules.crmUserId, crmUserRow.id),
+          ),
+        )
+        .limit(1);
+      if (!rule) return c.json({ error: "Rule not found" }, 404);
+
+      const runs = await db
+        .select()
+        .from(schema.automationRuns)
+        .where(eq(schema.automationRuns.ruleId, ruleId))
+        .orderBy(desc(schema.automationRuns.startedAt))
+        .limit(limit);
+
+      return c.json(runs);
+    }
+
+    // Org-wide recent runs (for home activity feed)
+    const orgId = crmUserRow.organizationId;
+    if (!orgId) return c.json({ error: "Organization not found" }, 404);
 
     const runs = await db
-      .select()
+      .select({
+        id: schema.automationRuns.id,
+        ruleId: schema.automationRuns.ruleId,
+        status: schema.automationRuns.status,
+        result: schema.automationRuns.result,
+        error: schema.automationRuns.error,
+        startedAt: schema.automationRuns.startedAt,
+        finishedAt: schema.automationRuns.finishedAt,
+        ruleName: schema.automationRules.name,
+      })
       .from(schema.automationRuns)
-      .where(eq(schema.automationRuns.ruleId, ruleId))
+      .innerJoin(
+        schema.automationRules,
+        eq(schema.automationRuns.ruleId, schema.automationRules.id),
+      )
+      .where(eq(schema.automationRuns.organizationId, orgId))
       .orderBy(desc(schema.automationRuns.startedAt))
       .limit(limit);
 

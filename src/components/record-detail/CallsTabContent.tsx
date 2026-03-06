@@ -38,8 +38,12 @@ export function CallsTabContent({
   return (
     <div className="space-y-1">
       {calls.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          No calls yet.
+        <div className="rounded-lg border border-dashed py-12 text-center">
+          <p className="text-sm text-muted-foreground">No calls yet.</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Log calls manually as Notes, or add a Note with meeting summary after
+            a call. Calendar and call sync coming soon.
+          </p>
         </div>
       ) : (
         <div className="divide-y rounded-lg border bg-card">

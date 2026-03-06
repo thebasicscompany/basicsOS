@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router";
 import { format } from "date-fns";
 import {
   EnvelopeSimpleIcon,
@@ -6,6 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { getMockEmails, type MockEmail } from "./mock-data/emails";
 import { EmailViewDialog } from "./EmailViewDialog";
+import { Button } from "@/components/ui/button";
 
 export function EmailsTabContent({ recordId }: { recordId: number }) {
   const emails = useMemo(() => getMockEmails(recordId), [recordId]);
@@ -14,8 +16,15 @@ export function EmailsTabContent({ recordId }: { recordId: number }) {
   return (
     <div className="space-y-1">
       {emails.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          No emails yet.
+        <div className="rounded-lg border border-dashed py-12 text-center">
+          <p className="text-sm text-muted-foreground">No emails yet.</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Connect Gmail in Settings to use email in Automations. Record-level
+            email sync is planned.
+          </p>
+          <Button variant="outline" size="sm" className="mt-4" asChild>
+            <Link to="/settings#connections">Connect Gmail</Link>
+          </Button>
         </div>
       ) : (
         <div className="divide-y rounded-lg border bg-card">

@@ -145,7 +145,7 @@ export function NotesPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 py-4">
+    <div className="flex h-full flex-col gap-5 pb-8">
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "deals" | "contacts")}
@@ -163,15 +163,15 @@ export function NotesPage() {
               ))}
             </div>
           ) : dealNotes.length === 0 ? (
-            <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg bg-muted/50 py-12 text-center text-sm text-muted-foreground">
               No deal notes yet.
             </div>
           ) : (
             <>
-              <div className="overflow-auto rounded-lg border">
+              <div className="overflow-auto rounded-lg bg-card">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-muted/50">
+                    <tr className="bg-muted">
                       <th className="px-4 py-2 text-left font-medium">Deal</th>
                       <th className="px-4 py-2 text-left font-medium">Note</th>
                       <th className="px-4 py-2 text-left font-medium">Date</th>
@@ -187,7 +187,7 @@ export function NotesPage() {
                       return (
                         <tr
                           key={(n.id ?? n.Id) as number}
-                          className="cursor-pointer border-b transition-colors hover:bg-muted/50"
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
                           onClick={() => handleDealNoteClick(dealId)}
                         >
                           <td className="px-4 py-2 font-medium">{name}</td>
@@ -243,15 +243,15 @@ export function NotesPage() {
               ))}
             </div>
           ) : contactNotes.length === 0 ? (
-            <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg bg-muted/50 py-12 text-center text-sm text-muted-foreground">
               No contact notes yet.
             </div>
           ) : (
             <>
-              <div className="overflow-auto rounded-lg border">
+              <div className="overflow-auto rounded-lg bg-card">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-muted/50">
+                    <tr className="bg-muted">
                       <th className="px-4 py-2 text-left font-medium">
                         Contact
                       </th>
@@ -269,7 +269,7 @@ export function NotesPage() {
                       return (
                         <tr
                           key={(n.id ?? n.Id) as number}
-                          className="cursor-pointer border-b transition-colors hover:bg-muted/50"
+                          className="cursor-pointer transition-colors hover:bg-muted/50"
                           onClick={() => handleContactNoteClick(contactId)}
                         >
                           <td className="px-4 py-2 font-medium">{name}</td>

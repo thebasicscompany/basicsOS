@@ -115,11 +115,11 @@ export function DealsKanbanBoard() {
                   ref={provided.innerRef}
                   {...provided.droppableProps}
                   className={cn(
-                    "flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors",
-                    snapshot.isDraggingOver && "bg-muted/60",
+                    "flex w-72 shrink-0 flex-col rounded-lg bg-muted/50 transition-colors",
+                    snapshot.isDraggingOver && "bg-muted/70",
                   )}
                 >
-                  <div className="flex items-center gap-2 border-b px-3 py-2">
+                  <div className="flex items-center gap-2 px-3 py-2">
                     <DealStageBadge stage={stageId} />
                     <span className="text-xs text-muted-foreground">
                       {dealsByStage[stageId]?.length ?? 0} deals
@@ -143,7 +143,7 @@ export function DealsKanbanBoard() {
                               {...provided.dragHandleProps}
                               onClick={() => handleCardClick(id)}
                               className={cn(
-                                "cursor-pointer rounded-md border bg-card p-3 shadow-sm transition-shadow hover:shadow-md",
+                                "cursor-pointer rounded-md bg-card p-3 transition-shadow hover:shadow-sm",
                                 snapshot.isDragging &&
                                   "shadow-lg ring-2 ring-primary/50",
                               )}
@@ -171,10 +171,10 @@ export function DealsKanbanBoard() {
                 ref={provided.innerRef}
                 {...provided.droppableProps}
                 className={cn(
-                  "flex w-48 shrink-0 flex-col items-center justify-center rounded-lg border border-dashed transition-colors",
+                  "flex w-48 shrink-0 flex-col items-center justify-center rounded-lg transition-colors",
                   snapshot.isDraggingOver
-                    ? "border-primary/50 bg-primary/5"
-                    : "border-muted-foreground/30 bg-muted/20 hover:bg-muted/30",
+                    ? "bg-primary/10"
+                    : "bg-muted/40 hover:bg-muted/50",
                 )}
               >
                 <PlusIcon className="h-6 w-6 text-muted-foreground" />

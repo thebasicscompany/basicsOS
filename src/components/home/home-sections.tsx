@@ -8,17 +8,19 @@ import {
   LightningIcon,
   RobotIcon,
   UserPlusIcon,
-  HandshakeIcon,
   PencilSimpleIcon,
-  CheckCircleIcon,
   WarningCircleIcon,
   SpinnerGapIcon,
   NoteIcon,
+  MicrophoneIcon,
+  PlugIcon,
+  GearIcon,
+  NotePencilIcon,
+  ListChecksIcon,
 } from "@phosphor-icons/react";
-import { useRecentItems } from "@/hooks/use-recent-items";
+import { useRecentPages } from "@/hooks/use-recent-pages";
 import { useThreads, type Thread } from "@/hooks/use-threads";
 import { useRecords } from "@/hooks/use-records";
-import { useObjects } from "@/hooks/use-object-registry";
 import { getObjectIcon } from "@/lib/object-icon-map";
 import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
@@ -26,18 +28,6 @@ import { fetchApi } from "@/lib/api";
 /* ------------------------------------------------------------------ */
 /*  Shared UI                                                         */
 /* ------------------------------------------------------------------ */
-
-const TYPE_TO_SLUG: Record<string, string> = {
-  contact: "contacts",
-  company: "companies",
-  deal: "deals",
-};
-
-const TYPE_ACCENT: Record<string, string> = {
-  contact: "bg-blue-500/10 text-blue-400",
-  company: "bg-violet-500/10 text-violet-400",
-  deal: "bg-emerald-500/10 text-emerald-400",
-};
 
 function SectionHeader({
   title,
@@ -109,34 +99,34 @@ const ACTIVITY_META: Record<
 > = {
   agent_chat: {
     icon: RobotIcon,
-    accent: "bg-primary/10 text-primary",
+    accent: "bg-primary/15 text-primary dark:bg-primary/10",
   },
   automation_success: {
     icon: LightningIcon,
-    accent: "bg-emerald-500/10 text-emerald-400",
-    statusColor: "bg-emerald-400",
+    accent: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+    statusColor: "bg-emerald-500 dark:bg-emerald-400",
   },
   automation_error: {
     icon: WarningCircleIcon,
-    accent: "bg-red-500/10 text-red-400",
-    statusColor: "bg-red-400",
+    accent: "bg-red-500/15 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+    statusColor: "bg-red-500 dark:bg-red-400",
   },
   automation_running: {
     icon: SpinnerGapIcon,
-    accent: "bg-amber-500/10 text-amber-400",
-    statusColor: "bg-amber-400",
+    accent: "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+    statusColor: "bg-amber-500 dark:bg-amber-400",
   },
   record_created: {
     icon: UserPlusIcon,
-    accent: "bg-blue-500/10 text-blue-400",
+    accent: "bg-blue-500/15 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
   },
   record_updated: {
     icon: PencilSimpleIcon,
-    accent: "bg-violet-500/10 text-violet-400",
+    accent: "bg-violet-500/15 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
   },
   note_added: {
     icon: NoteIcon,
-    accent: "bg-orange-500/10 text-orange-400",
+    accent: "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
   },
 };
 
@@ -399,7 +389,7 @@ export function RecentsSection() {
   return (
     <div className="space-y-3">
       <SectionHeader title="Recents" />
-      <div className="-mx-3.5 divide-y divide-border/50">
+      <div className="-mx-3.5 space-y-0.5">
         {items.map((item) => (
           <ActivityRow key={item.id} item={item} />
         ))}
@@ -409,43 +399,67 @@ export function RecentsSection() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Section: Continue Working On (recently visited CRM records)       */
+/*  Section: Continue Working On (recently visited pages/platforms)    */
 /* ------------------------------------------------------------------ */
 
-export function RecentRecordsSection() {
-  const [recentItems] = useRecentItems();
-  const objects = useObjects();
+/** Map well-known icon keys to Phosphor icons */
+const PAGE_ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
+  chat: ChatCircleIcon,
+  automations: LightningIcon,
+  tasks: ListChecksIcon,
+  notes: NotePencilIcon,
+  voice: MicrophoneIcon,
+  mcp: PlugIcon,
+  settings: GearIcon,
+};
 
-  if (recentItems.length === 0) return null;
+function getPageIcon(iconSlug: string): ComponentType<{ className?: string }> {
+  return PAGE_ICON_MAP[iconSlug] ?? getObjectIcon(iconSlug);
+}
+
+const PAGE_ACCENT: Record<string, string> = {
+  chat: "bg-primary/15 text-primary dark:bg-primary/10",
+  automations: "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+  tasks: "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
+  notes: "bg-teal-500/15 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400",
+  voice: "bg-pink-500/15 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
+  mcp: "bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+  settings: "bg-muted text-muted-foreground",
+};
+
+function getPageAccent(iconSlug: string): string {
+  if (PAGE_ACCENT[iconSlug]) return PAGE_ACCENT[iconSlug];
+  // For object-registry icons, use a default CRM accent
+  return "bg-blue-500/15 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400";
+}
+
+export function RecentRecordsSection() {
+  const [recentPages] = useRecentPages();
+
+  if (recentPages.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <SectionHeader title="Continue Working On" />
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {recentItems.slice(0, 4).map((item) => {
-          const slug = TYPE_TO_SLUG[item.type] ?? item.type;
-          const accent =
-            TYPE_ACCENT[item.type] ?? "bg-muted text-muted-foreground";
-          const obj = objects.find((o) => o.slug === slug);
-          const Icon = obj ? getObjectIcon(obj.icon) : getObjectIcon("user");
+        {recentPages.slice(0, 4).map((page) => {
+          const Icon = getPageIcon(page.icon);
+          const accent = getPageAccent(page.icon);
 
           return (
             <Link
-              key={`${item.type}-${item.id}`}
-              to={`/objects/${slug}/${item.id}`}
-              className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-3 transition-all hover:border-muted-foreground/25 hover:bg-accent"
+              key={page.key}
+              to={page.path}
+              className="group flex items-center gap-3 rounded-lg bg-card px-3.5 py-3 transition-all hover:bg-accent"
             >
               <div
                 className={`flex size-8 shrink-0 items-center justify-center rounded-md ${accent}`}
               >
                 <Icon className="size-4" />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{item.name}</p>
-                <p className="text-[11px] text-muted-foreground capitalize">
-                  {item.type}
-                </p>
-              </div>
+              <p className="min-w-0 truncate text-sm font-medium">
+                {page.label}
+              </p>
             </Link>
           );
         })}
@@ -487,9 +501,9 @@ function ThreadRow({ thread }: { thread: Thread }) {
   return (
     <Link
       to={`/chat/${thread.id}`}
-      className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-2.5 transition-all hover:border-muted-foreground/25 hover:bg-accent"
+      className="group flex items-center gap-3 rounded-lg bg-card px-3.5 py-2.5 transition-all hover:bg-accent"
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary dark:bg-primary/10">
         <ChatCircleIcon className="size-4" />
       </div>
       <p className="min-w-0 flex-1 truncate text-sm">
@@ -503,83 +517,6 @@ function ThreadRow({ thread }: { thread: Thread }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Section: Fallback — show recent CRM records when nothing visited  */
-/* ------------------------------------------------------------------ */
-
-export function RecentRecordsFallbackSection() {
-  const [recentItems] = useRecentItems();
-  const { data: threads } = useThreads(1);
-  const hasActivity = recentItems.length > 0 || (threads ?? []).length > 0;
-
-  if (hasActivity) return null;
-
-  return (
-    <>
-      <ObjectRecordsRow slug="contacts" label="Recent Contacts" />
-      <ObjectRecordsRow slug="deals" label="Recent Deals" />
-      <ObjectRecordsRow slug="companies" label="Recent Companies" />
-    </>
-  );
-}
-
-function ObjectRecordsRow({ slug, label }: { slug: string; label: string }) {
-  const objects = useObjects();
-  const obj = objects.find((o) => o.slug === slug);
-  const Icon = obj ? getObjectIcon(obj.icon) : getObjectIcon("user");
-  const accent =
-    slug === "contacts"
-      ? "bg-blue-500/10 text-blue-400"
-      : slug === "companies"
-        ? "bg-violet-500/10 text-violet-400"
-        : "bg-emerald-500/10 text-emerald-400";
-
-  const { data } = useRecords(slug, {
-    page: 1,
-    perPage: 4,
-    sort: { field: "updated_at", order: "DESC" },
-  });
-  const records = data?.data ?? [];
-
-  if (records.length === 0) return null;
-
-  return (
-    <div className="space-y-3">
-      <SectionHeader
-        title={label}
-        count={data?.total}
-        action={<SectionLink to={`/objects/${slug}`} label="View all" />}
-      />
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {records.map((r) => {
-          const rec = r as Record<string, unknown>;
-          const id = rec.Id as number;
-          const name = (rec.Name ??
-            rec.name ??
-            rec.FullName ??
-            rec.full_name ??
-            rec.Title ??
-            rec.title ??
-            "Unnamed") as string;
-          return (
-            <Link
-              key={id}
-              to={`/objects/${slug}/${id}`}
-              className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-3 transition-all hover:border-muted-foreground/25 hover:bg-accent"
-            >
-              <div
-                className={`flex size-8 shrink-0 items-center justify-center rounded-md ${accent}`}
-              >
-                <Icon className="size-4" />
-              </div>
-              <p className="min-w-0 truncate text-sm font-medium">{name}</p>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */

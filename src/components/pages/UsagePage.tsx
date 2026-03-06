@@ -60,7 +60,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border bg-background p-4 shadow-sm">
+    <div className="rounded-xl bg-card p-4">
       <p className="text-[12px] text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-tight">
         {typeof value === "number" ? formatNumber(value) : value}
@@ -78,7 +78,7 @@ function LogRow({ log }: { log: UsageLog }) {
   const date = new Date(log.createdAt);
   const isTranscription = log.feature === TRANSCRIPTION_FEATURE;
   return (
-    <tr className="border-b text-[12px] hover:bg-muted/30 transition-colors">
+    <tr className="text-[12px] hover:bg-muted/50 transition-colors">
       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
         {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </td>
@@ -216,10 +216,10 @@ export function UsagePage() {
   const loading = summaryLoading || logsLoading;
 
   return (
-    <div className="flex h-full flex-col overflow-auto py-5">
-      <div className="mb-5 flex items-center justify-between gap-4">
+    <div className="flex h-full flex-col overflow-auto pb-8">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <p className="mt-1 text-[12px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Monitor AI usage across your team — requests, tokens, and cost by
             user and feature.
           </p>
@@ -273,7 +273,7 @@ export function UsagePage() {
           </div>
 
           {/* Per-user summary */}
-          <div className="rounded-xl border bg-background shadow-sm">
+          <div className="rounded-xl bg-card">
             <div className="px-5 py-4">
               <h2 className="text-[15px] font-semibold">Usage by User</h2>
               <p className="text-[12px] text-muted-foreground">
@@ -284,7 +284,7 @@ export function UsagePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b bg-muted/30 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <tr className="bg-muted text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-2">User</th>
                     <th className="px-3 py-2 text-right">Requests</th>
                     <th className="px-3 py-2 text-right">Input Tokens</th>
@@ -306,7 +306,7 @@ export function UsagePage() {
                     userSummary.map((u) => (
                       <tr
                         key={u.crmUserId}
-                        className="border-b text-[12px] hover:bg-muted/30 transition-colors"
+                        className="text-[12px] hover:bg-muted/50 transition-colors"
                       >
                         <td className="px-3 py-2 font-medium">
                           {u.userName}
@@ -333,7 +333,7 @@ export function UsagePage() {
 
           {/* Per-user by feature — one row per user, expand to see features */}
           {summary && byUserGrouped.length > 0 && (
-            <div className="rounded-xl border bg-background shadow-sm">
+            <div className="rounded-xl bg-card">
               <div className="px-5 py-4">
                 <h2 className="text-[15px] font-semibold">
                   Usage by User + Feature
@@ -346,7 +346,7 @@ export function UsagePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b bg-muted/30 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <tr className="bg-muted text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                       <th className="w-8 px-1 py-2" aria-label="Expand" />
                       <th className="px-3 py-2">User</th>
                       <th className="px-3 py-2">Feature</th>
@@ -363,7 +363,7 @@ export function UsagePage() {
                       return (
                         <Fragment key={userGroup.crmUserId}>
                           <tr
-                            className="border-b text-[12px] hover:bg-muted/30 transition-colors"
+                            className="text-[12px] hover:bg-muted/50 transition-colors"
                           >
                             <td className="w-8 px-1 py-2 align-middle">
                               {hasMultipleFeatures ? (
@@ -410,7 +410,7 @@ export function UsagePage() {
                               return (
                                 <tr
                                   key={`${userGroup.crmUserId}-${row.feature}-${i}`}
-                                  className="border-b text-[12px] bg-muted/20 hover:bg-muted/30 transition-colors"
+                                  className="text-[12px] bg-muted/40 hover:bg-muted/50 transition-colors"
                                 >
                                   <td className="w-8 px-1 py-2" />
                                   <td className="px-3 py-2 pl-6 text-muted-foreground">
@@ -447,7 +447,7 @@ export function UsagePage() {
 
           {/* Daily trend */}
           {summary && summary.byDay.length > 0 && (
-            <div className="rounded-xl border bg-background shadow-sm">
+            <div className="rounded-xl bg-card">
               <div className="px-5 py-4">
                 <h2 className="text-[15px] font-semibold">Daily Trend</h2>
                 <p className="text-[12px] text-muted-foreground">
@@ -458,7 +458,7 @@ export function UsagePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b bg-muted/30 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <tr className="bg-muted text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                       <th className="px-3 py-2">Date</th>
                       <th className="px-3 py-2">Feature</th>
                       <th className="px-3 py-2 text-right">Requests</th>
@@ -473,7 +473,7 @@ export function UsagePage() {
                       return (
                         <tr
                           key={`${row.date}-${row.feature}-${i}`}
-                          className="border-b text-[12px] hover:bg-muted/30 transition-colors"
+                          className="text-[12px] hover:bg-muted/50 transition-colors"
                         >
                           <td className="px-3 py-2 whitespace-nowrap">
                             {row.date}
@@ -503,7 +503,7 @@ export function UsagePage() {
           )}
 
           {/* Request log — collapsed by default, expand to view with pagination */}
-          <div className="rounded-xl border bg-background shadow-sm">
+          <div className="rounded-xl bg-card">
             <Collapsible
               open={recentRequestsOpen}
               onOpenChange={setRecentRequestsOpen}
@@ -533,7 +533,7 @@ export function UsagePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b bg-muted/30 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <tr className="bg-muted text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                         <th className="px-3 py-2">Time</th>
                         <th className="px-3 py-2">User</th>
                         <th className="px-3 py-2">Feature</th>

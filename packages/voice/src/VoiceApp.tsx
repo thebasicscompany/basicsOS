@@ -151,14 +151,16 @@ export function VoiceApp() {
     return (
       <>
         {headerActionsPortal}
-        <div className="flex h-full flex-col overflow-auto py-4">
-          <p className="mb-4 text-[12px] text-muted-foreground">
-            Voice overlay configuration
-          </p>
-          <div className="max-w-lg space-y-4">
-            <div className="rounded-lg border p-4">
-              <h2 className="text-[13px] font-medium">Desktop app required</h2>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
+        <div className="flex h-full flex-col overflow-auto py-5">
+          <div className="mb-5">
+            <p className="text-[12px] text-muted-foreground">
+              Voice overlay configuration
+            </p>
+          </div>
+          <div className="max-w-4xl space-y-4">
+            <div>
+              <h2 className="text-[15px] font-semibold">Desktop app required</h2>
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 Voice overlay is available in the Basics OS desktop app.
                 Download and run the desktop app to use voice commands,
                 dictation, and the AI assistant overlay.
@@ -177,139 +179,126 @@ export function VoiceApp() {
   return (
     <>
       {headerActionsPortal}
-      <div className="flex h-full flex-col overflow-auto bg-background">
-        <div className="container max-w-5xl mx-auto py-10 px-6 space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Voice Overlay</h1>
-            <p className="mt-2 text-lg text-muted-foreground">
-              Configure the floating voice pill and global shortcuts.
-            </p>
+      <div className="flex h-full flex-col overflow-auto py-5">
+        <div className="mb-5">
+          <p className="text-[12px] text-muted-foreground">
+            Configure the floating voice pill and global shortcuts.
+          </p>
+        </div>
+
+        <div className="max-w-4xl space-y-3">
+          {/* Microphone */}
+          <div className="rounded-xl bg-card p-6 space-y-3">
+            <div>
+              <h3 className="text-[15px] font-semibold">Microphone</h3>
+              <p className="text-[12px] text-muted-foreground">
+                Select the input device for the voice overlay.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="voice-mic" className="text-sm font-medium">
+                Input device
+              </Label>
+              <Select
+                value={
+                  overlaySettings?.voice?.audioInputDeviceId ||
+                  DEFAULT_MIC_VALUE
+                }
+                onValueChange={handleMicChange}
+              >
+                <SelectTrigger id="voice-mic" className="w-full">
+                  <SelectValue placeholder="System default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_MIC_VALUE}>
+                    System default
+                  </SelectItem>
+                  {audioInputs.map((d) => (
+                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Microphone Section */}
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-              <div className="flex flex-col space-y-1.5 p-6">
-                <h3 className="font-semibold leading-none tracking-tight">Microphone</h3>
-                <p className="text-sm text-muted-foreground">
-                  Select the input device for the voice overlay.
-                </p>
-              </div>
-              <div className="p-6 pt-0">
-                <div className="space-y-2">
-                  <Label htmlFor="voice-mic" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Input device
-                  </Label>
-                  <Select
-                    value={
-                      overlaySettings?.voice?.audioInputDeviceId ||
-                      DEFAULT_MIC_VALUE
-                    }
-                    onValueChange={handleMicChange}
-                  >
-                    <SelectTrigger id="voice-mic" className="w-full">
-                      <SelectValue placeholder="System default" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={DEFAULT_MIC_VALUE}>
-                        System default
-                      </SelectItem>
-                      {audioInputs.map((d) => (
-                        <SelectItem key={d.deviceId} value={d.deviceId}>
-                          {d.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          {/* Shortcuts */}
+          <div className="rounded-xl bg-card p-6 space-y-3">
+            <div>
+              <h3 className="text-[15px] font-semibold">Shortcuts</h3>
+              <p className="text-[12px] text-muted-foreground">
+                Global keyboard shortcuts to control the overlay.
+              </p>
+            </div>
+            <ul className="space-y-4 text-sm">
+              <li className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Kbd>{`${primaryModifier}+Space`}</Kbd>
+                  <span className="font-medium">AI Assistant</span>
                 </div>
-              </div>
-            </div>
+                <span className="text-muted-foreground">Tap to listen, auto-stops after silence.</span>
+              </li>
+              <li className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Double Tap</span>
+                  <Kbd>{`${primaryModifier}+Space`}</Kbd>
+                </div>
+                <span className="text-muted-foreground">Continuous listening mode.</span>
+              </li>
+              <li className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd>
+                  <span className="font-medium">Dictation</span>
+                </div>
+                <span className="text-muted-foreground">{dictationShortcutText}</span>
+              </li>
+              <li className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd>
+                  <span className="font-medium">Meetings</span>
+                </div>
+                <span className="text-muted-foreground">Toggle meeting mode (stub).</span>
+              </li>
+            </ul>
+          </div>
 
-            {/* Shortcuts Section */}
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm row-span-2">
-              <div className="flex flex-col space-y-1.5 p-6">
-                <h3 className="font-semibold leading-none tracking-tight">Shortcuts</h3>
-                <p className="text-sm text-muted-foreground">
-                  Global keyboard shortcuts to control the overlay.
-                </p>
-              </div>
-              <div className="p-6 pt-0">
-                <ul className="space-y-4 text-sm">
-                  <li className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Kbd>{`${primaryModifier}+Space`}</Kbd>
-                      <span className="font-medium">AI Assistant</span>
-                    </div>
-                    <span className="text-muted-foreground">Tap to listen, auto-stops after silence.</span>
-                  </li>
-                  <li className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Double Tap</span>
-                      <Kbd>{`${primaryModifier}+Space`}</Kbd>
-                    </div>
-                    <span className="text-muted-foreground">Continuous listening mode.</span>
-                  </li>
-                  <li className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd>
-                      <span className="font-medium">Dictation</span>
-                    </div>
-                    <span className="text-muted-foreground">{dictationShortcutText}</span>
-                  </li>
-                  <li className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd>
-                      <span className="font-medium">Meetings</span>
-                    </div>
-                    <span className="text-muted-foreground">Toggle meeting mode (stub).</span>
-                  </li>
-                </ul>
-              </div>
+          {/* Capabilities */}
+          <div className="rounded-xl bg-card p-6 space-y-3">
+            <div>
+              <h3 className="text-[15px] font-semibold">Capabilities</h3>
+              <p className="text-[12px] text-muted-foreground">
+                What you can do with the voice assistant.
+              </p>
             </div>
+            <ul className="grid gap-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span>Ask CRM questions (pipeline, deals, contacts)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span>Dictation & transcription anywhere</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span>Navigate to pages (contacts, settings)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                <span>Create tasks, notes, update deals</span>
+              </li>
+            </ul>
+          </div>
 
-            {/* Capabilities Section */}
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-              <div className="flex flex-col space-y-1.5 p-6">
-                <h3 className="font-semibold leading-none tracking-tight">Capabilities</h3>
-                <p className="text-sm text-muted-foreground">
-                  What you can do with the voice assistant.
-                </p>
-              </div>
-              <div className="p-6 pt-0">
-                <ul className="grid gap-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span>Ask CRM questions (pipeline, deals, contacts)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span>Dictation & transcription anywhere</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span>Navigate to pages (contacts, settings)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span>Create tasks, notes, update deals</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Requirements Section */}
-            <div className="rounded-xl border bg-card text-card-foreground shadow-sm md:col-span-2">
-              <div className="flex flex-col space-y-1.5 p-6">
-                <h3 className="font-semibold leading-none tracking-tight">Requirements</h3>
-              </div>
-              <div className="p-6 pt-0">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Add your <strong>Basics API key</strong> in Settings for transcription, TTS, and AI streaming.
-                  Optionally, you can configure a custom <strong>Deepgram key</strong> (Settings → AI Configuration → Transcription BYOK)
-                  to use your own API key for speech-to-text. The overlay authenticates using your active CRM session.
-                </p>
-              </div>
-            </div>
+          {/* Requirements */}
+          <div className="rounded-xl bg-card p-6 space-y-3">
+            <h3 className="text-[15px] font-semibold">Requirements</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Add your <strong>Basics API key</strong> in Settings for transcription, TTS, and AI streaming.
+              Optionally, you can configure a custom <strong>Deepgram key</strong> (Settings → AI Configuration → Transcription BYOK)
+              to use your own API key for speech-to-text. The overlay authenticates using your active CRM session.
+            </p>
           </div>
         </div>
       </div>

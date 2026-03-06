@@ -422,8 +422,8 @@ export function TasksPage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto py-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex h-full flex-col overflow-auto pb-8">
+      <div className="mb-4 flex items-center justify-between">
         {!tasksPending ? (
           <span className="text-xs text-muted-foreground">
             {activeTasks.length} upcoming
@@ -478,13 +478,13 @@ export function TasksPage() {
           if (!bucket?.length) return null;
           return (
             <div key={key}>
-              <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+              <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {label}{" "}
-                <span className="ml-1 text-muted-foreground/40">
+                <span className="ml-1 text-muted-foreground/60">
                   {bucket.length}
                 </span>
               </p>
-              <div className="divide-y divide-border/50 rounded-md border">
+              <div className="rounded-md bg-card">
                 {bucket.map((task) => {
                   const contact = task.contactId
                     ? contactMap.get(task.contactId)

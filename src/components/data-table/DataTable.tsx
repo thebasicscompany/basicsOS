@@ -1,5 +1,3 @@
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { PlusIcon, TableIcon } from "@phosphor-icons/react";
 import { Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -23,9 +21,8 @@ export function DataTable(props: DataTableProps) {
     handleKeyDown,
     handleCellClick,
     handleCellDoubleClick,
-    sensors,
-    handleDragEnd,
     handleColumnResize,
+    handleMoveColumn,
     totalPages,
     total,
     singularName,
@@ -34,6 +31,9 @@ export function DataTable(props: DataTableProps) {
     onPaginationChange,
     onRowExpand,
     onNewRecord,
+    onAddSort,
+    onHideColumn,
+    onRenameColumn,
   } = useDataTable(props);
 
   return (
@@ -41,7 +41,7 @@ export function DataTable(props: DataTableProps) {
       <div
         ref={tableRef}
         tabIndex={0}
-        className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onKeyDown={handleKeyDown}
       >
         {!props.isLoading && props.data.length === 0 ? (
@@ -60,43 +60,41 @@ export function DataTable(props: DataTableProps) {
             }
           />
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={handleDragEnd}
+          <Table
+            style={{
+              width: "max-content",
+              minWidth: "100%",
+              tableLayout: "auto",
+            }}
           >
-            <Table
-              style={{
-                width: "max-content",
-                minWidth: "100%",
-                tableLayout: "auto",
-              }}
-            >
-              <DataTableHeader
-                headerGroups={table.getHeaderGroups()}
-                sortableColumnIds={sortableColumnIds}
-                visibleCols={visibleCols}
-                onColumnResize={handleColumnResize}
-              />
-              <DataTableBody
-                table={table}
-                columns={columns}
-                visibleCols={visibleCols}
-                selectedCell={selectedCell}
-                data={props.data}
-                isLoading={props.isLoading}
-                perPage={pagination.perPage}
-                pluralName={pluralName}
-                singularName={singularName}
-                onNewRecord={onNewRecord}
-                onRowExpand={onRowExpand}
-                onRowDelete={props.onRowDelete}
-                onCellClick={handleCellClick}
-                onCellDoubleClick={handleCellDoubleClick}
-              />
-            </Table>
-          </DndContext>
+            <DataTableHeader
+              headerGroups={table.getHeaderGroups()}
+              sortableColumnIds={sortableColumnIds}
+              visibleCols={visibleCols}
+              singularName={singularName}
+              onColumnResize={handleColumnResize}
+              onAddSort={onAddSort}
+              onHideColumn={onHideColumn}
+              onRenameColumn={onRenameColumn}
+              onMoveColumn={handleMoveColumn}
+            />
+            <DataTableBody
+              table={table}
+              columns={columns}
+              visibleCols={visibleCols}
+              selectedCell={selectedCell}
+              data={props.data}
+              isLoading={props.isLoading}
+              perPage={pagination.perPage}
+              pluralName={pluralName}
+              singularName={singularName}
+              onNewRecord={onNewRecord}
+              onRowExpand={onRowExpand}
+              onRowDelete={props.onRowDelete}
+              onCellClick={handleCellClick}
+              onCellDoubleClick={handleCellDoubleClick}
+            />
+          </Table>
         )}
       </div>
 

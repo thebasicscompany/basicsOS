@@ -94,7 +94,6 @@ export async function executeValidatedTool(
         firstName: args.first_name ?? null,
         lastName: args.last_name ?? null,
         email: args.email ?? null,
-        status: args.status ?? null,
         companyId: args.company_id ?? null,
       })
       .returning();
@@ -110,7 +109,6 @@ export async function executeValidatedTool(
     if (args.first_name !== undefined) updates.firstName = args.first_name;
     if (args.last_name !== undefined) updates.lastName = args.last_name;
     if (args.email !== undefined) updates.email = args.email;
-    if (args.status !== undefined) updates.status = args.status;
 
     const [row] = await db
       .update(schema.contacts)
@@ -136,7 +134,7 @@ export async function executeValidatedTool(
       isNull(schema.deals.archivedAt),
     ];
     if (query) conditions.push(ilike(schema.deals.name, `%${query}%`));
-    if (args.stage) conditions.push(eq(schema.deals.stage, args.stage));
+    if (args.status) conditions.push(eq(schema.deals.status, args.status));
     return db
       .select()
       .from(schema.deals)
@@ -173,11 +171,9 @@ export async function executeValidatedTool(
         crmUserId,
         organizationId,
         name: args.name.trim(),
-        stage: args.stage ?? "qualification",
-        category: args.category ?? null,
+        status: args.status ?? "opportunity",
         companyId: args.company_id ?? null,
         amount: args.amount ?? null,
-        description: args.description ?? null,
       })
       .returning();
     return row ?? { error: "failed to create deal" };
@@ -190,10 +186,8 @@ export async function executeValidatedTool(
     const args = parsed.data;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (args.name !== undefined) updates.name = args.name;
-    if (args.stage !== undefined) updates.stage = args.stage;
-    if (args.category !== undefined) updates.category = args.category;
+    if (args.status !== undefined) updates.status = args.status;
     if (args.amount !== undefined) updates.amount = args.amount;
-    if (args.description !== undefined) updates.description = args.description;
 
     const [row] = await db
       .update(schema.deals)
@@ -220,8 +214,7 @@ export async function executeValidatedTool(
       conditions.push(
         or(
           ilike(schema.companies.name, `%${query}%`),
-          ilike(schema.companies.city, `%${query}%`),
-          ilike(schema.companies.sector, `%${query}%`),
+          ilike(schema.companies.category, `%${query}%`),
         )!,
       );
     }
@@ -243,9 +236,8 @@ export async function executeValidatedTool(
         crmUserId,
         organizationId,
         name: args.name.trim(),
-        sector: args.sector ?? null,
-        city: args.city ?? null,
-        website: args.website ?? null,
+        category: args.category ?? null,
+        domain: args.domain ?? null,
       })
       .returning();
     return row ?? { error: "failed to create company" };

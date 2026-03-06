@@ -1,5 +1,6 @@
 import {
   CaretUpDownIcon,
+  ChartBarIcon,
   DownloadSimpleIcon,
   GearIcon,
   IdentificationCardIcon,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/lib/auth-hooks";
+import { useMe } from "@/hooks/use-me";
 import { ROUTES } from "@basics-os/hub";
 
 function getInitials(name: string): string {
@@ -36,7 +38,9 @@ function getInitials(name: string): string {
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { data: session, isPending } = useSession();
+  const { data: me } = useMe();
   const navigate = useNavigate();
+  const isAdmin = Boolean(me?.administrator);
 
   if (isPending) return null;
 
@@ -115,6 +119,14 @@ export function NavUser() {
                   Import
                 </Link>
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.ADMIN_USAGE}>
+                    <ChartBarIcon className="size-4" />
+                    AI Usage
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>

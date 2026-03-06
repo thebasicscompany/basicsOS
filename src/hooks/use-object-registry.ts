@@ -69,3 +69,33 @@ export function useUpdateObjectConfig(slug: string) {
     },
   });
 }
+
+export interface UpsertAttributeOverridePayload {
+  columnName: string;
+  displayName?: string;
+  uiType?: string;
+  icon?: string;
+  isPrimary?: boolean;
+  isHiddenByDefault?: boolean;
+  config?: Record<string, unknown>;
+}
+
+/**
+ * Upsert an attribute override for a built-in schema column.
+ * POST /api/object-config/:slug/overrides
+ */
+export function useUpsertAttributeOverride(slug: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpsertAttributeOverridePayload) =>
+      fetchApi(`/api/object-config/${slug}/overrides`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["object-config"] });
+      qc.invalidateQueries({ queryKey: ["columns"] });
+      qc.invalidateQueries({ queryKey: ["records"] });
+    },
+  });
+}

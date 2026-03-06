@@ -47,22 +47,6 @@ export async function mergeContacts(
       .set({ contactId: winnerId })
       .where(eq(schema.contactNotes.contactId, loserId));
 
-    const allDeals = await tx
-      .select()
-      .from(schema.deals)
-      .where(eq(schema.deals.organizationId, orgId));
-    for (const deal of allDeals) {
-      const ids = (deal.contactIds as number[]) ?? [];
-      if (ids.includes(loserId)) {
-        const next = ids.filter((x) => x !== loserId);
-        if (!next.includes(winnerId)) next.push(winnerId);
-        await tx
-          .update(schema.deals)
-          .set({ contactIds: next })
-          .where(eq(schema.deals.id, deal.id));
-      }
-    }
-
     await tx
       .delete(schema.contacts)
       .where(

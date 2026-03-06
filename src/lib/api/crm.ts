@@ -6,7 +6,7 @@ import { fetchApi, fetchApiList } from "@/lib/api";
 
 export interface ListParams {
   pagination?: { page: number; perPage: number };
-  sort?: { field: string; order: "ASC" | "DESC" };
+  sort?: { field: string; order: "ASC" | "DESC" } | Array<{ field: string; order: "ASC" | "DESC" }>;
   filter?: Record<string, unknown>;
   /** View-level filters (sent as generic filters to API) */
   viewFilters?: FilterDef[];
@@ -19,6 +19,7 @@ export interface FilterDef {
   field: string;
   op: string;
   value: string;
+  logicalOp?: "and" | "or";
 }
 
 /** Parse where clause into FilterDef[] for the Hono filters param. */
@@ -61,7 +62,14 @@ export async function getList<T>(
   const qs = new URLSearchParams();
   qs.set("range", JSON.stringify([start, end]));
 
-  if (sort?.field) {
+  if (Array.isArray(sort)) {
+    if (sort.length === 1) {
+      qs.set("sort", sort[0].field);
+      qs.set("order", sort[0].order ?? "ASC");
+    } else if (sort.length > 1) {
+      qs.set("sorts", JSON.stringify(sort));
+    }
+  } else if (sort?.field) {
     qs.set("sort", sort.field);
     qs.set("order", sort.order ?? "ASC");
   }

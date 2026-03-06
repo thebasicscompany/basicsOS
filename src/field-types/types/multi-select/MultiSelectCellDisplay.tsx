@@ -22,7 +22,7 @@ export function MultiSelectCellDisplay({ value, config }: CellDisplayProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 overflow-hidden">
+    <div className="flex flex-wrap items-start gap-1">
       {items.map((item, i) => {
         const option = options.find((o) => o.id === item || o.label === item);
         const colorName = option?.color ?? getColorByHash(String(item)).name;
@@ -33,7 +33,7 @@ export function MultiSelectCellDisplay({ value, config }: CellDisplayProps) {
           <span
             key={`${item}-${i}`}
             className={cn(
-              "inline-flex shrink-0 items-center truncate rounded-full border px-2 py-0.5 text-xs font-medium",
+              "inline-flex min-w-0 max-w-full items-center rounded-full border px-2 py-0.5 text-xs font-medium break-words whitespace-normal",
               colors.bg,
               colors.text,
               colors.border,

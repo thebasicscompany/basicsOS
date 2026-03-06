@@ -37,6 +37,69 @@ function parseDtxpOptions(
     }));
 }
 
+function normalizeMetaOptions(
+  options: unknown,
+): Array<{
+  id: string;
+  label: string;
+  color: string;
+  order?: number;
+  isTerminal?: boolean;
+}> {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .map((option, index) => {
+      if (typeof option === "string") {
+        return {
+          id: option,
+          label: option,
+          color: TAG_COLOR_PALETTE[index % TAG_COLOR_PALETTE.length].name,
+          order: index,
+        };
+      }
+
+      if (
+        option &&
+        typeof option === "object" &&
+        "id" in option &&
+        "label" in option
+      ) {
+        const typedOption = option as {
+          id: string;
+          label: string;
+          color?: string;
+          order?: number;
+          isTerminal?: boolean;
+        };
+
+        return {
+          id: typedOption.id,
+          label: typedOption.label,
+          color:
+            typedOption.color ??
+            TAG_COLOR_PALETTE[index % TAG_COLOR_PALETTE.length].name,
+          order: typedOption.order ?? index,
+          isTerminal: typedOption.isTerminal,
+        };
+      }
+
+      return null;
+    })
+    .filter(
+      (
+        option,
+      ): option is {
+        id: string;
+        label: string;
+        color: string;
+        order?: number;
+        isTerminal?: boolean;
+      } => option !== null,
+    );
+}
+
+
 /**
  * Format column names to human-readable form.
  * "CREATED_AT" → "Created At", "company_id" → "Company Id", "crm_user_id" → "Crm User Id"
@@ -64,36 +127,42 @@ function mergeAttributes(
     overrideByColumn.set(o.columnName, o);
   }
 
-  return columns.map((col) => {
+  return columns
+    .filter((col) => !col.system)
+    .map((col) => {
     const override = overrideByColumn.get(col.column_name);
-    let mappedUiType = mapUidtToFieldType(col.uidt);
-    let displayName = override?.displayName ?? formatColumnName(col);
+    const metaFieldType =
+      col.meta &&
+      typeof col.meta === "object" &&
+      "fieldType" in col.meta &&
+      typeof (col.meta as { fieldType?: unknown }).fieldType === "string"
+        ? (col.meta as { fieldType: string }).fieldType
+        : null;
+    const mappedUiType = override?.uiType ?? metaFieldType ?? mapUidtToFieldType(col.uidt);
+    const displayName = override?.displayName ?? formatColumnName(col);
 
-    // Deals & contacts: show company picker (searchable companies) instead of company ID number
-    if (
-      (slug === "deals" || slug === "contacts") &&
-      col.column_name === "company_id"
-    ) {
-      mappedUiType = "company";
-      displayName = "Company";
-    }
-
-    // dtxp -> select options
     const isSelectType =
       col.uidt === "SingleSelect" || col.uidt === "MultiSelect";
     const dtxpOptions =
       isSelectType && col.dtxp ? parseDtxpOptions(col.dtxp) : undefined;
+    const metaOptions =
+      col.meta &&
+      typeof col.meta === "object" &&
+      "options" in col.meta
+        ? normalizeMetaOptions((col.meta as { options?: unknown }).options)
+        : undefined;
 
     return {
       id: col.id,
       name: displayName,
       columnName: col.column_name,
-      uiType: override?.uiType ?? mappedUiType,
+      uiType: mappedUiType,
       sqlType: col.uidt,
       config: {
         ...(col.dtxp ? { dtxp: col.dtxp } : {}),
         ...(dtxpOptions ? { options: dtxpOptions } : {}),
         ...(col.meta ?? {}),
+        ...(metaOptions ? { options: metaOptions } : {}),
         ...(override?.config ?? {}),
       },
       isPrimary: override?.isPrimary ?? col.pv,
@@ -103,7 +172,7 @@ function mergeAttributes(
       icon: override?.icon,
       order: col.order,
     };
-  });
+    });
 }
 
 export function ObjectRegistryProvider({ children }: { children: ReactNode }) {

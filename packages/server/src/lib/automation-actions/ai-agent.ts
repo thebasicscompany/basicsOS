@@ -123,15 +123,15 @@ export async function executeAIAgent(
         },
       }),
       updateDeal: tool({
-        description: "Update a deal's stage",
+        description: "Update a deal's status",
         parameters: z.object({
           dealId: z.number().describe("Deal ID"),
-          stage: z.string().describe("New stage value"),
+          status: z.string().describe("New status value"),
         }),
-        execute: async ({ dealId, stage }) => {
+        execute: async ({ dealId, status }) => {
           const [deal] = await db
             .update(schema.deals)
-            .set({ stage })
+            .set({ status })
             .where(
               and(
                 eq(schema.deals.id, dealId),

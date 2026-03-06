@@ -33,6 +33,9 @@ export async function getPermissionSetForUser(
 ): Promise<Set<string>> {
   if (!crmUser.organizationId) return new Set();
 
+  // Administrators get full permissions regardless of RBAC roles
+  if (crmUser.administrator) return new Set(["*"]);
+
   const roleRows = await db
     .select({ roleId: schema.rbacUserRoles.roleId })
     .from(schema.rbacUserRoles)

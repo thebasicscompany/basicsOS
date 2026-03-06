@@ -104,8 +104,8 @@ export const PhoneFieldType: FieldTypeDefinition = {
 
   FilterComponent: null,
   filterOperators: [
-    { key: "eq", label: "is", requiresValue: true },
     { key: "like", label: "contains", requiresValue: true },
+    { key: "eq", label: "is", requiresValue: true },
     { key: "is_empty", label: "is empty", requiresValue: false },
     { key: "is_not_empty", label: "is not empty", requiresValue: false },
   ],

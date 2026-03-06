@@ -21,7 +21,18 @@ export function getRecordValue(
 ): unknown {
   if (record[columnName] !== undefined) return record[columnName];
   const camel = columnNameToCamel(columnName);
-  return record[camel];
+  if (record[camel] !== undefined) return record[camel];
+
+  const customFields =
+    (record.customFields as Record<string, unknown> | undefined) ??
+    (record.custom_fields as Record<string, unknown> | undefined);
+
+  if (customFields) {
+    if (customFields[columnName] !== undefined) return customFields[columnName];
+    if (customFields[camel] !== undefined) return customFields[camel];
+  }
+
+  return undefined;
 }
 
 export function snakeToCamel(

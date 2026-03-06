@@ -11,6 +11,7 @@ export const columnPatchSchema = z.object({
   show: z.boolean().optional(),
   order: z.number().int().optional(),
   width: z.string().optional(),
+  title: z.string().trim().min(1).optional(),
 });
 
 export const sortPostSchema = z.object({

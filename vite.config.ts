@@ -57,7 +57,7 @@ export default defineConfig({
       : undefined,
   base: "./",
   optimizeDeps: {
-    exclude: ["@basics-os/hub"],
+    exclude: ["@basics-os/hub", "parse5"],
     esbuildOptions: {
       loader: {
         ".csv": "text",
@@ -85,6 +85,10 @@ export default defineConfig({
       "@ai-sdk/provider-utils": path.resolve(
         __dirname,
         "node_modules/.pnpm/@ai-sdk+provider-utils@2.2.8_zod@3.25.76/node_modules/@ai-sdk/provider-utils",
+      ),
+      entities: path.resolve(
+        __dirname,
+        "node_modules/.pnpm/entities@6.0.1/node_modules/entities",
       ),
     },
   },

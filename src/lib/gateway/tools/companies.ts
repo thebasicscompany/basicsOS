@@ -2,22 +2,22 @@ import { getList, create } from "@/lib/api/crm";
 import type { CrmTool } from "./types";
 
 export const search_companies: CrmTool<
-  { query?: string; sector?: string; limit?: number },
+  { query?: string; category?: string; limit?: number },
   { data: unknown[]; total: number }
 > = {
   name: "search_companies",
   description:
-    "Search and list companies. Use when the user asks about companies, organizations, or accounts. Supports free-text search on name, city, and sector.",
+    "Search and list companies. Use when the user asks about companies, organizations, or accounts. Supports free-text search on name and category.",
   parameters: {
     type: "object",
     properties: {
       query: {
         type: "string",
-        description: "Free-text search across company name, city, and sector",
+        description: "Free-text search across company name and category",
       },
-      sector: {
+      category: {
         type: "string",
-        description: "Filter by sector/industry",
+        description: "Filter by category",
       },
       limit: {
         type: "number",
@@ -29,7 +29,7 @@ export const search_companies: CrmTool<
   async execute(params) {
     const filter: Record<string, unknown> = {};
     if (params.query?.trim()) filter.q = params.query.trim();
-    if (params.sector) filter.sector = params.sector;
+    if (params.category) filter.category = params.category;
     const result = await getList("companies_summary", {
       filter: Object.keys(filter).length > 0 ? filter : undefined,
       pagination: { page: 1, perPage: params.limit ?? 25 },
@@ -39,7 +39,7 @@ export const search_companies: CrmTool<
 };
 
 export const create_company: CrmTool<
-  { name: string; sector?: string; city?: string; website?: string },
+  { name: string; category?: string; domain?: string },
   unknown
 > = {
   name: "create_company",
@@ -49,18 +49,16 @@ export const create_company: CrmTool<
     type: "object",
     properties: {
       name: { type: "string", description: "Company name" },
-      sector: { type: "string", description: "Industry/sector" },
-      city: { type: "string", description: "City" },
-      website: { type: "string", description: "Website URL" },
+      category: { type: "string", description: "Category" },
+      domain: { type: "string", description: "Domain URL" },
     },
     required: ["name"],
   },
   async execute(params) {
     const data = await create("companies", {
       name: params.name,
-      sector: params.sector,
-      city: params.city,
-      website: params.website,
+      category: params.category,
+      domain: params.domain,
     });
     return data;
   },

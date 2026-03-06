@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useParams } from "react-router";
 import { toast } from "sonner";
+import type { Message } from "@ai-sdk/react";
 import { usePageTitle } from "@/contexts/page-header";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import {
@@ -16,7 +18,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
-  Message,
+  Message as MessageEl,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -36,9 +38,11 @@ import {
   PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
 import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input-context";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { Suggestion } from "@/components/ai-elements/suggestion";
 import { useGatewayChat } from "@/hooks/useGatewayChat";
 import { useGateway } from "@/hooks/useGateway";
+import { useThreadMessages } from "@/hooks/use-threads";
+import { useRecords } from "@/hooks/use-records";
 
 function getTextContent(msg: {
   content?: unknown;
@@ -89,10 +93,53 @@ function PromptInputAttachmentsDisplay() {
   );
 }
 
-export function ChatPage() {
-  usePageTitle("AI Chat");
+function useRecentHint() {
+  const deals = useRecords("deals", { perPage: 1, sort: { field: "created_at", order: "DESC" } });
+  const tasks = useRecords("tasks", { perPage: 1, sort: { field: "created_at", order: "DESC" } });
+
+  return useMemo(() => {
+    const latestDeal = (deals.data?.data?.[0] as Record<string, unknown> | undefined);
+    const latestTask = (tasks.data?.data?.[0] as Record<string, unknown> | undefined);
+
+    if (latestDeal) {
+      const name = (latestDeal.name ?? latestDeal.title ?? "") as string;
+      if (name) return `Ask about "${name}" or anything else`;
+    }
+    if (latestTask) {
+      const text = (latestTask.text ?? latestTask.title ?? "") as string;
+      if (text) return `Ask about "${text}" or anything else`;
+    }
+    return null;
+  }, [deals.data, tasks.data]);
+}
+
+function ChatPageInner({ threadId }: { threadId?: string }) {
   const { hasKey } = useGateway();
-  const { messages, append, status, stop } = useGatewayChat();
+  const recentHint = useRecentHint();
+  const { data: savedMessages } = useThreadMessages(threadId);
+
+  const initialMessages = useMemo<Message[] | undefined>(() => {
+    if (!savedMessages || savedMessages.length === 0) return undefined;
+    return savedMessages.map((m) => ({
+      id: String(m.id),
+      role: m.role as "user" | "assistant",
+      content: m.content ?? "",
+    }));
+  }, [savedMessages]);
+
+  const { messages, append, status, stop } = useGatewayChat({
+    initialThreadId: threadId,
+    initialMessages,
+  });
+
+  const allVisible = messages.filter(
+    (m) => m.role === "user" || m.role === "assistant",
+  );
+  const isEmpty = allVisible.length === 0;
+  const isIdle = status === "ready";
+
+  // Hide page title on empty starter screen
+  usePageTitle(isEmpty && isIdle ? "" : "AI Chat");
 
   const handleSubmit = useCallback(
     async (
@@ -125,9 +172,6 @@ export function ChatPage() {
     [append],
   );
 
-  const allVisible = messages.filter(
-    (m) => m.role === "user" || m.role === "assistant",
-  );
   const lastMsg = allVisible.at(-1);
   const lastAssistantIsEmpty =
     lastMsg?.role === "assistant" && !getTextContent(lastMsg);
@@ -135,62 +179,103 @@ export function ChatPage() {
     status === "submitted" || (status === "streaming" && lastAssistantIsEmpty);
   const displayMessages =
     isThinking && lastAssistantIsEmpty ? allVisible.slice(0, -1) : allVisible;
-  const isEmpty = allVisible.length === 0;
+
+  if (isEmpty && isIdle) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center overflow-hidden">
+        <PromptInputProvider>
+          <div className="-mt-24 flex w-full max-w-2xl flex-col items-center gap-5 px-6">
+            <div className="text-center">
+              <h1 className="text-3xl font-semibold text-foreground">
+                What can I help with?
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {!hasKey
+                  ? "Add your Basics API key in Settings to get started."
+                  : recentHint ?? "Ask anything about your operating system."}
+              </p>
+            </div>
+            <div className="w-full">
+              <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+                <PromptInputHeader>
+                  <PromptInputAttachmentsDisplay />
+                </PromptInputHeader>
+                <PromptInputBody>
+                  <PromptInputTextarea placeholder="Ask anything about your operating system..." />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <PromptInputActionMenu>
+                      <PromptInputActionMenuTrigger />
+                      <PromptInputActionMenuContent>
+                        <PromptInputActionAddAttachments />
+                      </PromptInputActionMenuContent>
+                    </PromptInputActionMenu>
+                  </PromptInputTools>
+                  <PromptInputSubmit
+                    status={status}
+                    onStop={stop}
+                  />
+                </PromptInputFooter>
+              </PromptInput>
+            </div>
+            {hasKey && (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <Suggestion
+                    key={suggestion}
+                    suggestion={suggestion}
+                    onClick={handleSuggestionClick}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </PromptInputProvider>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <PromptInputProvider>
-        <Conversation className="min-h-0 flex-1 border-b border-border">
-          <ConversationContent>
-            {isEmpty && status === "idle" && (
-              <div className="flex size-full flex-col items-center justify-center gap-2 p-8 text-center">
-                {!hasKey ? (
-                  <p className="text-[13px] text-muted-foreground">
-                    Add your Basics API key in Settings to use the assistant.
-                  </p>
-                ) : (
-                  <p className="text-[13px] text-muted-foreground">
-                    Ask about your CRM — create tasks, add notes, or update
-                    deals.
-                  </p>
-                )}
-              </div>
-            )}
+        <Conversation className="min-h-0 flex-1">
+          <ConversationContent className="pb-2">
             {displayMessages.map((m) => (
-              <Message key={m.id} from={m.role as "user" | "assistant"}>
+              <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
                 <MessageContent>
-                  <MessageResponse>{getTextContent(m)}</MessageResponse>
+                  <MessageResponse
+                    animated={
+                      m.role === "assistant"
+                        ? { animation: "blurIn" }
+                        : undefined
+                    }
+                    isAnimating={
+                      m.role === "assistant" && status === "streaming"
+                    }
+                  >
+                    {getTextContent(m)}
+                  </MessageResponse>
                 </MessageContent>
-              </Message>
+              </MessageEl>
             ))}
             {isThinking && (
-              <Message from="assistant">
+              <MessageEl from="assistant">
                 <MessageContent>
                   <Shimmer className="text-[13px]">Thinking...</Shimmer>
                 </MessageContent>
-              </Message>
+              </MessageEl>
             )}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
-        <div className="shrink-0 space-y-3 p-4">
-          {isEmpty && (
-            <Suggestions>
-              {SUGGESTIONS.map((suggestion) => (
-                <Suggestion
-                  key={suggestion}
-                  suggestion={suggestion}
-                  onClick={handleSuggestionClick}
-                />
-              ))}
-            </Suggestions>
-          )}
+        <div className="shrink-0 px-4 pb-6 pt-2">
           <PromptInput globalDrop multiple onSubmit={handleSubmit}>
             <PromptInputHeader>
               <PromptInputAttachmentsDisplay />
             </PromptInputHeader>
             <PromptInputBody>
-              <PromptInputTextarea placeholder="Ask about your CRM..." />
+              <PromptInputTextarea placeholder="Ask anything about your operating system..." />
             </PromptInputBody>
             <PromptInputFooter>
               <PromptInputTools>
@@ -201,11 +286,22 @@ export function ChatPage() {
                   </PromptInputActionMenuContent>
                 </PromptInputActionMenu>
               </PromptInputTools>
-              <PromptInputSubmit status={status} onStop={stop} />
+              <PromptInputSubmit
+                status={status}
+                onStop={stop}
+                variant="ghost"
+                className="rounded-full"
+              />
             </PromptInputFooter>
           </PromptInput>
         </div>
       </PromptInputProvider>
     </div>
   );
+}
+
+export function ChatPage() {
+  const { threadId } = useParams<{ threadId?: string }>();
+  // Key forces remount when switching threads
+  return <ChatPageInner key={threadId ?? "new"} threadId={threadId} />;
 }

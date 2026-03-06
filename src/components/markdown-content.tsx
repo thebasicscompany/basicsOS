@@ -11,7 +11,7 @@ export function MarkdownContent({ children, className }: MarkdownContentProps) {
   return (
     <div
       className={cn(
-        "prose prose-sm dark:prose-invert max-w-none text-sm",
+        "prose prose-sm dark:prose-invert max-w-none text-sm prose-p:my-3 prose-li:my-1",
         className,
       )}
     >

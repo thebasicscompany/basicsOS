@@ -25,11 +25,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { FileIcon, CopySimpleIcon } from "@phosphor-icons/react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
+import { buildRecordWritePayload } from "@/lib/crm/field-utils";
 import { useCreateRecord } from "@/hooks/use-records";
 import { RecordForm } from "./RecordForm";
 
@@ -117,7 +118,8 @@ export function CreateRecordModal({
     if (!validate()) return;
 
     try {
-      const record = await createRecord.mutateAsync(values);
+      const payload = buildRecordWritePayload(attributes, values);
+      const record = await createRecord.mutateAsync(payload);
       onCreated?.(record);
 
       if (createMore) {
@@ -184,19 +186,24 @@ export function CreateRecordModal({
         )}
 
         <DialogFooter className="items-center gap-4">
-          <div className="flex items-center gap-2 mr-auto">
-            <Switch
-              id="create-more"
-              checked={createMore}
-              onCheckedChange={setCreateMore}
-            />
-            <Label
-              htmlFor="create-more"
-              className="text-sm font-normal cursor-pointer"
-            >
-              Create more
-            </Label>
-          </div>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={createMore ? "multiple" : "single"}
+            onValueChange={(v) => {
+              if (v) setCreateMore(v === "multiple");
+            }}
+            className="mr-auto"
+          >
+            <ToggleGroupItem value="single" className="text-xs px-3 h-8 gap-1.5">
+              <FileIcon className="size-3.5" />
+              Create one
+            </ToggleGroupItem>
+            <ToggleGroupItem value="multiple" className="text-xs px-3 h-8 gap-1.5">
+              <CopySimpleIcon className="size-3.5" />
+              Create many
+            </ToggleGroupItem>
+          </ToggleGroup>
 
           <Button
             variant="outline"

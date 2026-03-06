@@ -3,6 +3,7 @@ import {
   ColumnsIcon,
   FunnelIcon,
   DotsThreeVerticalIcon,
+  PlusIcon,
 } from "@phosphor-icons/react";
 import * as React from "react";
 import {
@@ -34,6 +35,7 @@ import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import type { ViewSort, ViewFilter, ViewColumn } from "@/types/views";
 import { cn } from "@/lib/utils";
+import { getAttributeDisplayName, isNameFieldId } from "@/lib/crm/display-name";
 import { buildColumnItems, type ColumnItem } from "./column-items";
 import { SortPopover } from "./SortPopover";
 import { FilterPopover } from "./FilterPopover";
@@ -175,7 +177,13 @@ export function DataTableToolbar({
         <SortFilterPills
           sorts={sorts}
           filters={filters}
-          getAttributeName={(fieldId) => attrMap.get(fieldId)?.name ?? fieldId}
+          getAttributeName={(fieldId) => {
+            const attr = attrMap.get(fieldId);
+            if (isNameFieldId(fieldId, attributes)) {
+              return getAttributeDisplayName(attr, attributes, true);
+            }
+            return getAttributeDisplayName(attr, attributes) || fieldId;
+          }}
           onRemoveSort={onRemoveSort}
           onRemoveFilter={onRemoveFilter}
           className="flex flex-wrap items-center gap-1.5"
@@ -191,6 +199,7 @@ export function ColumnsPopover({
   totalCount,
   onToggle,
   onReorder,
+  onAddColumn,
   triggerClassName,
 }: {
   items: ColumnItem[];
@@ -198,6 +207,7 @@ export function ColumnsPopover({
   totalCount: number;
   onToggle: (columnId: string, show: boolean) => void;
   onReorder?: (columnId: string, newOrder: number) => void;
+  onAddColumn?: () => void;
   triggerClassName?: string;
 }) {
   const sensors = useSensors(
@@ -272,6 +282,19 @@ export function ColumnsPopover({
             </SortableContext>
           </DndContext>
         </div>
+        {onAddColumn && (
+          <div className="border-t px-3 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-full justify-start gap-1.5 text-xs text-muted-foreground"
+              onClick={onAddColumn}
+            >
+              <PlusIcon className="size-3.5" />
+              Add column
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

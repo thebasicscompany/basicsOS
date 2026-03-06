@@ -2,7 +2,7 @@ import { getList, getOne, create, update } from "@/lib/api/crm";
 import type { CrmTool } from "./types";
 
 export const search_contacts: CrmTool<
-  { query?: string; status?: string; company_id?: number; limit?: number },
+  { query?: string; company_id?: number; limit?: number },
   { data: unknown[]; total: number }
 > = {
   name: "search_contacts",
@@ -14,10 +14,6 @@ export const search_contacts: CrmTool<
       query: {
         type: "string",
         description: "Free-text search across first name, last name, email, and company name",
-      },
-      status: {
-        type: "string",
-        description: "Filter by contact status (e.g. lead, prospect, customer)",
       },
       company_id: {
         type: "number",
@@ -33,7 +29,6 @@ export const search_contacts: CrmTool<
   async execute(params) {
     const filter: Record<string, unknown> = {};
     if (params.query?.trim()) filter.q = params.query.trim();
-    if (params.status) filter.status = params.status;
     if (params.company_id != null) filter.company_id = params.company_id;
     const result = await getList("contacts_summary", {
       filter: Object.keys(filter).length > 0 ? filter : undefined,
@@ -60,7 +55,7 @@ export const get_contact: CrmTool<{ id: number }, unknown> = {
 };
 
 export const create_contact: CrmTool<
-  { first_name?: string; last_name?: string; email?: string; company_id?: number; status?: string },
+  { first_name?: string; last_name?: string; email?: string; company_id?: number },
   unknown
 > = {
   name: "create_contact",
@@ -73,7 +68,6 @@ export const create_contact: CrmTool<
       last_name: { type: "string", description: "Last name" },
       email: { type: "string", description: "Email address" },
       company_id: { type: "number", description: "Company ID to link" },
-      status: { type: "string", description: "Contact status" },
     },
     required: [],
   },
@@ -83,14 +77,13 @@ export const create_contact: CrmTool<
       last_name: params.last_name,
       email: params.email,
       company_id: params.company_id,
-      status: params.status,
     });
     return data;
   },
 };
 
 export const update_contact: CrmTool<
-  { id: number; first_name?: string; last_name?: string; email?: string; status?: string },
+  { id: number; first_name?: string; last_name?: string; email?: string },
   unknown
 > = {
   name: "update_contact",
@@ -102,7 +95,6 @@ export const update_contact: CrmTool<
       first_name: { type: "string", description: "First name" },
       last_name: { type: "string", description: "Last name" },
       email: { type: "string", description: "Email address" },
-      status: { type: "string", description: "Contact status" },
     },
     required: ["id"],
   },

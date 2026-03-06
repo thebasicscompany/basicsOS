@@ -1,10 +1,8 @@
 import type { CellDisplayProps } from "@/field-types/types";
 
 function formatPhone(raw: string): string {
-  // Strip non-digits
   const digits = raw.replace(/\D/g, "");
 
-  // US phone formatting
   if (digits.length === 10) {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
@@ -12,7 +10,6 @@ function formatPhone(raw: string): string {
     return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
   }
 
-  // International: just add + prefix if starts with digits
   if (digits.length > 10) {
     return `+${digits}`;
   }
@@ -30,7 +27,7 @@ export function PhoneCellDisplay({ value }: CellDisplayProps) {
   return (
     <a
       href={`tel:${String(value).replace(/\D/g, "")}`}
-      className="truncate text-sm"
+      className="truncate text-sm text-blue-600 hover:underline dark:text-blue-400"
       onClick={(e) => e.stopPropagation()}
       title={formatted}
     >

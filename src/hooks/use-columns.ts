@@ -63,7 +63,18 @@ interface CustomFieldDef {
   name: string;
   label: string;
   fieldType: string;
-  options: string[] | null;
+  options:
+    | Array<
+        | string
+        | {
+            id: string;
+            label: string;
+            color?: string;
+            order?: number;
+            isTerminal?: boolean;
+          }
+      >
+    | null;
 }
 
 /**
@@ -94,7 +105,15 @@ export function useCreateColumn() {
       resource: string;
       title: string;
       fieldType: string;
-      options?: Array<{ id: string; label: string; color: string }> | string[];
+      options?:
+        | Array<{
+            id: string;
+            label: string;
+            color?: string;
+            order?: number;
+            isTerminal?: boolean;
+          }>
+        | string[];
     }) => {
       const safeName = params.title.toLowerCase().replace(/[^a-z0-9_]/g, "_");
       const row = await fetchApi<CustomFieldDef>("/api/custom_field_defs", {
@@ -104,12 +123,27 @@ export function useCreateColumn() {
           name: safeName,
           label: params.title,
           fieldType: params.fieldType,
-          options: params.options?.map((o) =>
-            typeof o === "string" ? o : o.label,
-          ),
+          options: params.options,
         }),
       });
       const uidt = FIELD_TYPE_TO_UIDT[params.fieldType] ?? "SingleLineText";
+      const normalizedOptions = Array.isArray(row.options)
+        ? row.options.map((option, index) =>
+            typeof option === "string"
+              ? {
+                  id: option,
+                  label: option,
+                  order: index,
+                }
+              : {
+                  id: option.id,
+                  label: option.label,
+                  color: option.color,
+                  order: option.order ?? index,
+                  isTerminal: option.isTerminal,
+                },
+          )
+        : [];
       return {
         id: `custom_${row.id}`,
         fk_model_id: params.resource,
@@ -131,17 +165,62 @@ export function useCreateColumn() {
         cc: "",
         csn: "",
         dtx: "",
-        dtxp: Array.isArray(row.options) ? row.options.join(",") : "",
+        dtxp: normalizedOptions.map((option) => option.label).join(","),
         dtxs: "",
         au: false,
         order: 999,
         system: false,
-        meta: null,
+        meta: {
+          fieldType: params.fieldType,
+          options: normalizedOptions,
+        },
       } as SchemaColumn;
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["columns", vars.resource] });
+      qc.invalidateQueries({ queryKey: ["columns"] });
       qc.invalidateQueries({ queryKey: ["object-config"] });
+    },
+  });
+}
+
+/**
+ * Update a custom field's label or options.
+ * PATCH /api/custom_field_defs/:id
+ */
+export function useUpdateColumn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      columnId: string;
+      name?: string;
+      label?: string;
+      options?: Array<
+        | string
+        | {
+            id: string;
+            label: string;
+            color?: string;
+            order?: number;
+            isTerminal?: boolean;
+          }
+      >;
+    }) => {
+      const id = params.columnId.startsWith("custom_")
+        ? params.columnId.slice(7)
+        : params.columnId;
+      const body: Record<string, unknown> = {};
+      if (params.name !== undefined) body.name = params.name;
+      if (params.label !== undefined) body.label = params.label;
+      if (params.options !== undefined) body.options = params.options;
+      return fetchApi<CustomFieldDef>(`/api/custom_field_defs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["columns"] });
+      qc.invalidateQueries({ queryKey: ["object-config"] });
+      qc.invalidateQueries({ queryKey: ["records"] });
     },
   });
 }
@@ -162,7 +241,7 @@ export function useDeleteColumn() {
       });
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["columns", vars.resource] });
+      qc.invalidateQueries({ queryKey: ["columns"] });
     },
   });
 }

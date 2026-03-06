@@ -62,7 +62,7 @@ export function ImportFileDropzone({
     <div
       onDrop={handleDrop}
       onDragOver={handleDragOver}
-      className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 p-12 text-center transition-colors hover:border-primary/30"
+      className="flex flex-col items-center justify-center gap-3 rounded-lg bg-muted/50 p-12 text-center transition-colors hover:bg-muted/70"
     >
       <div className="flex size-10 items-center justify-center rounded-full bg-muted">
         <UploadSimpleIcon className="size-4 text-muted-foreground" />

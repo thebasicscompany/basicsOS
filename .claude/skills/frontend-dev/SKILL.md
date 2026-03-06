@@ -7,8 +7,9 @@ The frontend uses React 19, TanStack Query, React Router v7, and Shadcn UI. Data
 
 ## Architecture
 
-- **Object Registry**: Objects (contacts, companies, deals, tasks, etc.) are configured via DB. `ObjectRegistryProvider` wraps the app. Use `useObject(slug)`, `useAttributes(slug)`, `useObjects()` from `@/hooks/use-object-registry`.
-- **Generic list/detail**: `ObjectListPage` and `RecordDetailPage` serve `/objects/:objectSlug` and `/objects/:objectSlug/:recordId`. They are driven by the object registry and attributes.
+- **Objects vs Apps**: The codebase distinguishes **objects** (CRM entities like contacts, deals — DB-driven, generic UI via ObjectRegistry) from **apps** (standalone features like Chat, Home, Automations — each with own routes, hooks, and custom UI). `ObjectRegistryProvider` is for CRM objects only. Apps have their own data models independent of ObjectRegistry.
+- **Object Registry** (CRM only): Objects are configured via DB. `ObjectRegistryProvider` wraps the app. Use `useObject(slug)`, `useAttributes(slug)`, `useObjects()` from `@/hooks/use-object-registry`.
+- **Generic list/detail** (CRM only): `ObjectListPage` and `RecordDetailPage` serve `/objects/:objectSlug` and `/objects/:objectSlug/:recordId`. They are driven by the object registry and attributes.
 - **Views (NocoDB-style)**: Sorts, filters, and column config are persisted via `/api/views/*`. Use `useViews(objectSlug)` and `useViewState` from `@/hooks/use-views`.
 
 ## Data fetching
@@ -26,6 +27,9 @@ The frontend uses React 19, TanStack Query, React Router v7, and Shadcn UI. Data
 ## Conventions
 
 - **Paths**: `@/` → `src/`. Use `basics-os/src` for packages importing from the main app.
+- **App pages vs object pages**: An "app page" (e.g., ChatPage, HomePage) is a standalone feature with its own route at `/{name}`. An "object page" uses the generic `ObjectListPage`/`RecordDetailPage` at `/objects/:slug`. Don't use ObjectRegistry for app pages.
 - **Data table**: `DataTable` + `useDataTable` for list views. Supports pagination, sorting, column resize, and view persistence.
 - **Responsive**: Use `useIsMobile()` (or similar) when branching layouts. Deals have a kanban toggle via `DealsLayoutToggle`.
 - **Auth**: Session-based via Better Auth. Use `authClient` from `@/lib/auth-client` for sign-in/sign-out/session checks.
+
+For complete UI architecture reference (all pages, components, hooks, field types, interactions): see UI-REFERENCE.md in this directory.

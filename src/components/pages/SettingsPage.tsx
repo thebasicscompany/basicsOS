@@ -298,16 +298,16 @@ export function SettingsPage() {
   const sectionClass = "scroll-mt-20 px-6 py-6 sm:px-8";
 
   return (
-    <div className="flex h-full flex-col overflow-auto py-5">
-      <div className="mb-5">
-        <p className="mt-1 text-[12px] text-muted-foreground">
+    <div className="flex h-full flex-col overflow-auto pb-8">
+      <div className="mb-6">
+        <p className="text-sm text-muted-foreground">
           Configure workspace preferences, security, organization controls, and
           integrations.
         </p>
       </div>
 
       <div className="max-w-4xl">
-        <div className="rounded-xl border bg-background shadow-sm">
+        <div className="rounded-xl bg-card">
           <section id="appearance" className={sectionClass}>
             <div className="mb-4">
               <h2 className="text-[15px] font-semibold">Appearance</h2>

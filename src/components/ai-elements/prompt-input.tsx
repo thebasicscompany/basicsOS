@@ -70,7 +70,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  KeyReturnIcon,
+  ArrowUpIcon,
   ImageIcon,
   PlusIcon,
   SquareIcon,
@@ -987,7 +987,7 @@ export type PromptInputSubmitProps = ComponentProps<typeof InputGroupButton> & {
 
 export const PromptInputSubmit = ({
   className,
-  variant = "default",
+  variant = "ghost",
   size = "icon-sm",
   status,
   onStop,
@@ -997,7 +997,7 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   const isGenerating = status === "submitted" || status === "streaming";
 
-  let Icon = <KeyReturnIcon className="size-4" />;
+  let Icon = <ArrowUpIcon className="size-4" weight="bold" />;
 
   if (status === "submitted") {
     Icon = <Spinner />;
@@ -1022,7 +1022,10 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label={isGenerating ? "Stop" : "Submit"}
-      className={cn(className)}
+      className={cn(
+        "rounded-full bg-foreground text-background hover:bg-foreground/90",
+        className,
+      )}
       onClick={handleClick}
       size={size}
       type={isGenerating && onStop ? "button" : "submit"}

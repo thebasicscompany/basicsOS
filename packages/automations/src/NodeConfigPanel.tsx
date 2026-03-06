@@ -607,10 +607,10 @@ export function NodeConfigPanel({
             />
           </div>
           <div className="space-y-2">
-            <Label>Stage</Label>
+            <Label>Status</Label>
             <VariableInput
-              value={(params.stage as string) ?? ""}
-              onChange={(v) => onUpdate({ params: { ...params, stage: v } })}
+              value={(params.status as string) ?? ""}
+              onChange={(v) => onUpdate({ params: { ...params, status: v } })}
               variables={variables}
               placeholder="e.g. proposal-made, in-negotiation, won"
             />

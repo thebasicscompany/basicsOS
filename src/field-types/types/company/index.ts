@@ -1,6 +1,7 @@
 import { BuildingIcon } from "@phosphor-icons/react";
 import type { FieldTypeDefinition } from "@/field-types/types";
 import { CompanyCellDisplay } from "./CompanyCellDisplay";
+import { CompanyCellEditor } from "./CompanyCellEditor";
 import { CompanyFormInput } from "./CompanyFormInput";
 
 export const CompanyFieldType: FieldTypeDefinition = {
@@ -17,10 +18,10 @@ export const CompanyFieldType: FieldTypeDefinition = {
   KanbanDisplay: CompanyCellDisplay,
   DetailDisplay: CompanyCellDisplay,
 
-  CellEditor: CompanyFormInput as any,
-  KanbanEditor: CompanyFormInput as any,
+  CellEditor: CompanyCellEditor,
+  KanbanEditor: CompanyCellEditor,
   FormInput: CompanyFormInput,
-  DetailEditor: CompanyFormInput as any,
+  DetailEditor: CompanyCellEditor,
 
   editorStyle: "popover",
 
@@ -64,7 +65,7 @@ export const CompanyFieldType: FieldTypeDefinition = {
   calculate: () => null,
 
   placeholder: "Search companies...",
-  searchPlaceholder: "Search by name, city, sector...",
+  searchPlaceholder: "Search by name, category...",
 };
 
 export default CompanyFieldType;

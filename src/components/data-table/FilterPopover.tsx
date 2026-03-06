@@ -14,9 +14,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import type { ViewFilter } from "@/types/views";
+import {
+  getAttributeDisplayName,
+  shouldHideSplitNameAttribute,
+} from "@/lib/crm/display-name";
 export interface FilterPopoverProps {
   attributes: Attribute[];
   filters: ViewFilter[];
@@ -35,9 +46,13 @@ export function FilterPopover({
   children,
 }: FilterPopoverProps) {
   const [open, setOpen] = React.useState(false);
+  const [isAddingFilter, setIsAddingFilter] = React.useState(false);
 
   const filterableAttributes = React.useMemo(
-    () => attributes.filter((a) => !a.isSystem),
+    () =>
+      attributes.filter(
+        (a) => !a.isSystem && !shouldHideSplitNameAttribute(a, attributes),
+      ),
     [attributes],
   );
 
@@ -50,21 +65,27 @@ export function FilterPopover({
     (fieldId: string) => {
       const attr = attrMap.get(fieldId);
       const fieldType = getFieldType(attr?.uiType ?? "text");
-      const defaultOp = fieldType.filterOperators[0]?.value ?? "eq";
+      const defaultOp = fieldType.filterOperators[0]?.key ?? "eq";
 
       onAdd({
         fieldId,
         operator: defaultOp,
         value: "",
         logicalOp: filters.length === 0 ? "and" : "and",
-        order: filters.length,
       });
+      setIsAddingFilter(false);
     },
     [onAdd, filters.length, attrMap],
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setIsAddingFilter(false);
+      }}
+    >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent align="start" className="w-[420px] p-3">
         <div className="flex flex-col gap-3">
@@ -83,9 +104,10 @@ export function FilterPopover({
                 const attr = attrMap.get(filter.fieldId);
                 const fieldType = getFieldType(attr?.uiType ?? "text");
                 const operators = fieldType.filterOperators;
-                const isValueless =
-                  filter.operator === "isEmpty" ||
-                  filter.operator === "isNotEmpty";
+                const selectedOperator = operators.find(
+                  (operator) => operator.key === filter.operator,
+                );
+                const isValueless = selectedOperator?.requiresValue === false;
 
                 return (
                   <div key={filter.id} className="flex items-center gap-1.5">
@@ -117,7 +139,7 @@ export function FilterPopover({
                           newAttr?.uiType ?? "text",
                         );
                         const newOp =
-                          newFieldType.filterOperators[0]?.value ?? "eq";
+                          newFieldType.filterOperators[0]?.key ?? "eq";
                         onUpdate?.(filter.id, {
                           fieldId: val,
                           operator: newOp,
@@ -127,13 +149,13 @@ export function FilterPopover({
                     >
                       <SelectTrigger className="h-7 w-28 text-xs shrink-0">
                         <SelectValue>
-                          {attr?.name ?? filter.fieldId}
+                          {getAttributeDisplayName(attr, attributes) || filter.fieldId}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {filterableAttributes.map((a) => (
                           <SelectItem key={a.id} value={a.id}>
-                            {a.name}
+                            {getAttributeDisplayName(a, attributes)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -148,13 +170,13 @@ export function FilterPopover({
                     >
                       <SelectTrigger className="h-7 w-32 text-xs shrink-0">
                         <SelectValue>
-                          {operators.find((o) => o.value === filter.operator)
+                          {operators.find((o) => o.key === filter.operator)
                             ?.label ?? filter.operator}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {operators.map((op) => (
-                          <SelectItem key={op.value} value={op.value}>
+                          <SelectItem key={op.key} value={op.key}>
                             {op.label}
                           </SelectItem>
                         ))}
@@ -191,21 +213,39 @@ export function FilterPopover({
           {filterableAttributes.length > 0 && (
             <>
               <div className="border-t" />
-              <Select onValueChange={handleAddFilter}>
-                <SelectTrigger className="h-7 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
+              {isAddingFilter ? (
+                <div className="rounded-md border">
+                  <div className="flex items-center gap-1.5 border-b px-3 py-2 text-xs text-muted-foreground">
                     <PlusIcon className="size-3" />
                     <span>Add filter</span>
                   </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {filterableAttributes.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Command>
+                    <CommandInput placeholder="Search fields..." />
+                    <CommandList className="max-h-48">
+                      <CommandEmpty>No fields found.</CommandEmpty>
+                      {filterableAttributes.map((a) => (
+                        <CommandItem
+                          key={a.id}
+                          value={getAttributeDisplayName(a, attributes)}
+                          onSelect={() => handleAddFilter(a.id)}
+                        >
+                          {getAttributeDisplayName(a, attributes)}
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-fit gap-1.5 text-xs"
+                  onClick={() => setIsAddingFilter(true)}
+                >
+                  <PlusIcon className="size-3.5" />
+                  Add filter
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -235,6 +275,9 @@ function FilterValueInput({
   }
 
   const fieldType = getFieldType(attribute.uiType);
+  const options = Array.isArray(attribute.config?.options)
+    ? (attribute.config.options as Array<{ id?: string; label: string }>)
+    : [];
 
   // custom FilterComponent when available
   if (fieldType.FilterComponent) {
@@ -246,6 +289,29 @@ function FilterValueInput({
     );
   }
 
+  if (
+    ["select", "status", "multi-select"].includes(attribute.uiType) &&
+    options.length > 0
+  ) {
+    return (
+      <Select value={String(value ?? "")} onValueChange={onChange}>
+        <SelectTrigger className="h-7 flex-1 text-xs">
+          <SelectValue placeholder="Select value..." />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem
+              key={option.id ?? option.label}
+              value={option.id ?? option.label}
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
   // fallback text input
   return (
     <Input
@@ -254,9 +320,9 @@ function FilterValueInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder="Value..."
       type={
-        attribute.uiType === "Number" || attribute.uiType === "Decimal"
+        attribute.uiType === "number" || attribute.uiType === "currency"
           ? "number"
-          : attribute.uiType === "Date" || attribute.uiType === "DateTime"
+          : attribute.uiType === "date" || attribute.uiType === "timestamp"
             ? "date"
             : "text"
       }

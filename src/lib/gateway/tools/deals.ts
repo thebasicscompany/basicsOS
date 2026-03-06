@@ -4,8 +4,7 @@ import type { CrmTool } from "./types";
 export const search_deals: CrmTool<
   {
     query?: string;
-    stage?: string;
-    category?: string;
+    status?: string;
     company_id?: number;
     limit?: number;
   },
@@ -13,7 +12,7 @@ export const search_deals: CrmTool<
 > = {
   name: "search_deals",
   description:
-    "Search and list deals. Use when the user asks about deals, pipeline, or opportunities. Supports filtering by stage and category.",
+    "Search and list deals. Use when the user asks about deals, pipeline, or opportunities. Supports filtering by status.",
   parameters: {
     type: "object",
     properties: {
@@ -21,13 +20,9 @@ export const search_deals: CrmTool<
         type: "string",
         description: "Free-text search on deal name",
       },
-      stage: {
+      status: {
         type: "string",
-        description: "Filter by deal stage (e.g. qualification, proposal, negotiation)",
-      },
-      category: {
-        type: "string",
-        description: "Filter by deal category",
+        description: "Filter by deal status (e.g. opportunity, proposal-made, in-negotiation, won, lost)",
       },
       company_id: {
         type: "number",
@@ -43,8 +38,7 @@ export const search_deals: CrmTool<
   async execute(params) {
     const filter: Record<string, unknown> = {};
     if (params.query?.trim()) filter.q = params.query.trim();
-    if (params.stage) filter.stage = params.stage;
-    if (params.category) filter.category = params.category;
+    if (params.status) filter.status = params.status;
     if (params.company_id != null) filter.company_id = params.company_id;
     const result = await getList("deals", {
       filter: Object.keys(filter).length > 0 ? filter : undefined,
@@ -73,11 +67,9 @@ export const get_deal: CrmTool<{ id: number }, unknown> = {
 export const create_deal: CrmTool<
   {
     name: string;
-    stage?: string;
-    category?: string;
+    status?: string;
     company_id?: number;
     amount?: number;
-    description?: string;
   },
   unknown
 > = {
@@ -88,22 +80,18 @@ export const create_deal: CrmTool<
     type: "object",
     properties: {
       name: { type: "string", description: "Deal name" },
-      stage: { type: "string", description: "Deal stage" },
-      category: { type: "string", description: "Deal category" },
+      status: { type: "string", description: "Deal status" },
       company_id: { type: "number", description: "Company ID to link" },
       amount: { type: "number", description: "Deal amount in cents" },
-      description: { type: "string", description: "Deal description" },
     },
     required: ["name"],
   },
   async execute(params) {
     const data = await create("deals", {
       name: params.name,
-      stage: params.stage ?? "qualification",
-      category: params.category,
+      status: params.status ?? "opportunity",
       company_id: params.company_id,
       amount: params.amount,
-      description: params.description,
     });
     return data;
   },
@@ -113,25 +101,21 @@ export const update_deal: CrmTool<
   {
     id: number;
     name?: string;
-    stage?: string;
-    category?: string;
+    status?: string;
     amount?: number;
-    description?: string;
   },
   unknown
 > = {
   name: "update_deal",
   description:
-    "Update an existing deal. Use when the user wants to change deal stage, amount, or other details.",
+    "Update an existing deal. Use when the user wants to change deal status, amount, or other details.",
   parameters: {
     type: "object",
     properties: {
       id: { type: "number", description: "Deal ID" },
       name: { type: "string", description: "Deal name" },
-      stage: { type: "string", description: "Deal stage" },
-      category: { type: "string", description: "Deal category" },
+      status: { type: "string", description: "Deal status" },
       amount: { type: "number", description: "Deal amount in cents" },
-      description: { type: "string", description: "Deal description" },
     },
     required: ["id"],
   },

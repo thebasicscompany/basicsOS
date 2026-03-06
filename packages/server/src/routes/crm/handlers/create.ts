@@ -10,28 +10,48 @@ import {
   TABLE_MAP,
   type Resource,
 } from "@/routes/crm/constants.js";
+import {
+  resolveCustomTable,
+  insertCustomRecord,
+} from "@/data-access/crm/dynamic-table.js";
 
 export function createCreateHandler(db: Db, env: Env) {
   return async (c: Context) => {
     const resource = c.req.param("resource") as Resource;
-    if (!CRM_RESOURCES.includes(resource) || resource.endsWith("_summary")) {
-      return jsonError(c, "Cannot create on this resource", 400, "INVALID_RESOURCE");
-    }
 
     const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
     if (!authz.ok) return authz.response;
     const { crmUser } = authz;
-    if (resource === "crm_users" && !authz.permissions.has("*")) {
-      return jsonError(c, "Forbidden", 403, "FORBIDDEN");
-    }
     const crmUserId = crmUser.id;
     const orgId = crmUser.organizationId;
     if (!crmUserId || !orgId) {
       return jsonError(c, "Organization not found", 404, "NOT_FOUND");
     }
 
-    if (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">]) {
-      return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
+    // Handle custom object tables
+    if (!CRM_RESOURCES.includes(resource) || (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">] && !resource.endsWith("_summary"))) {
+      const customTable = await resolveCustomTable(db, resource, orgId);
+      if (!customTable) {
+        return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
+      }
+
+      let rawBody: Record<string, unknown>;
+      try {
+        rawBody = (await c.req.json()) as Record<string, unknown>;
+      } catch {
+        return jsonError(c, "Invalid JSON body", 400, "VALIDATION_FAILED");
+      }
+
+      const record = await insertCustomRecord(db, customTable, rawBody, crmUserId, orgId);
+      if (!record) return jsonError(c, "Insert failed", 500, "INSERT_FAILED");
+      return c.json(record, 201);
+    }
+
+    if (resource.endsWith("_summary")) {
+      return jsonError(c, "Cannot create on this resource", 400, "INVALID_RESOURCE");
+    }
+    if (resource === "crm_users" && !authz.permissions.has("*")) {
+      return jsonError(c, "Forbidden", 403, "FORBIDDEN");
     }
 
     let rawBody: Record<string, unknown>;

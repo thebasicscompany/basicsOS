@@ -7,6 +7,7 @@ import type {
 import { MultiSelectCellDisplay } from "./MultiSelectCellDisplay";
 import { MultiSelectCellEditor } from "./MultiSelectCellEditor";
 import { MultiSelectFormInput } from "./MultiSelectFormInput";
+import { SelectTypeConfig } from "../select/SelectTypeConfig";
 
 function multiSelectCalc(values: any[], type: CalculationType): any {
   const toArray = (v: any): string[] => {
@@ -69,7 +70,7 @@ export const MultiSelectFieldType: FieldTypeDefinition = {
   group: "standard",
 
   hasTypeConfig: true,
-  TypeConfigComponent: null, // Reuses SelectTypeConfig via registry-level config
+  TypeConfigComponent: SelectTypeConfig,
   defaultTypeConfig: { options: [] as SelectOption[] },
 
   CellDisplay: MultiSelectCellDisplay,

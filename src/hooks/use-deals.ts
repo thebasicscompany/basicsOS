@@ -13,17 +13,12 @@ export interface Deal {
   id: number;
   name: string;
   companyId: number | null;
-  contactIds: number[] | null;
-  category: string | null;
-  stage: string;
-  description: string | null;
+  status: string;
   amount: number | null;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
-  expectedClosingDate: string | null;
   crmUserId: number | null;
-  index: number | null;
   customFields?: Record<string, unknown>;
 }
 

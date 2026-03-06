@@ -1,7 +1,8 @@
 export const ROUTES = {
   // Apps
-  CRM: "/dashboard",
+  CRM: "/home",
   CHAT: "/chat",
+  CHAT_THREAD: "/chat/:threadId",
   VOICE: "/voice",
   MCP: "/mcp",
   CONNECTIONS: "/connections",

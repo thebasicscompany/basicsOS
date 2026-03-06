@@ -9,7 +9,7 @@
  *  - isEditing          -> fieldType.CellEditor
  *  - empty value        -> placeholder text (gray, italic)
  *  - otherwise          -> fieldType.CellDisplay
- *  - Checkbox type      -> toggle directly, never enters "edit mode"
+ *  - Toggle-style types -> toggle directly, never enters "edit mode"
  */
 
 import React, { useCallback, useRef } from "react";
@@ -44,30 +44,23 @@ export function Cell({
 }: CellProps) {
   const fieldType = getFieldType(attribute.uiType);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const isCheckbox = attribute.uiType === "checkbox";
+  const isToggle = fieldType.editorStyle === "toggle";
+  const displayValue = fieldType.formatDisplayValue(value, attribute.config);
+  const shouldShowPreview =
+    isSelected &&
+    !isEditing &&
+    !isToggle &&
+    typeof displayValue === "string" &&
+    displayValue.trim().length > 32;
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (isCheckbox) {
+      if (isToggle) {
         e.stopPropagation();
         onSave(!value);
-        return;
-      }
-
-      if (isSelected && !isEditing) {
-        onStartEditing();
       }
     },
-    [isCheckbox, isSelected, isEditing, onStartEditing, onSave, value],
-  );
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (isCheckbox) return; // checkbox already toggled on single click
-      e.stopPropagation();
-      onStartEditing();
-    },
-    [isCheckbox, onStartEditing],
+    [isToggle, onSave, value],
   );
 
   if (isProtected) {
@@ -83,11 +76,14 @@ export function Cell({
     );
   }
 
-  if (isEditing && !isCheckbox) {
+  if (isEditing && !isToggle) {
     const CellEditor = fieldType.CellEditor;
     return (
       <div
         ref={wrapperRef}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         className={cn(
           "flex min-h-[32px] items-center ring-2 ring-blue-500 rounded-sm",
           className,
@@ -113,9 +109,9 @@ export function Cell({
       role="gridcell"
       tabIndex={isSelected ? 0 : -1}
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
       className={cn(
-        "flex min-h-[32px] items-center overflow-hidden px-2 cursor-default select-none",
+        "relative flex min-h-[32px] items-center overflow-hidden px-2 cursor-default select-none",
+        shouldShowPreview && "overflow-visible",
         isSelected && "ring-2 ring-blue-500 rounded-sm",
         className,
       )}
@@ -130,6 +126,11 @@ export function Cell({
           config={attribute.config}
           attribute={attribute}
         />
+      )}
+      {shouldShowPreview && (
+        <div className="absolute top-full left-0 z-20 mt-1 max-w-[420px] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md">
+          {displayValue}
+        </div>
       )}
     </div>
   );

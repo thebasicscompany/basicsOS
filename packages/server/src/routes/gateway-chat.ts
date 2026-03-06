@@ -4,8 +4,7 @@ import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
-import { resolveOrgAiConfig, buildGatewayHeaders } from "@/lib/org-ai-config.js";
-import { writeUsageLogSafe } from "@/lib/usage-log.js";
+import { resolveOrgAiConfig } from "@/lib/org-ai-config.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import {
   BASE_SYSTEM_PROMPT,
@@ -16,7 +15,12 @@ import {
   toolFallbackText,
   toOpenAIMessages,
 } from "@/routes/gateway-chat/protocol.js";
-import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
+import {
+  ensureThread,
+  persistMessage,
+  updateThreadTitle,
+  touchThread,
+} from "@/routes/gateway-chat/storage.js";
 import { executeValidatedTool } from "@/routes/gateway-chat/tools.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
@@ -32,10 +36,12 @@ export function createGatewayChatRoutes(
     const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
     if (!authz.ok) return authz.response;
 
-    const aiResult = await resolveOrgAiConfig(c, db, env);
-    if (!aiResult.ok) return aiResult.response;
-    const { crmUser, aiConfig } = aiResult.data;
-    const gatewayHeaders = buildGatewayHeaders(aiConfig);
+    const orgAi = await resolveOrgAiConfig(c, db, env);
+    if (!orgAi.ok) return orgAi.response;
+    const { crmUser, aiConfig } = orgAi.data;
+    const apiKey = aiConfig.apiKey;
+    if (!crmUser.organizationId)
+      return c.json({ error: "Organization not found" }, 404);
 
     let body: unknown;
     try {
@@ -70,16 +76,30 @@ export function createGatewayChatRoutes(
     );
     await persistMessage(db, threadId, "user", queryText);
 
+    // Auto-title thread: immediate fallback, then async smart title via LLM
+    if (!parsed.data.threadId?.trim()) {
+      const fallback =
+        queryText.length > 80 ? queryText.slice(0, 77) + "..." : queryText;
+      await updateThreadTitle(db, threadId, fallback);
+
+      // Fire-and-forget: generate a 2-4 word summary title
+      generateSmartTitle(
+        db,
+        threadId,
+        queryText,
+        apiKey,
+        env.BASICSOS_API_URL,
+      ).catch(() => {});
+    }
+
     const [crmSummary, ragContext] = await Promise.all([
-      buildCrmSummary(db, crmUser.organizationId!),
+      buildCrmSummary(db, crmUser.organizationId),
       retrieveRelevantContext(
         db,
         env.BASICSOS_API_URL,
-        gatewayHeaders,
-        crmUser.organizationId!,
+        apiKey,
+        crmUser.organizationId,
         queryText,
-        5,
-        crmUser.id,
       ),
     ]);
 
@@ -94,16 +114,15 @@ export function createGatewayChatRoutes(
     let finalContent = "";
     const latestToolOutputs: Array<{ name: string; result: unknown }> = [];
 
-    const requestStart = Date.now();
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-
     for (let i = 0; i < 5; i++) {
       let res: Response;
       try {
         res = await fetch(`${env.BASICSOS_API_URL}/v1/chat/completions`, {
           method: "POST",
-          headers: gatewayHeaders,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
           body: JSON.stringify({
             model: "basics-chat-smart",
             messages: chatMessages,
@@ -144,11 +163,7 @@ export function createGatewayChatRoutes(
             }>;
           };
         }>;
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
-
-      totalInputTokens += json.usage?.prompt_tokens ?? 0;
-      totalOutputTokens += json.usage?.completion_tokens ?? 0;
 
       const aiMessage = json.choices?.[0]?.message;
       const toolCalls = aiMessage?.tool_calls ?? [];
@@ -201,16 +216,7 @@ export function createGatewayChatRoutes(
     if (!finalContent)
       finalContent = "I could not complete that request. Please try again.";
     await persistMessage(db, threadId, "assistant", finalContent);
-
-    writeUsageLogSafe(db, {
-      organizationId: crmUser.organizationId!,
-      crmUserId: crmUser.id,
-      feature: "chat",
-      model: "basics-chat-smart",
-      inputTokens: totalInputTokens,
-      outputTokens: totalOutputTokens,
-      durationMs: Date.now() - requestStart,
-    });
+    await touchThread(db, threadId);
 
     const encoder = new TextEncoder();
     const parts = finalContent.match(/.{1,140}/g) ?? [finalContent];
@@ -238,4 +244,41 @@ export function createGatewayChatRoutes(
   });
 
   return app;
+}
+
+async function generateSmartTitle(
+  db: Db,
+  threadId: string,
+  queryText: string,
+  apiKey: string,
+  gatewayUrl: string,
+): Promise<void> {
+  const res = await fetch(`${gatewayUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "basics-chat-smart",
+      messages: [
+        {
+          role: "user",
+          content: `Summarize this conversation topic in 2-4 words. Reply with ONLY the title, no quotes or punctuation.\n\nUser: ${queryText.slice(0, 500)}`,
+        },
+      ],
+      stream: false,
+      max_tokens: 20,
+    }),
+  });
+
+  if (!res.ok) return;
+
+  const json = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  const title = json.choices?.[0]?.message?.content?.trim();
+  if (title && title.length > 0 && title.length <= 80) {
+    await updateThreadTitle(db, threadId, title);
+  }
 }

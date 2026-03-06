@@ -291,9 +291,9 @@ export function CommandPalette() {
                       >
                         <BuildingIcon className="size-4 shrink-0" />
                         <span className="flex-1 truncate">{c.name}</span>
-                        {c.sector && (
+                        {c.category && (
                           <span className="text-xs text-muted-foreground">
-                            {c.sector}
+                            {c.category}
                           </span>
                         )}
                       </CommandItem>
@@ -318,7 +318,7 @@ export function CommandPalette() {
                       >
                         <HandshakeIcon className="size-4 shrink-0" />
                         <span className="flex-1 truncate">{d.name}</span>
-                        <DealStageBadge stage={d.stage} />
+                        <DealStageBadge stage={d.status} />
                       </CommandItem>
                     ))}
                   </CommandGroup>

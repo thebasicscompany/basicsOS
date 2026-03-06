@@ -1,16 +1,10 @@
 import {
   SortAscendingIcon,
-  CaretDownIcon,
   FunnelIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   SortPopover,
   FilterPopover,
@@ -29,6 +23,7 @@ export interface ObjectListHeaderActionsProps {
     filters: ViewFilter[];
     isDirty: boolean;
     addSort: (fieldId: string, direction: "asc" | "desc") => void;
+    updateSort: (sortId: string, updates: Partial<ViewSort>) => void;
     removeSort: (sortId: string) => void;
     addFilter: (
       fieldId: string,
@@ -36,6 +31,7 @@ export interface ObjectListHeaderActionsProps {
       value: unknown,
       logicalOp?: "and" | "or",
     ) => void;
+    updateFilter: (filterId: string, updates: Partial<ViewFilter>) => void;
     removeFilter: (filterId: string) => void;
     updateColumn: (
       columnId: string,
@@ -47,6 +43,7 @@ export interface ObjectListHeaderActionsProps {
   onAddSort: (sort: Omit<ViewSort, "id">) => void;
   onAddFilter: (filter: Omit<ViewFilter, "id">) => void;
   onCreateRecord: () => void;
+  onAddColumn?: () => void;
   showTableActions?: boolean;
 }
 
@@ -58,127 +55,25 @@ export function ObjectListHeaderActions({
   onAddSort,
   onAddFilter,
   onCreateRecord,
+  onAddColumn,
   showTableActions = true,
 }: ObjectListHeaderActionsProps) {
   const hasActiveSorts = viewState.sorts.length > 0;
   const hasActiveFilters = viewState.filters.length > 0;
-  const actionsCount = viewState.sorts.length + viewState.filters.length;
   const columnVisibleCount = columnItems.filter((c) => c.vc.show).length;
 
   return (
     <>
       {showTableActions && attributes.length > 0 && (
-        <TableActionsMenu
-          actionsCount={actionsCount}
-          attributes={attributes}
-          sorts={viewState.sorts}
-          filters={viewState.filters}
-          hasActiveSorts={hasActiveSorts}
-          hasActiveFilters={hasActiveFilters}
-          onAddSort={onAddSort}
-          onRemoveSort={viewState.removeSort}
-          onAddFilter={onAddFilter}
-          onRemoveFilter={viewState.removeFilter}
-          onAddFilterRaw={viewState.addFilter}
-          onAddSortRaw={viewState.addSort}
-          columnItems={columnItems}
-          onUpdateColumn={viewState.updateColumn}
-          isDirty={viewState.isDirty}
-          onDiscard={viewState.discard}
-          onSave={viewState.save}
-          columnVisibleCount={columnVisibleCount}
-        />
-      )}
-      <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">
-        <PlusIcon className="h-4 w-4" />
-        New {singularName}
-      </Button>
-    </>
-  );
-}
-
-function TableActionsMenu({
-  actionsCount,
-  attributes,
-  sorts,
-  filters,
-  hasActiveSorts,
-  hasActiveFilters,
-  onAddSort,
-  onRemoveSort,
-  onAddFilter,
-  onRemoveFilter,
-  onAddFilterRaw,
-  onAddSortRaw,
-  columnItems,
-  onUpdateColumn,
-  isDirty,
-  onDiscard,
-  onSave,
-  columnVisibleCount,
-}: {
-  actionsCount: number;
-  attributes: Attribute[];
-  sorts: ViewSort[];
-  filters: ViewFilter[];
-  hasActiveSorts: boolean;
-  hasActiveFilters: boolean;
-  onAddSort: (sort: Omit<ViewSort, "id">) => void;
-  onRemoveSort: (sortId: string) => void;
-  onAddFilter: (filter: Omit<ViewFilter, "id">) => void;
-  onRemoveFilter: (filterId: string) => void;
-  onAddFilterRaw: (
-    fieldId: string,
-    operator: string,
-    value: unknown,
-    logicalOp?: "and" | "or",
-  ) => void;
-  onAddSortRaw: (fieldId: string, direction: "asc" | "desc") => void;
-  columnItems: ColumnItem[];
-  onUpdateColumn: (
-    columnId: string,
-    updates: Partial<{ show?: boolean; order?: number; width?: string }>,
-  ) => void;
-  isDirty: boolean;
-  onDiscard: () => void;
-  onSave: () => Promise<void>;
-  columnVisibleCount: number;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-          Actions
-          {actionsCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
-            >
-              {actionsCount}
-            </Badge>
-          )}
-          <CaretDownIcon className="size-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[min(92vw,420px)] p-3">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-center">
+        <div className="flex items-center gap-2">
           <SortPopover
             attributes={attributes}
-            sorts={sorts}
+            sorts={viewState.sorts}
             onAdd={onAddSort}
-            onRemove={onRemoveSort}
-            onUpdate={(sortId, updates) => {
-              onRemoveSort(sortId);
-              if (updates.fieldId && updates.direction) {
-                onAddSortRaw(updates.fieldId, updates.direction);
-              }
-            }}
+            onRemove={viewState.removeSort}
+            onUpdate={viewState.updateSort}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 w-full justify-between gap-1.5 text-xs sm:w-auto sm:justify-start"
-            >
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
               <SortAscendingIcon className="size-3.5" />
               Sort
               {hasActiveSorts && (
@@ -186,33 +81,19 @@ function TableActionsMenu({
                   variant="secondary"
                   className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
                 >
-                  {sorts.length}
+                  {viewState.sorts.length}
                 </Badge>
               )}
             </Button>
           </SortPopover>
           <FilterPopover
             attributes={attributes}
-            filters={filters}
+            filters={viewState.filters}
             onAdd={onAddFilter}
-            onRemove={onRemoveFilter}
-            onUpdate={(filterId, updates) => {
-              onRemoveFilter(filterId);
-              if (updates.fieldId && updates.operator) {
-                onAddFilterRaw(
-                  updates.fieldId,
-                  updates.operator,
-                  updates.value,
-                  updates.logicalOp,
-                );
-              }
-            }}
+            onRemove={viewState.removeFilter}
+            onUpdate={viewState.updateFilter}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 w-full justify-between gap-1.5 text-xs sm:w-auto sm:justify-start"
-            >
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
               <FunnelIcon className="size-3.5" />
               Filter
               {hasActiveFilters && (
@@ -220,7 +101,7 @@ function TableActionsMenu({
                   variant="secondary"
                   className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
                 >
-                  {filters.length}
+                  {viewState.filters.length}
                 </Badge>
               )}
             </Button>
@@ -229,29 +110,41 @@ function TableActionsMenu({
             items={columnItems}
             visibleCount={columnVisibleCount}
             totalCount={columnItems.length}
-            onToggle={(columnId, show) => onUpdateColumn(columnId, { show })}
+            onToggle={(columnId, show) => viewState.updateColumn(columnId, { show })}
             onReorder={(columnId, newOrder) =>
-              onUpdateColumn(columnId, { order: newOrder })
+              viewState.updateColumn(columnId, { order: newOrder })
             }
-            triggerClassName="w-full justify-between sm:w-auto sm:justify-start"
+            onAddColumn={onAddColumn}
           />
+          {viewState.isDirty && (
+            <div className="flex items-center gap-2 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 border border-blue-400/30 px-3 py-1.5 animate-in fade-in slide-in-from-right-2">
+              <div className="size-2 shrink-0 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                Unsaved changes
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={viewState.discard}
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={viewState.save}
+              >
+                Save for everyone
+              </Button>
+            </div>
+          )}
         </div>
-        {isDirty && (
-          <div className="mt-2 flex items-center justify-end gap-2 border-t pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={onDiscard}
-            >
-              Discard changes
-            </Button>
-            <Button size="sm" className="h-7 text-xs" onClick={onSave}>
-              Save for everyone
-            </Button>
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      )}
+      <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">
+        <PlusIcon className="h-4 w-4" />
+        New {singularName}
+      </Button>
+    </>
   );
 }

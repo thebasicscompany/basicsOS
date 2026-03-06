@@ -80,13 +80,25 @@ export const TAG_COLOR_PALETTE: TagColor[] = [
   },
 ];
 
-export const STATUS_DOT_COLORS: Record<string, string> = {
-  Lead: "bg-blue-500",
-  "In Progress": "bg-pink-500",
-  Won: "bg-green-500",
-  Lost: "bg-red-500",
-  "No communication": "bg-gray-400",
-  Weak: "bg-orange-500",
+/**
+ * @deprecated Use getStatusDotClass(label, colorName) instead of looking up by label.
+ * Kept only for backward compatibility with status-badge.tsx until it is genericized.
+ */
+export const STATUS_DOT_COLORS: Record<string, string> = {};
+
+const COLOR_NAME_TO_DOT_CLASS: Record<string, string> = {
+  yellow: "bg-yellow-500",
+  cyan: "bg-cyan-500",
+  olive: "bg-lime-500",
+  red: "bg-red-500",
+  green: "bg-green-500",
+  teal: "bg-teal-500",
+  purple: "bg-purple-500",
+  blue: "bg-blue-500",
+  orange: "bg-orange-500",
+  pink: "bg-pink-500",
+  indigo: "bg-indigo-500",
+  amber: "bg-amber-500",
 };
 
 export function getNextAvailableColor(existingColors: string[]): string {
@@ -123,4 +135,13 @@ export function getColorClasses(colorName: string): {
     text: "text-gray-800",
     border: "border-gray-200",
   };
+}
+
+export function getStatusDotClass(label: string, colorName?: string): string {
+  if (colorName && COLOR_NAME_TO_DOT_CLASS[colorName]) {
+    return COLOR_NAME_TO_DOT_CLASS[colorName];
+  }
+
+  const hashed = getColorByHash(label);
+  return COLOR_NAME_TO_DOT_CLASS[hashed.name] ?? "bg-gray-400";
 }

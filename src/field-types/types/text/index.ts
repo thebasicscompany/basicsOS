@@ -68,10 +68,10 @@ export const TextFieldType: FieldTypeDefinition = {
 
   FilterComponent: null,
   filterOperators: [
-    { key: "eq", label: "is", requiresValue: true },
-    { key: "neq", label: "is not", requiresValue: true },
     { key: "like", label: "contains", requiresValue: true },
     { key: "nlike", label: "does not contain", requiresValue: true },
+    { key: "eq", label: "is", requiresValue: true },
+    { key: "neq", label: "is not", requiresValue: true },
     { key: "is_empty", label: "is empty", requiresValue: false },
     { key: "is_not_empty", label: "is not empty", requiresValue: false },
   ],

@@ -67,9 +67,10 @@ pnpm run registry:build
 ```
 src/
 ├── components/
-│   ├── pages/           # Page components (Dashboard, ObjectList, RecordDetail, Settings, Chat, …)
-│   ├── object-list/     # List view tabs, header actions, sort/filter pills
-│   ├── record-detail/   # Record detail view, notes tab, delete dialog
+│   ├── pages/           # App page components (HomePage, ChatPage, SettingsPage, TasksPage, …)
+│   │                    #   + CRM generic pages (ObjectListPage, RecordDetailPage)
+│   ├── object-list/     # CRM list view tabs, header actions, sort/filter pills
+│   ├── record-detail/   # CRM record detail view, notes tab, delete dialog
 │   ├── data-table/      # DataTable, useDataTable, pagination, column resize
 │   ├── deals/           # DealsKanbanBoard
 │   ├── connections/     # OAuth connections (Gmail, Slack)
@@ -81,20 +82,31 @@ src/
 ├── layouts/             # AppLayout
 ├── providers/           # GatewayProvider, ObjectRegistryProvider
 ├── lib/                 # Utils, auth, gateway tools
+├── overlay/             # Voice pill/overlay (Electron only)
+├── main/                # Electron main process
 └── App.tsx
 
 packages/
-├── server/              # Hono API, Drizzle schema, automations executor
-├── automations/         # Workflow builder, nodes, VariablePicker
-├── hub/                 # HubLayout, HubSidebar, routes
-├── voice/               # VoiceApp (stub)
-├── mcp-viewer/          # MCPViewerApp
-└── shared/              # Shared schemas, auth helpers
+├── server/              # Hono API, Drizzle schema, automations executor (utility)
+├── automations/         # Workflow builder, nodes, VariablePicker (app)
+├── hub/                 # HubLayout, HubSidebar, routes (utility)
+├── voice/               # VoiceApp settings UI (app)
+├── mcp-viewer/          # MCPViewerApp (app)
+└── shared/              # Shared schemas, auth helpers (utility)
 ```
 
 ### Key Architecture Patterns
 
-#### Object Registry
+#### Objects vs Apps
+
+The codebase has two fundamentally different building blocks:
+
+- **Objects** = CRM entities (contacts, companies, deals, tasks, custom objects). Database-driven via `object_config` table, discovered by `ObjectRegistryProvider`, rendered by generic `ObjectListPage`/`RecordDetailPage`, routed under `/objects/:slug`. New objects require zero frontend code — just a DB row and migration.
+- **Apps** = Independent feature areas with their own routes, UI, and logic. Examples: Home (`/home`), Chat (`/chat`), Automations (`/automations`), Voice (`/voice`), Settings (`/settings`), Import (`/import`), Tasks (`/tasks`), Notes (`/notes`), MCP Viewer (`/mcp`). The CRM itself is the largest app — it contains objects within it.
+
+When building a new feature, ask: "Is this a new type of record the user creates/lists/edits?" → **Object**. "Is this a standalone tool or page with its own UI?" → **App**.
+
+#### Object Registry (CRM Objects Only)
 
 Objects (contacts, companies, deals, tasks, etc.) are configured via `object_config` and `custom_field_defs` tables. `ObjectRegistryProvider` and `useObject` / `useAttributes` expose configuration. List and detail views are generic: `ObjectListPage`, `RecordDetailPage` for `/objects/:objectSlug` and `/objects/:objectSlug/:recordId`.
 

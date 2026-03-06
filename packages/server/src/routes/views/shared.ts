@@ -63,9 +63,34 @@ async function getColumnListForTable(
     ? result
     : ((result as { rows?: unknown[] }).rows ?? []);
   const rows = raw as { column_name: string }[];
+
+  // Look up attribute overrides so view columns get correct display names
+  const overrides = await db
+    .select({
+      columnName: schema.objectAttributeOverrides.columnName,
+      displayName: schema.objectAttributeOverrides.displayName,
+    })
+    .from(schema.objectAttributeOverrides)
+    .innerJoin(
+      schema.objectConfig,
+      eq(schema.objectAttributeOverrides.objectConfigId, schema.objectConfig.id),
+    )
+    .where(
+      and(
+        eq(schema.objectConfig.tableName, baseTable),
+        or(
+          eq(schema.objectAttributeOverrides.organizationId, organizationId),
+          isNull(schema.objectAttributeOverrides.organizationId),
+        ),
+      ),
+    );
+  const overrideMap = new Map(
+    overrides.filter((o) => o.displayName).map((o) => [o.columnName, o.displayName!]),
+  );
+
   const out: { fieldId: string; title: string }[] = rows.map((r) => ({
     fieldId: r.column_name,
-    title: formatColumnTitle(r.column_name),
+    title: overrideMap.get(r.column_name) ?? formatColumnTitle(r.column_name),
   }));
 
   const customRows = await db

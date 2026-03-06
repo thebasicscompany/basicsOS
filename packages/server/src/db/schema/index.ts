@@ -8,6 +8,7 @@ export * from "@/db/schema/deals.js";
 export * from "@/db/schema/deal_contacts.js";
 export * from "@/db/schema/contact_notes.js";
 export * from "@/db/schema/deal_notes.js";
+export * from "@/db/schema/company_notes.js";
 export * from "@/db/schema/tasks.js";
 export * from "@/db/schema/tags.js";
 export * from "@/db/schema/configuration.js";

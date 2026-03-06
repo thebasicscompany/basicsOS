@@ -38,7 +38,6 @@ export const createContactSchema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   email: z.string().email().optional(),
-  status: z.string().optional(),
   company_id: z.number().int().positive().optional(),
 });
 export const updateContactSchema = z
@@ -47,14 +46,12 @@ export const updateContactSchema = z
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     email: z.string().email().optional(),
-    status: z.string().optional(),
   })
   .superRefine((v, ctx) => {
     if (
       v.first_name === undefined &&
       v.last_name === undefined &&
-      v.email === undefined &&
-      v.status === undefined
+      v.email === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -65,34 +62,28 @@ export const updateContactSchema = z
 
 export const searchDealsSchema = z.object({
   query: z.string().optional(),
-  stage: z.string().optional(),
+  status: z.string().optional(),
   limit: z.number().int().min(1).max(100).optional(),
 });
 export const getDealSchema = z.object({ id: z.number().int().positive() });
 export const createDealSchema = z.object({
   name: z.string().min(1),
-  stage: z.string().optional(),
-  category: z.string().optional(),
+  status: z.string().optional(),
   company_id: z.number().int().positive().optional(),
   amount: z.number().optional(),
-  description: z.string().optional(),
 });
 export const updateDealSchema = z
   .object({
     id: z.number().int().positive(),
     name: z.string().optional(),
-    stage: z.string().optional(),
-    category: z.string().optional(),
+    status: z.string().optional(),
     amount: z.number().optional(),
-    description: z.string().optional(),
   })
   .superRefine((v, ctx) => {
     if (
       v.name === undefined &&
-      v.stage === undefined &&
-      v.category === undefined &&
-      v.amount === undefined &&
-      v.description === undefined
+      v.status === undefined &&
+      v.amount === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -107,9 +98,8 @@ export const searchCompaniesSchema = z.object({
 });
 export const createCompanySchema = z.object({
   name: z.string().min(1),
-  sector: z.string().optional(),
-  city: z.string().optional(),
-  website: z.string().optional(),
+  category: z.string().optional(),
+  domain: z.string().optional(),
 });
 
 export const listTasksSchema = z.object({
@@ -170,7 +160,6 @@ export const OPENAI_TOOL_DEFS = [
           first_name: { type: "string" },
           last_name: { type: "string" },
           email: { type: "string" },
-          status: { type: "string" },
           company_id: { type: "number" },
         },
         required: [],
@@ -189,7 +178,6 @@ export const OPENAI_TOOL_DEFS = [
           first_name: { type: "string" },
           last_name: { type: "string" },
           email: { type: "string" },
-          status: { type: "string" },
         },
         required: ["id"],
       },
@@ -204,7 +192,7 @@ export const OPENAI_TOOL_DEFS = [
         type: "object",
         properties: {
           query: { type: "string" },
-          stage: { type: "string" },
+          status: { type: "string" },
           limit: { type: "number" },
         },
         required: [],
@@ -232,11 +220,9 @@ export const OPENAI_TOOL_DEFS = [
         type: "object",
         properties: {
           name: { type: "string" },
-          stage: { type: "string" },
-          category: { type: "string" },
+          status: { type: "string" },
           company_id: { type: "number" },
           amount: { type: "number" },
-          description: { type: "string" },
         },
         required: ["name"],
       },
@@ -252,10 +238,8 @@ export const OPENAI_TOOL_DEFS = [
         properties: {
           id: { type: "number" },
           name: { type: "string" },
-          stage: { type: "string" },
-          category: { type: "string" },
+          status: { type: "string" },
           amount: { type: "number" },
-          description: { type: "string" },
         },
         required: ["id"],
       },
@@ -282,9 +266,8 @@ export const OPENAI_TOOL_DEFS = [
         type: "object",
         properties: {
           name: { type: "string" },
-          sector: { type: "string" },
-          city: { type: "string" },
-          website: { type: "string" },
+          category: { type: "string" },
+          domain: { type: "string" },
         },
         required: ["name"],
       },

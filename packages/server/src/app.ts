@@ -15,6 +15,7 @@ import { createSchemaRoutes } from "@/routes/schema.js";
 import { createViewRoutes } from "@/routes/views.js";
 import { createVoiceProxyRoutes } from "@/routes/voice-proxy.js";
 import { createStreamAssistantRoutes } from "@/routes/stream-assistant.js";
+import { createThreadsRoutes } from "@/routes/threads.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { sql } from "drizzle-orm";
@@ -151,6 +152,9 @@ export function createApp(db: Db, env: Env) {
 
   // Gateway chat — must be before CRM so POST /api/:resource doesn't swallow it
   app.route("/api/gateway-chat", createGatewayChatRoutes(db, auth, env));
+
+  // Thread list & message history
+  app.route("/api/threads", createThreadsRoutes(db, auth, env));
 
   // Automation runs — must be before CRM generic routes
   app.route("/api/automation-runs", createAutomationRunsRoutes(db, auth, env));

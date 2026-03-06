@@ -12,8 +12,8 @@
 const SEARCH_FIELDS: Record<string, string[]> = {
   contacts: ["first_name", "last_name", "email"],
   contacts_summary: ["first_name", "last_name", "email"],
-  companies: ["name", "city", "sector"],
-  companies_summary: ["name", "city", "sector"],
+  companies: ["name", "category"],
+  companies_summary: ["name", "category"],
   deals: ["name"],
   tasks: ["text"],
   contact_notes: ["text"],

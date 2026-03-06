@@ -1,4 +1,4 @@
-import { useChat } from "@ai-sdk/react";
+import { useChat, type Message } from "@ai-sdk/react";
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,13 +23,20 @@ const TOOL_TO_QUERY_KEYS: Record<string, string[]> = {
   create_note: ["contact_notes"],
 };
 
+interface UseGatewayChatOptions {
+  initialThreadId?: string;
+  initialMessages?: Message[];
+}
+
 /**
  * useChat hook for the Hub chat page, using the Gateway proxy.
  * Uses Better Auth session + API key, while tool execution runs server-side.
  */
-export function useGatewayChat() {
+export function useGatewayChat(opts?: UseGatewayChatOptions) {
   const queryClient = useQueryClient();
-  const [threadId, setThreadId] = useState<string | undefined>(undefined);
+  const [threadId, setThreadId] = useState<string | undefined>(
+    opts?.initialThreadId,
+  );
   const pendingToolsRef = useRef<Set<string>>(new Set());
 
   const fetchWithErrorHandling = useCallback(
@@ -98,9 +105,10 @@ export function useGatewayChat() {
     pendingToolsRef.current = new Set();
   }, [queryClient]);
 
-  return useChat({
+  const chat = useChat({
     api: `${API_URL}/api/gateway-chat`,
     body: { threadId, channel: "chat" },
+    initialMessages: opts?.initialMessages,
     fetch: fetchWithErrorHandling,
     maxSteps: 5,
     onResponse: (response) => {
@@ -118,7 +126,12 @@ export function useGatewayChat() {
         pendingToolsRef.current = new Set();
       }
     },
-    onFinish: handleFinish,
+    onFinish: () => {
+      handleFinish();
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
+    },
     onError: handleError,
   });
+
+  return { ...chat, threadId };
 }

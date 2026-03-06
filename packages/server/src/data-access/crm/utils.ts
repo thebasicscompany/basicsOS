@@ -9,7 +9,10 @@ import {
   lte,
   isNull,
   isNotNull,
+  and,
+  or,
   type SQL,
+  sql,
 } from "drizzle-orm";
 import type { PgTableWithColumns } from "drizzle-orm/pg-core";
 
@@ -26,37 +29,60 @@ export interface GenericFilter {
   field: string;
   op: string;
   value: string;
+  logicalOp?: "and" | "or";
 }
 
 export function buildGenericFilterCondition(
   table: PgTableWithColumns<any>,
   f: GenericFilter,
 ): SQL | null {
-  const col = (table as Record<string, unknown>)[snakeToCamelField(f.field)];
-  if (!col || typeof (col as { getSQL: unknown }).getSQL !== "function")
-    return null;
-  const c = col as SQL;
-  switch (f.op) {
+  const columnKey = snakeToCamelField(f.field);
+  const col = (table as Record<string, unknown>)[columnKey];
+  const hasColumn = !!col && typeof (col as { getSQL: unknown }).getSQL === "function";
+  const hasCustomFieldsColumn =
+    typeof ((table as Record<string, unknown>).customFields as { getSQL?: unknown } | undefined)?.getSQL ===
+    "function";
+
+  const rawExpr = hasColumn
+    ? (col as SQL)
+    : hasCustomFieldsColumn
+      ? sql`(${(table as Record<string, unknown>).customFields as SQL} ->> ${f.field})`
+      : null;
+
+  if (!rawExpr) return null;
+
+  const normalizedOp =
+    f.op === "contains"
+      ? "like"
+      : f.op === "not_contains"
+        ? "nlike"
+        : f.op === "is_empty"
+          ? "blank"
+          : f.op === "is_not_empty"
+            ? "notblank"
+            : f.op;
+
+  switch (normalizedOp) {
     case "eq":
-      return eq(c, f.value);
+      return eq(rawExpr, f.value);
     case "neq":
-      return ne(c, f.value);
+      return ne(rawExpr, f.value);
     case "like":
-      return ilike(c, `%${escapeIlikeValue(f.value)}%`);
+      return ilike(rawExpr, `%${escapeIlikeValue(f.value)}%`);
     case "nlike":
-      return not(ilike(c, `%${escapeIlikeValue(f.value)}%`));
+      return not(ilike(rawExpr, `%${escapeIlikeValue(f.value)}%`));
     case "gt":
-      return gt(c, f.value);
+      return gt(rawExpr, f.value);
     case "lt":
-      return lt(c, f.value);
+      return lt(rawExpr, f.value);
     case "gte":
-      return gte(c, f.value);
+      return gte(rawExpr, f.value);
     case "lte":
-      return lte(c, f.value);
+      return lte(rawExpr, f.value);
     case "blank":
-      return isNull(c);
+      return hasColumn ? isNull(rawExpr) : or(isNull(rawExpr), eq(rawExpr, ""));
     case "notblank":
-      return isNotNull(c);
+      return hasColumn ? isNotNull(rawExpr) : and(isNotNull(rawExpr), ne(rawExpr, ""));
     default:
       return null;
   }

@@ -6,14 +6,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandItem,
-} from "@/components/ui/command";
-import { STATUS_DOT_COLORS } from "@/field-types/colors";
+import { Input } from "@/components/ui/input";
+import { getStatusDotClass } from "@/field-types/colors";
 import { cn } from "@/lib/utils";
 export function StatusFormInput({
   value,
@@ -23,8 +17,12 @@ export function StatusFormInput({
   attribute,
 }: FormInputProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const options: StatusOption[] = config.options ?? [];
   const selected = options.find((o) => o.id === value || o.label === value);
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   return (
     <div className="flex flex-col gap-1">
@@ -42,7 +40,7 @@ export function StatusFormInput({
                 <span
                   className={cn(
                     "h-2 w-2 shrink-0 rounded-full",
-                    STATUS_DOT_COLORS[selected.label] ?? "bg-gray-400",
+                    getStatusDotClass(selected.label, selected.color),
                   )}
                 />
                 {selected.label}
@@ -56,18 +54,28 @@ export function StatusFormInput({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-56 p-0">
-          <Command>
-            <CommandInput placeholder="Search statuses..." />
-            <CommandList>
-              <CommandEmpty>No statuses found.</CommandEmpty>
-              {options.map((option) => {
-                const dotColor =
-                  STATUS_DOT_COLORS[option.label] ?? "bg-gray-400";
+          <div className="border-b p-2">
+            <Input
+              autoFocus
+              placeholder="Search statuses..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto p-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-2 py-4 text-center text-[13px] text-muted-foreground">
+                No statuses found.
+              </div>
+            ) : (
+              filteredOptions.map((option) => {
+                const dotColor = getStatusDotClass(option.label, option.color);
                 return (
-                  <CommandItem
+                  <button
                     key={option.id}
-                    value={option.label}
-                    onSelect={() => {
+                    type="button"
+                    onClick={() => {
                       onChange(
                         option.id === value
                           ? null
@@ -75,6 +83,7 @@ export function StatusFormInput({
                       );
                       setOpen(false);
                     }}
+                    className="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px]"
                   >
                     <span className="inline-flex items-center gap-1.5 text-sm">
                       <span
@@ -88,11 +97,11 @@ export function StatusFormInput({
                     {(value === option.id || value === option.label) && (
                       <CheckIcon className="text-primary ml-auto h-4 w-4" />
                     )}
-                  </CommandItem>
+                  </button>
                 );
-              })}
-            </CommandList>
-          </Command>
+              })
+            )}
+          </div>
         </PopoverContent>
       </Popover>
       {error && <span className="text-destructive text-xs">{error}</span>}

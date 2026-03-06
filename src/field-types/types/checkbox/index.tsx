@@ -88,12 +88,14 @@ export const CheckboxFieldType: FieldTypeDefinition = {
   validate: () => ({ valid: true }),
 
   parseValue: (raw: any) => {
+    if (raw == null || raw === "") return null;
     if (raw === true || raw === 1 || raw === "true") return true;
     return false;
   },
-  serializeValue: (value: any) => (value === true ? true : false),
+  serializeValue: (value: any) =>
+    value == null ? null : value === true,
   getEmptyValue: () => false,
-  isEmpty: (value: any) => value !== true && value !== 1 && value !== "true",
+  isEmpty: (value: any) => value == null || value === "",
   formatDisplayValue: (value: any) => {
     return value === true || value === 1 || value === "true"
       ? "Checked"

@@ -153,6 +153,7 @@ export function registerColumnRoutes(app: Hono, db: Db): void {
     if (typeof body.show === "boolean") updates.show = body.show;
     if (typeof body.order === "number") updates.displayOrder = body.order;
     if (body.width !== undefined) updates.width = body.width;
+    if (body.title !== undefined) updates.title = body.title;
 
     const [updated] = await db
       .update(schema.viewColumns)

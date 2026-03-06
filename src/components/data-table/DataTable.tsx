@@ -1,6 +1,7 @@
-import { DndContext, closestCenter } from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { PlusIcon, TableIcon } from "@phosphor-icons/react";
 import { Table } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useDataTable } from "./useDataTable";
 import { DataTableHeader } from "./DataTableHeader";
 import { DataTableBody } from "./DataTableBody";
@@ -20,9 +21,8 @@ export function DataTable(props: DataTableProps) {
     handleKeyDown,
     handleCellClick,
     handleCellDoubleClick,
-    sensors,
-    handleDragEnd,
     handleColumnResize,
+    handleMoveColumn,
     totalPages,
     total,
     singularName,
@@ -31,6 +31,10 @@ export function DataTable(props: DataTableProps) {
     onPaginationChange,
     onRowExpand,
     onNewRecord,
+    onAddSort,
+    onHideColumn,
+    onRenameColumn,
+    onEditAttribute,
   } = useDataTable(props);
 
   return (
@@ -38,15 +42,25 @@ export function DataTable(props: DataTableProps) {
       <div
         ref={tableRef}
         tabIndex={0}
-        className="min-h-0 flex-1 overflow-auto rounded-md border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-0 flex-1 flex-col overflow-auto rounded-md bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onKeyDown={handleKeyDown}
       >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToHorizontalAxis]}
-          onDragEnd={handleDragEnd}
-        >
+        {!props.isLoading && props.data.length === 0 ? (
+          <EmptyState
+            className="flex-1"
+            icon={<TableIcon />}
+            title={`No ${pluralName.toLowerCase()} found`}
+            description="Get started by creating your first record."
+            action={
+              onNewRecord ? (
+                <Button variant="outline" size="sm" onClick={onNewRecord}>
+                  <PlusIcon className="size-3.5 mr-1" />
+                  New {singularName}
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
           <Table
             style={{
               width: "max-content",
@@ -58,7 +72,13 @@ export function DataTable(props: DataTableProps) {
               headerGroups={table.getHeaderGroups()}
               sortableColumnIds={sortableColumnIds}
               visibleCols={visibleCols}
+              singularName={singularName}
               onColumnResize={handleColumnResize}
+              onAddSort={onAddSort}
+              onHideColumn={onHideColumn}
+              onRenameColumn={onRenameColumn}
+              onMoveColumn={handleMoveColumn}
+              onEditAttribute={onEditAttribute}
             />
             <DataTableBody
               table={table}
@@ -77,7 +97,7 @@ export function DataTable(props: DataTableProps) {
               onCellDoubleClick={handleCellDoubleClick}
             />
           </Table>
-        </DndContext>
+        )}
       </div>
 
       <DataTablePagination

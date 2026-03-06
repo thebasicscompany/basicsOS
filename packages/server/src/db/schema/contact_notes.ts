@@ -20,6 +20,7 @@ export const contactNotes = pgTable(
     contactId: bigint("contact_id", { mode: "number" })
       .notNull()
       .references(() => contacts.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 512 }),
     text: text("text"),
     date: timestamp("date", { withTimezone: true }).defaultNow(),
     crmUserId: bigint("crm_user_id", { mode: "number" }).references(

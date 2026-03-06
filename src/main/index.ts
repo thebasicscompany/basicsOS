@@ -7,12 +7,22 @@ import {
   session,
   globalShortcut,
   shell,
+  systemPreferences,
+  dialog,
 } from "electron";
+
+if (process.env["REMOTE_DEBUGGING_PORT"]) {
+  app.commandLine.appendSwitch(
+    "remote-debugging-port",
+    process.env["REMOTE_DEBUGGING_PORT"],
+  );
+}
+
 import electronUpdater from "electron-updater";
 const { autoUpdater } = electronUpdater;
 import path from "path";
 import fs from "fs";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import { getOverlaySettings, setOverlaySettings } from "./settings-store";
 import { createShortcutManager } from "./shortcut-manager";
@@ -135,12 +145,31 @@ const deactivateOverlay = (): void => {
 const detectNotch = () => {
   const primaryDisplay = screen.getPrimaryDisplay();
   const menuBarHeight = primaryDisplay.workArea.y;
-  return {
+
+  const info = {
     hasNotch: false,
     notchHeight: 0,
     menuBarHeight: menuBarHeight > 0 ? menuBarHeight : 25,
     windowWidth: PILL_WIDTH,
   };
+
+  if (process.platform !== "darwin") return info;
+
+  try {
+    const result = execSync(
+      `swift -e 'import AppKit; if let s = NSScreen.main { print(s.safeAreaInsets.top) } else { print(0) }'`,
+      { timeout: 3000, encoding: "utf8" },
+    ).trim();
+    const insetTop = parseFloat(result);
+    if (insetTop > 0) {
+      info.hasNotch = true;
+      info.notchHeight = Math.round(insetTop);
+    }
+  } catch {
+    // Swift not available or failed — assume no notch
+  }
+
+  return info;
 };
 
 function createMainWindow(): void {
@@ -153,6 +182,8 @@ function createMainWindow(): void {
     show: false,
     autoHideMenuBar: true,
     icon: iconPath,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 20, y: 18 },
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: true,
@@ -162,6 +193,7 @@ function createMainWindow(): void {
   });
 
   mainWindow.on("ready-to-show", () => {
+    mainWindow?.maximize();
     mainWindow?.show();
   });
 
@@ -204,6 +236,9 @@ function createOverlayWindow(): void {
     show: false,
     resizable: false,
     movable: false,
+    roundedCorners: false,
+    hiddenInMissionControl: true,
+    enableLargerThanScreen: true,
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: true,
@@ -215,6 +250,7 @@ function createOverlayWindow(): void {
   });
 
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
+  overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   const overlayUrl =
     is.dev && process.env["ELECTRON_RENDERER_URL"]
@@ -319,6 +355,17 @@ ipcMain.handle(
     return updated;
   },
 );
+
+ipcMain.handle("resize-overlay", (_event, height: number) => {
+  if (!overlayWindow) return;
+  const { height: screenH } = screen.getPrimaryDisplay().workAreaSize;
+  const maxH = Math.round(screenH * 0.4);
+  const clampedH = Math.max(PILL_HEIGHT, Math.min(maxH, Math.round(height)));
+  // Temporarily enable resizable — macOS can ignore setBounds on non-resizable windows
+  overlayWindow.setResizable(true);
+  overlayWindow.setSize(PILL_WIDTH, clampedH);
+  overlayWindow.setResizable(false);
+});
 
 ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
   if (ignore) {
@@ -511,7 +558,7 @@ const registerMeetingShortcut = (accelerator: string): void => {
   if (ok) registeredMeetingAccelerator = accelerator;
 };
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");
 
   // Allow microphone (and camera) for voice overlay and main window
@@ -527,6 +574,20 @@ app.whenReady().then(() => {
     autoUpdater.checkForUpdatesAndNotify().catch(() => {
       // Ignore update errors (e.g. no network, no publish configured)
     });
+  }
+
+  // Ensure Accessibility permission (required for globalShortcut on macOS)
+  if (process.platform === "darwin") {
+    const trusted = systemPreferences.isTrustedAccessibilityClient(true);
+    if (!trusted) {
+      await dialog.showMessageBox({
+        type: "warning",
+        title: "Accessibility Permission Required",
+        message:
+          "BasicsOS needs Accessibility permission for keyboard shortcuts.\n\n" +
+          "Please grant access in System Settings → Privacy & Security → Accessibility, then restart the app.",
+      });
+    }
   }
 
   app.on("browser-window-created", (_, window) => {
@@ -601,6 +662,7 @@ app.whenReady().then(() => {
   }
 
   createMainWindow();
+  createOverlayWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

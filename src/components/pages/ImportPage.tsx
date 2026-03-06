@@ -5,8 +5,8 @@ export function ImportPage() {
   usePageTitle("Import");
 
   return (
-    <div className="flex h-full flex-col overflow-auto py-4">
-      <p className="mb-4 text-[12px] text-muted-foreground">
+    <div className="flex h-full flex-col overflow-auto pb-8">
+      <p className="mb-6 text-sm text-muted-foreground">
         Import contacts from a CSV file. Map columns, create custom fields if needed, and merge with
         existing data.
       </p>

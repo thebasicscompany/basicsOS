@@ -14,15 +14,16 @@ export function LongTextCellEditor({
 }: CellEditorProps) {
   const [draft, setDraft] = useState<string>(value ?? "");
   const [open, setOpen] = useState(true);
+  const [didCommit, setDidCommit] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Small delay so popover content is rendered
     const timer = setTimeout(() => textareaRef.current?.focus(), 50);
     return () => clearTimeout(timer);
   }, []);
 
   const handleSave = () => {
+    setDidCommit(true);
     setOpen(false);
     onSave(draft);
   };
@@ -33,14 +34,13 @@ export function LongTextCellEditor({
       setOpen(false);
       onCancel();
     }
-    // Shift+Enter for newline, Enter alone does not save (multiline text)
   };
 
   return (
     <Popover
       open={open}
       onOpenChange={(o) => {
-        if (!o) handleSave();
+        if (o) setOpen(true);
       }}
     >
       <PopoverAnchor className="h-full w-full" />
@@ -49,6 +49,8 @@ export function LongTextCellEditor({
         side="bottom"
         className="w-80 p-2"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <Textarea
           ref={textareaRef}
@@ -63,6 +65,7 @@ export function LongTextCellEditor({
           <button
             type="button"
             onClick={() => {
+              setDidCommit(false);
               setOpen(false);
               onCancel();
             }}

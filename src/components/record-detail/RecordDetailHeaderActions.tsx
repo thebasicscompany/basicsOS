@@ -1,22 +1,17 @@
 import {
-  ArrowLeftIcon,
-  StarIcon,
-  DotsThreeIcon,
-  PencilIcon,
-  TrashIcon,
-  CopyIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  TrashIcon,
+  CopyIcon,
+  DotsThreeIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 export interface RecordDetailHeaderActionsProps {
   listIdsLength: number;
@@ -36,25 +31,13 @@ export function RecordDetailHeaderActions({
   listIdsLength,
   prevId,
   nextId,
-  isFavorite,
-  onBack,
   onPrev,
   onNext,
-  onToggleFavorite,
-  onEdit,
   onDuplicate,
   onDeleteOpen,
 }: RecordDetailHeaderActionsProps) {
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        onClick={onBack}
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-      </Button>
       {listIdsLength > 1 && (
         <div className="flex">
           <Button
@@ -77,21 +60,6 @@ export function RecordDetailHeaderActions({
           </Button>
         </div>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={onToggleFavorite}
-      >
-        <StarIcon
-          className={cn(
-            "h-4 w-4",
-            isFavorite
-              ? "fill-amber-400 text-amber-400"
-              : "text-muted-foreground",
-          )}
-        />
-      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="icon" className="h-8 w-8">
@@ -99,15 +67,10 @@ export function RecordDetailHeaderActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit}>
-            <PencilIcon className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={onDuplicate}>
             <CopyIcon className="mr-2 h-4 w-4" />
             Duplicate
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={onDeleteOpen}>
             <TrashIcon className="mr-2 h-4 w-4" />
             Delete

@@ -130,6 +130,8 @@ export function ViewSelector({
 
       {onCreateView && (
         <button
+          type="button"
+          aria-label="Create view"
           onClick={onCreateView}
           className="flex items-center gap-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground border-b-2 border-transparent transition-colors"
         >

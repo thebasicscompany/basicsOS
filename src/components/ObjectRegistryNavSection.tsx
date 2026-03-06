@@ -1,55 +1,63 @@
-import { Link, useLocation, useNavigate } from "react-router";
-import { PlusIcon } from "@phosphor-icons/react";
+import { useState } from "react";
+import { Link, useLocation } from "react-router";
+import { CaretRightIcon, PlusIcon } from "@phosphor-icons/react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useObjects } from "@/hooks/use-object-registry";
 import { getObjectIcon } from "@/lib/object-icon-map";
+import { CreateObjectModal } from "@/components/create-object/CreateObjectModal";
 
 export function ObjectRegistryNavSection() {
   const objects = useObjects();
-  const navigate = useNavigate();
-
-  if (objects.length === 0) {
-    return null;
-  }
+  const [createOpen, setCreateOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-medium text-muted-foreground">
-        Objects
-      </SidebarGroupLabel>
-      <SidebarGroupAction
-        title="New record"
-        onClick={() => {
-          // Navigate to the first object with create param
-          if (objects.length > 0) {
-            navigate(`/objects/${objects[0].slug}?create=true`);
-          }
-        }}
-      >
-        <PlusIcon className="size-4" />
-      </SidebarGroupAction>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {objects.map((obj) => (
-            <ObjectNavItem
-              key={obj.id}
-              slug={obj.slug}
-              label={obj.pluralName}
-              iconSlug={obj.icon}
-            />
-          ))}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
+      <SidebarGroup>
+        <div className="flex items-center">
+          <SidebarGroupLabel asChild className="flex-1">
+            <CollapsibleTrigger className="flex w-full items-center gap-1">
+              <CaretRightIcon className="size-3 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              Records
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <SidebarGroupAction
+            title="New object"
+            onClick={() => setCreateOpen(true)}
+          >
+            <PlusIcon className="size-4" />
+          </SidebarGroupAction>
+        </div>
+        <CreateObjectModal open={createOpen} onOpenChange={setCreateOpen} />
+        <CollapsibleContent>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {objects.map((obj) => (
+                <ObjectNavItem
+                  key={obj.id}
+                  slug={obj.slug}
+                  label={obj.pluralName}
+                  iconSlug={obj.icon}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   );
 }
 
@@ -63,7 +71,6 @@ function ObjectNavItem({
   iconSlug: string;
 }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const objectPath = `/objects/${slug}`;
   const isActive = location.pathname.startsWith(objectPath);
   const IconComponent = getObjectIcon(iconSlug);
@@ -76,16 +83,6 @@ function ObjectNavItem({
           {label}
         </Link>
       </SidebarMenuButton>
-      <SidebarMenuAction
-        showOnHover
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          navigate(`${objectPath}?create=true`);
-        }}
-      >
-        <PlusIcon className="size-4" />
-      </SidebarMenuAction>
     </SidebarMenuItem>
   );
 }

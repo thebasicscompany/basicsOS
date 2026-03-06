@@ -70,9 +70,6 @@ export async function executeCrmAction(
         firstName: firstName ?? null,
         lastName: lastName ?? null,
         email: email ?? null,
-        status: status ?? "cold",
-        firstSeen: new Date(),
-        lastSeen: new Date(),
       }).returning();
       return { crm_result: contact };
     }
@@ -133,13 +130,11 @@ export async function executeCrmAction(
     }
 
     case "update_deal": {
-      const { dealId: rawDealId, stage, name, category, amount, description } = params as {
+      const { dealId: rawDealId, status, name, amount } = params as {
         dealId?: number | string;
-        stage?: string;
+        status?: string;
         name?: string;
-        category?: string;
         amount?: number | string;
-        description?: string;
       };
 
       const dealId = typeof rawDealId === "string" ? parseInt(rawDealId, 10) : rawDealId;
@@ -148,17 +143,15 @@ export async function executeCrmAction(
       }
 
       const updates: Record<string, unknown> = {};
-      if (stage !== undefined && stage !== "") updates.stage = stage;
+      if (status !== undefined && status !== "") updates.status = status;
       if (name !== undefined && name !== "") updates.name = name;
-      if (category !== undefined && category !== "") updates.category = category;
       if (amount !== undefined && amount !== "") {
         const amountNum = typeof amount === "string" ? parseInt(amount, 10) : amount;
         if (!Number.isNaN(amountNum)) updates.amount = amountNum;
       }
-      if (description !== undefined) updates.description = description;
 
       if (Object.keys(updates).length === 0) {
-        throw new Error("update_deal requires at least one field to update (stage, name, category, amount, description)");
+        throw new Error("update_deal requires at least one field to update (status, name, amount)");
       }
 
       const [deal] = await db

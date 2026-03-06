@@ -49,13 +49,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { getFieldType } from "@/field-types";
-import { useCreateColumn } from "@/hooks/use-columns";
+import {
+  useCreateColumn,
+  type SchemaColumn,
+} from "@/hooks/use-columns";
 
 export interface CreateAttributeModalProps {
   resource: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated?: () => void;
+  onCreated?: (column: SchemaColumn) => void;
 }
 
 interface TypeOption {
@@ -180,13 +183,13 @@ export function CreateAttributeModal({
     if (!name.trim() || !selectedType) return;
 
     try {
-      await createColumn.mutateAsync({
+      const createdColumn = await createColumn.mutateAsync({
         resource,
         title: name.trim(),
         fieldType: selectedType,
         options: typeConfig.options,
       });
-      onCreated?.();
+      onCreated?.(createdColumn);
       onOpenChange(false);
     } catch {
       // Validation or API error; form stays open

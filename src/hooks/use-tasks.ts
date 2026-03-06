@@ -4,18 +4,24 @@ import { mapRecords, unmapRecord } from "@/lib/crm/field-mapper";
 
 export interface Task {
   id: number;
-  contactId: number;
+  contactId: number | null;
+  companyId: number | null;
   crmUserId: number | null;
+  assigneeId: number | null;
   type: string | null;
   text: string | null;
+  description: string | null;
   dueDate: string | null;
   doneDate: string | null;
 }
 
 export interface CreateTaskData {
-  contactId: number;
+  contactId?: number;
+  companyId?: number;
+  assigneeId?: number;
   type?: string;
   text: string;
+  description?: string;
   dueDate?: string;
 }
 
@@ -37,7 +43,7 @@ export function useMarkTaskDone() {
   return useMutation({
     mutationFn: ({ id, done }: { id: number; done: boolean }) =>
       update<Task>("tasks", id, {
-        done_date: done ? new Date().toISOString() : null,
+        doneDate: done ? new Date().toISOString() : null,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
   });

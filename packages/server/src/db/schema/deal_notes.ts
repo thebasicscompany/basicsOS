@@ -20,6 +20,7 @@ export const dealNotes = pgTable(
     dealId: bigint("deal_id", { mode: "number" })
       .notNull()
       .references(() => deals.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 512 }),
     type: varchar("type", { length: 64 }),
     text: text("text"),
     date: timestamp("date", { withTimezone: true }).defaultNow(),

@@ -4,10 +4,8 @@ import {
   useRef,
   useState,
   useReducer,
-  type MouseEvent,
 } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { XIcon } from "@phosphor-icons/react";
 import type { OverlaySettings, NotchInfo } from "@/shared-overlay/types";
 import { FLASH_SHORT_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
 import { setIgnoreMouse } from "./lib/ipc";
@@ -72,6 +70,7 @@ export const OverlayApp = () => {
   const [pill, dispatch] = useReducer(pillReducer, initialPillContext);
   const [settings, setSettings] = useState<OverlaySettings>(DEFAULT_SETTINGS);
   const [measuredHeight, setMeasuredHeight] = useState(0);
+  const [showLastResponse, setShowLastResponse] = useState(false);
   const measureRef = useRef<HTMLDivElement>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamAbortRef = useRef(false);
@@ -175,6 +174,9 @@ export const OverlayApp = () => {
         settings.behavior.autoDismissMs,
       );
     }
+    if (pill.state !== "idle") {
+      setShowLastResponse(false);
+    }
     return clearDismissTimer;
   }, [pill.state, settings.behavior.autoDismissMs, dismiss, clearDismissTimer]);
 
@@ -239,12 +241,17 @@ export const OverlayApp = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Measure response content height using ResizeObserver for reliable layout measurement
   useEffect(() => {
-    if (pill.state === "response" && measureRef.current) {
-      const h = measureRef.current.offsetHeight;
+    const el = measureRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const h = el.offsetHeight;
       if (h > 0) setMeasuredHeight(h);
-    }
-  }, [pill.state, pill.responseTitle]);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const hasNotch = config?.hasNotch ?? false;
   const notchHeight = config?.notchHeight ?? 0;
@@ -252,14 +259,29 @@ export const OverlayApp = () => {
   const windowWidth = config?.windowWidth ?? 400;
   const topPad = hasNotch ? notchHeight + 2 : 3;
 
+  // Cap response body height at ~1/3 screen
+  const screenH = window.screen?.height ?? 900;
+  const maxResponseBodyHeight = Math.round(screenH * 0.33) - 80;
+
   let pillHeight: number;
-  if (pill.state === "idle") {
+  const responseContentH = Math.min(
+    Math.max(measuredHeight, 40), // at least 40px while measuring
+    maxResponseBodyHeight,
+  );
+  if (pill.state === "idle" && showLastResponse) {
+    pillHeight = topPad + 24 + 12 + responseContentH + 12;
+  } else if (pill.state === "idle") {
     pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
-    pillHeight = topPad + 24 + 12 + measuredHeight + 12;
+    pillHeight = topPad + 24 + 12 + responseContentH + 12;
   } else {
     pillHeight = topPad + ACTIVE_HEIGHT;
   }
+
+  // Dynamic resize via IPC — keep Electron window in sync with pill height
+  useEffect(() => {
+    window.electronAPI?.resizeOverlay?.(pillHeight);
+  }, [pillHeight]);
 
   const currentResponse = {
     title: pill.responseTitle,
@@ -306,8 +328,33 @@ export const OverlayApp = () => {
     return null;
   };
 
-  const handleMouseEnter = useCallback(() => setIgnoreMouse(false), []);
-  const handleMouseLeave = useCallback(() => setIgnoreMouse(true), []);
+  const handleMouseEnter = useCallback(() => {
+    setIgnoreMouse(false);
+    // Pause dismiss timer when hovering over response
+    if (pillRef.current.state === "response") {
+      clearDismissTimer();
+    }
+    // Show last response on hover when idle
+    if (
+      pillRef.current.state === "idle" &&
+      pillRef.current.lastResponseTitle
+    ) {
+      setShowLastResponse(true);
+    }
+  }, [clearDismissTimer]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIgnoreMouse(true);
+    setShowLastResponse(false);
+    // Restart dismiss timer if still in response state
+    if (pillRef.current.state === "response") {
+      clearDismissTimer();
+      dismissTimerRef.current = setTimeout(
+        () => dismissRef.current(),
+        settingsRef.current.behavior.autoDismissMs,
+      );
+    }
+  }, [clearDismissTimer]);
 
   const handlePillClick = useCallback(() => {
     const cur = pillRef.current;
@@ -341,12 +388,6 @@ export const OverlayApp = () => {
     }
   }, [flash]);
 
-  const handleCloseOverlay = useCallback((e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    window.electronAPI?.hideOverlay?.();
-    dismissRef.current();
-  }, []);
-
   return (
     <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
       <div
@@ -363,6 +404,14 @@ export const OverlayApp = () => {
         {pill.state === "response" && (
           <ResponseBody response={currentResponse} />
         )}
+        {showLastResponse && pill.state === "idle" && (
+          <ResponseBody
+            response={{
+              title: pill.lastResponseTitle,
+              lines: pill.lastResponseLines,
+            }}
+          />
+        )}
       </div>
 
       <motion.div
@@ -373,51 +422,21 @@ export const OverlayApp = () => {
         transition={SPRING}
         style={{
           width: "100%",
-          background: "var(--overlay-pill-bg)",
+          background: "#000",
           borderRadius:
             pill.state === "idle"
-              ? `0 0 var(--overlay-radius-idle) var(--overlay-radius-idle)`
-              : `0 0 var(--overlay-radius-active) var(--overlay-radius-active)`,
+              ? "0 0 8px 8px"
+              : "0 0 16px 16px",
           overflow: "hidden",
           position: "relative",
-          cursor: pill.state === "idle" ? "pointer" : "default",
+          cursor: pill.state === "idle" && !showLastResponse ? "pointer" : "default",
         }}
       >
-        <button
-          type="button"
-          aria-label="Close overlay"
-          onClick={handleCloseOverlay}
-          style={{
-            position: "absolute",
-            top: pill.state === "idle" ? "50%" : topPad + 3,
-            transform: pill.state === "idle" ? "translateY(-50%)" : undefined,
-            right: 8,
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            border: "none",
-            background: "var(--overlay-close-bg)",
-            color: "var(--overlay-text-primary)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            zIndex: 2,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--overlay-close-bg-hover)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "var(--overlay-close-bg)";
-          }}
-        >
-          <XIcon size={10} weight="bold" aria-hidden="true" />
-        </button>
         <div
           style={{
             paddingTop: pill.state === "idle" ? 0 : topPad,
             paddingLeft: 16,
-            paddingRight: 30,
+            paddingRight: 16,
             paddingBottom: pill.state === "idle" ? 0 : 12,
           }}
         >
@@ -445,7 +464,7 @@ export const OverlayApp = () => {
                       width: 6,
                       height: 6,
                       borderRadius: "50%",
-                      background: "var(--overlay-accent-danger)",
+                      background: "#ef4444",
                       flexShrink: 0,
                     }}
                   />
@@ -468,8 +487,8 @@ export const OverlayApp = () => {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
-                  color: "var(--overlay-accent-success)",
-                  fontSize: "var(--overlay-font-md)",
+                  color: "#4ade80",
+                  fontSize: 12.5,
                   fontWeight: 600,
                 }}
               >
@@ -504,8 +523,8 @@ export const OverlayApp = () => {
                 >
                   <span
                     style={{
-                      color: "var(--overlay-text-primary)",
-                      fontSize: "var(--overlay-font-lg)",
+                      color: "#fff",
+                      fontSize: 13.5,
                       fontWeight: 500,
                       letterSpacing: "-0.01em",
                     }}
@@ -515,8 +534,8 @@ export const OverlayApp = () => {
                   {modeDetail() && (
                     <span
                       style={{
-                        color: "var(--overlay-text-muted)",
-                        fontSize: "var(--overlay-font-sm)",
+                        color: "rgba(255,255,255,0.5)",
+                        fontSize: 11,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -548,8 +567,8 @@ export const OverlayApp = () => {
                 {pill.streamingText ? (
                   <span
                     style={{
-                      color: "var(--overlay-text-secondary)",
-                      fontSize: "var(--overlay-font-md)",
+                      color: "rgba(255,255,255,0.7)",
+                      fontSize: 12.5,
                       flex: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -581,8 +600,8 @@ export const OverlayApp = () => {
                 <ThinkingDots />
                 <span
                   style={{
-                    color: "var(--overlay-text-secondary)",
-                    fontSize: "var(--overlay-font-lg)",
+                    color: "rgba(255,255,255,0.7)",
+                    fontSize: 13.5,
                     fontWeight: 500,
                   }}
                 >
@@ -613,8 +632,8 @@ export const OverlayApp = () => {
                   <Sparkle active />
                   <span
                     style={{
-                      color: "var(--overlay-text-primary)",
-                      fontSize: "var(--overlay-font-lg)",
+                      color: "#fff",
+                      fontSize: 13.5,
                       fontWeight: 600,
                       letterSpacing: "-0.01em",
                     }}
@@ -629,7 +648,15 @@ export const OverlayApp = () => {
                     ...CONTENT_ENTER,
                     delay: STAGGER_MS / 1000,
                   }}
-                  style={{ marginTop: 8, paddingLeft: 22 }}
+                  style={{
+                    marginTop: 8,
+                    paddingLeft: 22,
+                    maxHeight: maxResponseBodyHeight,
+                    overflowY: "auto",
+                    scrollbarWidth: "thin",
+                    scrollbarColor:
+                      "rgba(255,255,255,0.15) transparent",
+                  }}
                 >
                   <ResponseBody response={currentResponse} />
                 </motion.div>
@@ -643,14 +670,65 @@ export const OverlayApp = () => {
                   style={{
                     textAlign: "right",
                     marginTop: 6,
-                    fontSize: "var(--overlay-font-sm)",
-                    color: "var(--overlay-text-done)",
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.35)",
                   }}
                 >
                   Done
                 </motion.div>
               </motion.div>
             )}
+
+            {showLastResponse &&
+              pill.state === "idle" &&
+              pill.lastResponseTitle && (
+                <motion.div
+                  key="last-response"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 0.7, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      height: 24,
+                      gap: 8,
+                    }}
+                  >
+                    <Sparkle active={false} />
+                    <span
+                      style={{
+                        color: "rgba(255,255,255,0.7)",
+                        fontSize: 13.5,
+                        fontWeight: 600,
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
+                      {pill.lastResponseTitle}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      paddingLeft: 22,
+                      maxHeight: maxResponseBodyHeight,
+                      overflowY: "auto",
+                      scrollbarWidth: "thin",
+                      scrollbarColor:
+                        "rgba(255,255,255,0.15) transparent",
+                    }}
+                  >
+                    <ResponseBody
+                      response={{
+                        title: pill.lastResponseTitle,
+                        lines: pill.lastResponseLines,
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )}
           </AnimatePresence>
         </div>
 
@@ -663,7 +741,7 @@ export const OverlayApp = () => {
             width: "50%",
             height: 1,
             background:
-              "linear-gradient(90deg, transparent, var(--overlay-line-soft), transparent)",
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)",
           }}
         />
       </motion.div>

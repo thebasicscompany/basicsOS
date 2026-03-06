@@ -26,7 +26,7 @@ export const Sparkle = ({ active }: { active: boolean }) => (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <path
         d="M8 0C8.3 4.5 11.5 7.7 16 8C11.5 8.3 8.3 11.5 8 16C7.7 11.5 4.5 8.3 0 8C4.5 7.7 7.7 4.5 8 0Z"
-        fill="var(--overlay-text-primary)"
+        fill="#fff"
         fillOpacity={active ? 1 : 0.55}
       />
     </svg>
@@ -39,7 +39,7 @@ export const PencilIcon = () => (
     height="14"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="var(--overlay-text-primary)"
+    stroke="#fff"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -56,7 +56,7 @@ export const MicIcon = () => (
     height="14"
     viewBox="0 0 24 24"
     fill="none"
-    stroke="var(--overlay-text-primary)"
+    stroke="#fff"
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -81,7 +81,7 @@ export const CompanyLogo = () => {
         height: 15,
       }}
     >
-      <MicrophoneIcon size={13} weight="fill" color="var(--overlay-text-secondary)" />
+      <MicrophoneIcon size={13} weight="fill" color="rgba(255,255,255,0.7)" />
     </motion.div>
   );
 };
@@ -120,7 +120,7 @@ export const Waveform = ({ level = 0 }: { level?: number }) => {
           style={{
             width: 2,
             borderRadius: 1,
-            background: "var(--overlay-text-secondary)",
+            background: "rgba(255,255,255,0.7)",
           }}
         />
       ))}
@@ -144,7 +144,7 @@ export const ThinkingDots = () => (
           width: 5,
           height: 5,
           borderRadius: "50%",
-          background: "var(--overlay-text-primary)",
+          background: "#fff",
         }}
       />
     ))}
@@ -157,28 +157,38 @@ export const ResponseBody = ({
   response: { title: string; lines: string[] };
 }) => (
   <div>
-    <div
+    <motion.div
+      initial={{ opacity: 0, filter: "blur(4px)" }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
       style={{
-        color: "var(--overlay-text-primary)",
-        fontSize: "var(--overlay-font-lg)",
+        color: "#fff",
+        fontSize: 13.5,
         lineHeight: 1.5,
         fontWeight: 400,
       }}
     >
       {response.lines[0]}
-    </div>
+    </motion.div>
     {response.lines.slice(1).map((line, i) => (
-      <div
+      <motion.div
         key={`${response.title}-${i}`}
+        initial={{ opacity: 0, filter: "blur(4px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        transition={{
+          duration: 0.35,
+          delay: (i + 1) * 0.08,
+          ease: "easeOut",
+        }}
         style={{
-          color: "var(--overlay-text-secondary)",
-          fontSize: "var(--overlay-font-md)",
+          color: "rgba(255,255,255,0.7)",
+          fontSize: 12.5,
           lineHeight: 1.5,
           marginTop: 2,
         }}
       >
         {line}
-      </div>
+      </motion.div>
     ))}
   </div>
 );
@@ -201,8 +211,8 @@ export const MeetingTimer = ({
   return (
     <span
       style={{
-        color: "var(--overlay-text-muted)",
-        fontSize: "var(--overlay-font-sm)",
+        color: "rgba(255,255,255,0.5)",
+        fontSize: 11,
         fontVariantNumeric: "tabular-nums",
       }}
     >

@@ -25,8 +25,10 @@ const SYSTEM_COLUMNS = new Set([
   "id",
   "created_at",
   "updated_at",
+  "archived_at",
   "crm_user_id",
   "organization_id",
+  "attachments",
   // Internal JSONB bucket for user-defined custom fields; not edited directly
   "custom_fields",
 ]);
@@ -91,6 +93,31 @@ function formatTitle(columnName: string): string {
   return columnName;
 }
 
+function normalizeCustomFieldOptions(
+  options: Array<string | schema.CustomFieldOption> | null | undefined,
+): schema.CustomFieldOption[] {
+  if (!Array.isArray(options)) return [];
+
+  return options.map((option, index) => {
+    if (typeof option === "string") {
+      return {
+        id: option,
+        label: option,
+        color: undefined,
+        order: index,
+      };
+    }
+
+    return {
+      id: option.id,
+      label: option.label,
+      color: option.color,
+      order: option.order ?? index,
+      isTerminal: option.isTerminal,
+    };
+  });
+}
+
 function toNocoDBColumnShape(
   row: SchemaColumnRow,
   tableName: string,
@@ -138,7 +165,23 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
 
     const tableName = c.req.param("tableName");
     if (!ALLOWED_TABLES.has(tableName)) {
-      return c.json({ error: "Table not found" }, 404);
+      // Check if it's a custom object table registered in object_config
+      const [customObj] = await db
+        .select()
+        .from(schema.objectConfig)
+        .where(
+          and(
+            eq(schema.objectConfig.tableName, tableName),
+            or(
+              eq(schema.objectConfig.organizationId, orgId),
+              isNull(schema.objectConfig.organizationId),
+            ),
+          ),
+        )
+        .limit(1);
+      if (!customObj) {
+        return c.json({ error: "Table not found" }, 404);
+      }
     }
 
     const baseTable = tableName.replace("_summary", "");
@@ -218,6 +261,7 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
 
     for (const def of customRows) {
       const uidt = FIELD_TYPE_TO_UIDT[def.fieldType] ?? "SingleLineText";
+      const normalizedOptions = normalizeCustomFieldOptions(def.options);
       columns.push({
         id: `custom_${def.id}`,
         fk_model_id: tableName,
@@ -232,10 +276,13 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
         ai: false,
         unique: false,
         cdf: null,
-        dtxp: Array.isArray(def.options) ? def.options.join(",") : "",
+        dtxp: normalizedOptions.map((option) => option.label).join(","),
         order: columns.length + 1,
         system: false,
-        meta: null,
+        meta: {
+          fieldType: def.fieldType,
+          options: normalizedOptions,
+        },
         np: null,
         ns: null,
         clen: null,

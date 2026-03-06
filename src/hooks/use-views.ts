@@ -131,6 +131,10 @@ type ViewStateAction =
   | { type: "SET_SORTS"; sorts: ViewSort[] }
   | { type: "SET_FILTERS"; filters: ViewFilter[] }
   | { type: "UPDATE_COLUMN"; columnId: string; updates: Partial<ViewColumn> }
+  | { type: "UPSERT_COLUMN"; column: ViewColumn; replaceId?: string }
+  | { type: "REMOVE_COLUMN"; columnId: string }
+  | { type: "UPDATE_SORT"; sortId: string; updates: Partial<ViewSort> }
+  | { type: "UPDATE_FILTER"; filterId: string; updates: Partial<ViewFilter> }
   | { type: "ADD_SORT"; sort: ViewSort }
   | { type: "REMOVE_SORT"; sortId: string }
   | { type: "ADD_FILTER"; filter: ViewFilter }
@@ -155,6 +159,53 @@ function viewStateReducer(
         isDirty: true,
         columns: state.columns.map((c) =>
           c.id === action.columnId ? { ...c, ...action.updates } : c,
+        ),
+      };
+    case "UPSERT_COLUMN": {
+      const columns = [...state.columns];
+      const replaceIndex =
+        action.replaceId != null
+          ? columns.findIndex((column) => column.id === action.replaceId)
+          : -1;
+      if (replaceIndex !== -1) {
+        columns[replaceIndex] = action.column;
+      } else {
+        const existingIndex = columns.findIndex(
+          (column) =>
+            column.id === action.column.id ||
+            column.fieldId === action.column.fieldId,
+        );
+        if (existingIndex !== -1) {
+          columns[existingIndex] = {
+            ...columns[existingIndex],
+            ...action.column,
+          };
+        } else {
+          columns.push(action.column);
+        }
+      }
+      return { ...state, isDirty: true, columns };
+    }
+    case "REMOVE_COLUMN":
+      return {
+        ...state,
+        isDirty: true,
+        columns: state.columns.filter((column) => column.id !== action.columnId),
+      };
+    case "UPDATE_SORT":
+      return {
+        ...state,
+        isDirty: true,
+        sorts: state.sorts.map((sort) =>
+          sort.id === action.sortId ? { ...sort, ...action.updates } : sort,
+        ),
+      };
+    case "UPDATE_FILTER":
+      return {
+        ...state,
+        isDirty: true,
+        filters: state.filters.map((filter) =>
+          filter.id === action.filterId ? { ...filter, ...action.updates } : filter,
         ),
       };
     case "ADD_SORT":
@@ -200,9 +251,11 @@ interface UseViewStateReturn {
   discard: () => void;
   updateColumn: (
     columnId: string,
-    updates: Partial<Pick<ViewColumn, "show" | "order" | "width">>,
+    updates: Partial<Pick<ViewColumn, "show" | "order" | "width" | "title">>,
   ) => void;
   addSort: (fieldId: string, direction: "asc" | "desc") => void;
+  replaceSort: (fieldId: string, direction: "asc" | "desc") => void;
+  updateSort: (sortId: string, updates: Partial<ViewSort>) => void;
   removeSort: (sortId: string) => void;
   addFilter: (
     fieldId: string,
@@ -210,6 +263,7 @@ interface UseViewStateReturn {
     value: unknown,
     logicalOp?: "and" | "or",
   ) => void;
+  updateFilter: (filterId: string, updates: Partial<ViewFilter>) => void;
   removeFilter: (filterId: string) => void;
 }
 
@@ -240,11 +294,19 @@ export function useViewState(viewId: string): UseViewStateReturn {
 
   useEffect(() => {
     isDirtyRef.current = false;
-    dispatch({ type: "MARK_CLEAN" });
+    dispatch({
+      type: "DISCARD",
+      snapshot: {
+        columns: [],
+        sorts: [],
+        filters: [],
+        isDirty: false,
+      },
+    });
   }, [viewId]);
 
   useEffect(() => {
-    if (!isDirtyRef.current && serverColumns.length > 0) {
+    if (!isDirtyRef.current) {
       dispatch({ type: "SET_COLUMNS", columns: serverColumns });
     }
   }, [serverColumns]);
@@ -271,19 +333,50 @@ export function useViewState(viewId: string): UseViewStateReturn {
   const updateColumn = useCallback(
     (
       columnId: string,
-      updates: Partial<Pick<ViewColumn, "show" | "order" | "width">>,
+      updates: Partial<Pick<ViewColumn, "show" | "order" | "width" | "title">>,
     ) => {
       if (columnId.startsWith("virtual-") && updates.show === true) {
         const fieldId = columnId.replace(/^virtual-/, "");
-        void createColumnMutation.mutateAsync({
-          fk_column_id: fieldId,
+        const optimisticColumn: ViewColumn = {
+          id: `creating-${fieldId}`,
+          fieldId,
+          title: updates.title ?? "",
           show: true,
-        });
+          order: updates.order ?? localState.columns.length,
+          width: updates.width,
+        };
+        dispatch({ type: "UPSERT_COLUMN", column: optimisticColumn });
+        void createColumnMutation
+          .mutateAsync({
+            fk_column_id: fieldId,
+            show: true,
+            order: optimisticColumn.order,
+            title: optimisticColumn.title || undefined,
+          })
+          .then((createdColumn) => {
+            dispatch({
+              type: "UPSERT_COLUMN",
+              column: {
+                ...createdColumn,
+                show: updates.show ?? createdColumn.show,
+                width: updates.width ?? createdColumn.width,
+              },
+              replaceId: optimisticColumn.id,
+            });
+          })
+          .catch(() => {
+            dispatch({ type: "REMOVE_COLUMN", columnId: optimisticColumn.id });
+          });
         return;
       }
       dispatch({ type: "UPDATE_COLUMN", columnId, updates });
+      // Immediately persist title/order/width changes to the server (but not show — that goes through save/discard)
+      const { show: _show, ...serverUpdates } = updates;
+      if (serverUpdates.title !== undefined || serverUpdates.order !== undefined || serverUpdates.width !== undefined) {
+        void updateColumnMutation.mutateAsync({ columnId, ...serverUpdates });
+      }
     },
-    [createColumnMutation],
+    [createColumnMutation, updateColumnMutation, localState.columns.length],
   );
 
   const addSort = useCallback(
@@ -300,8 +393,35 @@ export function useViewState(viewId: string): UseViewStateReturn {
     [localState.sorts.length],
   );
 
+  const replaceSort = useCallback(
+    (fieldId: string, direction: "asc" | "desc") => {
+      const tempSort: ViewSort = {
+        id: `temp-${Date.now()}`,
+        fieldId,
+        direction,
+        order: 0,
+      };
+      dispatch({ type: "SET_SORTS", sorts: [tempSort] });
+      // Delete all existing server sorts, then create the new one
+      const deletePromises = serverSorts.map((s) =>
+        deleteSortMutation.mutateAsync(s.id),
+      );
+      void Promise.all(deletePromises).then(() =>
+        createSortMutation.mutateAsync({
+          fk_column_id: fieldId,
+          direction,
+        }),
+      );
+    },
+    [serverSorts, deleteSortMutation, createSortMutation],
+  );
+
   const removeSort = useCallback((sortId: string) => {
     dispatch({ type: "REMOVE_SORT", sortId });
+  }, []);
+
+  const updateSort = useCallback((sortId: string, updates: Partial<ViewSort>) => {
+    dispatch({ type: "UPDATE_SORT", sortId, updates });
   }, []);
 
   const addFilter = useCallback(
@@ -327,6 +447,13 @@ export function useViewState(viewId: string): UseViewStateReturn {
     dispatch({ type: "REMOVE_FILTER", filterId });
   }, []);
 
+  const updateFilter = useCallback(
+    (filterId: string, updates: Partial<ViewFilter>) => {
+      dispatch({ type: "UPDATE_FILTER", filterId, updates });
+    },
+    [],
+  );
+
   const save = useCallback(async () => {
     const columnPromises = localState.columns.map((col) => {
       const serverCol = serverColumns.find((s) => s.id === col.id);
@@ -345,53 +472,39 @@ export function useViewState(viewId: string): UseViewStateReturn {
       });
     });
 
-    const sortPromises: Promise<unknown>[] = [];
-    const serverSortIds = new Set(serverSorts.map((s) => s.id));
-    const localSortIds = new Set(localState.sorts.map((s) => s.id));
+    const sortDeletePromises = serverSorts.map((sort) =>
+      deleteSortMutation.mutateAsync(sort.id),
+    );
+    const filterDeletePromises = serverFilters.map((filter) =>
+      deleteFilterMutation.mutateAsync(filter.id),
+    );
 
-    // Create sorts that don't exist on server
-    for (const sort of localState.sorts) {
-      if (sort.id.startsWith("temp-") || !serverSortIds.has(sort.id)) {
-        sortPromises.push(
-          createSortMutation.mutateAsync({
-            fk_column_id: sort.fieldId,
-            direction: sort.direction,
-          }),
-        );
-      }
-    }
+    await Promise.all([
+      ...columnPromises,
+      ...sortDeletePromises,
+      ...filterDeletePromises,
+    ]);
 
-    for (const serverSort of serverSorts) {
-      if (!localSortIds.has(serverSort.id)) {
-        sortPromises.push(deleteSortMutation.mutateAsync(serverSort.id));
-      }
-    }
+    const sortCreatePromises = localState.sorts
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((sort) =>
+        createSortMutation.mutateAsync({
+          fk_column_id: sort.fieldId,
+          direction: sort.direction,
+        }),
+      );
 
-    // Persist new filters and delete removed filters
-    const filterPromises: Promise<unknown>[] = [];
-    const serverFilterIds = new Set(serverFilters.map((f) => f.id));
-    const localFilterIds = new Set(localState.filters.map((f) => f.id));
+    const filterCreatePromises = localState.filters.map((filter) =>
+      createFilterMutation.mutateAsync({
+        fk_column_id: filter.fieldId,
+        comparison_op: filter.operator,
+        value: filter.value,
+        logical_op: filter.logicalOp,
+      }),
+    );
 
-    for (const filter of localState.filters) {
-      if (filter.id.startsWith("temp-") || !serverFilterIds.has(filter.id)) {
-        filterPromises.push(
-          createFilterMutation.mutateAsync({
-            fk_column_id: filter.fieldId,
-            comparison_op: filter.operator,
-            value: filter.value,
-            logical_op: filter.logicalOp,
-          }),
-        );
-      }
-    }
-
-    for (const serverFilter of serverFilters) {
-      if (!localFilterIds.has(serverFilter.id)) {
-        filterPromises.push(deleteFilterMutation.mutateAsync(serverFilter.id));
-      }
-    }
-
-    await Promise.all([...columnPromises, ...sortPromises, ...filterPromises]);
+    await Promise.all([...sortCreatePromises, ...filterCreatePromises]);
     dispatch({ type: "MARK_CLEAN" });
   }, [
     localState,
@@ -428,8 +541,11 @@ export function useViewState(viewId: string): UseViewStateReturn {
     discard,
     updateColumn,
     addSort,
+    replaceSort,
+    updateSort,
     removeSort,
     addFilter,
+    updateFilter,
     removeFilter,
   };
 }

@@ -26,6 +26,7 @@ export function DetailField({
   const fieldType = getFieldType(attribute.uiType);
   const [isEditing, setIsEditing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const linkClickTimeoutRef = useRef<number | null>(null);
 
   const isCheckbox = attribute.uiType === "checkbox";
 
@@ -62,20 +63,83 @@ export function DetailField({
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        handleCancel();
+        setIsEditing(false);
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isEditing, handleCancel]);
+  }, [isEditing]);
+
+  useEffect(() => {
+    return () => {
+      if (linkClickTimeoutRef.current != null) {
+        window.clearTimeout(linkClickTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const openExternalTarget = useCallback((anchor: HTMLAnchorElement) => {
+    const href = anchor.getAttribute("href");
+    if (!href) return;
+
+    const target = anchor.getAttribute("target");
+    if (target === "_blank") {
+      window.open(href, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    window.location.href = href;
+  }, []);
+
+  const handleLinkClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a");
+      if (!anchor || isEditing) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (linkClickTimeoutRef.current != null) {
+        window.clearTimeout(linkClickTimeoutRef.current);
+      }
+
+      linkClickTimeoutRef.current = window.setTimeout(() => {
+        openExternalTarget(anchor as HTMLAnchorElement);
+        linkClickTimeoutRef.current = null;
+      }, 220);
+    },
+    [isEditing, openExternalTarget],
+  );
+
+  const handleLinkDoubleClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a");
+      if (!anchor) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (linkClickTimeoutRef.current != null) {
+        window.clearTimeout(linkClickTimeoutRef.current);
+        linkClickTimeoutRef.current = null;
+      }
+
+      if (!isReadOnly) {
+        handleStartEditing();
+      }
+    },
+    [handleStartEditing, isReadOnly],
+  );
 
   const empty = fieldType.isEmpty(value);
 
   return (
     <div
       ref={containerRef}
-      className="grid grid-cols-[120px_1fr] gap-2 items-start py-1.5"
+      className="grid grid-cols-[120px_minmax(0,1fr)] gap-3 items-start py-1.5 overflow-hidden"
     >
       {/* Label */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-h-[28px]">
@@ -84,7 +148,7 @@ export function DetailField({
       </div>
 
       {/* Value / Editor */}
-      <div className="min-h-[28px] flex items-center">
+      <div className="min-h-[28px] min-w-0 flex items-start overflow-hidden">
         {isEditing ? (
           <fieldType.DetailEditor
             value={value}
@@ -110,12 +174,16 @@ export function DetailField({
             />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={handleStartEditing}
-            disabled={isReadOnly}
+          <div
+            onClickCapture={handleLinkClickCapture}
+            onDoubleClickCapture={handleLinkDoubleClickCapture}
+            onDoubleClick={() => {
+              if (!isReadOnly) {
+                handleStartEditing();
+              }
+            }}
             className={cn(
-              "w-full text-left rounded px-1 -mx-1 py-0.5 transition-colors",
+              "w-full min-w-0 text-left rounded px-1 -mx-1 py-0.5 transition-colors overflow-hidden [&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal [&_.truncate]:break-words [&_.truncate]:text-clip [&_.inline-flex]:max-w-full [&_.inline-flex]:whitespace-normal [&_.inline-flex]:break-words [&_a]:block [&_a]:max-w-full [&_a]:overflow-visible [&_a]:whitespace-normal [&_a]:break-all",
               !isReadOnly && "hover:bg-muted cursor-pointer",
               isReadOnly && "cursor-default",
             )}
@@ -125,13 +193,15 @@ export function DetailField({
                 {fieldType.placeholder}
               </span>
             ) : (
-              <fieldType.DetailDisplay
-                value={value}
-                config={attribute.config}
-                attribute={attribute}
-              />
+              <span className="block max-h-40 overflow-y-auto break-words pr-1 text-sm">
+                <fieldType.DetailDisplay
+                  value={value}
+                  config={attribute.config}
+                  attribute={attribute}
+                />
+              </span>
             )}
-          </button>
+          </div>
         )}
       </div>
     </div>

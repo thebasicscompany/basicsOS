@@ -94,7 +94,7 @@ export function CompanyFormInput({
         <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Search by name, city, sector..."
+              placeholder="Search by name, category..."
               value={search}
               onValueChange={setSearch}
             />

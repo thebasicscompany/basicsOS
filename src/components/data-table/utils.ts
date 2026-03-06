@@ -1,15 +1,10 @@
 import type { Attribute } from "@/field-types/types";
 import type { ViewColumn } from "@/types/views";
-import { getRecordValue } from "@/lib/crm/field-mapper";
-
-export function isValueEmpty(val: unknown): boolean {
-  return val == null || val === "" || val === false;
-}
-
+import { getNameAttributes } from "@/lib/crm/display-name";
 export function getVisibleAttributes(
   attributes: Attribute[],
   viewColumns: ViewColumn[],
-  data: Record<string, unknown>[],
+  _data: Record<string, unknown>[],
 ): {
   visible: Array<{ attribute: Attribute; viewColumn: ViewColumn }>;
   hiddenEmptyCount: number;
@@ -30,26 +25,24 @@ export function getVisibleAttributes(
     (item) => item.attribute.columnName !== "organization_id",
   );
 
-  if (data.length === 0) {
-    return { visible: colsWithoutOrgId, hiddenEmptyCount: 0 };
+  const { lastNameAttr, usesSplitName } = getNameAttributes(attributes);
+  const visible = colsWithoutOrgId.filter(
+    (item) =>
+      !(
+        usesSplitName &&
+        lastNameAttr &&
+        item.attribute.columnName === lastNameAttr.columnName
+      ),
+  );
+
+  // Ensure primary attribute is always first
+  const primaryIdx = visible.findIndex((item) => item.attribute.isPrimary);
+  if (primaryIdx > 0) {
+    const [primary] = visible.splice(primaryIdx, 1);
+    visible.unshift(primary);
   }
 
-  const visible: typeof allCols = [];
-  let hiddenEmptyCount = 0;
-
-  for (const item of colsWithoutOrgId) {
-    const { attribute } = item;
-    const hasNonEmpty = data.some(
-      (row) => !isValueEmpty(getRecordValue(row, attribute.columnName)),
-    );
-    if (attribute.isPrimary || hasNonEmpty) {
-      visible.push(item);
-    } else {
-      hiddenEmptyCount++;
-    }
-  }
-
-  return { visible, hiddenEmptyCount };
+  return { visible, hiddenEmptyCount: 0 };
 }
 
 export function parseWidth(width: string | undefined): number {

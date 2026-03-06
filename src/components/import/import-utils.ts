@@ -19,15 +19,6 @@ const CONTACT_HEADER_ALIASES: Record<string, string> = {
   last_name: "lastName",
   email: "email",
   "e-mail": "email",
-  phone: "phone",
-  telephone: "phone",
-  mobile: "phone",
-  title: "title",
-  job: "title",
-  "job title": "title",
-  status: "status",
-  gender: "gender",
-  background: "background",
   linkedin: "linkedinUrl",
   "linkedin url": "linkedinUrl",
   "linkedin_url": "linkedinUrl",
@@ -37,35 +28,22 @@ const COMPANY_HEADER_ALIASES: Record<string, string> = {
   name: "name",
   "company name": "name",
   "company": "name",
-  sector: "sector",
-  size: "size",
-  website: "website",
-  "phone": "phoneNumber",
-  "phone number": "phoneNumber",
-  address: "address",
-  city: "city",
-  state: "stateAbbr",
-  "state abbr": "stateAbbr",
-  country: "country",
-  zipcode: "zipcode",
-  zip: "zipcode",
+  domain: "domain",
+  website: "domain",
+  url: "domain",
   description: "description",
-  revenue: "revenue",
-  linkedin: "linkedinUrl",
-  "linkedin url": "linkedinUrl",
+  category: "category",
+  sector: "category",
+  industry: "category",
 };
 
 const DEAL_HEADER_ALIASES: Record<string, string> = {
   name: "name",
   "deal name": "name",
-  stage: "stage",
-  category: "category",
+  status: "status",
+  stage: "status",
   amount: "amount",
   value: "amount",
-  description: "description",
-  "expected closing date": "expectedClosingDate",
-  "closing date": "expectedClosingDate",
-  "close date": "expectedClosingDate",
 };
 
 const ALIASES_BY_OBJECT: Record<string, Record<string, string>> = {
@@ -137,9 +115,6 @@ function buildContactPayload(
       customFields[targetCol] = value;
     } else if (targetCol === "email") {
       payload.email = value;
-      payload.emailJsonb = [{ email: value, type: "Work" }];
-    } else if (targetCol === "phone") {
-      payload.phoneJsonb = [{ number: value, type: "Work" }];
     } else {
       payload[targetCol] = value;
     }

@@ -37,16 +37,14 @@ export function buildEntityText(
       const parts = [
         [record.firstName, record.lastName].filter(Boolean).join(" "),
         record.email ? `Email: ${record.email}` : null,
-        record.title ? `Title: ${record.title}` : null,
-        record.background ? `Background: ${record.background}` : null,
       ].filter(Boolean);
       return parts.join(". ");
     }
     case "company": {
       const parts = [
         record.name,
-        record.sector ? `Sector: ${record.sector}` : null,
-        record.city ? `City: ${record.city}` : null,
+        record.category ? `Category: ${record.category}` : null,
+        record.domain ? `Domain: ${record.domain}` : null,
         record.description ? `Description: ${record.description}` : null,
       ].filter(Boolean);
       return parts.join(". ");
@@ -54,10 +52,8 @@ export function buildEntityText(
     case "deal": {
       const parts = [
         record.name,
-        record.stage ? `Stage: ${record.stage}` : null,
+        record.status ? `Status: ${record.status}` : null,
         record.amount ? `Value: $${record.amount}` : null,
-        record.category ? `Category: ${record.category}` : null,
-        record.description ? `Description: ${record.description}` : null,
       ].filter(Boolean);
       return parts.join(". ");
     }

@@ -32,13 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TaskTypeInput } from "@/components/task-type-input";
 import {
   useTasks,
   useMarkTaskDone,
@@ -196,7 +190,7 @@ function AddTaskDialog({
   const createTask = useCreateTask();
   const [contactId, setContactId] = useState<string>("");
   const [contactSearch, setContactSearch] = useState("");
-  const [type, setType] = useState("None");
+  const [type, setType] = useState("");
   const [text, setText] = useState("");
   const tomorrow = addDays(new Date(), 1).toISOString().slice(0, 10);
   const [dueDate, setDueDate] = useState(tomorrow);
@@ -224,7 +218,7 @@ function AddTaskDialog({
     createTask.mutate(
       {
         contactId: parseInt(contactId, 10),
-        type,
+        type: type.trim() || undefined,
         text: text.trim(),
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       },
@@ -234,7 +228,7 @@ function AddTaskDialog({
           onOpenChange(false);
           setContactId("");
           setContactSearch("");
-          setType("None");
+          setType("");
           setText("");
           setDueDate(tomorrow);
         },
@@ -300,18 +294,11 @@ function AddTaskDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Type</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  <SelectItem value="Call">Call</SelectItem>
-                  <SelectItem value="Email">Email</SelectItem>
-                  <SelectItem value="Meeting">Meeting</SelectItem>
-                  <SelectItem value="Follow-up">Follow-up</SelectItem>
-                </SelectContent>
-              </Select>
+              <TaskTypeInput
+                value={type}
+                onChange={setType}
+                className="h-8 text-sm"
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Due date</Label>
@@ -422,8 +409,8 @@ export function TasksPage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-auto py-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex h-full flex-col overflow-auto pb-8">
+      <div className="mb-4 flex items-center justify-between">
         {!tasksPending ? (
           <span className="text-xs text-muted-foreground">
             {activeTasks.length} upcoming
@@ -478,13 +465,13 @@ export function TasksPage() {
           if (!bucket?.length) return null;
           return (
             <div key={key}>
-              <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+              <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {label}{" "}
-                <span className="ml-1 text-muted-foreground/40">
+                <span className="ml-1 text-muted-foreground/60">
                   {bucket.length}
                 </span>
               </p>
-              <div className="divide-y divide-border/50 rounded-md border">
+              <div className="rounded-md bg-card">
                 {bucket.map((task) => {
                   const contact = task.contactId
                     ? contactMap.get(task.contactId)

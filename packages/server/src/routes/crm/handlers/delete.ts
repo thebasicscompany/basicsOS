@@ -8,16 +8,17 @@ import {
   TABLE_MAP,
   type Resource,
 } from "@/routes/crm/constants.js";
+import {
+  resolveCustomTable,
+  deleteCustomRecord,
+  getCustomRecord,
+} from "@/data-access/crm/dynamic-table.js";
 
 export function createDeleteHandler(db: Db) {
   return async (c: Context) => {
     const resource = c.req.param("resource") as Resource;
     const id = parseInt(c.req.param("id"), 10);
-    if (
-      isNaN(id) ||
-      !CRM_RESOURCES.includes(resource) ||
-      resource.endsWith("_summary")
-    ) {
+    if (isNaN(id)) {
       return jsonError(c, "Invalid request", 400, "INVALID_REQUEST");
     }
 
@@ -25,6 +26,20 @@ export function createDeleteHandler(db: Db) {
     if (!crmUser) return jsonError(c, "User not found in CRM", 404, "NOT_FOUND");
     const orgId = crmUser.organizationId;
     if (!orgId) return jsonError(c, "Organization not found", 404, "NOT_FOUND");
+
+    // Handle custom object tables
+    if (!CRM_RESOURCES.includes(resource) || (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">] && !resource.endsWith("_summary"))) {
+      const customTable = await resolveCustomTable(db, resource, orgId);
+      if (!customTable) return c.json({ error: "Unknown resource" }, 404);
+      const existing = await getCustomRecord(db, customTable, orgId, id);
+      if (!existing) return jsonError(c, "Not found", 404, "NOT_FOUND");
+      await deleteCustomRecord(db, customTable, id, orgId);
+      return c.json(existing);
+    }
+
+    if (resource.endsWith("_summary")) {
+      return jsonError(c, "Invalid request", 400, "INVALID_REQUEST");
+    }
 
     const permissions = await getPermissionSetForUser(db, crmUser);
     const canHardDelete =

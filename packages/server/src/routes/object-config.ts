@@ -4,13 +4,14 @@ import { authMiddleware } from "@/middleware/auth.js";
 import {
   favoritesPostSchema,
   objectConfigPutSchema,
+  objectConfigCreateSchema,
   attributeOverridePostSchema,
 } from "@/schemas/object-config.js";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import * as schema from "@/db/schema/index.js";
-import { eq, and, asc, or, isNull, inArray } from "drizzle-orm";
+import { eq, and, asc, or, isNull, inArray, sql } from "drizzle-orm";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { writeAuditLogSafe } from "@/lib/audit-log.js";
 
@@ -93,6 +94,134 @@ export function createObjectConfigRoutes(
     } catch (err) {
       console.error("[object-config] list failed:", err);
       return c.json({ error: "Failed to load object config" }, 500);
+    }
+  });
+
+  // POST / — Create a new custom object (table + config + optional fields)
+  app.post("/", async (c) => {
+    const adminError = await requireObjectConfigWrite(c);
+    if (adminError) return adminError;
+
+    const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+    if (!authz.ok) return authz.response;
+    const orgId = authz.crmUser.organizationId;
+    if (!orgId) return c.json({ error: "Organization not found" }, 404);
+
+    let rawBody: unknown;
+    try {
+      rawBody = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+    const parsed = objectConfigCreateSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? "Validation failed";
+      return c.json({ error: msg }, 400);
+    }
+    const body = parsed.data;
+
+    // Derive slug and table name from plural name
+    const slug = body.pluralName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
+    const tableName = `custom_${slug}`;
+
+    // Check for duplicate slug
+    const [existing] = await db
+      .select()
+      .from(schema.objectConfig)
+      .where(eq(schema.objectConfig.slug, slug))
+      .limit(1);
+    if (existing) {
+      return c.json({ error: "An object with this name already exists" }, 409);
+    }
+
+    try {
+      // 1. Create the backing table with standard columns + name
+      await db.execute(
+        sql`CREATE TABLE IF NOT EXISTS ${sql.identifier(tableName)} (
+          id BIGSERIAL PRIMARY KEY,
+          name VARCHAR(255),
+          crm_user_id BIGINT,
+          organization_id UUID,
+          custom_fields JSONB NOT NULL DEFAULT '{}',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )`,
+      );
+
+      // 2. Create index on organization_id
+      await db.execute(
+        sql`CREATE INDEX IF NOT EXISTS ${sql.identifier(`idx_${tableName}_org`)} ON ${sql.identifier(tableName)} (organization_id)`,
+      );
+
+      // 3. Get max position
+      const [maxPos] = await db
+        .select({ maxPos: sql<number>`COALESCE(MAX(position), 0)` })
+        .from(schema.objectConfig);
+      const nextPosition = (maxPos?.maxPos ?? 0) + 1;
+
+      // 4. Insert object_config row
+      const [created] = await db
+        .insert(schema.objectConfig)
+        .values({
+          slug,
+          singularName: body.singularName,
+          pluralName: body.pluralName,
+          icon: body.icon,
+          iconColor: body.iconColor,
+          tableName,
+          type: "standard",
+          isActive: true,
+          position: nextPosition,
+          settings: {},
+          organizationId: orgId,
+        })
+        .returning();
+
+      // 5. Create a "name" attribute override marked as primary
+      if (created) {
+        await db.insert(schema.objectAttributeOverrides).values({
+          objectConfigId: created.id,
+          columnName: "name",
+          displayName: "Name",
+          uiType: "text",
+          isPrimary: true,
+          isHiddenByDefault: false,
+          config: {},
+          organizationId: orgId,
+        });
+      }
+
+      // 6. Insert any initial custom field defs
+      if (body.fields.length > 0 && created) {
+        await db.insert(schema.customFieldDefs).values(
+          body.fields.map((f, i) => ({
+            resource: tableName,
+            name: f.name,
+            label: f.label,
+            fieldType: f.fieldType,
+            options: f.options ?? null,
+            position: i + 1,
+            organizationId: orgId,
+          })),
+        );
+      }
+
+      await writeAuditLogSafe(db, {
+        crmUserId: authz.crmUser.id,
+        organizationId: orgId,
+        action: "object_config.created",
+        entityType: "object_config",
+        entityId: created?.id ?? 0,
+        metadata: { slug, tableName },
+      });
+
+      return c.json(created, 201);
+    } catch (err) {
+      console.error("[object-config] create failed:", err);
+      return c.json({ error: "Failed to create object" }, 500);
     }
   });
 

@@ -27,37 +27,20 @@ const CONTACT_TARGET_COLUMNS = [
   { value: "firstName", label: "First Name" },
   { value: "lastName", label: "Last Name" },
   { value: "email", label: "Email" },
-  { value: "phone", label: "Phone" },
-  { value: "title", label: "Title" },
-  { value: "status", label: "Status" },
-  { value: "gender", label: "Gender" },
-  { value: "background", label: "Background" },
   { value: "linkedinUrl", label: "LinkedIn URL" },
 ];
 
 const COMPANY_TARGET_COLUMNS = [
   { value: "name", label: "Company Name" },
-  { value: "sector", label: "Sector" },
-  { value: "size", label: "Size" },
-  { value: "website", label: "Website" },
-  { value: "phoneNumber", label: "Phone" },
-  { value: "address", label: "Address" },
-  { value: "city", label: "City" },
-  { value: "stateAbbr", label: "State" },
-  { value: "country", label: "Country" },
-  { value: "zipcode", label: "Zipcode" },
+  { value: "domain", label: "Domain" },
   { value: "description", label: "Description" },
-  { value: "revenue", label: "Revenue" },
-  { value: "linkedinUrl", label: "LinkedIn URL" },
+  { value: "category", label: "Category" },
 ];
 
 const DEAL_TARGET_COLUMNS = [
   { value: "name", label: "Deal Name" },
-  { value: "stage", label: "Stage" },
-  { value: "category", label: "Category" },
+  { value: "status", label: "Status" },
   { value: "amount", label: "Amount" },
-  { value: "description", label: "Description" },
-  { value: "expectedClosingDate", label: "Expected Closing Date" },
 ];
 
 function getStandardColumnsForObject(objectSlug: string): Array<{ value: string; label: string }> {

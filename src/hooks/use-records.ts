@@ -10,7 +10,7 @@ export interface RecordSortParam {
 export interface UseRecordsParams {
   page?: number;
   perPage?: number;
-  sort?: RecordSortParam;
+  sort?: RecordSortParam | RecordSortParam[];
   filter?: Record<string, unknown>;
   /** View-level filters (generic filters sent to API) */
   viewFilters?: FilterDef[];
@@ -108,6 +108,53 @@ export function useUpdateRecord<T = Record<string, unknown>>(
     { id: number | string; data: Record<string, unknown> }
   >({
     mutationFn: ({ id, data }) => crmApi.update<T>(objectSlug, id, data),
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries({ queryKey: ["records", objectSlug] });
+
+      const applyPatch = (record: Record<string, unknown>) => {
+        const next = { ...record };
+        for (const [key, value] of Object.entries(data)) {
+          if (key === "customFields" && value && typeof value === "object") {
+            next.customFields = {
+              ...(next.customFields as Record<string, unknown> | undefined),
+              ...(value as Record<string, unknown>),
+            };
+            continue;
+          }
+          next[key] = value;
+        }
+        return next;
+      };
+
+      qc.setQueriesData({ queryKey: ["records", objectSlug] }, (current) => {
+        if (!current || typeof current !== "object") return current;
+
+        if ("data" in current && Array.isArray((current as RecordListResult<Record<string, unknown>>).data)) {
+          const typed = current as RecordListResult<Record<string, unknown>>;
+          return {
+            ...typed,
+            data: typed.data.map((record) =>
+              ((record as { id?: number | string; Id?: number | string }).id === id ||
+                (record as { id?: number | string; Id?: number | string }).Id === id)
+                ? applyPatch(record as Record<string, unknown>)
+                : record,
+            ),
+          };
+        }
+
+        if (
+          "id" in (current as Record<string, unknown>) ||
+          "Id" in (current as Record<string, unknown>)
+        ) {
+          const record = current as Record<string, unknown>;
+          if (record.id === id || record.Id === id) {
+            return applyPatch(record);
+          }
+        }
+
+        return current;
+      });
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["records", objectSlug] });
       qc.invalidateQueries({

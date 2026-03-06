@@ -17,6 +17,24 @@ export const objectConfigPutSchema = z.object({
   settings: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const objectConfigCreateSchema = z.object({
+  singularName: z.string().trim().min(1).max(128),
+  pluralName: z.string().trim().min(1).max(128),
+  icon: z.string().default("building"),
+  iconColor: z.string().default("blue"),
+  fields: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(128),
+        label: z.string().trim().min(1).max(255),
+        fieldType: z.string().trim().min(1).max(32),
+        options: z.array(z.string()).optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+});
+
 export const attributeOverridePostSchema = z.object({
   columnName: z.string().trim().min(1),
   displayName: z.string().trim().nullable().optional(),

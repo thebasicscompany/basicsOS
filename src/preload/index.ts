@@ -51,6 +51,8 @@ const overlayAPI = {
       body: string;
       encoding: "text" | "base64";
     }>,
+  resizeOverlay: (height: number) =>
+    ipcRenderer.invoke("resize-overlay", height) as Promise<void>,
   getOverlaySettings: () =>
     ipcRenderer.invoke("get-overlay-settings") as Promise<OverlaySettings>,
   updateOverlaySettings: (partial: Partial<OverlaySettings>) =>

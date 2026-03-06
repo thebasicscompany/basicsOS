@@ -8,10 +8,10 @@ const log = createDesktopLogger("settings");
 
 export const OVERLAY_DEFAULTS: OverlaySettings = {
   shortcuts: {
-    assistantToggle: "CommandOrControl+Space",
-    dictationToggle: "CommandOrControl+Shift+Space",
-    dictationHoldKey: "CommandOrControl+Shift+Space",
-    meetingToggle: "CommandOrControl+Alt+Space",
+    assistantToggle: "Option+Space",
+    dictationToggle: "Option+Shift+Space",
+    dictationHoldKey: "Option+Shift+Space",
+    meetingToggle: "Option+CommandOrControl+Space",
   },
   voice: {
     language: "en-US",

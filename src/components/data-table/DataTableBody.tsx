@@ -1,6 +1,6 @@
 import * as React from "react";
 import { flexRender, type ColumnDef, type Row } from "@tanstack/react-table";
-import { ArrowSquareOutIcon, PlusIcon, TableIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, TrashIcon } from "@phosphor-icons/react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -9,8 +9,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Attribute } from "@/field-types/types";
@@ -36,7 +34,12 @@ interface DataTableBodyProps<T extends Record<string, unknown>> {
   onRowExpand?: (recordId: number) => void;
   onRowDelete?: (recordId: number, record: T) => void;
   onCellClick: (rowIndex: number, colId: string, attribute: Attribute) => void;
-  onCellDoubleClick: (rowIndex: number, colId: string) => void;
+  onCellDoubleClick: (
+    rowIndex: number,
+    colId: string,
+    attribute: Attribute,
+    recordId: number,
+  ) => void;
 }
 
 export function DataTableBody<T extends Record<string, unknown>>({
@@ -69,24 +72,6 @@ export function DataTableBody<T extends Record<string, unknown>>({
             ))}
           </TableRow>
         ))
-      ) : data.length === 0 ? (
-        <TableRow>
-          <TableCell colSpan={columns.length} className="p-0">
-            <EmptyState
-              icon={<TableIcon />}
-              title={`No ${pluralName.toLowerCase()} found`}
-              description="Get started by creating your first record."
-              action={
-                onNewRecord ? (
-                  <Button variant="outline" size="sm" onClick={onNewRecord}>
-                    <PlusIcon className="size-3.5 mr-1" />
-                    New {singularName}
-                  </Button>
-                ) : undefined
-              }
-            />
-          </TableCell>
-        </TableRow>
       ) : (
         rows.map((row) => {
           const recordId =
@@ -96,12 +81,7 @@ export function DataTableBody<T extends Record<string, unknown>>({
           const rowContent = (
             <TableRow
               key={row.id}
-              onDoubleClick={
-                onRowExpand
-                  ? () => onRowExpand(recordId)
-                  : undefined
-              }
-              className={onRowExpand ? "cursor-pointer" : undefined}
+              className={onRowExpand ? "cursor-default" : undefined}
             >
               {row.getVisibleCells().map((cell) => {
               const colDef = cell.column.columnDef;
@@ -155,7 +135,12 @@ export function DataTableBody<T extends Record<string, unknown>>({
                   }}
                   onDoubleClick={() => {
                     if (matchedCol) {
-                      onCellDoubleClick(rowIndex, colId);
+                      onCellDoubleClick(
+                        rowIndex,
+                        colId,
+                        matchedCol.attribute,
+                        recordId,
+                      );
                     }
                   }}
                 >

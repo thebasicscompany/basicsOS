@@ -66,7 +66,7 @@ export const ASSISTANT_TOOLS = [
     function: {
       name: "update_deal",
       description:
-        "Update a deal's stage or other fields. Use when the user wants to change deal status, stage, or other attributes.",
+        "Update a deal's status or other fields. Use when the user wants to change deal status or other attributes.",
       parameters: {
         type: "object",
         properties: {
@@ -74,9 +74,9 @@ export const ASSISTANT_TOOLS = [
             type: "number",
             description: "The ID of the deal to update",
           },
-          stage: {
+          status: {
             type: "string",
-            description: "The new stage for the deal",
+            description: "The new status for the deal",
           },
         },
         required: ["deal_id"],
@@ -199,12 +199,12 @@ export async function executeAssistantToolDrizzle(
 
     if (toolName === "update_deal") {
       const dealId = args.deal_id as number;
-      const stage = args.stage as string | undefined;
+      const status = args.status as string | undefined;
 
       const updateData: Record<string, unknown> = {
         updatedAt: new Date(),
       };
-      if (stage) updateData.stage = stage;
+      if (status) updateData.status = status;
 
       const [updated] = await db
         .update(schema.deals)

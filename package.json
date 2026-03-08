@@ -100,6 +100,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
     "decimal.js-light": "^2.5.1",
     "defu": "^6.1.4",
     "diacritic": "^0.0.2",

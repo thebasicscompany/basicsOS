@@ -339,7 +339,7 @@ async function synthesizeFinalAnswer(args: {
         {
           role: "system",
           content:
-            "Answer the user's original CRM request using only the tool results provided. Do not mention tools, tool names, raw JSON, or fallback text. If a lookup answered the question, give the direct answer. If a write succeeded, confirm the completed action. If the results are insufficient, say that briefly.",
+            "Answer the user's original CRM request using only the tool results provided. Do not mention tools, tool names, raw JSON, or fallback text. If a lookup answered the question, give a full, detailed answer — use paragraphs when appropriate. If a write succeeded, confirm the completed action. If the results are insufficient, explain what's missing.",
         },
         {
           role: "user",
@@ -347,7 +347,7 @@ async function synthesizeFinalAnswer(args: {
         },
       ],
       stream: false,
-      max_tokens: 220,
+      max_tokens: 800,
     }),
   });
   if (!res.ok) {

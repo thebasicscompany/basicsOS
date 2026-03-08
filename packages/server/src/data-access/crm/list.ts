@@ -44,7 +44,7 @@ function buildGenericFilterExpression(
     }
 
     expression =
-      gf.logicalOp === "or" ? (or(expression, cond) as SQL) : and(expression, cond);
+      (gf.logicalOp === "or" ? or(expression, cond) : and(expression, cond)) ?? null;
   }
 
   return expression;
@@ -55,14 +55,14 @@ function buildOrderByExpression(
   sort: { field: string; order: "ASC" | "DESC" },
 ): SQL | null {
   const sortParamCamel = snakeToCamelField(sort.field);
-  const orderByCol = (table as Record<string, unknown>)[sortParamCamel];
+  const orderByCol = (table as unknown as Record<string, unknown>)[sortParamCamel];
   const orderDir = sort.order === "DESC" ? desc : asc;
 
   if (orderByCol) {
     return orderDir(orderByCol as SQL);
   }
 
-  const customFieldsColumn = (table as Record<string, unknown>).customFields;
+  const customFieldsColumn = (table as unknown as Record<string, unknown>).customFields;
   if (
     customFieldsColumn &&
     typeof (customFieldsColumn as { getSQL?: unknown }).getSQL === "function"
@@ -221,6 +221,9 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
   }
   if (resource === "deal_notes" && filter.deal_id != null) {
     conditions.push(eq(schema.dealNotes.dealId, Number(filter.deal_id)));
+  }
+  if (resource === "company_notes" && filter.company_id != null) {
+    conditions.push(eq(schema.companyNotes.companyId, Number(filter.company_id)));
   }
 
   const genericExpression = buildGenericFilterExpression(

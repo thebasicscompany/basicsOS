@@ -80,38 +80,62 @@ git --version
 
 If any command fails, install that dependency first.
 
-### 1. Clone and install
+### Option A: One-command setup
 
 ```sh
 git clone https://github.com/thebasicscompany/basicsOSnew.git
 cd basicsOSnew
-pnpm install
+pnpm run setup
 ```
 
-### 2. Start Postgres
+The setup script installs deps and will:
+- Check prerequisites (Node, pnpm, Docker, Git)
+- Ask whether you want **development** or **production** deployment
+- **Development:** Install deps, start Postgres, create `.env` with generated secrets, run migrations, seed admin (`admin@example.com` / `admin123`)
+- **Production:** Install deps, optionally start Postgres, create `.env`, run migrations (no seed). You configure `DATABASE_URL`, `BETTER_AUTH_URL`, and `ALLOWED_ORIGINS` before going live.
 
-```sh
-docker compose up -d
-```
-
-### 3. Configure backend and migrate
-
-```sh
-cd packages/server
-cp .env.example .env
-# Set BETTER_AUTH_SECRET (min 32 chars), e.g. openssl rand -base64 32
-pnpm db:migrate
-pnpm db:seed   # Creates admin@example.com / admin123 — dev only, blocked in production
-cd ../..
-```
-
-### 4. Run the desktop app + API
+Then run the app:
 
 ```sh
 pnpm run dev:all
 ```
 
-The Electron app will open. Log in with:
+### Option B: Manual setup
+
+<details>
+<summary>Click to expand manual steps</summary>
+
+1. **Clone and install**
+   ```sh
+   git clone https://github.com/thebasicscompany/basicsOSnew.git
+   cd basicsOSnew
+   pnpm install
+   ```
+
+2. **Start Postgres**
+   ```sh
+   docker compose up -d
+   ```
+
+3. **Configure backend and migrate**
+   ```sh
+   cd packages/server
+   cp .env.example .env
+   # Set BETTER_AUTH_SECRET (min 32 chars), e.g. openssl rand -base64 32
+   # Set API_KEY_ENCRYPTION_KEY (32-byte hex), e.g. openssl rand -hex 32
+   pnpm db:migrate
+   pnpm db:seed   # Creates admin@example.com / admin123 — dev only, blocked in production
+   cd ../..
+   ```
+
+4. **Run the desktop app + API**
+   ```sh
+   pnpm run dev:all
+   ```
+
+</details>
+
+Login (dev):
 
 - Email: `admin@example.com`
 - Password: `admin123`
@@ -138,6 +162,8 @@ The Electron app will open. Log in with:
 ---
 
 ## Production Deployment
+
+For a guided production setup, run `pnpm run setup` and choose **Production**.
 
 ### API server
 

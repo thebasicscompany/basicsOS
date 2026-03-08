@@ -29,6 +29,7 @@
     "prettier": "prettier --config ./.prettierrc.json --check \"**/*.{js,json,ts,tsx,css,md,html}\"",
     "registry:build": "npx shadcn build",
     "prepare": "husky",
+    "setup": "node scripts/setup.js",
     "dev:electron": "cross-env VITE_USE_REST=true electron-vite dev",
     "dev:all": "concurrently -n server,electron -c blue,green \"turbo run dev --filter=@basics-os/server\" \"pnpm run dev:electron\"",
     "build:electron": "electron-vite build",

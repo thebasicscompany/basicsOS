@@ -138,11 +138,14 @@ export function VoiceApp() {
   }, [overlayVisible]);
 
   const headerActionsNode = useMemo(
-    () => (
-      <Button onClick={() => void handleOverlayToggle()}>
-        {overlayVisible ? "Close active" : "Launch Voice Overlay"}
-      </Button>
-    ),
+    () =>
+      isElectron()
+        ? (
+            <Button onClick={() => void handleOverlayToggle()}>
+              {overlayVisible ? "Close active" : "Launch Voice Overlay"}
+            </Button>
+          )
+        : null,
     [handleOverlayToggle, overlayVisible],
   );
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);

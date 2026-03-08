@@ -23,6 +23,8 @@ const envSchema = z.object({
   // Optional transcription BYOK (e.g. Deepgram) for voice STT when no org-level key
   SERVER_TRANSCRIPTION_BYOK_PROVIDER: z.enum(["deepgram"]).optional(),
   SERVER_TRANSCRIPTION_BYOK_API_KEY: z.string().optional(),
+  // Path to built frontend static files (e.g. /app/dist). When set, server serves web app + API from same origin.
+  STATIC_DIR: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

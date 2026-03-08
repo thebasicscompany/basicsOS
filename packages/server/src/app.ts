@@ -1,5 +1,8 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context, Next } from "hono";
 import { createAuth } from "@/auth.js";
 import type { Db } from "@/db/client.js";
@@ -183,6 +186,19 @@ export function createApp(db: Db, env: Env) {
   // Voice pill BFF — /v1/audio/* and /stream/assistant
   app.route("/v1/audio", createVoiceProxyRoutes(db, auth, env));
   app.route("/stream", createStreamAssistantRoutes(db, auth, env));
+
+  // Serve static frontend when STATIC_DIR is set (combined web + API deployment)
+  const staticDir = env.STATIC_DIR;
+  if (staticDir) {
+    app.use("/*", serveStatic({ root: staticDir }));
+    app.get("*", (c) => {
+      const indexPath = join(staticDir, "index.html");
+      if (existsSync(indexPath)) {
+        return c.html(readFileSync(indexPath, "utf8"));
+      }
+      return c.json({ error: "Not found" }, 404);
+    });
+  }
 
   return app;
 }

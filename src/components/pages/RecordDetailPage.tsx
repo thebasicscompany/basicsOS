@@ -9,6 +9,7 @@ import {
   DotsThreeIcon,
   CopyIcon,
   TrashIcon,
+  ArrowsClockwiseIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/record-detail";
 import { getMockEmails } from "@/components/record-detail/mock-data/emails";
 import { getMockCalls } from "@/components/record-detail/mock-data/calls";
+import { useRefreshCrm } from "@/hooks/use-records";
 
 export function RecordDetailPage() {
   const { objectSlug = "" } = useParams<{ objectSlug: string }>();
@@ -72,6 +74,8 @@ export function RecordDetailPage() {
     onNext,
     deleteRecord,
   } = useRecordDetail();
+
+  const refreshCrm = useRefreshCrm(objectSlug);
 
   const emailCount = useMemo(
     () => getMockEmails(numericRecordId).length,
@@ -178,6 +182,10 @@ export function RecordDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={refreshCrm}>
+                  <ArrowsClockwiseIcon className="mr-2 h-4 w-4" />
+                  Refresh to see updates
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleDuplicate}>
                   <CopyIcon className="mr-2 h-4 w-4" />
                   Duplicate

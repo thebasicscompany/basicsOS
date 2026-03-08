@@ -176,6 +176,20 @@
       "when": 1773060000000,
       "tag": "0025_contacts_created_at",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1773070000000,
+      "tag": "0026_deals_company_required_and_overrides",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1773080000000,
+      "tag": "0027_deals_view_columns_stage_to_status",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import {
   SortAscendingIcon,
   FunnelIcon,
   PlusIcon,
+  ArrowsClockwiseIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,8 @@ export interface ObjectListHeaderActionsProps {
   onAddFilter: (filter: Omit<ViewFilter, "id">) => void;
   onCreateRecord: () => void;
   onAddColumn?: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   showTableActions?: boolean;
 }
 
@@ -56,6 +59,8 @@ export function ObjectListHeaderActions({
   onAddFilter,
   onCreateRecord,
   onAddColumn,
+  onRefresh,
+  isRefreshing,
   showTableActions = true,
 }: ObjectListHeaderActionsProps) {
   const hasActiveSorts = viewState.sorts.length > 0;
@@ -140,6 +145,20 @@ export function ObjectListHeaderActions({
             </div>
           )}
         </div>
+      )}
+      {onRefresh && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          title="Refresh to see updates"
+        >
+          <ArrowsClockwiseIcon
+            className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+        </Button>
       )}
       <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">
         <PlusIcon className="h-4 w-4" />

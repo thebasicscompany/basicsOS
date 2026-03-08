@@ -3,6 +3,15 @@ import type { Db } from "@/db/client.js";
 import * as schema from "@/db/schema/index.js";
 import { writeUsageLogSafe } from "@/lib/usage-log.js";
 
+const MAX_CONTEXT_CHARS_PER_CHUNK = 1_200;
+const MAX_TOTAL_CONTEXT_CHARS = 6_000;
+
+function truncateContextText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 3) return text.slice(0, maxChars);
+  return `${text.slice(0, maxChars - 3).trimEnd()}...`;
+}
+
 /**
  * Builds a brief CRM state summary injected into every AI request.
  * Uses aggregate queries — never loads full records.
@@ -73,7 +82,10 @@ export async function retrieveRelevantContext(
       body: JSON.stringify({ model: "basics-embed", input: query }),
     });
 
-    if (!embRes.ok) return null;
+    if (!embRes.ok) {
+      await embRes.text().catch(() => {});
+      return null;
+    }
 
     const embJson = (await embRes.json()) as {
       data?: Array<{ embedding?: number[] }>;
@@ -111,7 +123,24 @@ export async function retrieveRelevantContext(
 
     if (results.length === 0) return null;
 
-    return results.map((r) => `[${r.entity_type}] ${r.chunk_text}`).join("\n");
+    const lines: string[] = [];
+    let remainingChars = MAX_TOTAL_CONTEXT_CHARS;
+    for (const result of results) {
+      const prefix = `[${result.entity_type}] `;
+      const availableChars = Math.min(
+        MAX_CONTEXT_CHARS_PER_CHUNK,
+        Math.max(0, remainingChars - prefix.length),
+      );
+      if (availableChars <= 0) break;
+      const chunkText = truncateContextText(result.chunk_text, availableChars);
+      if (!chunkText) continue;
+      const line = `${prefix}${chunkText}`;
+      lines.push(line);
+      remainingChars -= line.length + 1;
+      if (remainingChars <= 0) break;
+    }
+
+    return lines.length > 0 ? lines.join("\n") : null;
   } catch {
     return null;
   }

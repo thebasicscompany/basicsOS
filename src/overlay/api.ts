@@ -197,7 +197,11 @@ export const processMeeting = async (_meetingId: string): Promise<void> => {
 export async function* streamAssistant(
   message: string,
   history: Array<{ role: string; content: string }>,
-  options?: { timeoutMs?: number },
+  options?: {
+    timeoutMs?: number;
+    threadId?: string;
+    onThreadId?: (threadId: string) => void;
+  },
 ): AsyncGenerator<string> {
   const res = await fetchWithSession(
     "/stream/assistant",
@@ -206,10 +210,15 @@ export async function* streamAssistant(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, threadId: options?.threadId }),
     },
     { timeoutMs: options?.timeoutMs ?? DEFAULT_TIMEOUT_MS },
   );
+  const nextThreadId =
+    res.headers["x-thread-id"] ?? res.headers["X-Thread-Id"];
+  if (nextThreadId) {
+    options?.onThreadId?.(nextThreadId);
+  }
   if (!res.body) throw new VoiceApiError("Empty stream response", 502);
   const lines = res.body.split("\n");
   for (const line of lines) {

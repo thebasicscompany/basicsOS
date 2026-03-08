@@ -1,11 +1,12 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
+import type { ActivationMode, NotchInfo, OverlaySettings } from "@/shared-overlay/types";
 
 export type OverlayElectronAPI = {
-  onActivate?: (cb: (mode: string) => void) => void;
+  onActivate?: (cb: (mode: ActivationMode) => void) => void;
   onDeactivate?: (cb: () => void) => void;
-  onNotchInfo?: (cb: (info: unknown) => void) => void;
+  onNotchInfo?: (cb: (info: NotchInfo) => void) => void;
   onBranding?: (cb: (b: unknown) => void) => void;
-  onSettingsChanged?: (cb: (s: unknown) => void) => void;
+  onSettingsChanged?: (cb: (s: OverlaySettings) => void) => void;
   notifyDismissed?: () => void;
   setIgnoreMouse?: (ignore: boolean) => void;
   navigateMain?: (path: string) => void;
@@ -25,7 +26,7 @@ export type OverlayElectronAPI = {
     body: string;
     encoding: "text" | "base64";
   }>;
-  getOverlaySettings?: () => Promise<unknown>;
+  getOverlaySettings?: () => Promise<OverlaySettings>;
   updateOverlaySettings?: (partial: Record<string, unknown>) => Promise<unknown>;
   onHoldStart?: (cb: () => void) => void;
   onHoldEnd?: (cb: () => void) => void;
@@ -46,6 +47,7 @@ export type OverlayElectronAPI = {
     cb: (s: number | undefined, t: string) => void,
   ) => void;
   removeAllListeners?: () => void;
+  resizeOverlay?: (height: number) => Promise<void>;
 };
 
 declare global {

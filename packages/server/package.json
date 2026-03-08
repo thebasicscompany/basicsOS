@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsx watch src/index.ts",
     "build": "tsc && tsc-alias -p tsconfig.json",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
@@ -30,6 +30,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.28.0",
     "pino-pretty": "^13.0.0",

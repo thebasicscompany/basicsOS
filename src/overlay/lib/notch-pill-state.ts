@@ -28,6 +28,8 @@ export type PillAction =
   | { type: "TRANSCRIBING_COMPLETE"; transcript: string }
   | { type: "TRANSCRIBING_ERROR"; message: string };
 
+export type ConversationEntry = { role: "user" | "assistant"; content: string };
+
 export type PillContext = {
   state: PillState;
   interactionMode: InteractionMode;
@@ -40,7 +42,10 @@ export type PillContext = {
   meetingStartedAt: number | null;
   lastResponseTitle: string;
   lastResponseLines: string[];
+  conversationHistory: ConversationEntry[];
 };
+
+const MAX_HISTORY_ENTRIES = 20;
 
 export const initialPillContext: PillContext = {
   state: "idle",
@@ -54,6 +59,7 @@ export const initialPillContext: PillContext = {
   meetingStartedAt: null,
   lastResponseTitle: "",
   lastResponseLines: [],
+  conversationHistory: [],
 };
 
 export const pillReducer = (
@@ -69,6 +75,7 @@ export const pillReducer = (
           meetingActive: ctx.meetingActive,
           meetingId: ctx.meetingId,
           meetingStartedAt: ctx.meetingStartedAt,
+          conversationHistory: ctx.conversationHistory,
         };
       return {
         ...ctx,
@@ -106,7 +113,15 @@ export const pillReducer = (
       ) {
         return { ...ctx, state: "idle", transcript: action.transcript };
       }
-      return { ...ctx, state: "thinking", transcript: action.transcript };
+      return {
+        ...ctx,
+        state: "thinking",
+        transcript: action.transcript,
+        conversationHistory: [
+          ...ctx.conversationHistory,
+          { role: "user" as const, content: action.transcript },
+        ].slice(-MAX_HISTORY_ENTRIES),
+      };
 
     case "COMMAND_RESULT":
       return {
@@ -124,14 +139,20 @@ export const pillReducer = (
         streamingText: ctx.streamingText + action.text,
       };
 
-    case "AI_COMPLETE":
+    case "AI_COMPLETE": {
+      const assistantText = action.lines.join("\n");
       return {
         ...ctx,
         state: "response",
         responseTitle: action.title,
         responseLines: action.lines,
         streamingText: "",
+        conversationHistory: [
+          ...ctx.conversationHistory,
+          { role: "assistant" as const, content: assistantText },
+        ].slice(-MAX_HISTORY_ENTRIES),
       };
+    }
 
     case "AI_ERROR":
       return {

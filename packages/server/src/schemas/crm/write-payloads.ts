@@ -60,7 +60,7 @@ const companiesWriteSchema = z
 const dealsWriteSchema = z
   .object({
     name: z.string().trim().min(1),
-    companyId: z.number().int().positive().nullable().optional(),
+    companyId: z.number().int().positive(), // Required when creating a deal
     status: z.string().trim().min(1),
     amount: nullableNumber.optional(),
     customFields: z.record(z.string(), z.unknown()).optional(),

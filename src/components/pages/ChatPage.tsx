@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import type { Message } from "@ai-sdk/react";
 import { usePageTitle } from "@/contexts/page-header";
@@ -21,6 +21,7 @@ import {
   Message as MessageEl,
   MessageContent,
   MessageResponse,
+  type MessageResponseProps,
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
@@ -74,6 +75,82 @@ const SUGGESTIONS = [
   "What's the status of my deals?",
 ];
 
+const WIKI_LINK_RE = /\[\[([a-z][a-z0-9-]*)\/(\d+)\|([^\]]+)\]\]/g;
+const MD_LINK_RE = /\[([^\]]+)\]\((\/objects\/[^)]+|\/automations\/[^)]+)\)/g;
+
+function rewriteCrmLinks(text: string): string {
+  let result = text.replace(
+    WIKI_LINK_RE,
+    (_match, slug: string, id: string, label: string) =>
+      `<crm-link path="/objects/${slug}/${id}">${label}</crm-link>`,
+  );
+  result = result.replace(MD_LINK_RE, (_match, label: string, path: string) => {
+    if (result.includes(`>${label}</crm-link>`)) return _match;
+    return `<crm-link path="${path}">${label}</crm-link>`;
+  });
+  return result;
+}
+
+const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = { "crm-link": ["path"] };
+
+const OBJECT_RECORD_RE = /^\/objects\/([a-z][a-z0-9-]*)\/(.+)$/;
+
+function CrmLinkTag(props: Record<string, unknown>) {
+  const navigate = useNavigate();
+  const path = props.path as string | undefined;
+
+  const handleClick = useCallback(() => {
+    if (!path) return;
+    const m = OBJECT_RECORD_RE.exec(path);
+    if (m) {
+      const [, slug, recordPart] = m;
+      if (/^\d+$/.test(recordPart)) {
+        navigate(path);
+      } else {
+        navigate(`/objects/${slug}`);
+        toast.info("Opened the list — the assistant generated an invalid record link");
+      }
+      return;
+    }
+    navigate(path);
+  }, [navigate, path]);
+
+  return (
+    <span
+      className="crm-link"
+      role="link"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") handleClick();
+      }}
+    >
+      {props.children as React.ReactNode}
+    </span>
+  );
+}
+
+const crmComponents = { "crm-link": CrmLinkTag };
+
+function EntityAwareMessageResponse({ children, ...props }: MessageResponseProps) {
+  const processed = useMemo(() => {
+    if (typeof children !== "string") return children;
+    return rewriteCrmLinks(children);
+  }, [children]);
+
+  return (
+    <div className="chat-message-content">
+      <MessageResponse
+        {...props}
+        allowedTags={CRM_LINK_ALLOWED_TAGS}
+        components={crmComponents}
+      >
+        {processed}
+      </MessageResponse>
+    </div>
+  );
+}
+
 function PromptInputAttachmentsDisplay() {
   const attachments = usePromptInputAttachments();
   if (attachments.files.length === 0) return null;
@@ -116,6 +193,8 @@ function useRecentHint() {
 function ChatPageInner({ threadId }: { threadId?: string }) {
   const { hasKey } = useGateway();
   const recentHint = useRecentHint();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { data: savedMessages } = useThreadMessages(threadId);
 
   const initialMessages = useMemo<Message[] | undefined>(() => {
@@ -131,6 +210,16 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
     initialThreadId: threadId,
     initialMessages,
   });
+
+  const appendedFromHomeRef = useRef(false);
+  useEffect(() => {
+    const state = location.state as { initialText?: string } | null;
+    const text = state?.initialText?.trim();
+    if (!text || !threadId || appendedFromHomeRef.current) return;
+    appendedFromHomeRef.current = true;
+    navigate(location.pathname, { replace: true, state: {} });
+    append({ role: "user", content: text });
+  }, [threadId, location.state, location.pathname, navigate, append]);
 
   const allVisible = messages.filter(
     (m) => m.role === "user" || m.role === "assistant",
@@ -244,7 +333,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
             {displayMessages.map((m) => (
               <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
                 <MessageContent>
-                  <MessageResponse
+                  <EntityAwareMessageResponse
                     animated={
                       m.role === "assistant"
                         ? { animation: "blurIn" }
@@ -255,7 +344,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                     }
                   >
                     {getTextContent(m)}
-                  </MessageResponse>
+                  </EntityAwareMessageResponse>
                 </MessageContent>
               </MessageEl>
             ))}

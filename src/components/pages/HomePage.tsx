@@ -88,17 +88,21 @@ export function HomePage() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/gateway-chat`, {
+      const res = await fetch(`${API_URL}/api/gateway-chat/start`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: text }],
-          channel: "chat",
-        }),
+        body: JSON.stringify({ channel: "chat" }),
       });
-      const threadId = res.headers.get("X-Thread-Id");
-      navigate(threadId ? `/chat/${threadId}` : "/chat");
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(err.error ?? "Failed to start chat");
+        return;
+      }
+      const { threadId } = (await res.json()) as { threadId: string };
+      navigate(`/chat/${threadId}`, {
+        state: { initialText: text } as { initialText: string },
+      });
     },
     [hasKey, navigate],
   );

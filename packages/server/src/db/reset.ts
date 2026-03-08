@@ -220,7 +220,7 @@ async function main() {
 
       // ── Deals: visible defaults ──
       { objectConfigId: dealsConfig!.id, columnName: "name", displayName: "Deal Name", isPrimary: true, config: {}, organizationId: orgId },
-      { objectConfigId: dealsConfig!.id, columnName: "company_id", displayName: "Company Name", uiType: "company", config: {}, organizationId: orgId },
+      { objectConfigId: dealsConfig!.id, columnName: "company_id", displayName: "Company", uiType: "company", config: { required: true }, organizationId: orgId },
       { objectConfigId: dealsConfig!.id, columnName: "status", displayName: "Status", uiType: "status", config: { options: dealStageOptions }, organizationId: orgId },
       { objectConfigId: dealsConfig!.id, columnName: "amount", displayName: "Deal Value", uiType: "currency", config: { currencyCode: "USD", currencySymbol: "$", decimalPlaces: 2, stepAmount: 1000 }, organizationId: orgId },
     ]);

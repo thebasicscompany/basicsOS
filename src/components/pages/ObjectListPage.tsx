@@ -26,7 +26,12 @@ import {
   normalizeFilterValue,
 } from "@/lib/crm/field-utils";
 import { useObject, useAttributes } from "@/hooks/use-object-registry";
-import { useRecords, useUpdateRecord, useDeleteRecord } from "@/hooks/use-records";
+import {
+  useRecords,
+  useUpdateRecord,
+  useDeleteRecord,
+  useRefreshCrm,
+} from "@/hooks/use-records";
 import { useViews, useViewState } from "@/hooks/use-views";
 import { useRenameView, useDeleteView } from "@/hooks/use-view-queries";
 import type { ViewSort, ViewFilter } from "@/types/views";
@@ -122,7 +127,7 @@ export function ObjectListPage() {
     });
   }, [viewState.filters, attributes]);
 
-  const { data, isPending, isError } = useRecords(objectSlug, {
+  const { data, isPending, isFetching, isError } = useRecords(objectSlug, {
     page,
     perPage,
     sort: sortParam,
@@ -131,6 +136,7 @@ export function ObjectListPage() {
 
   const updateRecord = useUpdateRecord(objectSlug);
   const deleteRecord = useDeleteRecord(objectSlug);
+  const refreshCrm = useRefreshCrm(objectSlug);
 
   const handlePaginationChange = useCallback(
     (newPage: number, newPerPage: number) => {
@@ -259,6 +265,8 @@ export function ObjectListPage() {
           onAddFilter={handleAddFilter}
           onCreateRecord={() => setCreateOpen(true)}
           onAddColumn={() => setAddColumnOpen(true)}
+          onRefresh={refreshCrm}
+          isRefreshing={isFetching}
         />
       </>
     );

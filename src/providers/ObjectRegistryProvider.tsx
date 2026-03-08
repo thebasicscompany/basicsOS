@@ -166,7 +166,12 @@ function mergeAttributes(
         ...(override?.config ?? {}),
       },
       isPrimary: override?.isPrimary ?? col.pv,
-      isRequired: (col as SchemaColumn).rqd ?? false,
+      isRequired:
+        (override?.config &&
+          typeof override.config === "object" &&
+          "required" in override.config &&
+          override.config.required === true) ||
+        (col as SchemaColumn).rqd === true,
       isSystem: col.system,
       isHiddenByDefault: override?.isHiddenByDefault ?? col.system,
       icon: override?.icon,

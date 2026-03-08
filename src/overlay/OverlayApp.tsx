@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "motion/react";
 import type { OverlaySettings, NotchInfo } from "@/shared-overlay/types";
 import { FLASH_SHORT_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
 import { setIgnoreMouse } from "./lib/ipc";
-import { speak, cancel as cancelTTS } from "./lib/tts";
+import { cancel as cancelTTS } from "./lib/tts";
 import {
   useSpeechRecognition,
   type SpeechRecognitionState,
@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   voice: {
     language: "en-US",
     silenceTimeoutMs: 3000,
-    ttsEnabled: true,
+    ttsEnabled: false,
     ttsRate: 1.05,
     audioInputDeviceId: null,
   },
@@ -130,7 +130,7 @@ export const OverlayApp = () => {
     showFlash: flash.show,
   });
 
-  useAIResponse(pill.state, pill.transcript, dispatch, streamAbortRef);
+  useAIResponse(pill.state, pill.transcript, pill.conversationHistory, dispatch, streamAbortRef);
 
   const handleSilence = useCallback(() => {
     const p = pillRef.current;
@@ -180,17 +180,7 @@ export const OverlayApp = () => {
     return clearDismissTimer;
   }, [pill.state, settings.behavior.autoDismissMs, dismiss, clearDismissTimer]);
 
-  useEffect(() => {
-    const mode = pill.interactionMode;
-    if (
-      pill.state === "response" &&
-      settingsRef.current.voice.ttsEnabled &&
-      (mode === "assistant" || mode === "continuous")
-    ) {
-      const text = pill.responseLines.join(". ");
-      if (text) void speak(text, { rate: settingsRef.current.voice.ttsRate });
-    }
-  }, [pill.state, pill.responseLines, pill.interactionMode]);
+  // TTS disabled
 
   useEffect(() => {
     const api = window.electronAPI;
@@ -263,17 +253,20 @@ export const OverlayApp = () => {
   const screenH = window.screen?.height ?? 900;
   const maxResponseBodyHeight = Math.round(screenH * 0.33) - 80;
 
+  // Response layout: title(24) + bodyGap(8) + body(responseContentH) + doneGap(6) + done(~14) + bottomPad(12)
+  const RESPONSE_EXTRA_H = 24 + 8 + 6 + 14 + 12;
+
   let pillHeight: number;
   const responseContentH = Math.min(
     Math.max(measuredHeight, 40), // at least 40px while measuring
     maxResponseBodyHeight,
   );
   if (pill.state === "idle" && showLastResponse) {
-    pillHeight = topPad + 24 + 12 + responseContentH + 12;
+    pillHeight = topPad + RESPONSE_EXTRA_H + responseContentH;
   } else if (pill.state === "idle") {
     pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
-    pillHeight = topPad + 24 + 12 + responseContentH + 12;
+    pillHeight = topPad + RESPONSE_EXTRA_H + responseContentH;
   } else {
     pillHeight = topPad + ACTIVE_HEIGHT;
   }

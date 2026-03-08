@@ -1,6 +1,32 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { MicrophoneIcon } from "@phosphor-icons/react";
+import { navigateMain } from "./ipc";
+
+const MD_LINK_RE = /\[([^\]]+)\]\((\/objects\/[^)]+|\/automations\/[^)]+)\)/g;
+
+type LineSegment = { type: "text"; content: string } | { type: "link"; label: string; path: string };
+
+function parseLineWithLinks(line: string): LineSegment[] {
+  const segments: LineSegment[] = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  MD_LINK_RE.lastIndex = 0;
+  while ((m = MD_LINK_RE.exec(line)) !== null) {
+    if (m.index > lastIndex) {
+      segments.push({ type: "text", content: line.slice(lastIndex, m.index) });
+    }
+    segments.push({ type: "link", label: m[1] ?? "", path: m[2] ?? "" });
+    lastIndex = MD_LINK_RE.lastIndex;
+  }
+  if (lastIndex < line.length) {
+    segments.push({ type: "text", content: line.slice(lastIndex) });
+  }
+  if (segments.length === 0) {
+    segments.push({ type: "text", content: line });
+  }
+  return segments;
+}
 
 export const Sparkle = ({ active }: { active: boolean }) => (
   <motion.div
@@ -151,44 +177,80 @@ export const ThinkingDots = () => (
   </div>
 );
 
+const lineBaseStyle = {
+  lineHeight: 1.5 as const,
+};
+
+const ResponseLine = ({
+  line,
+  primary,
+  delay,
+}: {
+  line: string;
+  primary: boolean;
+  delay: number;
+}) => {
+  const segments = parseLineWithLinks(line);
+  return (
+    <motion.div
+      initial={{ opacity: 0, filter: "blur(4px)" }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
+      transition={{ duration: 0.35, delay, ease: "easeOut" }}
+      style={{
+        ...lineBaseStyle,
+        color: primary ? "#fff" : "rgba(255,255,255,0.7)",
+        fontSize: primary ? 13.5 : 12.5,
+        marginTop: primary ? 0 : 2,
+      }}
+    >
+      {segments.map((seg, j) =>
+        seg.type === "text" ? (
+          <span key={j}>{seg.content}</span>
+        ) : (
+          <span
+            key={j}
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigateMain(seg.path);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigateMain(seg.path);
+              }
+            }}
+            style={{
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            {seg.label}
+          </span>
+        ),
+      )}
+    </motion.div>
+  );
+};
+
 export const ResponseBody = ({
   response,
 }: {
   response: { title: string; lines: string[] };
 }) => (
   <div>
-    <motion.div
-      initial={{ opacity: 0, filter: "blur(4px)" }}
-      animate={{ opacity: 1, filter: "blur(0px)" }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      style={{
-        color: "#fff",
-        fontSize: 13.5,
-        lineHeight: 1.5,
-        fontWeight: 400,
-      }}
-    >
-      {response.lines[0]}
-    </motion.div>
+    {response.lines[0] != null && (
+      <ResponseLine line={response.lines[0]} primary delay={0} />
+    )}
     {response.lines.slice(1).map((line, i) => (
-      <motion.div
+      <ResponseLine
         key={`${response.title}-${i}`}
-        initial={{ opacity: 0, filter: "blur(4px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        transition={{
-          duration: 0.35,
-          delay: (i + 1) * 0.08,
-          ease: "easeOut",
-        }}
-        style={{
-          color: "rgba(255,255,255,0.7)",
-          fontSize: 12.5,
-          lineHeight: 1.5,
-          marginTop: 2,
-        }}
-      >
-        {line}
-      </motion.div>
+        line={line}
+        primary={false}
+        delay={(i + 1) * 0.08}
+      />
     ))}
   </div>
 );

@@ -259,6 +259,29 @@ input[type="time"] {
   -webkit-app-region: no-drag;
 }
 
+/* CRM record links inside chat messages — rendered as <span> to avoid Electron navigation */
+.chat-message-content .crm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.8em;
+  font-weight: 500;
+  line-height: 1.6;
+  text-decoration: none;
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: background-color 0.15s, border-color 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chat-message-content .crm-link:hover {
+  background-color: color-mix(in srgb, var(--primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
 /* macOS traffic light clearance — handled by the full-width header */
 
 @layer base {

@@ -183,3 +183,16 @@ export function useDeleteRecord<T = Record<string, unknown>>(
     },
   });
 }
+
+/**
+ * Invalidate all CRM data for an object (records and views) so the UI refetches.
+ * Use when you need to manually refresh to see external updates (e.g. AI tools, imports).
+ */
+export function useRefreshCrm(objectSlug: string) {
+  const qc = useQueryClient();
+
+  return () => {
+    qc.invalidateQueries({ queryKey: ["records", objectSlug] });
+    qc.invalidateQueries({ queryKey: ["views", objectSlug] });
+  };
+}

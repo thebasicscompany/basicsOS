@@ -16,7 +16,7 @@ export const OVERLAY_DEFAULTS: OverlaySettings = {
   voice: {
     language: "en-US",
     silenceTimeoutMs: 3000,
-    ttsEnabled: true,
+    ttsEnabled: false,
     ttsRate: 1.05,
     audioInputDeviceId: null as string | null,
   },

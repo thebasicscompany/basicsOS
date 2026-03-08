@@ -81,7 +81,8 @@ export async function getThreadMessages(
     .limit(1);
   if (!thread[0]) return null;
 
-  return db
+  const MAX_HISTORY_MESSAGES = 50;
+  const rows = await db
     .select({
       id: schema.aiMessages.id,
       role: schema.aiMessages.role,
@@ -95,7 +96,10 @@ export async function getThreadMessages(
         inArray(schema.aiMessages.role, ["user", "assistant"]),
       ),
     )
-    .orderBy(schema.aiMessages.createdAt);
+    .orderBy(desc(schema.aiMessages.createdAt))
+    .limit(MAX_HISTORY_MESSAGES);
+
+  return rows.reverse();
 }
 
 export async function updateThreadTitle(

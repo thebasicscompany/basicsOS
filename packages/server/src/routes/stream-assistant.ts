@@ -16,26 +16,306 @@ import {
   executeAssistantToolDrizzle,
 } from "@/assistant/tools.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { linkifyRecordNames } from "@/lib/linkify-records.js";
+import {
+  buildRecentConversationContext,
+  finalizeAssistantText,
+  toolFallbackText,
+} from "@/routes/gateway-chat/protocol.js";
+import {
+  ensureThread,
+  getThreadMessages,
+  persistMessage,
+  touchThread,
+} from "@/routes/gateway-chat/storage.js";
+import {
+  isLookupFailure,
+  isLookupTool,
+  planToolWorkflow,
+  resolveDeferredToolStep,
+  shouldPlanToolWorkflow,
+} from "@/routes/gateway-chat/workflow.js";
 import { streamAssistantPostSchema } from "@/schemas/stream-assistant.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
-type ChatMessage =
-  | { role: "system"; content: string }
-  | { role: "user"; content: string }
-  | {
-      role: "assistant";
-      content: string | null;
-      tool_calls?: Array<{
-        id: string;
-        type: "function";
-        function: { name: string; arguments: string };
-      }>;
-    }
-  | { role: "tool"; tool_call_id: string; content: string };
+// Loose type so gateway-specific fields (e.g. Gemini thought_signature)
+// survive round-trips through multi-turn tool calling.
+type ChatMessageEntry = Record<string, unknown>;
 
-const ASSISTANT_SYSTEM_PROMPT =
-  "You are Basics OS Company Assistant - an AI grounded in this company's data. Answer questions based on the context provided. Be concise and helpful.";
+type ConversationMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type GatewayToolCall = {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+};
+
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_CHARS = 16_000;
+const MAX_MESSAGE_CHARS = 4_000;
+const MAX_TOOL_ARGUMENTS_CHARS = 4_000;
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function toolCallSignature(name: string, args: Record<string, unknown>): string {
+  return `${name}:${stableStringify(args)}`;
+}
+
+function truncateText(text: string, maxChars = MAX_MESSAGE_CHARS): string {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= 3) return text.slice(0, maxChars);
+  return `${text.slice(0, maxChars - 3).trimEnd()}...`;
+}
+
+function sanitizeConversationMessages(messages: ConversationMessage[]): ConversationMessage[] {
+  const recent = messages
+    .filter((message) => message.content.trim())
+    .map((message) => ({
+      role: message.role,
+      content: truncateText(message.content),
+    }))
+    .slice(-MAX_HISTORY_MESSAGES);
+
+  const kept: ConversationMessage[] = [];
+  let totalChars = 0;
+  for (let index = recent.length - 1; index >= 0; index--) {
+    const message = recent[index]!;
+    if (totalChars + message.content.length > MAX_HISTORY_CHARS && kept.length > 0) {
+      break;
+    }
+    kept.push(message);
+    totalChars += message.content.length;
+  }
+
+  return kept.reverse();
+}
+
+function sanitizeGatewayToolCalls(value: unknown): GatewayToolCall[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const toolCall = entry as Record<string, unknown>;
+    const fn =
+      toolCall.function && typeof toolCall.function === "object"
+        ? (toolCall.function as Record<string, unknown>)
+        : null;
+    if (typeof toolCall.id !== "string" || typeof fn?.name !== "string") {
+      return [];
+    }
+    return [
+      {
+        id: toolCall.id,
+        type: "function" as const,
+        function: {
+          name: fn.name,
+          arguments:
+            typeof fn.arguments === "string"
+              ? truncateText(fn.arguments, MAX_TOOL_ARGUMENTS_CHARS)
+              : "{}",
+        },
+      },
+    ];
+  });
+}
+
+function sanitizeAssistantGatewayMessage(aiMessage: Record<string, unknown> | undefined): ChatMessageEntry {
+  const message: ChatMessageEntry = { role: "assistant" };
+  const content = aiMessage?.content;
+  if (typeof content === "string") {
+    message.content = truncateText(content);
+  } else if (content == null) {
+    message.content = null;
+  } else {
+    message.content = truncateText(JSON.stringify(content));
+  }
+
+  const toolCalls = sanitizeGatewayToolCalls(aiMessage?.tool_calls);
+  if (toolCalls.length > 0) {
+    message.tool_calls = toolCalls;
+  }
+
+  const googleExtra =
+    aiMessage?.extra_content &&
+    typeof aiMessage.extra_content === "object" &&
+    (aiMessage.extra_content as Record<string, unknown>).google &&
+    typeof (aiMessage.extra_content as Record<string, unknown>).google === "object"
+      ? ((aiMessage.extra_content as Record<string, unknown>).google as Record<string, unknown>)
+      : null;
+  const thoughtSignature = googleExtra?.thought_signature;
+  if (typeof thoughtSignature === "string" && thoughtSignature.trim()) {
+    message.extra_content = {
+      google: {
+        thought_signature: truncateText(thoughtSignature, MAX_TOOL_ARGUMENTS_CHARS),
+      },
+    };
+  }
+
+  return message;
+}
+
+type WorkflowHints = {
+  planText: string;
+  nextHintByTool: Record<string, string>;
+};
+
+function inferWorkflowHints(queryText: string): WorkflowHints {
+  const trimmed = queryText.trim();
+  const lower = trimmed.toLowerCase();
+  const nextHintByTool: Record<string, string> = {};
+  const planLines = [
+    "## Multi-step workflow execution",
+    "You currently support multi-step tool workflows.",
+    "Before replying, identify every tool call required by the user's request and complete them in order.",
+    "If a lookup is only preparation for another action, do not stop after the lookup.",
+    "Only reply after all required tool calls are complete, or after a required next step is genuinely blocked.",
+  ];
+
+  const isUpdate = /\b(update|rename|change|edit|set)\b/.test(lower);
+  const isTask = /\b(task|reminder|follow-up|follow up|todo)\b/.test(lower);
+  const isNote = /\bnote\b/.test(lower);
+  const isCreateContact = /\b(create|add|make)\b/.test(lower) && /\b(contact|person|lead)\b/.test(lower);
+  const isCreateDeal =
+    /\b(create|add|make)\b/.test(lower) &&
+    /\b(deal|opportunity|deals|opportunities)\b/.test(lower);
+
+  const entity =
+    /\bcompany|companies|organization\b/.test(lower)
+      ? { label: "company", searchTool: "search_companies" }
+      : /\bcontact|contacts|person|people|lead|leads\b/.test(lower)
+        ? { label: "contact", searchTool: "search_contacts" }
+        : /\bdeal|deals|opportunity|opportunities\b/.test(lower)
+          ? { label: "deal", searchTool: "search_deals" }
+          : null;
+
+  if (isUpdate && entity) {
+    const updateTool = `update_${entity.label}`;
+    planLines.push(
+      `For this request, the required sequence is: identify the ${entity.label} with \`${entity.searchTool}\` if needed, then call \`${updateTool}\`, then confirm the completed change.`,
+      `Apply the requested changes from the user's original request exactly: "${trimmed}".`,
+    );
+    nextHintByTool[entity.searchTool] =
+      `Next required step for this request: call \`${updateTool}\` now using the matching ${entity.label} id or exact ${entity.label} name from the lookup result. Apply the requested change from the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  }
+
+  if (isTask && /\bcontact|contacts|person|people|lead|leads\b/.test(lower)) {
+    planLines.push(
+      "For task requests about a person/contact, the usual sequence is: identify the contact first if needed, then call `create_task`, then confirm the task was created.",
+    );
+    nextHintByTool.search_contacts =
+      `Next required step for this request: call \`create_task\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  }
+
+  if (isNote && /\bdeal|deals|opportunity|opportunities\b/.test(lower)) {
+    planLines.push(
+      "For note requests about a deal, the usual sequence is: identify the deal first if needed, then call `add_note`, then confirm the note was added.",
+    );
+    nextHintByTool.search_deals =
+      `Next required step for this request: call \`add_note\` now using the matching deal id or exact deal name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  } else if (isNote && /\bcontact|contacts|person|people|lead|leads\b/.test(lower)) {
+    planLines.push(
+      "For note requests about a contact, the usual sequence is: identify the contact first if needed, then call `add_note`, then confirm the note was added.",
+    );
+    nextHintByTool.search_contacts =
+      `Next required step for this request: call \`add_note\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  }
+
+  if (isCreateContact && /\bcompany|companies|organization\b/.test(lower)) {
+    planLines.push(
+      "When creating a contact linked to a company, identify the company first if needed, then call `create_contact` with the company id/name, then confirm the contact was created.",
+    );
+    nextHintByTool.search_companies =
+      `Next required step for this request: call \`create_contact\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  }
+
+  if (isCreateDeal && /\bcompany|companies|organization\b/.test(lower)) {
+    planLines.push(
+      "When creating a deal linked to a company, identify the company first if needed, then call `create_deal` with the company id/name, then confirm the deal was created.",
+    );
+    nextHintByTool.search_companies =
+      `Next required step for this request: call \`create_deal\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  }
+
+  return { planText: planLines.join("\n"), nextHintByTool };
+}
+
+function bestEffortToolSummary(toolOutputs: Array<{ name: string; result: unknown }>): string {
+  const writeSummaries = toolOutputs
+    .map((output) => output.result)
+    .filter((result): result is string => typeof result === "string")
+    .map((result) =>
+      result.replace(
+        /\[\[([a-z][a-z0-9-]*)\/(\d+)\|([^\]]+)\]\]/g,
+        (_m, _slug, id, label) => `${label} (id: ${id})`,
+      ).trim(),
+    )
+    .filter((result) => /^(Created|Updated|Task created|Note added)/i.test(result));
+  if (writeSummaries.length > 0) {
+    return writeSummaries.join("\n");
+  }
+  return toolFallbackText(toolOutputs);
+}
+
+function duplicateToolMessage(name: string, nextStepHint?: string): string {
+  if (name.startsWith("search_") || name.startsWith("get_")) {
+    return nextStepHint
+      ? `Skipped duplicate ${name} call — that lookup already ran in this request. Reuse the earlier result and continue to the next action instead of searching again.\n\n${nextStepHint}`
+      : `Skipped duplicate ${name} call — that lookup already ran in this request. Reuse the earlier result and continue to the next action instead of searching again.`;
+  }
+  return `Skipped duplicate ${name} call — it already ran in this request. Continue from the prior tool result instead of repeating it.`;
+}
+
+function buildToolChatContent(
+  name: string,
+  raw: string,
+  nextStepHint?: string,
+): string {
+  const WIKI_TOKEN_RE = /\[\[([a-z][a-z0-9-]*)\/(\d+)\|([^\]]+)\]\]/g;
+  const stripped = raw.replace(
+    WIKI_TOKEN_RE,
+    (_m: string, _slug: string, id: string, label: string) => `${label} (id: ${id})`,
+  );
+
+  if (name.startsWith("search_") || name.startsWith("get_")) {
+    const nextStepBlock = nextStepHint ? `\n\n${nextStepHint}` : "";
+    return `${stripped}\n\nTool guidance: This lookup already produced the candidate records above. Reuse those exact names or IDs for the next tool call. Do not call this same lookup again in this request.${nextStepBlock}`;
+  }
+  if (name.startsWith("create_") || name.startsWith("update_")) {
+    return `${stripped}\n\nTool guidance: The write action is complete. Respond to the user, or only call another tool if the user clearly asked for another action in the same message.`;
+  }
+  return stripped;
+}
+
+const ASSISTANT_SYSTEM_PROMPT = `You are Basics OS Company Assistant - an AI grounded in this company's CRM data.
+
+Rules:
+- Never ask the user for IDs. Users reference records by name or details. Use contact_name, deal_name, or company_name params (or search first and use IDs from results).
+- Use tools to search, create, and update contacts, companies, or deals when the user asks. Pass names the user gives directly — e.g. "add a note to the Acme deal" → deal_name: "Acme".
+- When the user asks to create a person/contact, extract ALL details (name, email, etc.) from the message first, then call create_contact ONCE with all available fields. Never call create_contact more than once per request.
+- After a contact is created, if additional fields are still needed, use update_contact — never create a second contact.
+- When the user provides additional info (like email, phone) for a recently created or mentioned contact, use update_contact with contact_name or the ID from a prior search.
+- After receiving tool results, summarize them in clear, natural language. Never show raw JSON or IDs to the user.
+- Never reply with raw JSON, code fences, arrays, or object literals. Always answer in normal prose or simple bullet points.
+- When mentioning a record by name, use the EXACT name from the tool result (do not paraphrase or abbreviate record names).
+- You have full access to search and modify the CRM on behalf of the user.
+- If a search returns no results, say so clearly.
+- If the user asks for multiple actions in one message, complete all of them in order before replying whenever the tools/results are sufficient.
+- Be concise and conversational.
+- The user may be having a multi-turn voice conversation. Use conversation history to understand follow-up requests.`;
 
 export function createStreamAssistantRoutes(
   db: Db,
@@ -64,12 +344,25 @@ export function createStreamAssistantRoutes(
       const msg = parsed.error.issues[0]?.message ?? "Validation failed";
       return c.json({ error: msg }, 400);
     }
-    const { message, history } = parsed.data;
+    const { message, history, threadId: threadIdRaw } = parsed.data;
 
     const historyMapped = history.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
+    const threadId = await ensureThread(db, crmUser, threadIdRaw, "voice");
+    const storedHistory = threadIdRaw?.trim()
+      ? await getThreadMessages(db, threadId, crmUser.id)
+      : null;
+    const priorConversationMessages = sanitizeConversationMessages(storedHistory
+      ? storedHistory
+        .filter((entry) => (entry.content ?? "").trim())
+        .map((entry) => ({
+          role: entry.role as "user" | "assistant",
+          content: entry.content ?? "",
+        }))
+      : historyMapped);
+    await persistMessage(db, threadId, "user", message);
 
     const [crmSummary, ragContext] = await Promise.all([
       buildCrmSummary(db, crmUser.organizationId!),
@@ -88,21 +381,123 @@ export function createStreamAssistantRoutes(
     if (ragContext) {
       contextText += `\n\n## Relevant context\n${ragContext}`;
     }
+    const recentConversationContext = buildRecentConversationContext([
+      ...priorConversationMessages,
+      { role: "user", content: message },
+    ]);
+    if (recentConversationContext) {
+      contextText += `\n\n${recentConversationContext}`;
+    }
+    const workflowHints = inferWorkflowHints(message);
 
-    const systemContent = `${ASSISTANT_SYSTEM_PROMPT}\n\n${contextText}`;
-    const chatMessages: ChatMessage[] = [
+    const systemContent = `${ASSISTANT_SYSTEM_PROMPT}\n\n${contextText}\n\n${workflowHints.planText}`;
+    const chatMessages: ChatMessageEntry[] = [
       { role: "system", content: systemContent },
-      ...historyMapped,
+      ...priorConversationMessages,
       { role: "user", content: message },
     ];
 
     let finalContent = "";
-    const maxIterations = 5;
+    const MAX_TOOL_ROUNDS = 5;
     const requestStart = Date.now();
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let lastToolResult = "";
+    const latestToolOutputs: Array<{ name: string; result: unknown }> = [];
+    // Track write-once tools to prevent the AI from accidentally calling them
+    // multiple times in a single request (e.g. create_contact called 4x).
+    const calledOnceTool = new Set<string>();
+    const executedToolSignatures = new Set<string>();
+    const ONCE_ONLY_TOOLS = new Set(["create_contact", "create_company", "create_deal"]);
 
-    for (let iteration = 0; iteration < maxIterations; iteration++) {
+    if (shouldPlanToolWorkflow(message)) {
+      const plannedWorkflow = await planToolWorkflow({
+        gatewayUrl: env.BASICSOS_API_URL,
+        gatewayHeaders,
+        model: "basics-chat-smart",
+        queryText: message,
+      });
+      if (plannedWorkflow?.mode === "multi_tool" && plannedWorkflow.steps.length > 0) {
+        let lastLookupContext:
+          | { tool: string; result: string; failed: boolean }
+          | null = null;
+
+        for (const step of plannedWorkflow.steps) {
+          let toolName = step.tool;
+          let toolArgs = step.args ?? {};
+
+          if (step.deferred) {
+            if (!lastLookupContext || lastLookupContext.failed) {
+              continue;
+            }
+            const resolvedStep = await resolveDeferredToolStep({
+              gatewayUrl: env.BASICSOS_API_URL,
+              gatewayHeaders,
+              model: "basics-chat-smart",
+              queryText: message,
+              expectedTool: step.tool,
+              plannedArgs: step.args ?? {},
+              lookupTool: lastLookupContext.tool,
+              lookupResult: lastLookupContext.result,
+            });
+            if (resolvedStep?.mode === "blocked") {
+              finalContent = resolvedStep.message;
+              break;
+            }
+            if (!resolvedStep || resolvedStep.mode !== "tool") {
+              continue;
+            }
+            toolName = resolvedStep.tool;
+            toolArgs = resolvedStep.args ?? {};
+          }
+
+          const signature = toolCallSignature(toolName, toolArgs);
+          if (executedToolSignatures.has(signature)) {
+            continue;
+          }
+          executedToolSignatures.add(signature);
+
+          const result = await executeAssistantToolDrizzle(
+            db,
+            crmUser.id,
+            crmUser.organizationId!,
+            toolName,
+            toolArgs,
+            {
+              gatewayUrl: env.BASICSOS_API_URL,
+              gatewayHeaders,
+              crmUserId: crmUser.id,
+            },
+          );
+          lastToolResult = result;
+          latestToolOutputs.push({ name: toolName, result });
+          await persistMessage(db, threadId, "tool", result, {
+            toolName,
+            toolArgs,
+            toolResult: result,
+          });
+
+          if (isLookupTool(toolName)) {
+            lastLookupContext = {
+              tool: toolName,
+              result,
+              failed: isLookupFailure(result),
+            };
+          }
+        }
+
+        if (!finalContent && latestToolOutputs.length > 0) {
+          finalContent = finalizeAssistantText(
+            bestEffortToolSummary(latestToolOutputs),
+            latestToolOutputs,
+          );
+        }
+      }
+    }
+
+    for (let iteration = 0; iteration < MAX_TOOL_ROUNDS && !finalContent; iteration++) {
+      const isLastRound = iteration === MAX_TOOL_ROUNDS - 1;
+
       let toolCallRes: Response;
       try {
         toolCallRes = await fetch(
@@ -113,8 +508,9 @@ export function createStreamAssistantRoutes(
             body: JSON.stringify({
               model: "basics-chat-smart",
               messages: chatMessages,
-              tools: ASSISTANT_TOOLS,
-              tool_choice: "auto",
+              ...(isLastRound
+                ? {}
+                : { tools: ASSISTANT_TOOLS, tool_choice: "auto" }),
               stream: false,
             }),
           },
@@ -131,20 +527,15 @@ export function createStreamAssistantRoutes(
           toolCallRes.status,
           errText,
         );
+        if (lastToolResult) {
+          finalContent = finalizeAssistantText("", latestToolOutputs);
+          break;
+        }
         return c.json({ error: "Gateway error" }, 502);
       }
 
       const json = (await toolCallRes.json()) as {
-        choices?: Array<{
-          message?: {
-            content?: string | null;
-            tool_calls?: Array<{
-              id: string;
-              type: "function";
-              function: { name: string; arguments: string };
-            }>;
-          };
-        }>;
+        choices?: Array<{ message?: Record<string, unknown> }>;
         usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
 
@@ -152,18 +543,19 @@ export function createStreamAssistantRoutes(
       totalOutputTokens += json.usage?.completion_tokens ?? 0;
 
       const aiMessage = json.choices?.[0]?.message;
-      const toolCalls = aiMessage?.tool_calls ?? [];
+      const toolCalls = sanitizeGatewayToolCalls(aiMessage?.tool_calls);
 
       if (toolCalls.length === 0) {
-        finalContent = aiMessage?.content ?? "";
+        finalContent = finalizeAssistantText(
+          String(aiMessage?.content ?? ""),
+          latestToolOutputs,
+        );
         break;
       }
 
-      chatMessages.push({
-        role: "assistant",
-        content: aiMessage?.content ?? null,
-        tool_calls: toolCalls,
-      });
+      // Push the FULL message so gateway-specific fields (e.g. Gemini
+      // thought_signature) are included in the next request for multi-turn tools.
+      chatMessages.push(sanitizeAssistantGatewayMessage(aiMessage));
 
       for (const tc of toolCalls) {
         let args: Record<string, unknown> = {};
@@ -173,25 +565,73 @@ export function createStreamAssistantRoutes(
           // malformed tool args are treated as empty object
         }
 
+        // Prevent write-once tools (create_contact, create_company, create_deal)
+        // from being executed more than once in a single request to avoid
+        // duplicate records.
+        if (ONCE_ONLY_TOOLS.has(tc.function.name) && calledOnceTool.has(tc.function.name)) {
+          const skipped = `Skipped duplicate ${tc.function.name} call — record was already created above. Use the appropriate update tool instead.`;
+          chatMessages.push({ role: "tool", tool_call_id: tc.id, content: skipped });
+          continue;
+        }
+        if (ONCE_ONLY_TOOLS.has(tc.function.name)) {
+          calledOnceTool.add(tc.function.name);
+        }
+
+        const nextStepHint = workflowHints.nextHintByTool[tc.function.name];
+        const signature = toolCallSignature(tc.function.name, args);
+        if (executedToolSignatures.has(signature)) {
+          chatMessages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: duplicateToolMessage(tc.function.name, nextStepHint),
+          });
+          continue;
+        }
+        executedToolSignatures.add(signature);
+
         const result = await executeAssistantToolDrizzle(
           db,
           crmUser.id,
           crmUser.organizationId!,
           tc.function.name,
           args,
+          {
+            gatewayUrl: env.BASICSOS_API_URL,
+            gatewayHeaders,
+            crmUserId: crmUser.id,
+          },
         );
+        lastToolResult = result;
+        latestToolOutputs.push({ name: tc.function.name, result });
+        await persistMessage(db, threadId, "tool", result, {
+          toolName: tc.function.name,
+          toolArgs: args,
+          toolResult: result,
+        });
 
         chatMessages.push({
           role: "tool",
           tool_call_id: tc.id,
-          content: result,
+          content: buildToolChatContent(tc.function.name, result, nextStepHint),
         });
+
       }
     }
 
+    if (!finalContent && lastToolResult) {
+      finalContent = finalizeAssistantText(
+        bestEffortToolSummary(latestToolOutputs),
+        latestToolOutputs,
+      );
+    }
     if (!finalContent) {
       finalContent = "I could not complete that action yet. Please try again.";
     }
+
+    finalContent = finalizeAssistantText(finalContent, latestToolOutputs);
+    finalContent = await linkifyRecordNames(db, crmUser.organizationId!, finalContent);
+    await persistMessage(db, threadId, "assistant", finalContent);
+    await touchThread(db, threadId);
 
     writeUsageLogSafe(db, {
       organizationId: crmUser.organizationId!,
@@ -221,6 +661,8 @@ export function createStreamAssistantRoutes(
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
+        "X-Thread-Id": threadId,
+        "Access-Control-Expose-Headers": "X-Thread-Id",
       },
     });
   });

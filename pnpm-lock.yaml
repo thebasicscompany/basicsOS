@@ -598,6 +598,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.12
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       drizzle-kit:
         specifier: ^0.28.0
         version: 0.28.1

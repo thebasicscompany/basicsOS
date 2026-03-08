@@ -22,6 +22,7 @@ import {
   CheckSquare,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { registerRichTextDictationTarget } from "@/lib/dictation-target";
 
 // ---------------------------------------------------------------------------
 // Slash items — Novel pattern: each command receives { editor, range }
@@ -273,6 +274,7 @@ export function RichTextEditor({
   autoFocus = false,
   className,
 }: RichTextEditorProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [slashState, setSlashState] = useState<{
     open: boolean;
     query: string;
@@ -381,6 +383,16 @@ export function RichTextEditor({
     }
   }, [content, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    const editorElement = containerRef.current?.querySelector(
+      ".tiptap",
+    ) as HTMLElement | null;
+    if (!editorElement) return;
+
+    return registerRichTextDictationTarget(editorElement, editor);
+  }, [editor]);
+
   // Handle slash command selection — single atomic chain (Novel pattern)
   const handleSlashSelect = useCallback(
     (item: SlashCommandItem) => {
@@ -408,7 +420,7 @@ export function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn("relative", className)}>
+    <div ref={containerRef} className={cn("relative", className)}>
       {editable && (
         <BubbleMenu
           editor={editor}

@@ -45,3 +45,8 @@ export type NotchInfo = {
   menuBarHeight: number;
   windowWidth: number;
 };
+
+export type DictationInsertResult = {
+  handled: boolean;
+  method: "app" | "clipboard" | "none";
+};

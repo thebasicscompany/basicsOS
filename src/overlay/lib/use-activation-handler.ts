@@ -24,6 +24,15 @@ export const useActivationHandler = (deps: {
 }): ActivationHandlers => {
   const { dispatch, pillRef, speechRef, dismissRef, showFlash } = deps;
 
+  const insertDictationText = useCallback(
+    async (transcript: string) => {
+      const result = await window.electronAPI?.insertDictationText?.(transcript);
+      showFlash(result?.handled ? "Inserted" : "Copied! Paste manually", FLASH_SHORT_MS);
+      return result;
+    },
+    [showFlash],
+  );
+
   const handleActivate = useCallback(
     (mode: ActivationMode) => {
       const s = speechRef.current;
@@ -35,9 +44,8 @@ export const useActivationHandler = (deps: {
           dispatch({ type: "TRANSCRIBING_START" });
           s.stopListening().then((transcript) => {
             if (transcript) {
-              void window.electronAPI?.injectText?.(transcript).then(() => {
+              void insertDictationText(transcript).then(() => {
                 dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-                showFlash("Copied! ⌘V to paste", FLASH_SHORT_MS);
                 setTimeout(() => dismissRef.current(), FLASH_SHORT_MS);
               });
             } else {
@@ -95,7 +103,7 @@ export const useActivationHandler = (deps: {
       dispatch({ type: "ACTIVATE", mode: mode as InteractionMode });
       s.startListening();
     },
-    [dispatch, pillRef, speechRef, dismissRef, showFlash]
+    [dispatch, pillRef, speechRef, dismissRef, showFlash, insertDictationText]
   );
 
   const handleDeactivate = useCallback(() => {
@@ -124,15 +132,12 @@ export const useActivationHandler = (deps: {
     s.stopListening().then((transcript) => {
       if (transcript) {
         dispatch({ type: "TRANSCRIBING_COMPLETE", transcript });
-        window.electronAPI
-          ?.injectText?.(transcript)
-          .then(() => showFlash("Copied! ⌘V to paste", FLASH_SHORT_MS))
-          .catch(() => dismissRef.current());
+        void insertDictationText(transcript).catch(() => dismissRef.current());
       } else {
         dismissRef.current();
       }
     });
-  }, [dispatch, pillRef, speechRef, dismissRef, showFlash]);
+  }, [dispatch, pillRef, speechRef, dismissRef, insertDictationText]);
 
   return {
     handleActivate,

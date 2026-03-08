@@ -29,7 +29,7 @@ import { createShortcutManager } from "./shortcut-manager";
 import type { ShortcutManager } from "./shortcut-manager";
 import { createHoldKeyDetector } from "./hold-key-detector";
 import { createMeetingManager } from "./meeting-manager-stub";
-import type { ActivationMode } from "@/shared-overlay/types";
+import type { ActivationMode, DictationInsertResult } from "@/shared-overlay/types";
 import { PILL_WIDTH, PILL_HEIGHT } from "@/shared-overlay/constants";
 
 let mainWindow: BrowserWindow | null = null;
@@ -42,6 +42,13 @@ let meetingMgr: ReturnType<typeof createMeetingManager> | null = null;
 let registeredMeetingAccelerator: string | null = null;
 let registeredDictationAccelerator: string | null = null;
 let dictationToggleActive = false;
+const pendingDictationInsertRequests = new Map<
+  string,
+  {
+    resolve: (handled: boolean) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  }
+>();
 
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
 const API_URL =
@@ -125,14 +132,37 @@ const broadcastOverlayStatus = (): void => {
   overlayWindow?.webContents.send("overlay-visibility-changed", status);
 };
 
+const presentOverlayWindow = (focus: boolean): void => {
+  if (!overlayWindow) return;
+  if (focus) {
+    overlayWindow.show();
+    overlayWindow.focus();
+  } else {
+    overlayWindow.showInactive();
+  }
+};
+
 const activateOverlay = (mode: ActivationMode): void => {
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = mode;
-  overlayWindow.show();
-  overlayWindow.focus();
+  presentOverlayWindow(true);
   overlayWindow.webContents.send("activate-overlay", mode);
   broadcastOverlayStatus();
+};
+
+const startDictationOverlay = (): void => {
+  if (!overlayWindow) return;
+  overlayActive = true;
+  activeMode = "dictation";
+  presentOverlayWindow(false);
+  overlayWindow.webContents.send("dictation-hold-start");
+  broadcastOverlayStatus();
+};
+
+const stopDictationOverlay = (): void => {
+  if (!overlayWindow) return;
+  overlayWindow.webContents.send("dictation-hold-end");
 };
 
 const deactivateOverlay = (): void => {
@@ -339,12 +369,10 @@ ipcMain.handle(
         () => {
           if (!overlayWindow) return;
           if (!dictationToggleActive) {
-            overlayWindow.show();
-            overlayWindow.focus();
-            overlayWindow.webContents.send("dictation-hold-start");
+            startDictationOverlay();
             dictationToggleActive = true;
           } else {
-            overlayWindow.webContents.send("dictation-hold-end");
+            stopDictationOverlay();
             dictationToggleActive = false;
           }
         },
@@ -380,6 +408,24 @@ ipcMain.on("overlay-dismissed", () => {
   dictationToggleActive = false;
   broadcastOverlayStatus();
 });
+
+ipcMain.on(
+  "dictation-insert-result",
+  (
+    event,
+    payload: {
+      requestId: string;
+      handled: boolean;
+    },
+  ) => {
+    if (event.sender !== mainWindow?.webContents) return;
+    const pending = pendingDictationInsertRequests.get(payload.requestId);
+    if (!pending) return;
+    pendingDictationInsertRequests.delete(payload.requestId);
+    clearTimeout(pending.timeout);
+    pending.resolve(payload.handled);
+  },
+);
 
 ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
   if (mainWindow) {
@@ -467,7 +513,24 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
+const requestMainWindowDictationInsert = (text: string): Promise<boolean> => {
+  if (!mainWindow || mainWindow.webContents.isDestroyed()) {
+    return Promise.resolve(false);
+  }
+
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingDictationInsertRequests.delete(requestId);
+      resolve(false);
+    }, 1000);
+
+    pendingDictationInsertRequests.set(requestId, { resolve, timeout });
+    mainWindow?.webContents.send("dictation-insert-request", { requestId, text });
+  });
+};
+
+const pasteClipboardText = (text: string): Promise<void> => {
   return new Promise((resolve) => {
     clipboard.writeText(text);
     if (process.platform === "darwin") {
@@ -488,7 +551,29 @@ ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
       resolve();
     }
   });
+};
+
+ipcMain.handle("inject-text", (_event, text: string): Promise<void> => {
+  return pasteClipboardText(text);
 });
+
+ipcMain.handle(
+  "insert-dictation-text",
+  async (_event, text: string): Promise<DictationInsertResult> => {
+    const insertedInApp = await requestMainWindowDictationInsert(text);
+    if (insertedInApp) {
+      return { handled: true, method: "app" };
+    }
+
+    if (process.platform === "darwin" || process.platform === "win32") {
+      await pasteClipboardText(text);
+      return { handled: true, method: "clipboard" };
+    }
+
+    clipboard.writeText(text);
+    return { handled: false, method: "none" };
+  },
+);
 
 ipcMain.handle("copy-to-clipboard", (_event, text: string): void => {
   clipboard.writeText(text ?? "");
@@ -526,8 +611,7 @@ ipcMain.handle("show-overlay", () => {
     if (!overlayWindow) {
       createOverlayWindow();
     }
-    overlayWindow?.show();
-    overlayWindow?.focus();
+    presentOverlayWindow(true);
     broadcastOverlayStatus();
   } catch (e) {
     console.error("[main] show-overlay failed:", e);
@@ -628,9 +712,8 @@ app.whenReady().then(async () => {
       holdThresholdMs: getOverlaySettings().behavior.holdThresholdMs,
     },
     {
-      onHoldStart: () =>
-        overlayWindow?.webContents.send("dictation-hold-start"),
-      onHoldEnd: () => overlayWindow?.webContents.send("dictation-hold-end"),
+      onHoldStart: () => startDictationOverlay(),
+      onHoldEnd: () => stopDictationOverlay(),
     },
   );
 
@@ -648,12 +731,10 @@ app.whenReady().then(async () => {
       () => {
         if (!overlayWindow) return;
         if (!dictationToggleActive) {
-          overlayWindow.show();
-          overlayWindow.focus();
-          overlayWindow.webContents.send("dictation-hold-start");
+          startDictationOverlay();
           dictationToggleActive = true;
         } else {
-          overlayWindow.webContents.send("dictation-hold-end");
+          stopDictationOverlay();
           dictationToggleActive = false;
         }
       },

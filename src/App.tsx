@@ -6,6 +6,7 @@ import {
   useLocation,
   useSearchParams,
 } from "react-router";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 import { ThemeProvider } from "next-themes";
@@ -34,6 +35,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { ObjectListPage } from "@/components/pages/ObjectListPage";
 import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
 import { AppLayout } from "@/layouts/AppLayout";
+import { installDictationTargetBridge } from "@/lib/dictation-target";
 
 function RedirectToSettingsConnections() {
   const [searchParams] = useSearchParams();
@@ -62,6 +64,11 @@ const queryClient = new QueryClient({
  */
 function AppRoutes() {
   const location = useLocation();
+
+  useEffect(() => {
+    installDictationTargetBridge();
+  }, []);
+
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}

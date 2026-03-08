@@ -6,13 +6,15 @@ import { createDesktopLogger } from "@/shared-overlay/logger.js";
 
 const log = createDesktopLogger("settings");
 
+const DEFAULT_SHORTCUTS: OverlaySettings["shortcuts"] = {
+  assistantToggle: "CommandOrControl+Space",
+  dictationToggle: "CommandOrControl+Shift+Space",
+  dictationHoldKey: "CommandOrControl+Shift+Space",
+  meetingToggle: "CommandOrControl+Alt+Space",
+};
+
 export const OVERLAY_DEFAULTS: OverlaySettings = {
-  shortcuts: {
-    assistantToggle: "Option+Space",
-    dictationToggle: "Option+Shift+Space",
-    dictationHoldKey: "Option+Shift+Space",
-    meetingToggle: "Option+CommandOrControl+Space",
-  },
+  shortcuts: DEFAULT_SHORTCUTS,
   voice: {
     language: "en-US",
     silenceTimeoutMs: 3000,
@@ -35,12 +37,36 @@ export const OVERLAY_DEFAULTS: OverlaySettings = {
 const getSettingsPath = (): string =>
   path.join(app.getPath("userData"), "basicsos-overlay-settings.json");
 
+const normalizeLegacyShortcuts = (
+  shortcuts?: Partial<OverlaySettings["shortcuts"]>,
+): Partial<OverlaySettings["shortcuts"]> | undefined => {
+  if (!shortcuts) return shortcuts;
+
+  // Migrate the old Option/Alt-based defaults to the cross-platform shortcuts.
+  const normalized = { ...shortcuts };
+  if (normalized.assistantToggle === "Option+Space") {
+    normalized.assistantToggle = DEFAULT_SHORTCUTS.assistantToggle;
+  }
+  if (normalized.dictationToggle === "Option+Shift+Space") {
+    normalized.dictationToggle = DEFAULT_SHORTCUTS.dictationToggle;
+  }
+  if (normalized.dictationHoldKey === "Option+Shift+Space") {
+    normalized.dictationHoldKey = DEFAULT_SHORTCUTS.dictationHoldKey;
+  }
+  if (normalized.meetingToggle === "Option+CommandOrControl+Space") {
+    normalized.meetingToggle = DEFAULT_SHORTCUTS.meetingToggle;
+  }
+
+  return normalized;
+};
+
 export const getOverlaySettings = (): OverlaySettings => {
   try {
     const raw = fs.readFileSync(getSettingsPath(), "utf8");
     const parsed = JSON.parse(raw) as Partial<OverlaySettings>;
+    const shortcuts = normalizeLegacyShortcuts(parsed.shortcuts);
     return {
-      shortcuts: { ...OVERLAY_DEFAULTS.shortcuts, ...parsed.shortcuts },
+      shortcuts: { ...OVERLAY_DEFAULTS.shortcuts, ...shortcuts },
       voice: {
         ...OVERLAY_DEFAULTS.voice,
         ...parsed.voice,

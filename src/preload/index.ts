@@ -4,6 +4,7 @@ import type {
   ActivationMode,
   OverlaySettings,
   BrandingInfo,
+  DictationInsertResult,
 } from "@/shared-overlay/types";
 
 const overlayAPI = {
@@ -34,6 +35,8 @@ const overlayAPI = {
     ipcRenderer.send("set-ignore-mouse", ignore),
   navigateMain: (path: string) => ipcRenderer.send("navigate-main", path),
   injectText: (text: string) => ipcRenderer.invoke("inject-text", text),
+  insertDictationText: (text: string) =>
+    ipcRenderer.invoke("insert-dictation-text", text) as Promise<DictationInsertResult>,
   copyToClipboard: (text: string) =>
     ipcRenderer.invoke("copy-to-clipboard", text) as Promise<void>,
   getApiUrl: () => ipcRenderer.invoke("get-api-url") as Promise<string>,
@@ -111,6 +114,22 @@ const overlayAPI = {
       (_e, speaker: number | undefined, text: string) => cb(speaker, text),
     );
   },
+  onDictationInsertRequest: (
+    cb: (payload: { requestId: string; text: string }) => void | Promise<void>,
+  ) => {
+    ipcRenderer.on(
+      "dictation-insert-request",
+      (_e, payload: { requestId: string; text: string }) => {
+        void cb(payload);
+      },
+    );
+  },
+  sendDictationInsertResult: (payload: {
+    requestId: string;
+    handled: boolean;
+  }) => {
+    ipcRenderer.send("dictation-insert-result", payload);
+  },
   removeAllListeners: () => {
     const channels = [
       "activate-overlay",
@@ -126,6 +145,7 @@ const overlayAPI = {
       "overlay-visibility-changed",
       "system-audio-silent",
       "system-audio-transcript",
+      "dictation-insert-request",
     ];
     for (const ch of channels) ipcRenderer.removeAllListeners(ch);
   },

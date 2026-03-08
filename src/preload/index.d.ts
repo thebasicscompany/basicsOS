@@ -1,5 +1,10 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
-import type { ActivationMode, NotchInfo, OverlaySettings } from "@/shared-overlay/types";
+import type {
+  ActivationMode,
+  DictationInsertResult,
+  NotchInfo,
+  OverlaySettings,
+} from "@/shared-overlay/types";
 
 export type OverlayElectronAPI = {
   onActivate?: (cb: (mode: ActivationMode) => void) => void;
@@ -11,6 +16,7 @@ export type OverlayElectronAPI = {
   setIgnoreMouse?: (ignore: boolean) => void;
   navigateMain?: (path: string) => void;
   injectText?: (text: string) => Promise<void>;
+  insertDictationText?: (text: string) => Promise<DictationInsertResult>;
   copyToClipboard?: (text: string) => Promise<void>;
   getApiUrl?: () => Promise<string>;
   proxyOverlayRequest?: (req: {
@@ -46,6 +52,13 @@ export type OverlayElectronAPI = {
   onSystemAudioTranscript?: (
     cb: (s: number | undefined, t: string) => void,
   ) => void;
+  onDictationInsertRequest?: (
+    cb: (payload: { requestId: string; text: string }) => void | Promise<void>,
+  ) => void;
+  sendDictationInsertResult?: (payload: {
+    requestId: string;
+    handled: boolean;
+  }) => void;
   removeAllListeners?: () => void;
   resizeOverlay?: (height: number) => Promise<void>;
 };

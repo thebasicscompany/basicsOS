@@ -1,3 +1,4 @@
+import type React from "react";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
@@ -187,22 +188,62 @@ function extractDate(attribution: string): string | null {
 
 // ── Components ─────────────────────────────────────────────────────
 
+/** Render a line, turning URLs into clickable links */
+function renderLine(line: string): React.ReactNode[] {
+  const urlRegex = /(https?:\/\/[^\s<>]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = urlRegex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(line.slice(lastIndex, match.index));
+    }
+    const url = match[1];
+    parts.push(
+      <a
+        key={match.index}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline underline-offset-2 hover:text-primary/80"
+      >
+        {url.length > 60 ? url.slice(0, 57) + "..." : url}
+      </a>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < line.length) {
+    parts.push(line.slice(lastIndex));
+  }
+  return parts.length > 0 ? parts : [line];
+}
+
+/** Check if a line is just a separator (lone dash, em-dash, underscore, etc.) */
+function isSeparatorLine(line: string): boolean {
+  const trimmed = line.trim();
+  return /^[-–—_*]{1,3}$/.test(trimmed);
+}
+
 function EmailBody({ text }: { text: string }) {
   const paragraphs = text.split(/\n{2,}/);
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {paragraphs.map((p, i) => {
         if (!p.trim()) return null;
         const lines = p.split("\n");
         return (
-          <p key={i} className="text-sm leading-relaxed">
-            {lines.map((line, j) => (
-              <span key={j}>
-                {j > 0 && <br />}
-                {line}
-              </span>
-            ))}
-          </p>
+          <div key={i} className="text-sm leading-relaxed">
+            {lines.map((line, j) => {
+              if (isSeparatorLine(line)) {
+                return <div key={j} className="my-1.5 h-px" />;
+              }
+              return (
+                <p key={j} className={j > 0 ? "mt-0.5" : ""}>
+                  {renderLine(line)}
+                </p>
+              );
+            })}
+          </div>
         );
       })}
     </div>

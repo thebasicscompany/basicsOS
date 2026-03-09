@@ -285,7 +285,7 @@ async function processMessages(
   db: Db,
   orgId: string,
   messages: GmailMessage[],
-  autoAcceptThreshold: number | null,
+  _autoAcceptThreshold: number | null,
 ): Promise<number> {
   let inserted = 0;
 

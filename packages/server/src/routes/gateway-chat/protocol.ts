@@ -1339,7 +1339,7 @@ function detectRankedEntityIntent(
   return null;
 }
 
-function extractLinkedRecords(
+function _extractLinkedRecords(
   result: unknown,
 ): Array<{ id: number; name: string }> {
   if (typeof result !== "string") return [];

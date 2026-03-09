@@ -36,11 +36,11 @@ export function createMeetingManager(
 
   return {
     async start(apiUrl: string, token: string): Promise<void> {
-      console.log("[meeting-manager] start() called, active=", state.active, "apiUrl=", apiUrl, "hasToken=", !!token);
-      if (state.active) { console.log("[meeting-manager] Already active, returning early"); return; }
+      console.warn("[meeting-manager] start() called, active=", state.active, "apiUrl=", apiUrl, "hasToken=", !!token);
+      if (state.active) { console.warn("[meeting-manager] Already active, returning early"); return; }
 
       try {
-        console.log("[meeting-manager] POST /api/meetings...");
+        console.warn("[meeting-manager] POST /api/meetings...");
         const res = await fetch(`${apiUrl}/api/meetings`, {
           method: "POST",
           headers: {
@@ -56,16 +56,16 @@ export function createMeetingManager(
 
         const meeting = (await res.json()) as { id: number };
         const meetingId = String(meeting.id);
-        console.log("[meeting-manager] Meeting created, id=", meetingId);
+        console.warn("[meeting-manager] Meeting created, id=", meetingId);
 
         state = {
           active: true,
           meetingId,
           startedAt: Date.now(),
         };
-        console.log("[meeting-manager] Calling onMeetingStart callback...");
+        console.warn("[meeting-manager] Calling onMeetingStart callback...");
         onMeetingStart(meetingId);
-        console.log("[meeting-manager] onMeetingStart callback completed");
+        console.warn("[meeting-manager] onMeetingStart callback completed");
       } catch (err) {
         console.error("[meeting-manager] start failed:", err);
         throw err;
@@ -73,15 +73,15 @@ export function createMeetingManager(
     },
 
     async stop(_apiUrl: string): Promise<void> {
-      console.log("[meeting-manager] stop() called, active=", state.active, "meetingId=", state.meetingId);
-      if (!state.active) { console.log("[meeting-manager] Not active, returning early"); return; }
+      console.warn("[meeting-manager] stop() called, active=", state.active, "meetingId=", state.meetingId);
+      if (!state.active) { console.warn("[meeting-manager] Not active, returning early"); return; }
       const meetingId = state.meetingId;
       state = {
         active: false,
         meetingId: null,
         startedAt: null,
       };
-      console.log("[meeting-manager] Calling onMeetingStop callback for meetingId=", meetingId);
+      console.warn("[meeting-manager] Calling onMeetingStop callback for meetingId=", meetingId);
       if (meetingId) onMeetingStop(meetingId);
     },
 

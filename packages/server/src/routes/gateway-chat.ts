@@ -46,7 +46,7 @@ import {
   shouldPlanToolWorkflow,
 } from "@/routes/gateway-chat/workflow.js";
 import { routeChatRequest } from "@/routes/gateway-chat/router.js";
-import * as schema from "@/db/schema/index.js";
+import type * as schema from "@/db/schema/index.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 

@@ -94,7 +94,7 @@ export const startSystemAudioCapture = async (
   // macOS will show the permission prompt when captureDisplay() is called.
   // If already denied, the silence detection below will catch it.
   const permStatus = checkSystemAudioPermission();
-  console.log(`[system-audio] Screen Recording permission status: ${permStatus ? "granted" : "not yet granted (will prompt)"}`);
+  console.warn(`[system-audio] Screen Recording permission status: ${permStatus ? "granted" : "not yet granted (will prompt)"}`);
 
   const AudioCapture = await loadAudioCapture();
   if (!AudioCapture) {
@@ -160,16 +160,16 @@ export const startSystemAudioCapture = async (
         if (msg.is_final) {
           sysTranscriptCount++;
           transcriptChunks.push({ speaker: msg.speaker, text: msg.transcript, timestamp: Date.now() });
-          console.log(`[system-audio] FINAL transcript #${sysTranscriptCount} speaker=${msg.speaker} "${msg.transcript.slice(0, 80)}"`);
+          console.warn(`[system-audio] FINAL transcript #${sysTranscriptCount} speaker=${msg.speaker} "${msg.transcript.slice(0, 80)}"`);
         } else {
-          console.log(`[system-audio] partial speaker=${msg.speaker} "${msg.transcript.slice(0, 60)}"`);
+          console.warn(`[system-audio] partial speaker=${msg.speaker} "${msg.transcript.slice(0, 60)}"`);
         }
       } else if (msg.type === "error") {
-        console.log(`[system-audio] WS error msg: ${msg.message}`);
+        console.warn(`[system-audio] WS error msg: ${msg.message}`);
       } else if (msg.type === "closed") {
-        console.log(`[system-audio] Deepgram stream closed`);
+        console.warn(`[system-audio] Deepgram stream closed`);
       } else if (msg.type === "reconnecting") {
-        console.log(`[system-audio] Deepgram reconnecting...`);
+        console.warn(`[system-audio] Deepgram reconnecting...`);
       }
     } catch {
       /* not JSON */
@@ -177,7 +177,7 @@ export const startSystemAudioCapture = async (
   };
   ws.onerror = () => console.warn("[system-audio] WebSocket error");
   ws.onclose = () => {
-    console.log(`[system-audio] WebSocket closed, transcripts captured: ${sysTranscriptCount}`);
+    console.warn(`[system-audio] WebSocket closed, transcripts captured: ${sysTranscriptCount}`);
     ws = null;
   };
 
@@ -207,22 +207,22 @@ export const startSystemAudioCapture = async (
         ) {
           silenceChecked = true;
           if (silentSamples === SCK_SILENCE_CHECK_SAMPLES) {
-            console.log(
-              "[system-audio] No audio detected yet — will transcribe when audio starts playing",
-            );
+          console.warn(
+            "[system-audio] No audio detected yet — will transcribe when audio starts playing",
+          );
           }
         }
       }
 
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         if (sampleCount <= 3 || sampleCount % 500 === 0) {
-          console.log(`[system-audio] Sample #${sampleCount} dropped, ws=${ws ? `readyState=${ws.readyState}` : "null"}`);
+          console.warn(`[system-audio] Sample #${sampleCount} dropped, ws=${ws ? `readyState=${ws.readyState}` : "null"}`);
         }
         return;
       }
       ws.send(sample.data);
       if (sampleCount <= 3 || sampleCount % 500 === 0) {
-        console.log(`[system-audio] Sample #${sampleCount} sent, size=${sample.data.length} rms=${sample.rms.toFixed(4)}`);
+        console.warn(`[system-audio] Sample #${sampleCount} sent, size=${sample.data.length} rms=${sample.rms.toFixed(4)}`);
       }
     });
 
@@ -241,7 +241,7 @@ export const startSystemAudioCapture = async (
     if (!started) throw new Error("captureDisplay returned false");
 
     isRunning = true;
-    console.log("[system-audio] ScreenCaptureKit started");
+    console.warn("[system-audio] ScreenCaptureKit started");
     return true;
   } catch (err: unknown) {
     console.error(

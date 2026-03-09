@@ -200,7 +200,7 @@ export async function embedMeetingTranscript(
       }
     }
 
-    console.log(
+    console.warn(
       `[embedding_record] meeting_chunk: embedded ${chunks.length} chunks for meeting ${meetingId}`,
     );
   } catch (err) {

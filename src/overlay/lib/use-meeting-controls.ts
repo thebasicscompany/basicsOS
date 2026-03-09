@@ -115,7 +115,7 @@ export const useMeetingControls = (deps: {
         }
       })();
     },
-    [dispatch, meetingRecorderRef, showFlash]
+    [dispatch, meetingRecorderRef, showFlash, pillRef]
   );
 
   const handleSystemAudioTranscript = useCallback(

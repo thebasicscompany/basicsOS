@@ -8,7 +8,6 @@ import {
   integer,
   jsonb,
   timestamp,
-  index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { organizations } from "@/db/schema/organizations.js";

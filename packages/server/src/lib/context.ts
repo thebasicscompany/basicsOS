@@ -296,7 +296,7 @@ export async function retrieveDualContext(
     }
 
     const strategy = classifyQueryIntent(query);
-    console.log(`[rag] query="${query.slice(0, 80)}" strategy=${JSON.stringify(strategy)} embeddingLen=${embedding.length}`);
+    console.warn(`[rag] query="${query.slice(0, 80)}" strategy=${JSON.stringify(strategy)} embeddingLen=${embedding.length}`);
 
     const [crmContext, meetingContext] = await Promise.all([
       searchEmbeddings(
@@ -315,7 +315,7 @@ export async function retrieveDualContext(
       ),
     ]);
 
-    console.log(`[rag] crmContext=${crmContext ? crmContext.length + ' chars' : 'null'}, meetingContext=${meetingContext ? meetingContext.length + ' chars' : 'null'}`);
+    console.warn(`[rag] crmContext=${crmContext ? crmContext.length + ' chars' : 'null'}, meetingContext=${meetingContext ? meetingContext.length + ' chars' : 'null'}`);
     return { crmContext, meetingContext };
   } catch (err) {
     console.error(`[rag] retrieveDualContext error:`, err);

@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import * as schema from "@/db/schema/index.js";
 import { logger } from "@/lib/logger.js";

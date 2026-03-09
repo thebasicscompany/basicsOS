@@ -19,7 +19,7 @@ const mlog = (...args: unknown[]): void => {
   const msg = args
     .map((a) => (typeof a === "string" ? a : String(a)))
     .join(" ");
-  console.log(msg);
+  console.warn(msg);
   window.electronAPI?.logToMain?.(msg);
 };
 
@@ -465,6 +465,8 @@ export const useMeetingRecorder = (
 
       return { micOnly };
     },
+    // stopRecording is stored in ref and called from mic recovery; listing it would require defining it before startRecording
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 

@@ -16,7 +16,7 @@ const log = logger.child({ component: "email-sync-routes" });
 
 type Auth = ReturnType<typeof createAuth>;
 
-export function createEmailSyncRoutes(db: Db, auth: Auth, env: Env) {
+export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
   const app = new Hono();
 
   app.use("/*", authMiddleware(auth, db));

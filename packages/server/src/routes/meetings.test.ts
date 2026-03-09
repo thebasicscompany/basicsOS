@@ -27,7 +27,7 @@ const CRM_USER = {
 };
 
 // Helper: build a mock Hono context
-function makeContext(
+function _makeContext(
   params: Record<string, string>,
   query: Record<string, string> = {},
   payload?: unknown,

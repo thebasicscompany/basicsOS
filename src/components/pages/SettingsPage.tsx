@@ -238,7 +238,7 @@ export function SettingsPage() {
     } finally {
       setCreatingInvite(false);
     }
-  }, [inviteEmail, inviteExpiresInHours]);
+  }, [inviteEmail, inviteExpiresInHours, inviteSendEmail]);
 
   const signupLink = inviteToken
     ? `${window.location.origin}/sign-up?invite=${inviteToken}`

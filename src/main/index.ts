@@ -595,29 +595,29 @@ ipcMain.handle("copy-to-clipboard", (_event, text: string): void => {
 });
 
 ipcMain.on("log-from-overlay", (_event, msg: string) => {
-  console.log("[overlay]", msg);
+  console.warn("[overlay]", msg);
 });
 
 ipcMain.handle("start-meeting", async () => {
-  console.log("[IPC] start-meeting received, meetingMgr=", !!meetingMgr);
+  console.warn("[IPC] start-meeting received, meetingMgr=", !!meetingMgr);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
-  console.log("[IPC] start-meeting: apiUrl=", apiUrl, "hasToken=", !!token);
+  console.warn("[IPC] start-meeting: apiUrl=", apiUrl, "hasToken=", !!token);
   if (!token) throw new Error("No session token");
   await meetingMgr.start(apiUrl, token);
-  console.log("[IPC] start-meeting completed");
+  console.warn("[IPC] start-meeting completed");
 });
 
 ipcMain.handle("stop-meeting", async () => {
-  console.log("[IPC] stop-meeting received, meetingMgr=", !!meetingMgr);
+  console.warn("[IPC] stop-meeting received, meetingMgr=", !!meetingMgr);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   await meetingMgr.stop(apiUrl);
-  console.log("[IPC] stop-meeting completed");
+  console.warn("[IPC] stop-meeting completed");
 });
 
 ipcMain.handle("meeting-state", () => {
@@ -698,11 +698,11 @@ const registerMeetingShortcut = (accelerator: string): void => {
     registeredMeetingAccelerator = null;
   }
   const ok = globalShortcut.register(accelerator, () => {
-    console.log("[SHORTCUT] Meeting toggle fired, overlayWindow=", !!overlayWindow);
+    console.warn("[SHORTCUT] Meeting toggle fired, overlayWindow=", !!overlayWindow);
     overlayWindow?.webContents.send("meeting-toggle");
   });
   if (ok) registeredMeetingAccelerator = accelerator;
-  console.log("[SHORTCUT] Meeting shortcut registered:", accelerator, "ok=", ok);
+  console.warn("[SHORTCUT] Meeting shortcut registered:", accelerator, "ok=", ok);
 };
 
 app.whenReady().then(async () => {
@@ -762,11 +762,11 @@ app.whenReady().then(async () => {
 
   meetingMgr = createMeetingManager({
     onMeetingStart: (meetingId) => {
-      console.log("[meeting-manager] onMeetingStart callback: sending meeting-started IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
+      console.warn("[meeting-manager] onMeetingStart callback: sending meeting-started IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
       overlayWindow?.webContents.send("meeting-started", meetingId);
     },
     onMeetingStop: (meetingId) => {
-      console.log("[meeting-manager] onMeetingStop callback: sending meeting-stopped IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
+      console.warn("[meeting-manager] onMeetingStop callback: sending meeting-stopped IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
       overlayWindow?.webContents.send("meeting-stopped", meetingId);
     },
   });

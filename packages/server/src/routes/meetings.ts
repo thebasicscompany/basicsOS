@@ -146,16 +146,16 @@ export function createMeetingsRoutes(
       text?: string;
     }>();
 
-    console.log(`[meetings] POST /${meetingId}/transcript — body.segments=${body.segments?.length ?? 0}, body.text length=${body.text?.length ?? 0}`);
+    console.warn(`[meetings] POST /${meetingId}/transcript — body.segments=${body.segments?.length ?? 0}, body.text length=${body.text?.length ?? 0}`);
     if (body.text) {
       const lines = body.text.split("\n").filter((l) => l.trim());
-      console.log(`[meetings] Text transcript has ${lines.length} lines. First 3:`, lines.slice(0, 3));
-      console.log(`[meetings] Last 3:`, lines.slice(-3));
+      console.warn(`[meetings] Text transcript has ${lines.length} lines. First 3:`, lines.slice(0, 3));
+      console.warn(`[meetings] Last 3:`, lines.slice(-3));
     }
 
     // Support both structured segments and plain text
     if (body.segments && body.segments.length > 0) {
-      console.log(`[meetings] Saving ${body.segments.length} structured segments`);
+      console.warn(`[meetings] Saving ${body.segments.length} structured segments`);
       await db.insert(schema.meetingTranscripts).values(
         body.segments.map((seg) => ({
           meetingId,
@@ -178,13 +178,13 @@ export function createMeetingsRoutes(
           organizationId: crmUser.organizationId,
         };
       });
-      console.log(`[meetings] Parsed ${segments.length} segments from text. Saving to DB...`);
+      console.warn(`[meetings] Parsed ${segments.length} segments from text. Saving to DB...`);
       if (segments.length > 0) {
         await db.insert(schema.meetingTranscripts).values(segments);
       }
-      console.log(`[meetings] Saved ${segments.length} segments to DB`);
+      console.warn(`[meetings] Saved ${segments.length} segments to DB`);
     } else {
-      console.log(`[meetings] WARNING: No transcript data received!`);
+      console.warn(`[meetings] WARNING: No transcript data received!`);
     }
 
     // Update meeting status and end time

@@ -118,25 +118,25 @@ async function resolveDeepgramConfig(
   if (basicsKey) {
     // Fetch the Deepgram key from the Basics gateway
     try {
-      console.log(`[ws/transcribe] Fetching Deepgram key from gateway: ${env.BASICSOS_API_URL}/v1/transcription/key`);
+      console.warn(`[ws/transcribe] Fetching Deepgram key from gateway: ${env.BASICSOS_API_URL}/v1/transcription/key`);
       const res = await fetch(`${env.BASICSOS_API_URL}/v1/transcription/key`, {
         headers: { Authorization: `Bearer ${basicsKey}` },
       });
-      console.log(`[ws/transcribe] Gateway key response: ${res.status}`);
+      console.warn(`[ws/transcribe] Gateway key response: ${res.status}`);
       if (res.ok) {
         const data = (await res.json()) as { key?: string };
         if (data.key) {
-          console.log(`[ws/transcribe] Got Deepgram key from gateway (direct connection)`);
+          console.warn(`[ws/transcribe] Got Deepgram key from gateway (direct connection)`);
           return { key: data.key, gatewayUrl: null, basicsApiKey: basicsKey };
         }
       }
     } catch (err) {
-      console.log(`[ws/transcribe] Gateway key endpoint failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[ws/transcribe] Gateway key endpoint failed:`, err instanceof Error ? err.message : err);
     }
 
     // If gateway doesn't provide a key endpoint, use the Basics API key directly
     // and connect to Deepgram via the gateway WebSocket proxy
-    console.log(`[ws/transcribe] Falling back to gateway WS proxy`);
+    console.warn(`[ws/transcribe] Falling back to gateway WS proxy`);
     return { key: basicsKey, gatewayUrl: env.BASICSOS_API_URL, basicsApiKey: basicsKey };
   }
 
@@ -170,7 +170,6 @@ async function authenticateWs(db: Db, auth: BetterAuthInstance, token: string) {
 }
 
 export function attachTranscribeWs(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server: HttpServer | { on: (...args: any[]) => any },
   db: Db,
   auth: BetterAuthInstance,
@@ -191,7 +190,7 @@ export function attachTranscribeWs(
   });
 
   wss.on("connection", (clientWs: WsWebSocket, req: IncomingMessage) => {
-    console.log(`[ws/transcribe] New client connection from ${req.headers.origin ?? "unknown"}`);
+    console.warn(`[ws/transcribe] New client connection from ${req.headers.origin ?? "unknown"}`);
     const url = new URL(
       req.url ?? "/",
       `http://${req.headers.host ?? "localhost"}`,
@@ -202,7 +201,7 @@ export function attachTranscribeWs(
     const sampleRate = url.searchParams.get("sample_rate"); // "16000"
 
     if (!token) {
-      console.log(`[ws/transcribe] Missing token, closing`);
+      console.warn(`[ws/transcribe] Missing token, closing`);
       sendToClient(clientWs, { type: "error", message: "Missing token" });
       clientWs.close();
       return;
@@ -254,11 +253,11 @@ export function attachTranscribeWs(
         const gwBase = dgConfig.gatewayUrl.replace(/^http/, "ws");
         dgUrl = `${gwBase}/v1/listen?${params.toString()}`;
         dgAuthHeader = `Bearer ${dgConfig.basicsApiKey ?? dgConfig.key}`;
-        console.log(`[ws/transcribe] Using Basics gateway: ${dgUrl.split("?")[0]}`);
+        console.warn(`[ws/transcribe] Using Basics gateway: ${dgUrl.split("?")[0]}`);
       } else {
         dgUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
         dgAuthHeader = `Token ${dgConfig.key}`;
-        console.log(`[ws/transcribe] Using direct Deepgram connection`);
+        console.warn(`[ws/transcribe] Using direct Deepgram connection`);
       }
 
       const tag = source === "system" ? "system" : "mixed";
@@ -282,7 +281,7 @@ export function attachTranscribeWs(
         currentDgWs = dgWs;
 
         dgWs.on("open", () => {
-          console.log(
+          console.warn(
             `[ws/transcribe][${tag}] Connected to Deepgram${reconnectAttempt > 0 ? ` (reconnect #${reconnectAttempt})` : ""}`,
           );
           reconnectAttempt = 0;
@@ -308,7 +307,7 @@ export function attachTranscribeWs(
             if (!transcript) return;
 
             const speaker = getDominantSpeaker(alt?.words);
-            console.log(`[ws/transcribe][${tag}] DG#${dgMsgCount} is_final=${result.is_final} speech_final=${result.speech_final} speaker=${speaker} text="${transcript.slice(0, 60)}"`);
+            console.warn(`[ws/transcribe][${tag}] DG#${dgMsgCount} is_final=${result.is_final} speech_final=${result.speech_final} speaker=${speaker} text="${transcript.slice(0, 60)}"`);
             sendToClient(clientWs, {
               type: "transcript",
               transcript,
@@ -331,13 +330,13 @@ export function attachTranscribeWs(
 
         dgWs.on("close", (code: number, reason: Buffer) => {
           clearKeepAlive();
-          console.log(`[ws/transcribe][${tag}] Deepgram WS closed, code=${code} reason="${reason?.toString() ?? ""}" closedByUs=${closedByUs} audioChunks=${audioChunkCount} dgMsgs=${dgMsgCount}`);
+          console.warn(`[ws/transcribe][${tag}] Deepgram WS closed, code=${code} reason="${reason?.toString() ?? ""}" closedByUs=${closedByUs} audioChunks=${audioChunkCount} dgMsgs=${dgMsgCount}`);
           if (closedByUs) return;
 
           if (reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempt++;
             const delay = BACKOFF_BASE_MS * Math.pow(2, reconnectAttempt - 1);
-            console.log(
+            console.warn(
               `[ws/transcribe][${tag}] Reconnecting in ${delay}ms (attempt ${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS})`,
             );
             sendToClient(clientWs, {
@@ -362,7 +361,7 @@ export function attachTranscribeWs(
           audioChunkCount++;
           if (audioChunkCount <= 3 || audioChunkCount % 200 === 0) {
             const size = Array.isArray(rawData) ? rawData.reduce((s, b) => s + b.length, 0) : (rawData as Buffer).length;
-            console.log(`[ws/transcribe][${tag}] Audio chunk #${audioChunkCount}, size=${size}`);
+            console.warn(`[ws/transcribe][${tag}] Audio chunk #${audioChunkCount}, size=${size}`);
           }
           // Forward audio to Deepgram — convert RawData to Buffer
           if (currentDgWs?.readyState === WsWebSocket.OPEN) {
@@ -409,7 +408,7 @@ export function attachTranscribeWs(
       });
 
       clientWs.on("close", (code: number, reason: Buffer) => {
-        console.log(`[ws/transcribe][${tag}] Client WS closed, code=${code} reason="${reason?.toString() ?? ""}" audioChunks=${audioChunkCount}`);
+        console.warn(`[ws/transcribe][${tag}] Client WS closed, code=${code} reason="${reason?.toString() ?? ""}" audioChunks=${audioChunkCount}`);
         closedByUs = true;
         clearKeepAlive();
         if (reconnectTimeout) {

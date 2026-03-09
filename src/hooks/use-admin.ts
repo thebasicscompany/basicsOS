@@ -87,8 +87,7 @@ export function useSaveAdminAiConfig() {
 export function useClearAdminAiConfig() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      fetchApi("/api/admin/ai-config", { method: "DELETE" }),
+    mutationFn: () => fetchApi("/api/admin/ai-config", { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "ai-config"] });
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -114,9 +113,7 @@ export function useAdminUsageLogs(enabled: boolean, days = 30) {
   return useQuery({
     queryKey: ["admin", "usage", "logs", days],
     queryFn: () =>
-      fetchApi<{ logs: UsageLog[] }>(
-        `/api/admin/usage?days=${days}&limit=200`,
-      ),
+      fetchApi<{ logs: UsageLog[] }>(`/api/admin/usage?days=${days}&limit=200`),
     enabled,
   });
 }
@@ -125,9 +122,7 @@ export function useAdminUsageSummary(enabled: boolean, days = 30) {
   return useQuery({
     queryKey: ["admin", "usage", "summary", days],
     queryFn: () =>
-      fetchApi<UsageSummaryResponse>(
-        `/api/admin/usage/summary?days=${days}`,
-      ),
+      fetchApi<UsageSummaryResponse>(`/api/admin/usage/summary?days=${days}`),
     enabled,
   });
 }

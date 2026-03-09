@@ -5,7 +5,10 @@ import { sortPostSchema } from "@/schemas/views.js";
 import * as schema from "@/db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { sortRowToNocoRaw } from "@/routes/views/mappers.js";
-import { getCrmUserId, getViewAndCheckOwnership } from "@/routes/views/shared.js";
+import {
+  getCrmUserId,
+  getViewAndCheckOwnership,
+} from "@/routes/views/shared.js";
 
 export function registerSortRoutes(app: Hono, db: Db): void {
   app.get("/view/:viewId/sorts", async (c) => {

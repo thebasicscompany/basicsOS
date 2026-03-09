@@ -32,4 +32,3 @@ export const mePatchSchema = z.object({
   firstName: z.string().trim().min(1).max(255).optional(),
   lastName: z.string().trim().min(1).max(255).optional(),
 });
-

@@ -53,15 +53,42 @@ const STATIC_NAV_ITEMS: Array<{
   icon: ComponentType<{ className?: string }>;
 }> = [
   { id: "crm", label: "Dashboard", path: ROUTES.CRM, icon: HouseIcon },
-  { id: "contacts", label: "Contacts", path: "/objects/contacts", icon: UserIcon },
-  { id: "companies", label: "Companies", path: "/objects/companies", icon: BuildingIcon },
+  {
+    id: "contacts",
+    label: "Contacts",
+    path: "/objects/contacts",
+    icon: UserIcon,
+  },
+  {
+    id: "companies",
+    label: "Companies",
+    path: "/objects/companies",
+    icon: BuildingIcon,
+  },
   { id: "deals", label: "Deals", path: "/objects/deals", icon: HandshakeIcon },
   { id: "tasks", label: "Tasks", path: ROUTES.TASKS, icon: ListChecksIcon },
-  { id: "chat", label: "AI Chat", keywords: "chat ai", path: ROUTES.CHAT, icon: RobotIcon },
-  { id: "connections", label: "Connections", path: ROUTES.CONNECTIONS, icon: LinkIcon },
+  {
+    id: "chat",
+    label: "AI Chat",
+    keywords: "chat ai",
+    path: ROUTES.CHAT,
+    icon: RobotIcon,
+  },
+  {
+    id: "connections",
+    label: "Connections",
+    path: ROUTES.CONNECTIONS,
+    icon: LinkIcon,
+  },
   { id: "profile", label: "Profile", path: ROUTES.PROFILE, icon: UserIcon },
   { id: "settings", label: "Settings", path: ROUTES.SETTINGS, icon: GearIcon },
-  { id: "import", label: "Import data", keywords: "import", path: ROUTES.IMPORT, icon: UploadSimpleIcon },
+  {
+    id: "import",
+    label: "Import data",
+    keywords: "import",
+    path: ROUTES.IMPORT,
+    icon: UploadSimpleIcon,
+  },
 ];
 
 function matchesSearch(text: string, q: string): boolean {
@@ -150,7 +177,10 @@ export function CommandPalette() {
         filter: { q: search },
         pagination: { page: 1, perPage: 5 },
       });
-      return { data: mapRecords(result.data) as unknown as Deal[], total: result.total };
+      return {
+        data: mapRecords(result.data) as unknown as Deal[],
+        total: result.total,
+      };
     },
     enabled: isSearching,
     staleTime: 10_000,
@@ -163,7 +193,8 @@ export function CommandPalette() {
   const matchingObjectNav = isSearching
     ? objects.filter(
         (obj) =>
-          matchesSearch(obj.pluralName, q) || matchesSearch(obj.singularName, q),
+          matchesSearch(obj.pluralName, q) ||
+          matchesSearch(obj.singularName, q),
       )
     : [];
   const hasNavResults =

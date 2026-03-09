@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import type { StatusCode } from "hono/utils/http-status";
 
 /**
  * Standard API error shape: { error, code?, details? }.
@@ -21,7 +22,7 @@ export interface ApiErrorBody {
 export function jsonError(
   c: Context,
   message: string,
-  status = 500,
+  status: StatusCode = 500,
   code?: string,
   details?: unknown,
 ): Response {

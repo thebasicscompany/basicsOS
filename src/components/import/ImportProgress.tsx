@@ -49,7 +49,16 @@ export function ImportProgress({ state, onBack, onDone }: ImportProgressProps) {
     return () => {
       cancelled = true;
     };
-  }, [state.objectSlug, state.parsed, state.mapping, state.customFieldNames, state.mergeKey, state.conflictBehavior, result, qc]);
+  }, [
+    state.objectSlug,
+    state.parsed,
+    state.mapping,
+    state.customFieldNames,
+    state.mergeKey,
+    state.conflictBehavior,
+    result,
+    qc,
+  ]);
 
   if (error) {
     return (
@@ -75,23 +84,35 @@ export function ImportProgress({ state, onBack, onDone }: ImportProgressProps) {
         </div>
         <div className="flex flex-wrap gap-4 text-[13px]">
           <span className="text-muted-foreground">
-            Created: <span className="font-medium text-foreground">{result.created}</span>
+            Created:{" "}
+            <span className="font-medium text-foreground">
+              {result.created}
+            </span>
           </span>
           <span className="text-muted-foreground">
-            Updated: <span className="font-medium text-foreground">{result.updated}</span>
+            Updated:{" "}
+            <span className="font-medium text-foreground">
+              {result.updated}
+            </span>
           </span>
           <span className="text-muted-foreground">
-            Skipped: <span className="font-medium text-foreground">{result.skipped}</span>
+            Skipped:{" "}
+            <span className="font-medium text-foreground">
+              {result.skipped}
+            </span>
           </span>
           {result.errors.length > 0 && (
             <span className="text-destructive">
-              Errors: <span className="font-medium">{result.errors.length}</span>
+              Errors:{" "}
+              <span className="font-medium">{result.errors.length}</span>
             </span>
           )}
         </div>
         {result.errors.length > 0 && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            <p className="text-[12px] font-medium text-destructive mb-2">Errors:</p>
+            <p className="text-[12px] font-medium text-destructive mb-2">
+              Errors:
+            </p>
             <ul className="text-[12px] text-muted-foreground list-disc list-inside max-h-32 overflow-y-auto">
               {result.errors.slice(0, 20).map((e, i) => (
                 <li key={i}>

@@ -26,7 +26,5 @@ export const SIDEBAR_NAV_APPS: NavGroupConfig = {
 
 export const SIDEBAR_NAV_AUTOMATIONS: NavGroupConfig = {
   label: "Automations",
-  items: [
-    { title: "Hub", path: ROUTES.AUTOMATIONS, icon: HardDrivesIcon },
-  ],
+  items: [{ title: "Hub", path: ROUTES.AUTOMATIONS, icon: HardDrivesIcon }],
 };

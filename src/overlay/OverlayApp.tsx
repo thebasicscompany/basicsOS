@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-  useReducer,
-} from "react";
+import { useEffect, useCallback, useRef, useState, useReducer } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { OverlaySettings, NotchInfo } from "@/shared-overlay/types";
 import { FLASH_SHORT_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
@@ -19,7 +13,7 @@ import {
   initialPillContext,
   type InteractionMode,
 } from "./lib/notch-pill-state";
-import { useMeetingRecorder } from "./meeting-recorder-stub";
+import { useMeetingRecorder } from "./meeting-recorder";
 import { useFlashMessage } from "./lib/use-flash-message";
 import { useAIResponse } from "./lib/use-ai-response";
 import { useActivationHandler } from "./lib/use-activation-handler";
@@ -130,7 +124,13 @@ export const OverlayApp = () => {
     showFlash: flash.show,
   });
 
-  useAIResponse(pill.state, pill.transcript, pill.conversationHistory, dispatch, streamAbortRef);
+  useAIResponse(
+    pill.state,
+    pill.transcript,
+    pill.conversationHistory,
+    dispatch,
+    streamAbortRef,
+  );
 
   const handleSilence = useCallback(() => {
     const p = pillRef.current;
@@ -328,10 +328,7 @@ export const OverlayApp = () => {
       clearDismissTimer();
     }
     // Show last response on hover when idle
-    if (
-      pillRef.current.state === "idle" &&
-      pillRef.current.lastResponseTitle
-    ) {
+    if (pillRef.current.state === "idle" && pillRef.current.lastResponseTitle) {
       setShowLastResponse(true);
     }
   }, [clearDismissTimer]);
@@ -416,13 +413,11 @@ export const OverlayApp = () => {
         style={{
           width: "100%",
           background: "#000",
-          borderRadius:
-            pill.state === "idle"
-              ? "0 0 8px 8px"
-              : "0 0 16px 16px",
+          borderRadius: pill.state === "idle" ? "0 0 8px 8px" : "0 0 16px 16px",
           overflow: "hidden",
           position: "relative",
-          cursor: pill.state === "idle" && !showLastResponse ? "pointer" : "default",
+          cursor:
+            pill.state === "idle" && !showLastResponse ? "pointer" : "default",
         }}
       >
         <div
@@ -465,7 +460,10 @@ export const OverlayApp = () => {
                 </>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); void window.electronAPI?.hideOverlay?.(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void window.electronAPI?.hideOverlay?.();
+                }}
                 style={{
                   marginLeft: "auto",
                   background: "none",
@@ -482,8 +480,14 @@ export const OverlayApp = () => {
                   borderRadius: 3,
                   transition: "color 0.15s",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,1)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.6)"; }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color =
+                    "rgba(255,255,255,1)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color =
+                    "rgba(255,255,255,0.6)";
+                }}
                 aria-label="Close"
               >
                 ✕
@@ -564,7 +568,10 @@ export const OverlayApp = () => {
                 </div>
                 <Waveform level={speech.audioLevel} />
                 <button
-                  onClick={(e) => { e.stopPropagation(); dismiss(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dismiss();
+                  }}
                   style={{
                     background: "none",
                     border: "none",
@@ -580,8 +587,14 @@ export const OverlayApp = () => {
                     borderRadius: 3,
                     transition: "color 0.15s",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,1)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.6)"; }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color =
+                      "rgba(255,255,255,1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color =
+                      "rgba(255,255,255,0.6)";
+                  }}
                   aria-label="Close"
                 >
                   ✕
@@ -694,8 +707,7 @@ export const OverlayApp = () => {
                     maxHeight: maxResponseBodyHeight,
                     overflowY: "auto",
                     scrollbarWidth: "thin",
-                    scrollbarColor:
-                      "rgba(255,255,255,0.15) transparent",
+                    scrollbarColor: "rgba(255,255,255,0.15) transparent",
                   }}
                 >
                   <ResponseBody response={currentResponse} />
@@ -756,8 +768,7 @@ export const OverlayApp = () => {
                       maxHeight: maxResponseBodyHeight,
                       overflowY: "auto",
                       scrollbarWidth: "thin",
-                      scrollbarColor:
-                        "rgba(255,255,255,0.15) transparent",
+                      scrollbarColor: "rgba(255,255,255,0.15) transparent",
                     }}
                   >
                     <ResponseBody

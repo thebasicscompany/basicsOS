@@ -9,6 +9,7 @@ import {
   RecentsSection,
   RecentRecordsSection,
   RecentChatsSection,
+  SuggestedContactsSection,
 } from "@/components/home/home-sections";
 import {
   PromptInput,
@@ -58,6 +59,7 @@ function getGreeting(name: string) {
 /* ------------------------------------------------------------------ */
 
 const HOME_SECTIONS = [
+  { id: "suggested-contacts", component: SuggestedContactsSection },
   { id: "recent-records", component: RecentRecordsSection },
   { id: "recents", component: RecentsSection },
   { id: "recent-chats", component: RecentChatsSection },
@@ -82,9 +84,7 @@ export function HomePage() {
       const text = message.text.trim();
       if (!text) return;
       if (!hasKey) {
-        toast.error(
-          "Add your Basics API key in Settings to use the assistant",
-        );
+        toast.error("Add your Basics API key in Settings to use the assistant");
         return;
       }
 
@@ -114,12 +114,12 @@ export function HomePage() {
         <h1 className="text-2xl font-semibold tracking-tight">{greeting}</h1>
 
         {/* Chat section */}
-        <div className="mt-5 space-y-2.5">
-          {/* Recent chat pill */}
+        <div className="mt-5">
+          {/* Recent chat strip */}
           {recentThread && (
             <Link
               to={`/chat/${recentThread.id}`}
-              className="inline-flex items-center gap-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              className="flex items-center gap-2 rounded-t-xl bg-muted/60 dark:bg-muted px-4 pt-2.5 pb-5 text-[13px] text-muted-foreground transition-colors hover:bg-muted/80 dark:hover:bg-muted/80"
             >
               <ChatCircleIcon className="size-3.5" />
               <span>Recent chat</span>
@@ -127,13 +127,25 @@ export function HomePage() {
               <span className="font-medium text-foreground truncate max-w-[300px]">
                 {recentThread.title ?? "Untitled"}
               </span>
+              <svg
+                className="ml-auto size-3.5 opacity-50"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </Link>
           )}
 
-          {/* Chat input */}
+          {/* Chat input card */}
           <PromptInput
             onSubmit={handleSubmit}
-            className="rounded-xl"
+            className={`rounded-xl shadow-sm ${recentThread ? "-mt-3 relative z-10" : ""}`}
           >
             <PromptInputBody>
               <PromptInputTextarea placeholder="Ask anything..." />

@@ -81,7 +81,8 @@ export function ImportCreateFieldPrompt({
         <DialogHeader>
           <DialogTitle>Create new field</DialogTitle>
           <DialogDescription>
-            Add a custom field for &quot;{csvHeader}&quot; and map it to this column.
+            Add a custom field for &quot;{csvHeader}&quot; and map it to this
+            column.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
@@ -114,10 +115,7 @@ export function ImportCreateFieldPrompt({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={createColumn.isPending}
-          >
+          <Button onClick={handleSubmit} disabled={createColumn.isPending}>
             {createColumn.isPending ? "Creating..." : "Create & map"}
           </Button>
         </DialogFooter>

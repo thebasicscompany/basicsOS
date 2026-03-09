@@ -144,7 +144,12 @@ export function DealsKanbanBoard() {
     if (!alreadyExists) {
       const updatedOptions: StageOption[] = [
         ...stageOptions,
-        { id: slug, label: newStageName.trim(), color: "gray", order: stageOptions.length },
+        {
+          id: slug,
+          label: newStageName.trim(),
+          color: "gray",
+          order: stageOptions.length,
+        },
       ];
       upsertOverride.mutate(
         {
@@ -152,7 +157,8 @@ export function DealsKanbanBoard() {
           config: { ...stageAttr?.config, options: updatedOptions },
         },
         {
-          onSuccess: () => toast.success(`Stage "${newStageName.trim()}" added`),
+          onSuccess: () =>
+            toast.success(`Stage "${newStageName.trim()}" added`),
           onError: () => toast.error("Failed to save stage"),
         },
       );
@@ -161,7 +167,14 @@ export function DealsKanbanBoard() {
     setPendingDealId(null);
     setNewStageName("");
     setAddStageOpen(false);
-  }, [newStageName, pendingDealId, updateRecord, stageOptions, stageAttr, upsertOverride]);
+  }, [
+    newStageName,
+    pendingDealId,
+    updateRecord,
+    stageOptions,
+    stageAttr,
+    upsertOverride,
+  ]);
 
   const handleCardClick = useCallback(
     (dealId: number) => {
@@ -318,7 +331,9 @@ export function DealsKanbanBoard() {
                       <Button
                         type="submit"
                         size="xs"
-                        disabled={!newStageName.trim() || upsertOverride.isPending}
+                        disabled={
+                          !newStageName.trim() || upsertOverride.isPending
+                        }
                       >
                         {upsertOverride.isPending ? "Saving..." : "Add stage"}
                       </Button>

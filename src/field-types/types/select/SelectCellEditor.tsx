@@ -91,7 +91,11 @@ export function SelectCellEditor({
             >
               Cancel
             </button>
-            <Button size="sm" className="h-7 text-xs" onClick={handleFreeTextSave}>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={handleFreeTextSave}
+            >
               Save
             </Button>
           </div>

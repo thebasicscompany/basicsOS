@@ -4,7 +4,10 @@ import type { ParsedCSV } from "@/components/import/import-utils";
 /** Map: target column name -> CSV header index */
 export type ColumnMapping = Record<string, number>;
 
-export type ConflictBehavior = "create_only" | "update_existing" | "skip_duplicates";
+export type ConflictBehavior =
+  | "create_only"
+  | "update_existing"
+  | "skip_duplicates";
 
 export interface ImportState {
   step: "file" | "map" | "merge" | "preview" | "execute";
@@ -47,8 +50,7 @@ export function useImport() {
         ...s,
         objectSlug,
         mergeKey,
-        conflictBehavior:
-          mergeKey === "" ? "create_only" : s.conflictBehavior,
+        conflictBehavior: mergeKey === "" ? "create_only" : s.conflictBehavior,
       };
     });
   }, []);

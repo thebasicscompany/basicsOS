@@ -24,6 +24,13 @@ import { useRecords } from "@/hooks/use-records";
 import { getObjectIcon } from "@/lib/object-icon-map";
 import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
+import {
+  useEmailSyncStatus,
+  useSuggestedContacts,
+  useAcceptSuggestion,
+  useDismissSuggestion,
+} from "@/hooks/use-email-sync";
+import { SuggestedContactCard } from "@/components/email-sync/SuggestedContactCard";
 
 /* ------------------------------------------------------------------ */
 /*  Shared UI                                                         */
@@ -41,9 +48,7 @@ function SectionHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <p className="text-[13px] font-medium text-muted-foreground">
-          {title}
-        </p>
+        <p className="text-[13px] font-medium text-muted-foreground">{title}</p>
         {count != null && count > 0 && (
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {count}
@@ -103,7 +108,8 @@ const ACTIVITY_META: Record<
   },
   automation_success: {
     icon: LightningIcon,
-    accent: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+    accent:
+      "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
     statusColor: "bg-emerald-500 dark:bg-emerald-400",
   },
   automation_error: {
@@ -113,20 +119,24 @@ const ACTIVITY_META: Record<
   },
   automation_running: {
     icon: SpinnerGapIcon,
-    accent: "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+    accent:
+      "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
     statusColor: "bg-amber-500 dark:bg-amber-400",
   },
   record_created: {
     icon: UserPlusIcon,
-    accent: "bg-blue-500/15 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+    accent:
+      "bg-blue-500/15 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
   },
   record_updated: {
     icon: PencilSimpleIcon,
-    accent: "bg-violet-500/15 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
+    accent:
+      "bg-violet-500/15 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
   },
   note_added: {
     icon: NoteIcon,
-    accent: "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
+    accent:
+      "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
   },
 };
 
@@ -270,7 +280,7 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
         title: run.ruleName ?? `Automation #${run.ruleId}`,
         detail:
           run.status === "error"
-            ? run.error?.slice(0, 60) ?? "Failed"
+            ? (run.error?.slice(0, 60) ?? "Failed")
             : run.status === "running"
               ? "In progress..."
               : "Completed",
@@ -288,8 +298,15 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       const lastName = (rec.lastName ?? rec.last_name ?? "") as string;
       const name =
         [firstName, lastName].filter(Boolean).join(" ").trim() ||
-        ((rec.FullName ?? rec.full_name ?? rec.Name ?? rec.name ?? "") as string);
-      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+        ((rec.FullName ??
+          rec.full_name ??
+          rec.Name ??
+          rec.name ??
+          "") as string);
+      const createdAt = (rec.createdAt ??
+        rec.created_at ??
+        rec.CreatedAt ??
+        "") as string;
       if (!name) continue;
       feed.push({
         id: `contact-${id}`,
@@ -306,8 +323,15 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       const rec = r as Record<string, unknown>;
       const id = (rec.id ?? rec.Id) as number;
       if (id == null) continue;
-      const name = (rec.Name ?? rec.name ?? rec.Title ?? rec.title ?? "") as string;
-      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+      const name = (rec.Name ??
+        rec.name ??
+        rec.Title ??
+        rec.title ??
+        "") as string;
+      const createdAt = (rec.createdAt ??
+        rec.created_at ??
+        rec.CreatedAt ??
+        "") as string;
       if (!name) continue;
       feed.push({
         id: `deal-${id}`,
@@ -324,8 +348,15 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       const rec = r as Record<string, unknown>;
       const id = (rec.id ?? rec.Id) as number;
       if (id == null) continue;
-      const name = (rec.name ?? rec.Name ?? rec.title ?? rec.Title ?? "") as string;
-      const createdAt = (rec.createdAt ?? rec.created_at ?? rec.CreatedAt ?? "") as string;
+      const name = (rec.name ??
+        rec.Name ??
+        rec.title ??
+        rec.Title ??
+        "") as string;
+      const createdAt = (rec.createdAt ??
+        rec.created_at ??
+        rec.CreatedAt ??
+        "") as string;
       if (!name) continue;
       feed.push({
         id: `company-${id}`,
@@ -344,8 +375,13 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       const contactId = (rec.contactId ?? rec.contact_id) as number;
       const title = (rec.title ?? rec.Title ?? "") as string;
       const text = (rec.text ?? rec.Text ?? "") as string;
-      const date = (rec.date ?? rec.Date ?? rec.createdAt ?? rec.created_at ?? "") as string;
-      const name = title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
+      const date = (rec.date ??
+        rec.Date ??
+        rec.createdAt ??
+        rec.created_at ??
+        "") as string;
+      const name =
+        title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
       if (id == null) continue;
       feed.push({
         id: `contact-note-${id}`,
@@ -364,8 +400,13 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
       const dealId = (rec.dealId ?? rec.deal_id) as number;
       const title = (rec.title ?? rec.Title ?? "") as string;
       const text = (rec.text ?? rec.Text ?? "") as string;
-      const date = (rec.date ?? rec.Date ?? rec.createdAt ?? rec.created_at ?? "") as string;
-      const name = title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
+      const date = (rec.date ??
+        rec.Date ??
+        rec.createdAt ??
+        rec.created_at ??
+        "") as string;
+      const name =
+        title || (typeof text === "string" ? text.slice(0, 50) : "") || "Note";
       if (id == null) continue;
       feed.push({
         id: `deal-note-${id}`,
@@ -385,11 +426,13 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
 
     // Deduplicate by id
     const seen = new Set<string>();
-    return feed.filter((item) => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    }).slice(0, 6);
+    return feed
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .slice(0, 6);
   }, [
     threads,
     automationRuns,
@@ -402,7 +445,7 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
 
   return {
     items,
-    isLoading: USE_MOCK_ACTIVITY ? false : (loadingRuns || loadingThreads),
+    isLoading: USE_MOCK_ACTIVITY ? false : loadingRuns || loadingThreads,
   };
 }
 
@@ -505,8 +548,10 @@ function getPageIcon(iconSlug: string): ComponentType<{ className?: string }> {
 
 const PAGE_ACCENT: Record<string, string> = {
   chat: "bg-primary/15 text-primary dark:bg-primary/10",
-  automations: "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-  tasks: "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
+  automations:
+    "bg-amber-500/15 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+  tasks:
+    "bg-orange-500/15 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
   notes: "bg-teal-500/15 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400",
   voice: "bg-pink-500/15 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400",
   mcp: "bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
@@ -603,6 +648,53 @@ function ThreadRow({ thread }: { thread: Thread }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Section: Suggested contacts from email sync                       */
+/* ------------------------------------------------------------------ */
+
+export function SuggestedContactsSection() {
+  const { data: syncStatus } = useEmailSyncStatus();
+  const pending = syncStatus?.pendingSuggestions ?? 0;
+  const { data } = useSuggestedContacts({
+    status: "pending",
+    page: 1,
+    perPage: 4,
+  });
+  const suggestions = data?.data ?? [];
+  const acceptMutation = useAcceptSuggestion();
+  const dismissMutation = useDismissSuggestion();
+
+  if (pending === 0 || suggestions.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <SectionHeader
+        title="Contacts from your email"
+        count={pending}
+        action={<SectionLink to="/objects/contacts" label="View all" />}
+      />
+      <div className="-mx-3.5 space-y-0.5">
+        {suggestions.slice(0, 4).map((suggestion) => (
+          <SuggestedContactCard
+            key={suggestion.id}
+            suggestion={suggestion}
+            onAccept={(id) => acceptMutation.mutate(id)}
+            onDismiss={(id) => dismissMutation.mutate(id)}
+            isAccepting={
+              acceptMutation.isPending &&
+              acceptMutation.variables === suggestion.id
+            }
+            isDismissing={
+              dismissMutation.isPending &&
+              dismissMutation.variables === suggestion.id
+            }
+            compact
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */

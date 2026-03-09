@@ -63,18 +63,16 @@ interface CustomFieldDef {
   name: string;
   label: string;
   fieldType: string;
-  options:
-    | Array<
-        | string
-        | {
-            id: string;
-            label: string;
-            color?: string;
-            order?: number;
-            isTerminal?: boolean;
-          }
-      >
-    | null;
+  options: Array<
+    | string
+    | {
+        id: string;
+        label: string;
+        color?: string;
+        order?: number;
+        isTerminal?: boolean;
+      }
+  > | null;
 }
 
 /**

@@ -62,127 +62,130 @@ export function DataTableBody<T extends Record<string, unknown>>({
 
   return (
     <TableBody>
-      {isLoading ? (
-        Array.from({ length: Math.min(perPage, 10) }).map((_, i) => (
-          <TableRow key={`skeleton-${i}`}>
-            {columns.map((_, j) => (
-              <TableCell key={j}>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-            ))}
-          </TableRow>
-        ))
-      ) : (
-        rows.map((row) => {
-          const recordId =
-            (row.original as { Id?: number; id?: number }).Id ??
-            (row.original as { id?: number }).id ??
-            0;
-          const rowContent = (
-            <TableRow
-              key={row.id}
-              className={onRowExpand ? "cursor-default" : undefined}
-            >
-              {row.getVisibleCells().map((cell) => {
-              const colDef = cell.column.columnDef;
-              const colId = cell.column.id;
-              const rowIndex = row.index;
-
-              const isPrimaryAttr =
-                visibleCols.length > 0 && colId === visibleCols[0].attribute.id;
-
-              const stickyStyle: React.CSSProperties = {};
-              if (isPrimaryAttr) {
-                stickyStyle.position = "sticky";
-                stickyStyle.left = 0;
-                stickyStyle.zIndex = 2;
-              }
-
-              const isSel =
-                selectedCell?.rowIndex === rowIndex &&
-                selectedCell?.colId === colId;
-
-              const matchedCol = visibleCols.find(
-                (c) => c.attribute.id === colId,
-              );
-
-              const fitContent = (colDef.meta as { fitContent?: boolean })
-                ?.fitContent;
-              const sizeStyle = fitContent
-                ? {
-                    width: "max-content" as const,
-                    minWidth: "max-content" as const,
-                    whiteSpace: "nowrap" as const,
-                  }
-                : {
-                    width: cell.column.getSize(),
-                    minWidth: colDef.minSize,
-                    maxWidth: colDef.maxSize,
-                  };
-
-              return (
-                <TableCell
-                  key={cell.id}
-                  style={{ ...sizeStyle, ...stickyStyle }}
-                  className={cn(
-                    isPrimaryAttr && "bg-background",
-                    isSel && "ring-2 ring-inset ring-primary/50 bg-primary/5",
-                  )}
-                  onClick={() => {
-                    if (matchedCol) {
-                      onCellClick(rowIndex, colId, matchedCol.attribute);
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    if (matchedCol) {
-                      onCellDoubleClick(
-                        rowIndex,
-                        colId,
-                        matchedCol.attribute,
-                        recordId,
-                      );
-                    }
-                  }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      {isLoading
+        ? Array.from({ length: Math.min(perPage, 10) }).map((_, i) => (
+            <TableRow key={`skeleton-${i}`}>
+              {columns.map((_, j) => (
+                <TableCell key={j}>
+                  <Skeleton className="h-4 w-full" />
                 </TableCell>
-              );
-            })}
+              ))}
             </TableRow>
-          );
+          ))
+        : rows.map((row) => {
+            const recordId =
+              (row.original as { Id?: number; id?: number }).Id ??
+              (row.original as { id?: number }).id ??
+              0;
+            const rowContent = (
+              <TableRow
+                key={row.id}
+                className={onRowExpand ? "cursor-default" : undefined}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const colDef = cell.column.columnDef;
+                  const colId = cell.column.id;
+                  const rowIndex = row.index;
 
-          const hasActions = onRowExpand || onRowDelete;
-          if (!hasActions) {
-            return rowContent;
-          }
+                  const isPrimaryAttr =
+                    visibleCols.length > 0 &&
+                    colId === visibleCols[0].attribute.id;
 
-          return (
-            <ContextMenu key={row.id}>
-              <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
-              <ContextMenuContent>
-                {onRowExpand && (
-                  <ContextMenuItem onClick={() => onRowExpand(recordId)}>
-                    <ArrowSquareOutIcon className="mr-2 h-4 w-4" />
-                    Open
-                  </ContextMenuItem>
-                )}
-                {onRowDelete && (
-                  <>
-                    {onRowExpand && <ContextMenuSeparator />}
-                    <ContextMenuItem
-                      variant="destructive"
-                      onClick={() => onRowDelete(recordId, row.original)}
+                  const stickyStyle: React.CSSProperties = {};
+                  if (isPrimaryAttr) {
+                    stickyStyle.position = "sticky";
+                    stickyStyle.left = 0;
+                    stickyStyle.zIndex = 2;
+                  }
+
+                  const isSel =
+                    selectedCell?.rowIndex === rowIndex &&
+                    selectedCell?.colId === colId;
+
+                  const matchedCol = visibleCols.find(
+                    (c) => c.attribute.id === colId,
+                  );
+
+                  const fitContent = (colDef.meta as { fitContent?: boolean })
+                    ?.fitContent;
+                  const sizeStyle = fitContent
+                    ? {
+                        width: "max-content" as const,
+                        minWidth: "max-content" as const,
+                        whiteSpace: "nowrap" as const,
+                      }
+                    : {
+                        width: cell.column.getSize(),
+                        minWidth: colDef.minSize,
+                        maxWidth: colDef.maxSize,
+                      };
+
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      style={{ ...sizeStyle, ...stickyStyle }}
+                      className={cn(
+                        isPrimaryAttr && "bg-background",
+                        isSel &&
+                          "ring-2 ring-inset ring-primary/50 bg-primary/5",
+                      )}
+                      onClick={() => {
+                        if (matchedCol) {
+                          onCellClick(rowIndex, colId, matchedCol.attribute);
+                        }
+                      }}
+                      onDoubleClick={() => {
+                        if (matchedCol) {
+                          onCellDoubleClick(
+                            rowIndex,
+                            colId,
+                            matchedCol.attribute,
+                            recordId,
+                          );
+                        }
+                      }}
                     >
-                      <TrashIcon className="mr-2 h-4 w-4" />
-                      Delete
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            );
+
+            const hasActions = onRowExpand || onRowDelete;
+            if (!hasActions) {
+              return rowContent;
+            }
+
+            return (
+              <ContextMenu key={row.id}>
+                <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
+                <ContextMenuContent>
+                  {onRowExpand && (
+                    <ContextMenuItem onClick={() => onRowExpand(recordId)}>
+                      <ArrowSquareOutIcon className="mr-2 h-4 w-4" />
+                      Open
                     </ContextMenuItem>
-                  </>
-                )}
-              </ContextMenuContent>
-            </ContextMenu>
-          );
-        })
-      )}
+                  )}
+                  {onRowDelete && (
+                    <>
+                      {onRowExpand && <ContextMenuSeparator />}
+                      <ContextMenuItem
+                        variant="destructive"
+                        onClick={() => onRowDelete(recordId, row.original)}
+                      >
+                        <TrashIcon className="mr-2 h-4 w-4" />
+                        Delete
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
     </TableBody>
   );
 }

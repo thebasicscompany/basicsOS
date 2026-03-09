@@ -4,7 +4,10 @@ import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
 import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
-import { resolveOrgAiConfig, buildGatewayHeaders } from "@/lib/org-ai-config.js";
+import {
+  resolveOrgAiConfig,
+  buildGatewayHeaders,
+} from "@/lib/org-ai-config.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { linkifyRecordNames } from "@/lib/linkify-records.js";
 import {
@@ -62,7 +65,10 @@ const VALID_GATEWAY_TOOL_NAMES: ReadonlySet<string> = new Set(
 const WIKI_TOKEN_RE = /\[\[([a-z][a-z0-9-]*)\/(\d+)\|([^\]]+)\]\]/g;
 
 function stripTokens(text: string): string {
-  return text.replace(WIKI_TOKEN_RE, (_m, _slug: string, id: string, name: string) => `${name} (id: ${id})`);
+  return text.replace(
+    WIKI_TOKEN_RE,
+    (_m, _slug: string, id: string, name: string) => `${name} (id: ${id})`,
+  );
 }
 
 function stableStringify(value: unknown): string {
@@ -70,15 +76,18 @@ function stableStringify(value: unknown): string {
     return `[${value.map((item) => stableStringify(item)).join(",")}]`;
   }
   if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-      a.localeCompare(b),
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+      ([a], [b]) => a.localeCompare(b),
     );
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(",")}}`;
   }
   return JSON.stringify(value);
 }
 
-function toolCallSignature(name: string, args: Record<string, unknown>): string {
+function toolCallSignature(
+  name: string,
+  args: Record<string, unknown>,
+): string {
   return `${name}:${stableStringify(args)}`;
 }
 
@@ -88,7 +97,9 @@ function truncateText(text: string, maxChars = MAX_MESSAGE_CHARS): string {
   return `${text.slice(0, maxChars - 3).trimEnd()}...`;
 }
 
-function sanitizeConversationMessages(messages: ConversationMessage[]): ConversationMessage[] {
+function sanitizeConversationMessages(
+  messages: ConversationMessage[],
+): ConversationMessage[] {
   const recent = messages
     .filter((message) => message.content.trim())
     .map((message) => ({
@@ -101,7 +112,10 @@ function sanitizeConversationMessages(messages: ConversationMessage[]): Conversa
   let totalChars = 0;
   for (let index = recent.length - 1; index >= 0; index--) {
     const message = recent[index]!;
-    if (totalChars + message.content.length > MAX_HISTORY_CHARS && kept.length > 0) {
+    if (
+      totalChars + message.content.length > MAX_HISTORY_CHARS &&
+      kept.length > 0
+    ) {
       break;
     }
     kept.push(message);
@@ -161,7 +175,9 @@ function buildInvalidToolRetryMessage(invalidToolNames: string[]): string {
   ].join(" ");
 }
 
-function sanitizeAssistantGatewayMessage(aiMessage: Record<string, unknown> | undefined): Record<string, unknown> {
+function sanitizeAssistantGatewayMessage(
+  aiMessage: Record<string, unknown> | undefined,
+): Record<string, unknown> {
   const message: Record<string, unknown> = { role: "assistant" };
   const content = aiMessage?.content;
   if (typeof content === "string") {
@@ -181,14 +197,21 @@ function sanitizeAssistantGatewayMessage(aiMessage: Record<string, unknown> | un
     aiMessage?.extra_content &&
     typeof aiMessage.extra_content === "object" &&
     (aiMessage.extra_content as Record<string, unknown>).google &&
-    typeof (aiMessage.extra_content as Record<string, unknown>).google === "object"
-      ? ((aiMessage.extra_content as Record<string, unknown>).google as Record<string, unknown>)
+    typeof (aiMessage.extra_content as Record<string, unknown>).google ===
+      "object"
+      ? ((aiMessage.extra_content as Record<string, unknown>).google as Record<
+          string,
+          unknown
+        >)
       : null;
   const thoughtSignature = googleExtra?.thought_signature;
   if (typeof thoughtSignature === "string" && thoughtSignature.trim()) {
     message.extra_content = {
       google: {
-        thought_signature: truncateText(thoughtSignature, MAX_TOOL_ARGUMENTS_CHARS),
+        thought_signature: truncateText(
+          thoughtSignature,
+          MAX_TOOL_ARGUMENTS_CHARS,
+        ),
       },
     };
   }
@@ -216,19 +239,20 @@ function inferWorkflowHints(queryText: string): WorkflowHints {
   const isUpdate = /\b(update|rename|change|edit|set)\b/.test(lower);
   const isTask = /\b(task|reminder|follow-up|follow up|todo)\b/.test(lower);
   const isNote = /\bnote\b/.test(lower);
-  const isCreateContact = /\b(create|add|make)\b/.test(lower) && /\b(contact|person|lead)\b/.test(lower);
+  const isCreateContact =
+    /\b(create|add|make)\b/.test(lower) &&
+    /\b(contact|person|lead)\b/.test(lower);
   const isCreateDeal =
     /\b(create|add|make)\b/.test(lower) &&
     /\b(deal|opportunity|deals|opportunities)\b/.test(lower);
 
-  const entity =
-    /\bcompany|companies|organization\b/.test(lower)
-      ? { label: "company", searchTool: "search_companies" }
-      : /\bcontact|contacts|person|people|lead|leads\b/.test(lower)
-        ? { label: "contact", searchTool: "search_contacts" }
-        : /\bdeal|deals|opportunity|opportunities\b/.test(lower)
-          ? { label: "deal", searchTool: "search_deals" }
-          : null;
+  const entity = /\bcompany|companies|organization\b/.test(lower)
+    ? { label: "company", searchTool: "search_companies" }
+    : /\bcontact|contacts|person|people|lead|leads\b/.test(lower)
+      ? { label: "contact", searchTool: "search_contacts" }
+      : /\bdeal|deals|opportunity|opportunities\b/.test(lower)
+        ? { label: "deal", searchTool: "search_deals" }
+        : null;
 
   if (isUpdate && entity) {
     const updateTool = `update_${entity.label}`;
@@ -244,38 +268,36 @@ function inferWorkflowHints(queryText: string): WorkflowHints {
     planLines.push(
       "For task requests about a person/contact, the usual sequence is: identify the contact first if needed, then call `create_task`, then confirm the task was created.",
     );
-    nextHintByTool.search_contacts =
-      `Next required step for this request: call \`create_task\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_contacts = `Next required step for this request: call \`create_task\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
   }
 
   if (isNote && /\bdeal|deals|opportunity|opportunities\b/.test(lower)) {
     planLines.push(
       "For note requests about a deal, the usual sequence is: identify the deal first if needed, then call `add_note`, then confirm the note was added.",
     );
-    nextHintByTool.search_deals =
-      `Next required step for this request: call \`add_note\` now using the matching deal id or exact deal name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
-  } else if (isNote && /\bcontact|contacts|person|people|lead|leads\b/.test(lower)) {
+    nextHintByTool.search_deals = `Next required step for this request: call \`add_note\` now using the matching deal id or exact deal name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+  } else if (
+    isNote &&
+    /\bcontact|contacts|person|people|lead|leads\b/.test(lower)
+  ) {
     planLines.push(
       "For note requests about a contact, the usual sequence is: identify the contact first if needed, then call `add_note`, then confirm the note was added.",
     );
-    nextHintByTool.search_contacts =
-      `Next required step for this request: call \`add_note\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_contacts = `Next required step for this request: call \`add_note\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
   }
 
   if (isCreateContact && /\bcompany|companies|organization\b/.test(lower)) {
     planLines.push(
       "When creating a contact linked to a company, identify the company first if needed, then call `create_contact` with the company id/name, then confirm the contact was created.",
     );
-    nextHintByTool.search_companies =
-      `Next required step for this request: call \`create_contact\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_companies = `Next required step for this request: call \`create_contact\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
   }
 
   if (isCreateDeal && /\bcompany|companies|organization\b/.test(lower)) {
     planLines.push(
       "When creating a deal linked to a company, identify the company first if needed, then call `create_deal` with the company id/name, then confirm the deal was created.",
     );
-    nextHintByTool.search_companies =
-      `Next required step for this request: call \`create_deal\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_companies = `Next required step for this request: call \`create_deal\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
   }
 
   return { planText: planLines.join("\n"), nextHintByTool };
@@ -358,10 +380,10 @@ async function synthesizeFinalAnswer(args: {
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string | null } }>;
   };
-  return finalizeAssistantText(
-    json.choices?.[0]?.message?.content ?? "",
-    [],
-  ) || "I couldn't produce a final answer from the available results.";
+  return (
+    finalizeAssistantText(json.choices?.[0]?.message?.content ?? "", []) ||
+    "I couldn't produce a final answer from the available results."
+  );
 }
 
 export function createGatewayChatRoutes(
@@ -389,11 +411,15 @@ export function createGatewayChatRoutes(
       body = {};
     }
     const channel =
-      (typeof body === "object" && body !== null && "channel" in body &&
-        body.channel === "voice")
+      typeof body === "object" &&
+      body !== null &&
+      "channel" in body &&
+      body.channel === "voice"
         ? "voice"
-        : (typeof body === "object" && body !== null && "channel" in body &&
-              body.channel === "automation")
+        : typeof body === "object" &&
+            body !== null &&
+            "channel" in body &&
+            body.channel === "automation"
           ? "automation"
           : "chat";
 
@@ -464,25 +490,29 @@ export function createGatewayChatRoutes(
       ).catch(() => {});
     }
 
-    const priorConversationMessages = sanitizeConversationMessages(storedHistory
-      ? storedHistory
-        .filter((message) => (message.content ?? "").trim())
-        .map((message) => ({
-          role: message.role as "user" | "assistant",
-          content: message.content ?? "",
-        }))
-      : openAIMessages
-        .slice(0, -1)
-        .filter(
-          (message): message is { role: "user" | "assistant"; content: string } =>
-            (message.role === "user" || message.role === "assistant")
-            && typeof message.content === "string"
-            && message.content.trim().length > 0,
-        )
-        .map((message) => ({
-          role: message.role,
-          content: message.content,
-        })));
+    const priorConversationMessages = sanitizeConversationMessages(
+      storedHistory
+        ? storedHistory
+            .filter((message) => (message.content ?? "").trim())
+            .map((message) => ({
+              role: message.role as "user" | "assistant",
+              content: message.content ?? "",
+            }))
+        : openAIMessages
+            .slice(0, -1)
+            .filter(
+              (
+                message,
+              ): message is { role: "user" | "assistant"; content: string } =>
+                (message.role === "user" || message.role === "assistant") &&
+                typeof message.content === "string" &&
+                message.content.trim().length > 0,
+            )
+            .map((message) => ({
+              role: message.role,
+              content: message.content,
+            })),
+    );
 
     const [crmSummary, ragContext] = await Promise.all([
       buildCrmSummary(db, crmUser.organizationId),
@@ -521,7 +551,11 @@ export function createGatewayChatRoutes(
     const latestToolOutputs: Array<{ name: string; result: unknown }> = [];
     const calledOnceTool = new Set<string>();
     const executedToolSignatures = new Set<string>();
-    const ONCE_ONLY_TOOLS = new Set(["create_contact", "create_company", "create_deal"]);
+    const ONCE_ONLY_TOOLS = new Set([
+      "create_contact",
+      "create_company",
+      "create_deal",
+    ]);
 
     if (!finalContent && shouldPlanToolWorkflow(queryText)) {
       const plannedWorkflow = await planToolWorkflow({
@@ -530,10 +564,15 @@ export function createGatewayChatRoutes(
         model: "basics-chat-smart",
         queryText,
       });
-      if (plannedWorkflow?.mode === "multi_tool" && plannedWorkflow.steps.length > 0) {
-        let lastLookupContext:
-          | { tool: string; result: string; failed: boolean }
-          | null = null;
+      if (
+        plannedWorkflow?.mode === "multi_tool" &&
+        plannedWorkflow.steps.length > 0
+      ) {
+        let lastLookupContext: {
+          tool: string;
+          result: string;
+          failed: boolean;
+        } | null = null;
 
         for (const step of plannedWorkflow.steps) {
           let toolName = step.tool;
@@ -591,7 +630,8 @@ export function createGatewayChatRoutes(
           });
 
           if (isLookupTool(toolName)) {
-            const lookupRaw = typeof result === "string" ? result : JSON.stringify(result);
+            const lookupRaw =
+              typeof result === "string" ? result : JSON.stringify(result);
             lastLookupContext = {
               tool: toolName,
               result: lookupRaw,
@@ -673,7 +713,9 @@ export function createGatewayChatRoutes(
             toolOutputs: latestToolOutputs,
           });
         } else {
-          finalContent = finalizeAssistantText(String(aiMessage?.content ?? ""));
+          finalContent = finalizeAssistantText(
+            String(aiMessage?.content ?? ""),
+          );
         }
         break;
       }
@@ -751,13 +793,13 @@ export function createGatewayChatRoutes(
           toolResult: result,
         });
 
-        const raw = typeof result === "string" ? result : JSON.stringify(result);
+        const raw =
+          typeof result === "string" ? result : JSON.stringify(result);
         chatMessages.push({
           role: "tool",
           tool_call_id: tc.id,
           content: buildToolChatContent(tc.function.name, raw, nextStepHint),
         });
-
       }
     }
 
@@ -765,11 +807,11 @@ export function createGatewayChatRoutes(
       finalContent =
         latestToolOutputs.length > 0
           ? await synthesizeFinalAnswer({
-            gatewayUrl: env.BASICSOS_API_URL,
-            gatewayHeaders,
-            queryText,
-            toolOutputs: latestToolOutputs,
-          })
+              gatewayUrl: env.BASICSOS_API_URL,
+              gatewayHeaders,
+              queryText,
+              toolOutputs: latestToolOutputs,
+            })
           : "I could not complete that request. Please try again.";
     if (latestToolOutputs.length > 0) {
       finalContent = await synthesizeFinalAnswer({
@@ -781,7 +823,11 @@ export function createGatewayChatRoutes(
     } else {
       finalContent = finalizeAssistantText(finalContent);
     }
-    finalContent = await linkifyRecordNames(db, crmUser.organizationId, finalContent);
+    finalContent = await linkifyRecordNames(
+      db,
+      crmUser.organizationId,
+      finalContent,
+    );
     await persistMessage(db, threadId, "assistant", finalContent);
     await touchThread(db, threadId);
 

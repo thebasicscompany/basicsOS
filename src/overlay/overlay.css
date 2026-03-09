@@ -1,4 +1,6 @@
-html, body, #root {
+html,
+body,
+#root {
   background: transparent !important;
   margin: 0;
   padding: 0;
@@ -6,12 +8,16 @@ html, body, #root {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+  * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
 }
-

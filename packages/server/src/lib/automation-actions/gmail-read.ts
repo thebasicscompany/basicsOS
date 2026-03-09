@@ -3,6 +3,7 @@ export async function executeGmailRead(
   _context: Record<string, unknown>,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
+  userId: string,
 ): Promise<Record<string, unknown>> {
   const { query = "is:unread", maxResults = 5 } = config as {
     query?: string;
@@ -16,8 +17,9 @@ export async function executeGmailRead(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-User-Id": userId,
       },
-      body: JSON.stringify({ query, maxResults }),
+      body: JSON.stringify({ query, maxResults, userId }),
     },
   );
 

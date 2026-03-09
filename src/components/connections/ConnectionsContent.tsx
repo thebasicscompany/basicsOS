@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { SlackLogoIcon, GoogleLogoIcon } from "@phosphor-icons/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -67,8 +68,58 @@ export function ConnectionsContent({
     onError: (err) => showError(err, "Failed to disconnect"),
   });
 
-  const handleConnect = (provider: string) => {
-    window.location.href = `${API_URL}/api/connections/${provider}/authorize`;
+  // Poll for connection after opening OAuth in system browser
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const handleConnect = async (provider: string) => {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/connections/${provider}/authorize`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed" }));
+        toast.error(data.error ?? "Failed to start OAuth");
+        return;
+      }
+      const { url } = await res.json();
+      // Opens in system browser (Electron's setWindowOpenHandler → shell.openExternal)
+      window.open(url, "_blank");
+      toast.info("Complete sign-in in your browser, then return here.");
+
+      // Poll every 2s for up to 2 minutes to detect when OAuth completes
+      if (pollRef.current) clearInterval(pollRef.current);
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        if (attempts > 60) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          return;
+        }
+        try {
+          const checkRes = await fetch(`${API_URL}/api/connections`, {
+            credentials: "include",
+          });
+          if (!checkRes.ok) return;
+          const conns: Connection[] = await checkRes.json();
+          if (conns.some((c) => c.provider === provider)) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            queryClient.invalidateQueries({ queryKey: ["connections"] });
+            toast.success(`${provider === "google" ? "Gmail" : "Slack"} connected!`);
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }, 2000);
+    } catch (err) {
+      showError(err, "Failed to connect");
+    }
   };
 
   const getConnection = (providerId: string) =>

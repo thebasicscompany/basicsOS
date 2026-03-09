@@ -36,7 +36,9 @@ export function parseRange(value: string | undefined): [number, number] {
   }
 }
 
-export function parseFilter(value: string | undefined): Record<string, unknown> {
+export function parseFilter(
+  value: string | undefined,
+): Record<string, unknown> {
   if (!value) return {};
   try {
     const parsed = JSON.parse(value) as unknown;
@@ -49,7 +51,12 @@ export function parseFilter(value: string | undefined): Record<string, unknown> 
 
 export function parseGenericFilters(
   value: string | undefined,
-): Array<{ field: string; op: string; value: string; logicalOp?: "and" | "or" }> {
+): Array<{
+  field: string;
+  op: string;
+  value: string;
+  logicalOp?: "and" | "or";
+}> {
   if (!value) return [];
   try {
     const parsed = JSON.parse(value) as unknown;

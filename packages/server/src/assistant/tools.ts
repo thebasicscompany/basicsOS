@@ -40,7 +40,10 @@ export const ASSISTANT_TOOLS = [
         type: "object",
         properties: {
           id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Name or email to look up" },
+          contact_name: {
+            type: "string",
+            description: "Name or email to look up",
+          },
         },
         required: [],
       },
@@ -67,8 +70,14 @@ export const ASSISTANT_TOOLS = [
             type: "string",
             description: "Email address of the contact",
           },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to link to" },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to link to",
+          },
         },
         required: [],
       },
@@ -84,7 +93,10 @@ export const ASSISTANT_TOOLS = [
         type: "object",
         properties: {
           id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Name or email to look up" },
+          contact_name: {
+            type: "string",
+            description: "Name or email to look up",
+          },
           first_name: {
             type: "string",
             description: "New first name",
@@ -150,13 +162,15 @@ export const ASSISTANT_TOOLS = [
     type: "function" as const,
     function: {
       name: "update_company",
-      description:
-        "Update a company's details. Use company_name or id.",
+      description: "Update a company's details. Use company_name or id.",
       parameters: {
         type: "object",
         properties: {
           id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to look up" },
+          company_name: {
+            type: "string",
+            description: "Company name to look up",
+          },
           name: {
             type: "string",
             description: "New company name",
@@ -217,8 +231,14 @@ export const ASSISTANT_TOOLS = [
             type: "string",
             description: "Deal status (e.g. opportunity, won, lost)",
           },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to link to" },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to link to",
+          },
           amount: {
             type: "number",
             description: "Deal amount in dollars",
@@ -237,7 +257,10 @@ export const ASSISTANT_TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          deal_id: { type: "number", description: "Deal ID from a prior search" },
+          deal_id: {
+            type: "number",
+            description: "Deal ID from a prior search",
+          },
           deal_name: { type: "string", description: "Deal name to look up" },
           name: {
             type: "string",
@@ -265,8 +288,14 @@ export const ASSISTANT_TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
           text: {
             type: "string",
             description: "Description of the task",
@@ -295,9 +324,18 @@ export const ASSISTANT_TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
-          deal_id: { type: "number", description: "Deal ID from a prior search" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
+          deal_id: {
+            type: "number",
+            description: "Deal ID from a prior search",
+          },
           deal_name: { type: "string", description: "Deal name to look up" },
           text: {
             type: "string",
@@ -335,7 +373,8 @@ export async function executeAssistantToolDrizzle(
       if (rows.length === 0) return "No contacts found.";
       return rows
         .map((c) => {
-          const name = [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unnamed";
+          const name =
+            [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unnamed";
           const parts = [mdLink(name, "contacts", c.id)];
           if (c.email) parts.push(c.email);
           return `- ${parts.join(" | ")}`;
@@ -366,12 +405,13 @@ export async function executeAssistantToolDrizzle(
     if (toolName === "get_contact") {
       let contactId = args.id as number | undefined;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          String(args.contact_name),
-          searchContext,
-        )) ?? undefined;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            String(args.contact_name),
+            searchContext,
+          )) ?? undefined;
         if (contactId == null) return "No contact found matching that name.";
       }
       if (contactId == null) return "Error: Provide id or contact_name";
@@ -386,7 +426,8 @@ export async function executeAssistantToolDrizzle(
         )
         .limit(1);
       if (!row) return "Contact not found.";
-      const name = [row.firstName, row.lastName].filter(Boolean).join(" ") || "Unnamed";
+      const name =
+        [row.firstName, row.lastName].filter(Boolean).join(" ") || "Unnamed";
       const parts = [`Name: ${mdLink(name, "contacts", row.id)}`];
       if (row.email) parts.push(`Email: ${row.email}`);
       return parts.join("\n");
@@ -418,26 +459,31 @@ export async function executeAssistantToolDrizzle(
         })
         .returning();
       if (!row) return "Error: Failed to create contact";
-      const name = [row.firstName, row.lastName].filter(Boolean).join(" ") || "Contact";
+      const name =
+        [row.firstName, row.lastName].filter(Boolean).join(" ") || "Contact";
       return `Created: ${mdLink(name, "contacts", row.id)}`;
     }
 
     if (toolName === "update_contact") {
       let contactId = args.id as number | undefined;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          String(args.contact_name),
-          searchContext,
-        )) ?? undefined;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            String(args.contact_name),
+            searchContext,
+          )) ?? undefined;
         if (contactId == null) return "No contact found matching that name.";
       }
       if (contactId == null) return "Error: Provide id or contact_name";
       const updates: Record<string, unknown> = {};
-      if (args.first_name !== undefined) updates.firstName = (args.first_name as string).trim();
-      if (args.last_name !== undefined) updates.lastName = (args.last_name as string).trim();
-      if (args.email !== undefined) updates.email = (args.email as string).trim();
+      if (args.first_name !== undefined)
+        updates.firstName = (args.first_name as string).trim();
+      if (args.last_name !== undefined)
+        updates.lastName = (args.last_name as string).trim();
+      if (args.email !== undefined)
+        updates.email = (args.email as string).trim();
 
       if (Object.keys(updates).length === 0) {
         return "Error: At least one field (first_name, last_name, email) is required";
@@ -454,7 +500,8 @@ export async function executeAssistantToolDrizzle(
         )
         .returning();
       if (!row) return "Error: Contact not found";
-      const name = [row.firstName, row.lastName].filter(Boolean).join(" ") || "Contact";
+      const name =
+        [row.firstName, row.lastName].filter(Boolean).join(" ") || "Contact";
       return `Updated: ${mdLink(name, "contacts", row.id)}`;
     }
 
@@ -479,20 +526,24 @@ export async function executeAssistantToolDrizzle(
     if (toolName === "update_company") {
       let companyId = args.id as number | undefined;
       if (companyId == null && args.company_name) {
-        companyId = (await resolveCompanyByName(
-          db,
-          organizationId,
-          String(args.company_name),
-          searchContext,
-        )) ?? undefined;
+        companyId =
+          (await resolveCompanyByName(
+            db,
+            organizationId,
+            String(args.company_name),
+            searchContext,
+          )) ?? undefined;
         if (companyId == null) return "No company found matching that name.";
       }
       if (companyId == null) return "Error: Provide id or company_name";
 
       const updateData: Record<string, unknown> = {};
-      if (args.name !== undefined) updateData.name = (args.name as string).trim();
-      if (args.category !== undefined) updateData.category = (args.category as string).trim();
-      if (args.domain !== undefined) updateData.domain = (args.domain as string).trim();
+      if (args.name !== undefined)
+        updateData.name = (args.name as string).trim();
+      if (args.category !== undefined)
+        updateData.category = (args.category as string).trim();
+      if (args.domain !== undefined)
+        updateData.domain = (args.domain as string).trim();
       if (args.description !== undefined)
         updateData.description = (args.description as string).trim();
 
@@ -561,7 +612,8 @@ export async function executeAssistantToolDrizzle(
         .map((d) => {
           const parts = [mdLink(d.name, "deals", d.id)];
           if (d.status) parts.push(`status: ${d.status}`);
-          if (d.amount != null) parts.push(`$${Number(d.amount).toLocaleString()}`);
+          if (d.amount != null)
+            parts.push(`$${Number(d.amount).toLocaleString()}`);
           return `- ${parts.join(" | ")}`;
         })
         .join("\n");
@@ -570,12 +622,13 @@ export async function executeAssistantToolDrizzle(
     if (toolName === "create_task") {
       let contactId = args.contact_id as number | undefined;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          String(args.contact_name),
-          searchContext,
-        )) ?? undefined;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            String(args.contact_name),
+            searchContext,
+          )) ?? undefined;
         if (contactId == null) return "No contact found matching that name.";
       }
       if (contactId == null) return "Error: Provide contact_id or contact_name";
@@ -620,21 +673,23 @@ export async function executeAssistantToolDrizzle(
       let dealId = args.deal_id as number | undefined;
       const text = args.text as string;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          String(args.contact_name),
-          searchContext,
-        )) ?? undefined;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            String(args.contact_name),
+            searchContext,
+          )) ?? undefined;
         if (contactId == null) return "No contact found matching that name.";
       }
       if (dealId == null && args.deal_name) {
-        dealId = (await resolveDealByName(
-          db,
-          organizationId,
-          String(args.deal_name),
-          searchContext,
-        )) ?? undefined;
+        dealId =
+          (await resolveDealByName(
+            db,
+            organizationId,
+            String(args.deal_name),
+            searchContext,
+          )) ?? undefined;
         if (dealId == null) return "No deal found matching that name.";
       }
 
@@ -702,12 +757,13 @@ export async function executeAssistantToolDrizzle(
     if (toolName === "update_deal") {
       let dealId = args.deal_id as number | undefined;
       if (dealId == null && args.deal_name) {
-        dealId = (await resolveDealByName(
-          db,
-          organizationId,
-          String(args.deal_name),
-          searchContext,
-        )) ?? undefined;
+        dealId =
+          (await resolveDealByName(
+            db,
+            organizationId,
+            String(args.deal_name),
+            searchContext,
+          )) ?? undefined;
         if (dealId == null) return "No deal found matching that name.";
       }
       if (dealId == null) return "Error: Provide deal_id or deal_name";
@@ -715,7 +771,8 @@ export async function executeAssistantToolDrizzle(
         updatedAt: new Date(),
       };
       if (args.status !== undefined) updateData.status = args.status;
-      if (args.name !== undefined) updateData.name = (args.name as string).trim();
+      if (args.name !== undefined)
+        updateData.name = (args.name as string).trim();
       if (args.amount !== undefined) updateData.amount = args.amount;
 
       const [updated] = await db

@@ -24,3 +24,8 @@ export * from "@/db/schema/rbac.js";
 export * from "@/db/schema/audit_logs.js";
 export * from "@/db/schema/org_ai_config.js";
 export * from "@/db/schema/ai_usage_logs.js";
+export * from "@/db/schema/meetings.js";
+export * from "@/db/schema/email-sync-state.js";
+export * from "@/db/schema/synced-emails.js";
+export * from "@/db/schema/suggested-contacts.js";
+export * from "@/db/schema/email-contact-links.js";

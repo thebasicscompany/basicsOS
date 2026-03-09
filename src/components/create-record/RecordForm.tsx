@@ -49,7 +49,9 @@ export function RecordForm({
             <Label htmlFor={`field-${attribute.id}`}>
               {attribute.name}
               {(attribute.isPrimary || attribute.isRequired) && (
-                <span className="text-destructive ml-0.5" title="Required">*</span>
+                <span className="text-destructive ml-0.5" title="Required">
+                  *
+                </span>
               )}
             </Label>
 

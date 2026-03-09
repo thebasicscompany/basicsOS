@@ -172,10 +172,7 @@ export function CallViewDialog({
               </div>
               <div className="space-y-2.5">
                 {call.actionItems.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-2.5 text-sm"
-                  >
+                  <div key={i} className="flex items-start gap-2.5 text-sm">
                     <SquareIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                     <span>{item}</span>
                   </div>

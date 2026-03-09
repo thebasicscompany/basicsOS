@@ -100,9 +100,7 @@ export function TasksTabContent({
       groups[getBucket(t.dueDate)].push(t);
     }
     for (const key of BUCKETS.map((b) => b.key)) {
-      groups[key].sort((a, b) =>
-        (a.doneDate ? 1 : 0) - (b.doneDate ? 1 : 0),
-      );
+      groups[key].sort((a, b) => (a.doneDate ? 1 : 0) - (b.doneDate ? 1 : 0));
     }
     return groups;
   }, [recordTasks]);

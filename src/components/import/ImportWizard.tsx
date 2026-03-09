@@ -11,7 +11,19 @@ import { useImport } from "@/hooks/use-import";
 import { toast } from "sonner";
 
 export function ImportWizard() {
-  const { state, setParsed, setObjectSlug, setMapping, addCustomFieldName, goToMerge, goBackFromMerge, goBackFromPreview, setMergeOptions, goToExecute, reset } = useImport();
+  const {
+    state,
+    setParsed,
+    setObjectSlug,
+    setMapping,
+    addCustomFieldName,
+    goToMerge,
+    goBackFromMerge,
+    goBackFromPreview,
+    setMergeOptions,
+    goToExecute,
+    reset,
+  } = useImport();
 
   const handleParsed = (data: ParsedCSV) => {
     if (data.headers.length === 0) {
@@ -29,11 +41,7 @@ export function ImportWizard() {
 
   if (state.step === "execute") {
     return (
-      <ImportProgress
-        state={state}
-        onBack={() => reset()}
-        onDone={reset}
-      />
+      <ImportProgress state={state} onBack={() => reset()} onDone={reset} />
     );
   }
 
@@ -52,7 +60,12 @@ export function ImportWizard() {
   if (state.step === "map") {
     return (
       <div className="flex flex-col gap-6">
-        <Button variant="ghost" size="sm" className="w-fit" onClick={() => setParsed(null)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => setParsed(null)}
+        >
           <ArrowLeftIcon className="mr-1 size-4" />
           Back
         </Button>
@@ -72,7 +85,12 @@ export function ImportWizard() {
   if (state.step === "merge") {
     return (
       <div className="flex flex-col gap-6">
-        <Button variant="ghost" size="sm" className="w-fit" onClick={goBackFromMerge}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={goBackFromMerge}
+        >
           <ArrowLeftIcon className="mr-1 size-4" />
           Back
         </Button>
@@ -80,7 +98,9 @@ export function ImportWizard() {
           objectSlug={state.objectSlug}
           mergeKey={state.mergeKey}
           conflictBehavior={state.conflictBehavior}
-          onConfirm={(mergeKey, conflictBehavior) => setMergeOptions(mergeKey, conflictBehavior)}
+          onConfirm={(mergeKey, conflictBehavior) =>
+            setMergeOptions(mergeKey, conflictBehavior)
+          }
         />
       </div>
     );
@@ -89,7 +109,12 @@ export function ImportWizard() {
   // preview
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="ghost" size="sm" className="w-fit" onClick={goBackFromPreview}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-fit"
+        onClick={goBackFromPreview}
+      >
         <ArrowLeftIcon className="mr-1 size-4" />
         Back
       </Button>

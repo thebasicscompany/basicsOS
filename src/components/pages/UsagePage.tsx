@@ -65,9 +65,7 @@ function StatCard({
       <p className="mt-1 text-2xl font-semibold tracking-tight">
         {typeof value === "number" ? formatNumber(value) : value}
       </p>
-      {sub && (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>
-      )}
+      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -80,7 +78,8 @@ function LogRow({ log }: { log: UsageLog }) {
   return (
     <tr className="text-[12px] hover:bg-muted/50 transition-colors">
       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
-        {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        {date.toLocaleDateString()}{" "}
+        {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </td>
       <td className="px-3 py-2">{log.userName}</td>
       <td className="px-3 py-2">{featureLabel(log.feature)}</td>
@@ -92,7 +91,11 @@ function LogRow({ log }: { log: UsageLog }) {
         {isTranscription ? "—" : formatNumber(log.outputTokens)}
       </td>
       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-        {isTranscription ? formatDurationMinHrs(log.durationMs) : (log.durationMs != null ? `${(log.durationMs / 1000).toFixed(1)}s` : "—")}
+        {isTranscription
+          ? formatDurationMinHrs(log.durationMs)
+          : log.durationMs != null
+            ? `${(log.durationMs / 1000).toFixed(1)}s`
+            : "—"}
       </td>
     </tr>
   );
@@ -120,10 +123,7 @@ export function UsagePage() {
   } = useAdminUsageLogs(isAdmin, days);
 
   const LOGS_PAGE_SIZE = 25;
-  const logs = useMemo(
-    () => logsData?.logs ?? [],
-    [logsData?.logs],
-  );
+  const logs = useMemo(() => logsData?.logs ?? [], [logsData?.logs]);
   const totalLogsPages = Math.max(1, Math.ceil(logs.length / LOGS_PAGE_SIZE));
   const paginatedLogs = useMemo(() => {
     const start = (recentRequestsPage - 1) * LOGS_PAGE_SIZE;
@@ -203,7 +203,9 @@ export function UsagePage() {
     );
   }, [summary]);
 
-  const [expandedUserIds, setExpandedUserIds] = useState<Set<number>>(new Set());
+  const [expandedUserIds, setExpandedUserIds] = useState<Set<number>>(
+    new Set(),
+  );
   const toggleUserExpanded = (crmUserId: number) => {
     setExpandedUserIds((prev) => {
       const next = new Set(prev);
@@ -329,9 +331,7 @@ export function UsagePage() {
                         key={u.crmUserId}
                         className="text-[12px] hover:bg-muted/50 transition-colors"
                       >
-                        <td className="px-3 py-2 font-medium">
-                          {u.userName}
-                        </td>
+                        <td className="px-3 py-2 font-medium">{u.userName}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {formatNumber(u.totalRequests)}
                         </td>
@@ -379,18 +379,20 @@ export function UsagePage() {
                   </thead>
                   <tbody>
                     {byUserGrouped.map((userGroup) => {
-                      const isExpanded = expandedUserIds.has(userGroup.crmUserId);
+                      const isExpanded = expandedUserIds.has(
+                        userGroup.crmUserId,
+                      );
                       const hasMultipleFeatures = userGroup.rows.length > 1;
                       return (
                         <Fragment key={userGroup.crmUserId}>
-                          <tr
-                            className="text-[12px] hover:bg-muted/50 transition-colors"
-                          >
+                          <tr className="text-[12px] hover:bg-muted/50 transition-colors">
                             <td className="w-8 px-1 py-2 align-middle">
                               {hasMultipleFeatures ? (
                                 <button
                                   type="button"
-                                  onClick={() => toggleUserExpanded(userGroup.crmUserId)}
+                                  onClick={() =>
+                                    toggleUserExpanded(userGroup.crmUserId)
+                                  }
                                   className="rounded p-0.5 hover:bg-muted"
                                   aria-expanded={isExpanded}
                                 >
@@ -421,13 +423,16 @@ export function UsagePage() {
                             </td>
                             <td className="px-3 py-2 text-right tabular-nums">
                               {userGroup.totalDurationMs > 0
-                                ? formatDurationMinHrs(userGroup.totalDurationMs)
+                                ? formatDurationMinHrs(
+                                    userGroup.totalDurationMs,
+                                  )
                                 : "—"}
                             </td>
                           </tr>
                           {isExpanded &&
                             userGroup.rows.map((row, i) => {
-                              const isTranscription = row.feature === TRANSCRIPTION_FEATURE;
+                              const isTranscription =
+                                row.feature === TRANSCRIPTION_FEATURE;
                               return (
                                 <tr
                                   key={`${userGroup.crmUserId}-${row.feature}-${i}`}
@@ -444,14 +449,20 @@ export function UsagePage() {
                                     {formatNumber(row.requestCount)}
                                   </td>
                                   <td className="px-3 py-2 text-right tabular-nums">
-                                    {isTranscription ? "—" : formatNumber(row.totalInputTokens)}
-                                  </td>
-                                  <td className="px-3 py-2 text-right tabular-nums">
-                                    {isTranscription ? "—" : formatNumber(row.totalOutputTokens)}
+                                    {isTranscription
+                                      ? "—"
+                                      : formatNumber(row.totalInputTokens)}
                                   </td>
                                   <td className="px-3 py-2 text-right tabular-nums">
                                     {isTranscription
-                                      ? formatDurationMinHrs(row.totalDurationMs ?? null)
+                                      ? "—"
+                                      : formatNumber(row.totalOutputTokens)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right tabular-nums">
+                                    {isTranscription
+                                      ? formatDurationMinHrs(
+                                          row.totalDurationMs ?? null,
+                                        )
                                       : "—"}
                                   </td>
                                 </tr>
@@ -490,7 +501,8 @@ export function UsagePage() {
                   </thead>
                   <tbody>
                     {summary.byDay.map((row, i) => {
-                      const isTranscription = row.feature === TRANSCRIPTION_FEATURE;
+                      const isTranscription =
+                        row.feature === TRANSCRIPTION_FEATURE;
                       return (
                         <tr
                           key={`${row.date}-${row.feature}-${i}`}
@@ -506,13 +518,21 @@ export function UsagePage() {
                             {formatNumber(row.requestCount)}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums">
-                            {isTranscription ? "—" : formatNumber(row.totalInputTokens)}
+                            {isTranscription
+                              ? "—"
+                              : formatNumber(row.totalInputTokens)}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums">
-                            {isTranscription ? "—" : formatNumber(row.totalOutputTokens)}
+                            {isTranscription
+                              ? "—"
+                              : formatNumber(row.totalOutputTokens)}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums">
-                            {isTranscription ? formatDurationMinHrs(row.totalDurationMs ?? null) : "—"}
+                            {isTranscription
+                              ? formatDurationMinHrs(
+                                  row.totalDurationMs ?? null,
+                                )
+                              : "—"}
                           </td>
                         </tr>
                       );
@@ -603,7 +623,7 @@ export function UsagePage() {
                         size="sm"
                         onClick={() =>
                           setRecentRequestsPage((p) =>
-                            Math.min(totalLogsPages, p + 1)
+                            Math.min(totalLogsPages, p + 1),
                           )
                         }
                         disabled={recentRequestsPage >= totalLogsPages}

@@ -29,9 +29,7 @@ export interface SelectBadgeProps {
 export function SelectBadge({ value, options = [] }: SelectBadgeProps) {
   if (!value) return null;
 
-  const option = options.find(
-    (o) => o.id === value || o.label === value,
-  );
+  const option = options.find((o) => o.id === value || o.label === value);
   const label = option?.label ?? toLabel(value);
   const colorName = option?.color ?? getColorByHash(value).name;
 
@@ -52,4 +50,3 @@ export function ContactStatusBadge({ status }: { status: string | null }) {
 export function DealStageBadge({ stage }: { stage: string | null }) {
   return <SelectBadge value={stage} />;
 }
-

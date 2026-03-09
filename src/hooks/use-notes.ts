@@ -41,7 +41,9 @@ export function useNotes(objectSlug: string, recordId: number | null) {
     queryKey: ["notes", objectSlug, recordId],
     queryFn: () =>
       getList<Note>(resource, {
-        filter: { [fk.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)]: recordId },
+        filter: {
+          [fk.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)]: recordId,
+        },
         sort: { field: "date", order: "DESC" },
         pagination: { page: 1, perPage: 100 },
       }),
@@ -63,7 +65,9 @@ export function useCreateNote(objectSlug: string) {
         date: new Date().toISOString(),
       }),
     onSuccess: (_, { recordId }) => {
-      queryClient.invalidateQueries({ queryKey: ["notes", objectSlug, recordId] });
+      queryClient.invalidateQueries({
+        queryKey: ["notes", objectSlug, recordId],
+      });
       // Also invalidate legacy keys
       const legacyKey = resource.replace("_", "_");
       queryClient.invalidateQueries({ queryKey: [legacyKey] });
@@ -87,7 +91,9 @@ export function useUpdateNote(objectSlug: string) {
       text?: string;
     }) => update<Note>(resource, id, data),
     onSuccess: (_, { recordId }) => {
-      queryClient.invalidateQueries({ queryKey: ["notes", objectSlug, recordId] });
+      queryClient.invalidateQueries({
+        queryKey: ["notes", objectSlug, recordId],
+      });
     },
   });
 }
@@ -100,7 +106,9 @@ export function useDeleteNote(objectSlug: string) {
     mutationFn: ({ id }: { id: number; recordId: number }) =>
       remove<Note>(resource, id),
     onSuccess: (_, { recordId }) => {
-      queryClient.invalidateQueries({ queryKey: ["notes", objectSlug, recordId] });
+      queryClient.invalidateQueries({
+        queryKey: ["notes", objectSlug, recordId],
+      });
     },
   });
 }

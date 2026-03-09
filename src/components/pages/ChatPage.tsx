@@ -81,7 +81,13 @@ const MD_LINK_RE = /\[([^\]]+)\]\((\/objects\/[^)]+|\/automations\/[^)]+)\)/g;
 function rewriteCrmLinks(text: string): string {
   let result = text.replace(
     WIKI_LINK_RE,
-    (_match, slug: string, id: string, hash: string | undefined, label: string) =>
+    (
+      _match,
+      slug: string,
+      id: string,
+      hash: string | undefined,
+      label: string,
+    ) =>
       `<crm-link path="/objects/${slug}/${id}${hash ?? ""}">${label}</crm-link>`,
   );
   result = result.replace(MD_LINK_RE, (_match, label: string, path: string) => {
@@ -91,7 +97,9 @@ function rewriteCrmLinks(text: string): string {
   return result;
 }
 
-const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = { "crm-link": ["path"] };
+const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = {
+  "crm-link": ["path"],
+};
 
 const OBJECT_RECORD_RE = /^\/objects\/([a-z][a-z0-9-]*)\/(.+)$/;
 
@@ -109,7 +117,9 @@ function CrmLinkTag(props: Record<string, unknown>) {
         navigate(path);
       } else {
         navigate(`/objects/${slug}`);
-        toast.info("Opened the list — the assistant generated an invalid record link");
+        toast.info(
+          "Opened the list — the assistant generated an invalid record link",
+        );
       }
       return;
     }
@@ -133,7 +143,10 @@ function CrmLinkTag(props: Record<string, unknown>) {
 
 const crmComponents = { "crm-link": CrmLinkTag };
 
-function EntityAwareMessageResponse({ children, ...props }: MessageResponseProps) {
+function EntityAwareMessageResponse({
+  children,
+  ...props
+}: MessageResponseProps) {
   const processed = useMemo(() => {
     if (typeof children !== "string") return children;
     return rewriteCrmLinks(children);
@@ -172,12 +185,22 @@ function PromptInputAttachmentsDisplay() {
 }
 
 function useRecentHint() {
-  const deals = useRecords("deals", { perPage: 1, sort: { field: "created_at", order: "DESC" } });
-  const tasks = useRecords("tasks", { perPage: 1, sort: { field: "created_at", order: "DESC" } });
+  const deals = useRecords("deals", {
+    perPage: 1,
+    sort: { field: "created_at", order: "DESC" },
+  });
+  const tasks = useRecords("tasks", {
+    perPage: 1,
+    sort: { field: "created_at", order: "DESC" },
+  });
 
   return useMemo(() => {
-    const latestDeal = (deals.data?.data?.[0] as Record<string, unknown> | undefined);
-    const latestTask = (tasks.data?.data?.[0] as Record<string, unknown> | undefined);
+    const latestDeal = deals.data?.data?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    const latestTask = tasks.data?.data?.[0] as
+      | Record<string, unknown>
+      | undefined;
 
     if (latestDeal) {
       const name = (latestDeal.name ?? latestDeal.title ?? "") as string;
@@ -282,7 +305,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
               <p className="mt-2 text-sm text-muted-foreground">
                 {!hasKey
                   ? "Add your Basics API key in Settings to get started."
-                  : recentHint ?? "Ask anything about your operating system."}
+                  : (recentHint ?? "Ask anything about your operating system.")}
               </p>
             </div>
             <div className="w-full">
@@ -302,10 +325,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                       </PromptInputActionMenuContent>
                     </PromptInputActionMenu>
                   </PromptInputTools>
-                  <PromptInputSubmit
-                    status={status}
-                    onStop={stop}
-                  />
+                  <PromptInputSubmit status={status} onStop={stop} />
                 </PromptInputFooter>
               </PromptInput>
             </div>

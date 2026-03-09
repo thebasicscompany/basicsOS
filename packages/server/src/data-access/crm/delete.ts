@@ -30,9 +30,7 @@ export async function archiveDeal(
   const [archived] = await db
     .update(schema.deals)
     .set({ archivedAt: new Date(), updatedAt: new Date() })
-    .where(
-      and(eq(schema.deals.id, id), eq(schema.deals.organizationId, orgId)),
-    )
+    .where(and(eq(schema.deals.id, id), eq(schema.deals.organizationId, orgId)))
     .returning();
   return (archived as Record<string, unknown>) ?? null;
 }
@@ -59,6 +57,9 @@ export async function hardDeleteRecord(
     );
   }
 
-  const [deleted] = await db.delete(table).where(and(...conditions)).returning();
+  const [deleted] = await db
+    .delete(table)
+    .where(and(...conditions))
+    .returning();
   return (deleted as Record<string, unknown>) ?? null;
 }

@@ -140,7 +140,7 @@ export function useRecordDetail(): UseRecordDetailReturn {
     if (!record) return "\u2026";
     return getRecordDisplayName(record as Record<string, unknown>, attributes);
   }, [record, attributes]);
-  const nameFieldLabel = usesSplitName ? "Name" : primaryAttr?.name ?? "Name";
+  const nameFieldLabel = usesSplitName ? "Name" : (primaryAttr?.name ?? "Name");
   const nameEditorMode = usesSplitName
     ? "split"
     : primaryAttr
@@ -149,8 +149,10 @@ export function useRecordDetail(): UseRecordDetailReturn {
   const nameSingleValue =
     record && primaryAttr
       ? String(
-          getRecordValue(record as Record<string, unknown>, primaryAttr.columnName) ??
-            "",
+          getRecordValue(
+            record as Record<string, unknown>,
+            primaryAttr.columnName,
+          ) ?? "",
         )
       : "";
   const nameFirstValue =
@@ -328,7 +330,15 @@ export function useRecordDetail(): UseRecordDetailReturn {
         },
       );
     },
-    [recordId, usesSplitName, firstNameAttr, lastNameAttr, attributes, primaryAttr, updateRecord],
+    [
+      recordId,
+      usesSplitName,
+      firstNameAttr,
+      lastNameAttr,
+      attributes,
+      primaryAttr,
+      updateRecord,
+    ],
   );
 
   const handleFieldSave = useCallback(
@@ -387,13 +397,10 @@ export function useRecordDetail(): UseRecordDetailReturn {
     [attributes],
   );
 
-  const isValueEmpty = useCallback(
-    (attr: Attribute, val: unknown) => {
-      const fieldType = getFieldType(attr.uiType);
-      return fieldType.isEmpty(val);
-    },
-    [],
-  );
+  const isValueEmpty = useCallback((attr: Attribute, val: unknown) => {
+    const fieldType = getFieldType(attr.uiType);
+    return fieldType.isEmpty(val);
+  }, []);
 
   const visibleEditableAttributes = useMemo(() => {
     if (showAllFields) return editableAttributes;
@@ -450,8 +457,10 @@ export function useRecordDetail(): UseRecordDetailReturn {
     listIdsLength: listIds.length,
     prevId,
     nextId,
-    onPrev: () => prevId != null && navigate(`/objects/${objectSlug}/${prevId}`),
-    onNext: () => nextId != null && navigate(`/objects/${objectSlug}/${nextId}`),
+    onPrev: () =>
+      prevId != null && navigate(`/objects/${objectSlug}/${prevId}`),
+    onNext: () =>
+      nextId != null && navigate(`/objects/${objectSlug}/${nextId}`),
     updateRecord,
     deleteRecord,
   };

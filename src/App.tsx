@@ -31,6 +31,7 @@ import { ImportPage } from "@/components/pages/ImportPage";
 import { ChatPage } from "@/components/pages/ChatPage";
 import { TasksPage } from "@/components/pages/TasksPage";
 import { NotesPage } from "@/components/pages/NotesPage";
+import { MeetingsPage } from "@/components/pages/MeetingsPage";
 import { CommandPalette } from "@/components/command-palette";
 import { ObjectListPage } from "@/components/pages/ObjectListPage";
 import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
@@ -111,6 +112,7 @@ function AppRoutes() {
             />
             <Route path={ROUTES.TASKS} element={<TasksPage />} />
             <Route path={ROUTES.NOTES} element={<NotesPage />} />
+            <Route path={ROUTES.MEETINGS} element={<MeetingsPage />} />
             <Route path={ROUTES.IMPORT} element={<ImportPage />} />
 
             {/* Records (object-registry backed objects) */}

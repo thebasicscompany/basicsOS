@@ -121,7 +121,10 @@ export function EditAttributeDialog({
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="attr-label" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="attr-label"
+              className="text-xs text-muted-foreground"
+            >
               Display name
             </Label>
             <Input
@@ -133,7 +136,10 @@ export function EditAttributeDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="attr-colname" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="attr-colname"
+              className="text-xs text-muted-foreground"
+            >
               Column name
             </Label>
             {isCustom ? (

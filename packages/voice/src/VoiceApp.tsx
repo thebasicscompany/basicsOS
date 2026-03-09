@@ -40,9 +40,8 @@ type AudioDevice = { deviceId: string; label: string };
 export function VoiceApp() {
   usePageTitle("Voice");
   const [overlayVisible, setOverlayVisible] = useState(false);
-  const [overlaySettings, setOverlaySettings] = useState<OverlaySettings | null>(
-    null,
-  );
+  const [overlaySettings, setOverlaySettings] =
+    useState<OverlaySettings | null>(null);
   const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([]);
   const primaryModifier = getPrimaryModifierLabel();
 
@@ -98,8 +97,7 @@ export function VoiceApp() {
           }
         | undefined;
       if (!api?.updateOverlaySettings || !overlaySettings) return;
-      const deviceId =
-        value === DEFAULT_MIC_VALUE ? null : value;
+      const deviceId = value === DEFAULT_MIC_VALUE ? null : value;
       void api
         .updateOverlaySettings({
           voice: {
@@ -115,7 +113,9 @@ export function VoiceApp() {
   const handleOverlayToggle = useCallback(async () => {
     const api = window.electronAPI;
     if (!api?.showOverlay || typeof api.showOverlay !== "function") {
-      toast.error("Voice overlay is not available in this window. Restart the desktop app.");
+      toast.error(
+        "Voice overlay is not available in this window. Restart the desktop app.",
+      );
       return;
     }
     if (overlayVisible) {
@@ -133,19 +133,19 @@ export function VoiceApp() {
     } catch (e) {
       console.error("[Voice] showOverlay failed:", e);
       setOverlayVisible(false);
-      toast.error("Could not launch voice overlay. Run the desktop app and try again.");
+      toast.error(
+        "Could not launch voice overlay. Run the desktop app and try again.",
+      );
     }
   }, [overlayVisible]);
 
   const headerActionsNode = useMemo(
     () =>
-      isElectron()
-        ? (
-            <Button onClick={() => void handleOverlayToggle()}>
-              {overlayVisible ? "Close active" : "Launch Voice Overlay"}
-            </Button>
-          )
-        : null,
+      isElectron() ? (
+        <Button onClick={() => void handleOverlayToggle()}>
+          {overlayVisible ? "Close active" : "Launch Voice Overlay"}
+        </Button>
+      ) : null,
     [handleOverlayToggle, overlayVisible],
   );
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
@@ -162,7 +162,9 @@ export function VoiceApp() {
           </div>
           <div className="max-w-4xl space-y-4">
             <div>
-              <h2 className="text-[15px] font-semibold">Desktop app required</h2>
+              <h2 className="text-[15px] font-semibold">
+                Desktop app required
+              </h2>
               <p className="mt-1 text-[12px] text-muted-foreground">
                 Voice overlay is available in the Basics OS desktop app.
                 Download and run the desktop app to use voice commands,
@@ -240,28 +242,38 @@ export function VoiceApp() {
                   <Kbd>{`${primaryModifier}+Space`}</Kbd>
                   <span className="font-medium">AI Assistant</span>
                 </div>
-                <span className="text-muted-foreground">Tap to listen, auto-stops after silence.</span>
+                <span className="text-muted-foreground">
+                  Tap to listen, auto-stops after silence.
+                </span>
               </li>
               <li className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Double Tap</span>
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    Double Tap
+                  </span>
                   <Kbd>{`${primaryModifier}+Space`}</Kbd>
                 </div>
-                <span className="text-muted-foreground">Continuous listening mode.</span>
+                <span className="text-muted-foreground">
+                  Continuous listening mode.
+                </span>
               </li>
               <li className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd>
                   <span className="font-medium">Dictation</span>
                 </div>
-                <span className="text-muted-foreground">{dictationShortcutText}</span>
+                <span className="text-muted-foreground">
+                  {dictationShortcutText}
+                </span>
               </li>
               <li className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd>
                   <span className="font-medium">Meetings</span>
                 </div>
-                <span className="text-muted-foreground">Toggle meeting mode (stub).</span>
+                <span className="text-muted-foreground">
+                  Toggle meeting mode (stub).
+                </span>
               </li>
             </ul>
           </div>
@@ -298,9 +310,12 @@ export function VoiceApp() {
           <div className="rounded-xl bg-card p-6 space-y-3">
             <h3 className="text-[15px] font-semibold">Requirements</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Add your <strong>Basics API key</strong> in Settings for transcription, TTS, and AI streaming.
-              Optionally, you can configure a custom <strong>Deepgram key</strong> (Settings → AI Configuration → Transcription BYOK)
-              to use your own API key for speech-to-text. The overlay authenticates using your active CRM session.
+              Add your <strong>Basics API key</strong> in Settings for
+              transcription, TTS, and AI streaming. Optionally, you can
+              configure a custom <strong>Deepgram key</strong> (Settings → AI
+              Configuration → Transcription BYOK) to use your own API key for
+              speech-to-text. The overlay authenticates using your active CRM
+              session.
             </p>
           </div>
         </div>

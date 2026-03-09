@@ -19,6 +19,8 @@ import { createViewRoutes } from "@/routes/views.js";
 import { createVoiceProxyRoutes } from "@/routes/voice-proxy.js";
 import { createStreamAssistantRoutes } from "@/routes/stream-assistant.js";
 import { createThreadsRoutes } from "@/routes/threads.js";
+import { createMeetingsRoutes } from "@/routes/meetings.js";
+import { createEmailSyncRoutes } from "@/routes/email-sync.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { sql } from "drizzle-orm";
@@ -81,7 +83,9 @@ const rateLimitMiddleware = async (
 
 export function createApp(db: Db, env: Env) {
   const allowedOrigins = env.ALLOWED_ORIGINS
-    ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+    ? env.ALLOWED_ORIGINS.split(",")
+        .map((o) => o.trim())
+        .filter(Boolean)
     : [];
   const auth = createAuth(
     db,
@@ -140,7 +144,10 @@ export function createApp(db: Db, env: Env) {
       await db.execute(sql`SELECT 1`);
       return c.json({ status: "ok" });
     } catch {
-      return c.json({ status: "unhealthy", error: "Database unreachable" }, 503);
+      return c.json(
+        { status: "unhealthy", error: "Database unreachable" },
+        503,
+      );
     }
   });
 
@@ -158,6 +165,12 @@ export function createApp(db: Db, env: Env) {
 
   // Thread list & message history
   app.route("/api/threads", createThreadsRoutes(db, auth, env));
+
+  // Meeting recordings
+  app.route("/api/meetings", createMeetingsRoutes(db, auth, env));
+
+  // Email sync + contact discovery
+  app.route("/api/email-sync", createEmailSyncRoutes(db, auth, env));
 
   // Automation runs — must be before CRM generic routes
   app.route("/api/automation-runs", createAutomationRunsRoutes(db, auth, env));

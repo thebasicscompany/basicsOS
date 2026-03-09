@@ -58,8 +58,7 @@ export function createThreadsRoutes(
 
     const threadId = c.req.param("id");
     const messages = await getThreadMessages(db, threadId, crmUser.id);
-    if (messages === null)
-      return c.json({ error: "Thread not found" }, 404);
+    if (messages === null) return c.json({ error: "Thread not found" }, 404);
 
     return c.json(messages);
   });

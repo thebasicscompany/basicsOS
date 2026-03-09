@@ -1,11 +1,17 @@
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import { Markdown } from "tiptap-markdown";
-import { useEffect, useCallback, useState, useRef, useLayoutEffect } from "react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react"
+import { BubbleMenu } from "@tiptap/react/menus"
+import StarterKit from "@tiptap/starter-kit"
+import Placeholder from "@tiptap/extension-placeholder"
+import TaskList from "@tiptap/extension-task-list"
+import TaskItem from "@tiptap/extension-task-item"
+import { Markdown } from "tiptap-markdown"
+import {
+  useEffect,
+  useCallback,
+  useState,
+  useRef,
+  useLayoutEffect,
+} from "react"
 import {
   TextHOne,
   TextHTwo,
@@ -20,9 +26,9 @@ import {
   TextItalic,
   TextStrikethrough,
   CheckSquare,
-} from "@phosphor-icons/react";
-import { cn } from "@/lib/utils";
-import { registerRichTextDictationTarget } from "@/lib/dictation-target";
+} from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
+import { registerRichTextDictationTarget } from "@/lib/dictation-target"
 
 // ---------------------------------------------------------------------------
 // Slash items — Novel pattern: each command receives { editor, range }
@@ -30,11 +36,14 @@ import { registerRichTextDictationTarget } from "@/lib/dictation-target";
 // ---------------------------------------------------------------------------
 
 interface SlashCommandItem {
-  label: string;
-  description: string;
-  searchTerms?: string[];
-  icon: React.ComponentType<{ className?: string; weight?: string }>;
-  command: (opts: { editor: Editor; range: { from: number; to: number } }) => void;
+  label: string
+  description: string
+  searchTerms?: string[]
+  icon: React.ComponentType<{ className?: string; weight?: string }>
+  command: (opts: {
+    editor: Editor
+    range: { from: number; to: number }
+  }) => void
 }
 
 const SLASH_ITEMS: SlashCommandItem[] = [
@@ -44,7 +53,12 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     searchTerms: ["p", "paragraph"],
     icon: Paragraph,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run(),
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleNode("paragraph", "paragraph")
+        .run(),
   },
   {
     label: "Heading 1",
@@ -52,7 +66,12 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     searchTerms: ["title", "big", "large", "h1"],
     icon: TextHOne,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run(),
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setNode("heading", { level: 1 })
+        .run(),
   },
   {
     label: "Heading 2",
@@ -60,7 +79,12 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     searchTerms: ["subtitle", "medium", "h2"],
     icon: TextHTwo,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run(),
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setNode("heading", { level: 2 })
+        .run(),
   },
   {
     label: "Heading 3",
@@ -68,7 +92,12 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     searchTerms: ["subtitle", "small", "h3"],
     icon: TextHThree,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run(),
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setNode("heading", { level: 3 })
+        .run(),
   },
   {
     label: "To-do list",
@@ -100,7 +129,13 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     searchTerms: ["blockquote"],
     icon: Quotes,
     command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").toggleBlockquote().run(),
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleNode("paragraph", "paragraph")
+        .toggleBlockquote()
+        .run(),
   },
   {
     label: "Code",
@@ -118,7 +153,7 @@ const SLASH_ITEMS: SlashCommandItem[] = [
     command: ({ editor, range }) =>
       editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
-];
+]
 
 // ---------------------------------------------------------------------------
 // Slash menu component
@@ -129,53 +164,53 @@ function SlashMenu({
   onSelect,
   query,
 }: {
-  items: SlashCommandItem[];
-  onSelect: (item: SlashCommandItem) => void;
-  query: string;
+  items: SlashCommandItem[]
+  onSelect: (item: SlashCommandItem) => void
+  query: string
 }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const filtered = items.filter((item) => {
-    const q = query.toLowerCase();
+    const q = query.toLowerCase()
     return (
       item.label.toLowerCase().includes(q) ||
       item.description.toLowerCase().includes(q) ||
       item.searchTerms?.some((t) => t.includes(q))
-    );
-  });
+    )
+  })
 
   useLayoutEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
+    setSelectedIndex(0)
+  }, [query])
 
   useLayoutEffect(() => {
-    const active = menuRef.current?.querySelector('[data-active="true"]');
-    active?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+    const active = menuRef.current?.querySelector('[data-active="true"]')
+    active?.scrollIntoView({ block: "nearest" })
+  }, [selectedIndex])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedIndex((i) => (i + 1) % filtered.length);
+        e.preventDefault()
+        e.stopPropagation()
+        setSelectedIndex((i) => (i + 1) % filtered.length)
       } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length);
+        e.preventDefault()
+        e.stopPropagation()
+        setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length)
       } else if (e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
-        if (filtered[selectedIndex]) onSelect(filtered[selectedIndex]);
+        e.preventDefault()
+        e.stopPropagation()
+        if (filtered[selectedIndex]) onSelect(filtered[selectedIndex])
       }
-    };
+    }
 
-    document.addEventListener("keydown", handleKeyDown, true);
-    return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [filtered, selectedIndex, onSelect]);
+    document.addEventListener("keydown", handleKeyDown, true)
+    return () => document.removeEventListener("keydown", handleKeyDown, true)
+  }, [filtered, selectedIndex, onSelect])
 
-  if (filtered.length === 0) return null;
+  if (filtered.length === 0) return null
 
   return (
     <div
@@ -186,18 +221,18 @@ function SlashMenu({
         Blocks
       </div>
       {filtered.map((item, i) => {
-        const Icon = item.icon;
+        const Icon = item.icon
         return (
           <button
             key={item.label}
             data-active={i === selectedIndex}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-              i === selectedIndex ? "bg-accent" : "hover:bg-accent/50",
+              i === selectedIndex ? "bg-accent" : "hover:bg-accent/50"
             )}
             onMouseDown={(e) => {
-              e.preventDefault();
-              onSelect(item);
+              e.preventDefault()
+              onSelect(item)
             }}
             onMouseEnter={() => setSelectedIndex(i)}
           >
@@ -211,10 +246,10 @@ function SlashMenu({
               </span>
             </div>
           </button>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -226,31 +261,31 @@ function BubbleButton({
   onClick,
   children,
 }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
 }) {
   return (
     <button
       type="button"
       onMouseDown={(e) => {
-        e.preventDefault();
-        onClick();
+        e.preventDefault()
+        onClick()
       }}
       className={cn(
         "flex size-8 items-center justify-center rounded transition-colors",
         active
           ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
       )}
     >
       {children}
     </button>
-  );
+  )
 }
 
 function BubbleSeparator() {
-  return <div className="mx-0.5 h-4 w-px bg-border" />;
+  return <div className="mx-0.5 h-4 w-px bg-border" />
 }
 
 // ---------------------------------------------------------------------------
@@ -258,12 +293,12 @@ function BubbleSeparator() {
 // ---------------------------------------------------------------------------
 
 interface RichTextEditorProps {
-  content?: string;
-  onChange?: (markdown: string) => void;
-  placeholder?: string;
-  editable?: boolean;
-  autoFocus?: boolean;
-  className?: string;
+  content?: string
+  onChange?: (markdown: string) => void
+  placeholder?: string
+  editable?: boolean
+  autoFocus?: boolean
+  className?: string
 }
 
 export function RichTextEditor({
@@ -274,15 +309,15 @@ export function RichTextEditor({
   autoFocus = false,
   className,
 }: RichTextEditorProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const [slashState, setSlashState] = useState<{
-    open: boolean;
-    query: string;
-    from: number;
-    to: number;
-  }>({ open: false, query: "", from: 0, to: 0 });
+    open: boolean
+    query: string
+    from: number
+    to: number
+  }>({ open: false, query: "", from: 0, to: 0 })
 
-  const isInternalChange = useRef(false);
+  const isInternalChange = useRef(false)
 
   const editor = useEditor({
     extensions: [
@@ -302,7 +337,8 @@ export function RichTextEditor({
         },
         codeBlock: {
           HTMLAttributes: {
-            class: "rounded-md bg-muted text-muted-foreground border p-5 font-mono font-medium",
+            class:
+              "rounded-md bg-muted text-muted-foreground border p-5 font-mono font-medium",
           },
         },
         code: {
@@ -339,85 +375,87 @@ export function RichTextEditor({
     },
     onUpdate: ({ editor: ed }) => {
       // Track slash command state
-      const { state } = ed;
-      const { from } = state.selection;
+      const { state } = ed
+      const { from } = state.selection
       const textBefore = state.doc.textBetween(
         Math.max(0, from - 50),
         from,
-        "\ufffc",
-      );
+        "\ufffc"
+      )
 
-      const slashMatch = textBefore.match(/\/([a-zA-Z]*)$/);
+      const slashMatch = textBefore.match(/\/([a-zA-Z]*)$/)
       if (slashMatch) {
-        const queryLen = slashMatch[1].length;
+        const queryLen = slashMatch[1].length
         setSlashState({
           open: true,
           query: slashMatch[1],
           from: from - queryLen - 1, // position of "/"
-          to: from,                   // current cursor
-        });
+          to: from, // current cursor
+        })
       } else {
-        setSlashState((prev) => (prev.open ? { open: false, query: "", from: 0, to: 0 } : prev));
+        setSlashState((prev) =>
+          prev.open ? { open: false, query: "", from: 0, to: 0 } : prev
+        )
       }
 
       // Notify parent
       if (onChange) {
-        isInternalChange.current = true;
-        const md = ed.storage.markdown.getMarkdown();
-        onChange(md);
+        isInternalChange.current = true
+        const md = ed.storage.markdown.getMarkdown()
+        onChange(md)
       }
     },
-  });
+  })
 
   // Sync external content changes (e.g., dialog open with existing note)
   useEffect(() => {
     if (isInternalChange.current) {
-      isInternalChange.current = false;
-      return;
+      isInternalChange.current = false
+      return
     }
     if (editor && content !== undefined) {
-      const currentMd = editor.storage.markdown?.getMarkdown() ?? "";
+      const currentMd = editor.storage.markdown?.getMarkdown() ?? ""
       if (currentMd !== content) {
-        editor.commands.setContent(content);
+        editor.commands.setContent(content)
       }
     }
-  }, [content, editor]);
+  }, [content, editor])
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor) return
     const editorElement = containerRef.current?.querySelector(
-      ".tiptap",
-    ) as HTMLElement | null;
-    if (!editorElement) return;
+      ".tiptap"
+    ) as HTMLElement | null
+    if (!editorElement) return
 
-    return registerRichTextDictationTarget(editorElement, editor);
-  }, [editor]);
+    return registerRichTextDictationTarget(editorElement, editor)
+  }, [editor])
 
   // Handle slash command selection — single atomic chain (Novel pattern)
   const handleSlashSelect = useCallback(
     (item: SlashCommandItem) => {
-      if (!editor) return;
-      const range = { from: slashState.from, to: slashState.to };
-      item.command({ editor, range });
-      setSlashState({ open: false, query: "", from: 0, to: 0 });
+      if (!editor) return
+      const range = { from: slashState.from, to: slashState.to }
+      item.command({ editor, range })
+      setSlashState({ open: false, query: "", from: 0, to: 0 })
     },
-    [editor, slashState.from, slashState.to],
-  );
+    [editor, slashState.from, slashState.to]
+  )
 
   // Close slash menu on Escape
   useEffect(() => {
-    if (!slashState.open) return;
+    if (!slashState.open) return
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.preventDefault();
-        setSlashState({ open: false, query: "", from: 0, to: 0 });
+        e.preventDefault()
+        setSlashState({ open: false, query: "", from: 0, to: 0 })
       }
-    };
-    document.addEventListener("keydown", handleEsc, true);
-    return () => document.removeEventListener("keydown", handleEsc, true);
-  }, [slashState.open]);
+    }
+    document.addEventListener("keydown", handleEsc, true)
+    return () => document.removeEventListener("keydown", handleEsc, true)
+  }, [slashState.open])
 
-  if (!editor) return null;
+  if (!editor) return null
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
@@ -463,5 +501,5 @@ export function RichTextEditor({
         />
       )}
     </div>
-  );
+  )
 }

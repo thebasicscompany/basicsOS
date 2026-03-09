@@ -18,7 +18,10 @@ function getMergeValue(
 ): string | undefined {
   if (!mergeKey) return undefined;
   if (mergeKey === "email") {
-    return (payload.email as string) ?? (payload.emailJsonb as { email: string }[])?.[0]?.email;
+    return (
+      (payload.email as string) ??
+      (payload.emailJsonb as { email: string }[])?.[0]?.email
+    );
   }
   return payload[mergeKey] as string | undefined;
 }
@@ -31,7 +34,12 @@ export async function executeImport(
   mergeKey: string,
   conflictBehavior: ConflictBehavior,
 ): Promise<ImportResult> {
-  const result: ImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+  const result: ImportResult = {
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+  };
   const resource = objectSlug;
   const shouldMerge = mergeKey && conflictBehavior !== "create_only";
 
@@ -41,7 +49,12 @@ export async function executeImport(
       batch.map(async (row, batchIdx) => {
         const rowNum = i + batchIdx + 1;
         try {
-          const payload = buildImportPayload(objectSlug, row, mapping, customFieldNames);
+          const payload = buildImportPayload(
+            objectSlug,
+            row,
+            mapping,
+            customFieldNames,
+          );
           const mergeValue = getMergeValue(payload, mergeKey);
 
           if (shouldMerge && mergeValue) {

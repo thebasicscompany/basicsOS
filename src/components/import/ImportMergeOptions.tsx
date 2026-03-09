@@ -5,7 +5,10 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { ConflictBehavior } from "@/hooks/use-import";
 
-const MERGE_KEY_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
+const MERGE_KEY_OPTIONS: Record<
+  string,
+  Array<{ value: string; label: string }>
+> = {
   contacts: [{ value: "email", label: "Email" }],
   companies: [{ value: "name", label: "Company Name" }],
   deals: [],
@@ -31,7 +34,8 @@ export function ImportMergeOptions({
   onConfirm,
 }: ImportMergeOptionsProps) {
   const [localKey, setLocalKey] = useState(mergeKey);
-  const [localBehavior, setLocalBehavior] = useState<ConflictBehavior>(conflictBehavior);
+  const [localBehavior, setLocalBehavior] =
+    useState<ConflictBehavior>(conflictBehavior);
 
   const mergeKeyOptions = useMemo(
     () => MERGE_KEY_OPTIONS[objectSlug] ?? [],
@@ -48,11 +52,13 @@ export function ImportMergeOptions({
     <div className="flex flex-col gap-6 max-w-lg">
       {hasMergeKey ? (
         <p className="text-[12px] text-muted-foreground">
-          When a row has the same {localKey} as an existing {objLabel}, how should we handle it?
+          When a row has the same {localKey} as an existing {objLabel}, how
+          should we handle it?
         </p>
       ) : (
         <p className="text-[12px] text-muted-foreground">
-          Deals do not support duplicate detection. All rows will be created as new records.
+          Deals do not support duplicate detection. All rows will be created as
+          new records.
         </p>
       )}
       {hasMergeKey && (
@@ -88,13 +94,19 @@ export function ImportMergeOptions({
             <>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="update_existing" id="behavior-update" />
-                <Label htmlFor="behavior-update" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="behavior-update"
+                  className="font-normal cursor-pointer"
+                >
                   Update the existing {objLabel} with new data
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="skip_duplicates" id="behavior-skip" />
-                <Label htmlFor="behavior-skip" className="font-normal cursor-pointer">
+                <Label
+                  htmlFor="behavior-skip"
+                  className="font-normal cursor-pointer"
+                >
                   Skip (keep existing {objLabel} unchanged)
                 </Label>
               </div>
@@ -102,7 +114,10 @@ export function ImportMergeOptions({
           )}
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="create_only" id="behavior-create" />
-            <Label htmlFor="behavior-create" className="font-normal cursor-pointer">
+            <Label
+              htmlFor="behavior-create"
+              className="font-normal cursor-pointer"
+            >
               {hasMergeKey
                 ? "Always create new (ignore matches)"
                 : "Create new records"}

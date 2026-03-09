@@ -72,9 +72,7 @@ export function registerOrganizationRoutes(
     }
     if (body.logo !== undefined) {
       updates.logo =
-        body.logo === null || !body.logo?.src
-          ? null
-          : { src: body.logo.src };
+        body.logo === null || !body.logo?.src ? null : { src: body.logo.src };
     }
 
     if (Object.keys(updates).length === 0) {

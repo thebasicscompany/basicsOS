@@ -31,10 +31,17 @@ export function createUpdateHandler(db: Db, env: Env) {
     }
 
     // Handle custom object tables
-    if (!CRM_RESOURCES.includes(resource) || (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">] && !resource.endsWith("_summary"))) {
+    if (
+      !CRM_RESOURCES.includes(resource) ||
+      (!TABLE_MAP[
+        resource as Exclude<Resource, "companies_summary" | "contacts_summary">
+      ] &&
+        !resource.endsWith("_summary"))
+    ) {
       if (isNaN(id)) return c.json({ error: "Invalid request" }, 400);
       const customTable = await resolveCustomTable(db, resource, orgId);
-      if (!customTable) return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
+      if (!customTable)
+        return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
 
       let rawBody: Record<string, unknown>;
       try {
@@ -44,7 +51,13 @@ export function createUpdateHandler(db: Db, env: Env) {
       }
       delete rawBody.id;
 
-      const record = await updateCustomRecord(db, customTable, id, orgId, rawBody);
+      const record = await updateCustomRecord(
+        db,
+        customTable,
+        id,
+        orgId,
+        rawBody,
+      );
       if (!record) return jsonError(c, "Not found", 404, "NOT_FOUND");
       return c.json(record);
     }
@@ -80,7 +93,8 @@ export function createUpdateHandler(db: Db, env: Env) {
 
     if (!result.success) {
       const status = result.error === "Not found" ? 404 : 400;
-      const code = result.error === "Not found" ? "NOT_FOUND" : "VALIDATION_FAILED";
+      const code =
+        result.error === "Not found" ? "NOT_FOUND" : "VALIDATION_FAILED";
       return jsonError(c, result.error, status, code);
     }
     return c.json(result.record);

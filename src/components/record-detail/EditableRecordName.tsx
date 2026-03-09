@@ -46,7 +46,10 @@ export function EditableRecordName({
     if (mode === "split") {
       const trimmedFirst = draftFirstName.trim();
       const trimmedLast = draftLastName.trim();
-      if (trimmedFirst !== firstName.trim() || trimmedLast !== lastName.trim()) {
+      if (
+        trimmedFirst !== firstName.trim() ||
+        trimmedLast !== lastName.trim()
+      ) {
         onSave({ firstName: trimmedFirst, lastName: trimmedLast });
       }
     } else if (mode === "single") {
@@ -56,7 +59,16 @@ export function EditableRecordName({
       }
     }
     setIsEditing(false);
-  }, [mode, draftFirstName, draftLastName, draftSingleValue, firstName, lastName, singleValue, onSave]);
+  }, [
+    mode,
+    draftFirstName,
+    draftLastName,
+    draftSingleValue,
+    firstName,
+    lastName,
+    singleValue,
+    onSave,
+  ]);
 
   const startEditing = () => {
     if (mode === "none") return;

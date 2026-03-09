@@ -61,6 +61,23 @@ export function useDeleteTask() {
   });
 }
 
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...data
+    }: { id: number } & Partial<
+      CreateTaskData & { doneDate: string | null }
+    >) =>
+      update<Task>("tasks", id, unmapRecord(data as Record<string, unknown>)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts_summary"] });
+    },
+  });
+}
+
 export function useCreateTask() {
   const queryClient = useQueryClient();
   return useMutation({

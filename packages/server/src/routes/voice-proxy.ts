@@ -107,7 +107,9 @@ export function createVoiceProxyRoutes(
         isTimeout ? "timed out after 20s" : fetchErr,
       );
       return c.json(
-        { error: isTimeout ? "Transcription timed out" : "Transcription failed" },
+        {
+          error: isTimeout ? "Transcription timed out" : "Transcription failed",
+        },
         isTimeout ? 504 : 502,
       );
     }

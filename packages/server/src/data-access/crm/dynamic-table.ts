@@ -72,7 +72,9 @@ export async function listCustomRecords(
     sql`SELECT * FROM ${table} WHERE organization_id = ${orgId} ${orderClause} LIMIT ${opts.limit} OFFSET ${opts.offset}`,
   );
   const rows = (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    Array.isArray(result)
+      ? result
+      : ((result as { rows?: unknown[] }).rows ?? [])
   ) as Record<string, unknown>[];
 
   return { rows, total };
@@ -89,7 +91,9 @@ export async function getCustomRecord(
     sql`SELECT * FROM ${table} WHERE id = ${id} AND organization_id = ${orgId} LIMIT 1`,
   );
   const rows = (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    Array.isArray(result)
+      ? result
+      : ((result as { rows?: unknown[] }).rows ?? [])
   ) as Record<string, unknown>[];
   return rows[0] ?? null;
 }
@@ -118,7 +122,9 @@ export async function insertCustomRecord(
         RETURNING *`,
   );
   const rows = (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    Array.isArray(result)
+      ? result
+      : ((result as { rows?: unknown[] }).rows ?? [])
   ) as Record<string, unknown>[];
   return rows[0] ?? null;
 }

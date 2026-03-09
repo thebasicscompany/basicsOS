@@ -8,12 +8,19 @@ export default defineConfig({
     resolve: {
       alias: { "@": path.resolve(__dirname, "src") },
     },
+    build: {
+      rollupOptions: {
+        external: ["screencapturekit-audio-capture"],
+      },
+    },
   },
   // Preload must be CommonJS: Electron's sandbox runs it in a context that doesn't support ESM.
   // @electron-toolkit/preload must be bundled (not externalized) because the sandboxed
   // preload context has no access to node_modules at runtime.
   preload: {
-    plugins: [externalizeDepsPlugin({ exclude: ["@electron-toolkit/preload"] })],
+    plugins: [
+      externalizeDepsPlugin({ exclude: ["@electron-toolkit/preload"] }),
+    ],
     resolve: {
       alias: { "@": path.resolve(__dirname, "src") },
     },

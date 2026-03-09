@@ -37,9 +37,7 @@ function parseDtxpOptions(
     }));
 }
 
-function normalizeMetaOptions(
-  options: unknown,
-): Array<{
+function normalizeMetaOptions(options: unknown): Array<{
   id: string;
   label: string;
   color: string;
@@ -99,7 +97,6 @@ function normalizeMetaOptions(
     );
 }
 
-
 /**
  * Format column names to human-readable form.
  * "CREATED_AT" → "Created At", "company_id" → "Company Id", "crm_user_id" → "Crm User Id"
@@ -130,53 +127,52 @@ function mergeAttributes(
   return columns
     .filter((col) => !col.system)
     .map((col) => {
-    const override = overrideByColumn.get(col.column_name);
-    const metaFieldType =
-      col.meta &&
-      typeof col.meta === "object" &&
-      "fieldType" in col.meta &&
-      typeof (col.meta as { fieldType?: unknown }).fieldType === "string"
-        ? (col.meta as { fieldType: string }).fieldType
-        : null;
-    const mappedUiType = override?.uiType ?? metaFieldType ?? mapUidtToFieldType(col.uidt);
-    const displayName = override?.displayName ?? formatColumnName(col);
+      const override = overrideByColumn.get(col.column_name);
+      const metaFieldType =
+        col.meta &&
+        typeof col.meta === "object" &&
+        "fieldType" in col.meta &&
+        typeof (col.meta as { fieldType?: unknown }).fieldType === "string"
+          ? (col.meta as { fieldType: string }).fieldType
+          : null;
+      const mappedUiType =
+        override?.uiType ?? metaFieldType ?? mapUidtToFieldType(col.uidt);
+      const displayName = override?.displayName ?? formatColumnName(col);
 
-    const isSelectType =
-      col.uidt === "SingleSelect" || col.uidt === "MultiSelect";
-    const dtxpOptions =
-      isSelectType && col.dtxp ? parseDtxpOptions(col.dtxp) : undefined;
-    const metaOptions =
-      col.meta &&
-      typeof col.meta === "object" &&
-      "options" in col.meta
-        ? normalizeMetaOptions((col.meta as { options?: unknown }).options)
-        : undefined;
+      const isSelectType =
+        col.uidt === "SingleSelect" || col.uidt === "MultiSelect";
+      const dtxpOptions =
+        isSelectType && col.dtxp ? parseDtxpOptions(col.dtxp) : undefined;
+      const metaOptions =
+        col.meta && typeof col.meta === "object" && "options" in col.meta
+          ? normalizeMetaOptions((col.meta as { options?: unknown }).options)
+          : undefined;
 
-    return {
-      id: col.id,
-      name: displayName,
-      columnName: col.column_name,
-      uiType: mappedUiType,
-      sqlType: col.uidt,
-      config: {
-        ...(col.dtxp ? { dtxp: col.dtxp } : {}),
-        ...(dtxpOptions ? { options: dtxpOptions } : {}),
-        ...(col.meta ?? {}),
-        ...(metaOptions ? { options: metaOptions } : {}),
-        ...(override?.config ?? {}),
-      },
-      isPrimary: override?.isPrimary ?? col.pv,
-      isRequired:
-        (override?.config &&
-          typeof override.config === "object" &&
-          "required" in override.config &&
-          override.config.required === true) ||
-        (col as SchemaColumn).rqd === true,
-      isSystem: col.system,
-      isHiddenByDefault: override?.isHiddenByDefault ?? col.system,
-      icon: override?.icon,
-      order: col.order,
-    };
+      return {
+        id: col.id,
+        name: displayName,
+        columnName: col.column_name,
+        uiType: mappedUiType,
+        sqlType: col.uidt,
+        config: {
+          ...(col.dtxp ? { dtxp: col.dtxp } : {}),
+          ...(dtxpOptions ? { options: dtxpOptions } : {}),
+          ...(col.meta ?? {}),
+          ...(metaOptions ? { options: metaOptions } : {}),
+          ...(override?.config ?? {}),
+        },
+        isPrimary: override?.isPrimary ?? col.pv,
+        isRequired:
+          (override?.config &&
+            typeof override.config === "object" &&
+            "required" in override.config &&
+            override.config.required === true) ||
+          (col as SchemaColumn).rqd === true,
+        isSystem: col.system,
+        isHiddenByDefault: override?.isHiddenByDefault ?? col.system,
+        icon: override?.icon,
+        order: col.order,
+      };
     });
 }
 

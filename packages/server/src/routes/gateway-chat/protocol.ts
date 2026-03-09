@@ -77,7 +77,10 @@ export const getContactSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.contact_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or contact_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or contact_name",
+      });
     }
   });
 export const createContactSchema = z.object({
@@ -97,7 +100,10 @@ export const updateContactSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.contact_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or contact_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or contact_name",
+      });
     }
     if (
       v.first_name === undefined &&
@@ -106,7 +112,8 @@ export const updateContactSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one update field (first_name, last_name, email) is required",
+        message:
+          "At least one update field (first_name, last_name, email) is required",
       });
     }
   });
@@ -123,7 +130,10 @@ export const getDealSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.deal_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or deal_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or deal_name",
+      });
     }
   });
 export const createDealSchema = z.object({
@@ -143,7 +153,10 @@ export const updateDealSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.deal_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or deal_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or deal_name",
+      });
     }
     if (
       v.name === undefined &&
@@ -168,7 +181,10 @@ export const getCompanySchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.company_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or company_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or company_name",
+      });
     }
   });
 export const createCompanySchema = z.object({
@@ -188,7 +204,10 @@ export const updateCompanySchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.company_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide id or company_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide id or company_name",
+      });
     }
     if (
       v.name === undefined &&
@@ -198,7 +217,8 @@ export const updateCompanySchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one update field (name, category, domain, description) is required",
+        message:
+          "At least one update field (name, category, domain, description) is required",
       });
     }
   });
@@ -267,7 +287,10 @@ export const listNotesSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.contact_id && !v.contact_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide contact_id or contact_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide contact_id or contact_name",
+      });
     }
   });
 export const createNoteSchema = z
@@ -279,7 +302,10 @@ export const createNoteSchema = z
   })
   .superRefine((v, ctx) => {
     if (!v.contact_id && !v.contact_name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Provide contact_id or contact_name" });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide contact_id or contact_name",
+      });
     }
   });
 export const addNoteSchema = z
@@ -324,12 +350,16 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "get_contact",
-      description: "Fetch a single contact. Use contact_name (e.g. 'John Smith') or id.",
+      description:
+        "Fetch a single contact. Use contact_name (e.g. 'John Smith') or id.",
       parameters: {
         type: "object",
         properties: {
           id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Name or email to look up" },
+          contact_name: {
+            type: "string",
+            description: "Name or email to look up",
+          },
         },
         required: [],
       },
@@ -339,15 +369,22 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "create_contact",
-      description: "Create a new contact. Use company_name to link to a company by name.",
+      description:
+        "Create a new contact. Use company_name to link to a company by name.",
       parameters: {
         type: "object",
         properties: {
           first_name: { type: "string" },
           last_name: { type: "string" },
           email: { type: "string" },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to link to" },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to link to",
+          },
         },
         required: [],
       },
@@ -357,12 +394,16 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "update_contact",
-      description: "Update an existing contact. Use id (preferred, from a prior search) or contact_name. Call this immediately after finding the contact — do NOT search again.",
+      description:
+        "Update an existing contact. Use id (preferred, from a prior search) or contact_name. Call this immediately after finding the contact — do NOT search again.",
       parameters: {
         type: "object",
         properties: {
           id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Name or email to look up" },
+          contact_name: {
+            type: "string",
+            description: "Name or email to look up",
+          },
           first_name: { type: "string" },
           last_name: { type: "string" },
           email: { type: "string" },
@@ -391,7 +432,8 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "get_deal",
-      description: "Fetch a single deal. Use deal_name (e.g. 'Acme Corp deal') or id.",
+      description:
+        "Fetch a single deal. Use deal_name (e.g. 'Acme Corp deal') or id.",
       parameters: {
         type: "object",
         properties: {
@@ -406,14 +448,21 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "create_deal",
-      description: "Create a new deal. Use company_name to link to a company by name.",
+      description:
+        "Create a new deal. Use company_name to link to a company by name.",
       parameters: {
         type: "object",
         properties: {
           name: { type: "string" },
           status: { type: "string" },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to link to" },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to link to",
+          },
           amount: { type: "number" },
         },
         required: ["name"],
@@ -424,7 +473,8 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "update_deal",
-      description: "Update an existing deal. Use id (preferred, from a prior search) or deal_name. Call this immediately after finding the deal — do NOT search again.",
+      description:
+        "Update an existing deal. Use id (preferred, from a prior search) or deal_name. Call this immediately after finding the deal — do NOT search again.",
       parameters: {
         type: "object",
         properties: {
@@ -442,7 +492,8 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "search_companies",
-      description: "Search and list companies by name, category, or description.",
+      description:
+        "Search and list companies by name, category, or description.",
       parameters: {
         type: "object",
         properties: { query: { type: "string" }, limit: { type: "number" } },
@@ -459,7 +510,10 @@ export const OPENAI_TOOL_DEFS = [
         type: "object",
         properties: {
           id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to look up" },
+          company_name: {
+            type: "string",
+            description: "Company name to look up",
+          },
         },
         required: [],
       },
@@ -486,12 +540,19 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "update_company",
-      description: "Update/rename an existing company. Use id (preferred, from a prior search result) or company_name. Call this immediately after finding the company — do NOT search again.",
+      description:
+        "Update/rename an existing company. Use id (preferred, from a prior search result) or company_name. Call this immediately after finding the company — do NOT search again.",
       parameters: {
         type: "object",
         properties: {
-          id: { type: "number", description: "Company ID from a prior search (preferred)" },
-          company_name: { type: "string", description: "Exact company name to look up" },
+          id: {
+            type: "number",
+            description: "Company ID from a prior search (preferred)",
+          },
+          company_name: {
+            type: "string",
+            description: "Exact company name to look up",
+          },
           name: { type: "string", description: "New name for the company" },
           category: { type: "string" },
           domain: { type: "string" },
@@ -505,11 +566,15 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "search_tasks",
-      description: "Search tasks by text, description, or type. Use for general queries like 'tasks with any company', 'upcoming tasks', or when searching by content. Do NOT also call list_tasks for the same request.",
+      description:
+        "Search tasks by text, description, or type. Use for general queries like 'tasks with any company', 'upcoming tasks', or when searching by content. Do NOT also call list_tasks for the same request.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Search query (task text, description, or type)" },
+          query: {
+            type: "string",
+            description: "Search query (task text, description, or type)",
+          },
           limit: { type: "number" },
         },
         required: [],
@@ -520,14 +585,27 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "list_tasks",
-      description: "List tasks for a specific contact or company. Use ONLY when the user names a specific contact or company. For 'any company', 'all companies', or general task queries, use search_tasks instead. Do NOT call both list_tasks and search_tasks.",
+      description:
+        "List tasks for a specific contact or company. Use ONLY when the user names a specific contact or company. For 'any company', 'all companies', or general task queries, use search_tasks instead. Do NOT call both list_tasks and search_tasks.",
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to look up" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to look up",
+          },
           limit: { type: "number" },
         },
         required: [],
@@ -538,14 +616,27 @@ export const OPENAI_TOOL_DEFS = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task linked to a contact or company. Use contact_name/contact_id or company_name/company_id.",
+      description:
+        "Create a task linked to a contact or company. Use contact_name/contact_id or company_name/company_id.",
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
-          company_id: { type: "number", description: "Company ID from a prior search" },
-          company_name: { type: "string", description: "Company name to look up" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
+          company_id: {
+            type: "number",
+            description: "Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to look up",
+          },
           text: { type: "string" },
           type: { type: "string" },
           due_date: { type: "string" },
@@ -574,8 +665,14 @@ export const OPENAI_TOOL_DEFS = [
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
           limit: { type: "number" },
         },
         required: [],
@@ -590,8 +687,14 @@ export const OPENAI_TOOL_DEFS = [
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
           text: { type: "string" },
           type: { type: "string" },
         },
@@ -608,9 +711,18 @@ export const OPENAI_TOOL_DEFS = [
       parameters: {
         type: "object",
         properties: {
-          contact_id: { type: "number", description: "Contact ID from a prior search" },
-          contact_name: { type: "string", description: "Contact name or email to look up" },
-          deal_id: { type: "number", description: "Deal ID from a prior search" },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search",
+          },
+          contact_name: {
+            type: "string",
+            description: "Contact name or email to look up",
+          },
+          deal_id: {
+            type: "number",
+            description: "Deal ID from a prior search",
+          },
           deal_name: { type: "string", description: "Deal name to look up" },
           text: { type: "string", description: "The note content" },
         },
@@ -659,19 +771,26 @@ function formatToolResult(name: string, result: unknown): string {
   if (result === null || result === undefined) return `No results found.`;
   if (typeof result === "string") return cleanUserFacingText(result);
   if (Array.isArray(result)) {
-    if (result.length === 0) return `No ${name.replace("search_", "").replace("list_", "")} found.`;
+    if (result.length === 0)
+      return `No ${name.replace("search_", "").replace("list_", "")} found.`;
     return result
       .slice(0, 10)
       .map((item) => {
         if (typeof item !== "object" || !item) return String(item);
         const r = item as Record<string, unknown>;
         const label =
-          r.name ?? r.text ?? [r.firstName ?? r.first_name, r.lastName ?? r.last_name].filter(Boolean).join(" ") ?? "";
+          r.name ??
+          r.text ??
+          [r.firstName ?? r.first_name, r.lastName ?? r.last_name]
+            .filter(Boolean)
+            .join(" ") ??
+          "";
         const parts: string[] = [];
         if (label) parts.push(String(label));
         if (r.email) parts.push(String(r.email));
         if (r.status) parts.push(`status: ${r.status}`);
-        if (r.amount != null) parts.push(`$${Number(r.amount).toLocaleString()}`);
+        if (r.amount != null)
+          parts.push(`$${Number(r.amount).toLocaleString()}`);
         if (r.domain) parts.push(String(r.domain));
         if (r.category) parts.push(String(r.category));
         return `- ${parts.join(" | ") || JSON.stringify(r).slice(0, 200)}`;
@@ -682,7 +801,12 @@ function formatToolResult(name: string, result: unknown): string {
     const r = result as Record<string, unknown>;
     if (r.error) return `Error: ${r.error}`;
     const label =
-      r.name ?? r.text ?? [r.firstName ?? r.first_name, r.lastName ?? r.last_name].filter(Boolean).join(" ") ?? "";
+      r.name ??
+      r.text ??
+      [r.firstName ?? r.first_name, r.lastName ?? r.last_name]
+        .filter(Boolean)
+        .join(" ") ??
+      "";
     if (label) return `Found: ${label}`;
   }
   return JSON.stringify(result).slice(0, 500);
@@ -707,7 +831,8 @@ function parseStructuredResponse(text: string): unknown | undefined {
 
 function summarizeStructuredResponse(value: unknown): string {
   if (typeof value === "string") return cleanUserFacingText(value);
-  if (Array.isArray(value)) return cleanUserFacingText(formatToolResult("results", value));
+  if (Array.isArray(value))
+    return cleanUserFacingText(formatToolResult("results", value));
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
     for (const key of ["response", "answer", "message", "text", "content"]) {
@@ -735,7 +860,9 @@ export const toolFallbackText = (
   const sections = toolOutputs
     .slice(0, 3)
     .map((t) => {
-      const heading = t.name.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+      const heading = t.name
+        .replace(/_/g, " ")
+        .replace(/^\w/, (c) => c.toUpperCase());
       return `**${heading}**\n${formatToolResult(t.name, t.result)}`;
     })
     .join("\n\n");
@@ -749,7 +876,9 @@ type RankedEntityIntent = {
   rankLabel: string;
 };
 
-function parseRequestedRank(queryText: string): { rank: number; rankLabel: string } | null {
+function parseRequestedRank(
+  queryText: string,
+): { rank: number; rankLabel: string } | null {
   const lower = queryText.toLowerCase();
   if (/\bsecond\s+(?:latest|newest|most recent|last)\b/.test(lower)) {
     return { rank: 2, rankLabel: "second latest" };
@@ -760,23 +889,29 @@ function parseRequestedRank(queryText: string): { rank: number; rankLabel: strin
   if (/\bfourth\s+(?:latest|newest|most recent|last)\b/.test(lower)) {
     return { rank: 4, rankLabel: "fourth latest" };
   }
-  const numericOrdinal = /\b(\d+)(?:st|nd|rd|th)\s+(?:latest|newest|most recent|last)\b/.exec(
-    lower,
-  );
+  const numericOrdinal =
+    /\b(\d+)(?:st|nd|rd|th)\s+(?:latest|newest|most recent|last)\b/.exec(lower);
   if (numericOrdinal) {
     const rank = Number(numericOrdinal[1]);
     if (Number.isFinite(rank) && rank > 0) {
-      return { rank, rankLabel: `${rank}${numericOrdinal[0].match(/\d+(st|nd|rd|th)/)?.[1] ?? "th"} latest` };
+      return {
+        rank,
+        rankLabel: `${rank}${numericOrdinal[0].match(/\d+(st|nd|rd|th)/)?.[1] ?? "th"} latest`,
+      };
     }
   }
-  if (/\b(latest|newest|most recent|recently added|last added)\b/.test(lower)
-    || /\bwhat(?:'s| is)\s+the\s+last\b/.test(lower)) {
+  if (
+    /\b(latest|newest|most recent|recently added|last added)\b/.test(lower) ||
+    /\bwhat(?:'s| is)\s+the\s+last\b/.test(lower)
+  ) {
     return { rank: 1, rankLabel: "latest" };
   }
   return null;
 }
 
-function detectRankedEntityIntent(queryText: string): RankedEntityIntent | null {
+function detectRankedEntityIntent(
+  queryText: string,
+): RankedEntityIntent | null {
   const lower = queryText.toLowerCase();
   const requestedRank = parseRequestedRank(queryText);
   if (!requestedRank) return null;
@@ -805,7 +940,11 @@ function detectRankedEntityIntent(queryText: string): RankedEntityIntent | null 
       rankLabel: requestedRank.rankLabel,
     };
   }
-  if (/\b(task|tasks|todo|todos|reminder|reminders|follow-up|follow up)\b/.test(lower)) {
+  if (
+    /\b(task|tasks|todo|todos|reminder|reminders|follow-up|follow up)\b/.test(
+      lower,
+    )
+  ) {
     return {
       label: "task",
       toolNames: ["search_tasks", "list_tasks"],
@@ -816,7 +955,9 @@ function detectRankedEntityIntent(queryText: string): RankedEntityIntent | null 
   return null;
 }
 
-function extractLinkedRecords(result: unknown): Array<{ id: number; name: string }> {
+function extractLinkedRecords(
+  result: unknown,
+): Array<{ id: number; name: string }> {
   if (typeof result !== "string") return [];
   return [...result.matchAll(/\[\[[a-z][a-z0-9-]*\/(\d+)\|([^\]]+)\]\]/gi)]
     .map((match) => ({
@@ -834,7 +975,9 @@ export function deriveToolAnswer(
     .map((output) => output.result)
     .filter((result): result is string => typeof result === "string")
     .map((result) => cleanUserFacingText(result).trim())
-    .filter((result) => /^(Created|Updated|Task created|Note added)/i.test(result));
+    .filter((result) =>
+      /^(Created|Updated|Task created|Note added)/i.test(result),
+    );
   if (writeSummaries.length > 0) {
     return writeSummaries.join("\n");
   }
@@ -901,7 +1044,7 @@ export function buildRecentConversationContext(
 
   return [
     "## Recent conversation",
-    "Use the recent turns below to resolve follow-ups like \"it\", \"that company\", \"same contact\", or \"do that again\".",
+    'Use the recent turns below to resolve follow-ups like "it", "that company", "same contact", or "do that again".',
     ...lines,
   ].join("\n");
 }

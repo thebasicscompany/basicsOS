@@ -6,7 +6,9 @@
 
 @theme inline {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono:
+    "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -52,19 +54,20 @@
 
 :root {
   --radius: 0.5rem;
-  --surface-canvas:      #F0EFED;
-  --surface-sidebar:     #F0EFED;
-  --surface-content:     #F9F9F8;
-  --surface-card:        #FFFFFF;
-  --surface-hover:       #E8E6E1;
-  --surface-active:      #DDDBD6;
-  --content-shadow:      0 0 0 1px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04);
-  --surface-radius:      0px;
-  --content-radius:      12px;
+  --surface-canvas: #f0efed;
+  --surface-sidebar: #f0efed;
+  --surface-content: #f9f9f8;
+  --surface-card: #ffffff;
+  --surface-hover: #e8e6e1;
+  --surface-active: #dddbd6;
+  --content-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --surface-radius: 0px;
+  --content-radius: 12px;
   --surface-card-radius: 12px;
-  --canvas-padding:      0px;
-  --surface-gap:         0px;
-  --surface-border:      rgba(0,0,0,0.08);
+  --canvas-padding: 0px;
+  --surface-gap: 0px;
+  --surface-border: rgba(0, 0, 0, 0.08);
   --background: var(--surface-canvas);
   --foreground: oklch(0.145 0 0);
   --card: var(--surface-card);
@@ -111,14 +114,15 @@
 }
 
 .dark {
-  --surface-canvas:      #121212;
-  --surface-sidebar:     #1C1C1C;
-  --surface-content:     #191919;
-  --surface-card:        #222222;
-  --surface-hover:       #2A2A2A;
-  --surface-active:      #323232;
-  --content-shadow:      0 0 0 1px rgba(255,255,255,0.06), 0 12px 28px rgba(0,0,0,0.3);
-  --surface-border:      rgba(255,255,255,0.08);
+  --surface-canvas: #121212;
+  --surface-sidebar: #1c1c1c;
+  --surface-content: #191919;
+  --surface-card: #222222;
+  --surface-hover: #2a2a2a;
+  --surface-active: #323232;
+  --content-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.3);
+  --surface-border: rgba(255, 255, 255, 0.08);
   --background: var(--surface-canvas);
   --foreground: oklch(0.985 0 0);
   --card: var(--surface-card);
@@ -273,7 +277,9 @@ input[type="time"] {
   background-color: color-mix(in srgb, var(--primary) 12%, transparent);
   color: var(--primary);
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
-  transition: background-color 0.15s, border-color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
   cursor: pointer;
   white-space: nowrap;
 }

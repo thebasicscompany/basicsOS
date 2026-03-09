@@ -102,9 +102,7 @@ export function ProfilePage() {
 
   return (
     <div className="flex h-full flex-col overflow-auto pb-8">
-      <p className="mb-6 text-sm text-muted-foreground">
-        Your account details
-      </p>
+      <p className="mb-6 text-sm text-muted-foreground">Your account details</p>
 
       <div className="max-w-sm space-y-4">
         {isPending ? (

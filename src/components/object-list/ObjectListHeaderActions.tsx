@@ -3,6 +3,7 @@ import {
   FunnelIcon,
   PlusIcon,
   ArrowsClockwiseIcon,
+  MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ export interface ObjectListHeaderActionsProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   showTableActions?: boolean;
+  onFindFromEmail?: () => void;
 }
 
 export function ObjectListHeaderActions({
@@ -62,6 +64,7 @@ export function ObjectListHeaderActions({
   onRefresh,
   isRefreshing,
   showTableActions = true,
+  onFindFromEmail,
 }: ObjectListHeaderActionsProps) {
   const hasActiveSorts = viewState.sorts.length > 0;
   const hasActiveFilters = viewState.filters.length > 0;
@@ -115,7 +118,9 @@ export function ObjectListHeaderActions({
             items={columnItems}
             visibleCount={columnVisibleCount}
             totalCount={columnItems.length}
-            onToggle={(columnId, show) => viewState.updateColumn(columnId, { show })}
+            onToggle={(columnId, show) =>
+              viewState.updateColumn(columnId, { show })
+            }
             onReorder={(columnId, newOrder) =>
               viewState.updateColumn(columnId, { order: newOrder })
             }
@@ -158,6 +163,17 @@ export function ObjectListHeaderActions({
           <ArrowsClockwiseIcon
             className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
           />
+        </Button>
+      )}
+      {onFindFromEmail && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onFindFromEmail}
+          className="h-8 gap-1.5 text-xs"
+        >
+          <MagnifyingGlassIcon className="size-3.5" />
+          Find from Email
         </Button>
       )}
       <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">

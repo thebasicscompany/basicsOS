@@ -3,13 +3,22 @@ import { authMiddleware } from "@/middleware/auth.js";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
-import { resolveOrgAiConfig, buildGatewayHeaders } from "@/lib/org-ai-config.js";
+import {
+  resolveOrgAiConfig,
+  buildGatewayHeaders,
+} from "@/lib/org-ai-config.js";
 import type { createAuth } from "@/auth.js";
 
 type Auth = ReturnType<typeof createAuth>;
 
 export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
   const app = new Hono();
+
+  /** Extract Better Auth user ID from session */
+  const getUserId = (c: any): string => {
+    const session = c.get("session") as { user?: { id?: string } } | undefined;
+    return session!.user!.id!;
+  };
 
   app.get("/", authMiddleware(auth, db), async (c) => {
     const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
@@ -18,6 +27,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     const aiResult = await resolveOrgAiConfig(c, db, env);
     if (!aiResult.ok) return c.json([]);
     const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+    headers["X-User-Id"] = getUserId(c);
 
     const res = await fetch(`${env.BASICSOS_API_URL}/v1/connections`, {
       headers,
@@ -33,6 +43,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     const aiResult = await resolveOrgAiConfig(c, db, env);
     if (!aiResult.ok) return aiResult.response;
     const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+    headers["X-User-Id"] = getUserId(c);
 
     const provider = c.req.param("provider");
     const redirectAfter = encodeURIComponent(
@@ -49,7 +60,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     }
 
     const { url } = (await res.json()) as { url: string };
-    return c.redirect(url);
+    return c.json({ url });
   });
 
   app.delete("/:provider", authMiddleware(auth, db), async (c) => {
@@ -59,6 +70,7 @@ export function createConnectionsRoutes(db: Db, auth: Auth, env: Env) {
     const aiResult = await resolveOrgAiConfig(c, db, env);
     if (!aiResult.ok) return aiResult.response;
     const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+    headers["X-User-Id"] = getUserId(c);
 
     const provider = c.req.param("provider");
     const res = await fetch(

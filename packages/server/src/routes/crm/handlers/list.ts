@@ -54,11 +54,16 @@ export function createListHandler(db: Db) {
     const sortParam = c.req.query("sort");
     const orderParam = c.req.query("order");
     const parsedSorts = parseSorts(c.req.query("sorts"));
-    const sorts =
+    const sorts: Array<{ field: string; order: "ASC" | "DESC" }> =
       parsedSorts.length > 0
         ? parsedSorts
         : sortParam
-          ? [{ field: sortParam, order: orderParam === "DESC" ? "DESC" : "ASC" }]
+          ? [
+              {
+                field: sortParam,
+                order: orderParam === "DESC" ? ("DESC" as const) : ("ASC" as const),
+              },
+            ]
           : [];
 
     const { rows, total } = await listRecords(db, {

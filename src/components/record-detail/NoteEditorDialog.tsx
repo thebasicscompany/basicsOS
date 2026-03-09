@@ -3,10 +3,7 @@ import { TrashIcon, XIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { showError } from "@/lib/show-error";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   useCreateNote,

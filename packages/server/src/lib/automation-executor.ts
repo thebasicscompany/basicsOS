@@ -15,7 +15,7 @@ import { decryptApiKey } from "@/lib/api-key-crypto.js";
 import { writeUsageLogSafe } from "@/lib/usage-log.js";
 import * as schema from "@/db/schema/index.js";
 
-type CrmUserRow = { id: number; organizationId?: string | null };
+type CrmUserRow = { id: number; organizationId?: string | null; userId?: string };
 
 async function resolveApiKeyForOrg(
   db: Db,
@@ -60,6 +60,18 @@ export async function executeWorkflow(
   };
 
   const apiKey = await resolveApiKeyForOrg(db, env, crmUser.organizationId);
+
+  // Resolve Better Auth userId for per-user gateway connections
+  let betterAuthUserId: string = crmUser.userId ?? "";
+  if (!betterAuthUserId) {
+    const [row] = await db
+      .select({ userId: schema.crmUsers.userId })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.id, crmUser.id))
+      .limit(1);
+    if (!row) throw new Error(`CRM user ${crmUser.id} not found`);
+    betterAuthUserId = row.userId;
+  }
 
   for (const nodeId of order) {
     const node = nodes.find((n) => n.id === nodeId);
@@ -114,19 +126,19 @@ export async function executeWorkflow(
       }
 
       case "action_slack": {
-        const slackResult = await executeSlack(data, context, apiKey, env);
+        const slackResult = await executeSlack(data, context, apiKey, env, betterAuthUserId);
         context.slack_result = slackResult;
         break;
       }
 
       case "action_gmail_read": {
-        const gmailRead = await executeGmailRead(data, context, apiKey, env);
+        const gmailRead = await executeGmailRead(data, context, apiKey, env, betterAuthUserId);
         context.gmail_messages = gmailRead.gmail_messages;
         break;
       }
 
       case "action_gmail_send":
-        await executeGmailSend(data, context, apiKey, env);
+        await executeGmailSend(data, context, apiKey, env, betterAuthUserId);
         break;
 
       case "action_ai_agent": {

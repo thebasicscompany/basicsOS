@@ -4,7 +4,10 @@ import type { Db } from "@/db/client.js";
 import { viewPostSchema } from "@/schemas/views.js";
 import * as schema from "@/db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
-import { NUMBER_TO_VIEW_TYPE, viewRowToNocoRaw } from "@/routes/views/mappers.js";
+import {
+  NUMBER_TO_VIEW_TYPE,
+  viewRowToNocoRaw,
+} from "@/routes/views/mappers.js";
 import {
   copyViewColumns,
   getCrmUserId,

@@ -8,6 +8,7 @@ export const ROUTES = {
   CONNECTIONS: "/connections",
   TASKS: "/tasks",
   NOTES: "/notes",
+  MEETINGS: "/meetings",
   // Automations
   AUTOMATIONS: "/automations",
   // User

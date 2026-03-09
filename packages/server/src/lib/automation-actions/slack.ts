@@ -3,6 +3,7 @@ export async function executeSlack(
   _context: Record<string, unknown>,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
+  userId: string,
 ): Promise<Record<string, unknown>> {
   const { channel, message } = config as { channel: string; message: string };
 
@@ -13,8 +14,9 @@ export async function executeSlack(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-User-Id": userId,
       },
-      body: JSON.stringify({ channel, text: message }),
+      body: JSON.stringify({ channel, text: message, userId }),
     },
   );
 

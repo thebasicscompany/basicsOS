@@ -114,7 +114,8 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
 
     const updates: Record<string, unknown> = {};
     if (parsed.data.label !== undefined) updates.label = parsed.data.label;
-    if (parsed.data.options !== undefined) updates.options = parsed.data.options;
+    if (parsed.data.options !== undefined)
+      updates.options = parsed.data.options;
 
     const newName = parsed.data.name
       ? parsed.data.name.toLowerCase().replace(/[^a-z0-9_]/g, "_")

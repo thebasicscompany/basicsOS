@@ -163,7 +163,8 @@ export function CreateRecordModal({
           <DialogTitle>Create {objectName}</DialogTitle>
           <DialogDescription>
             Fill in the fields below to create a new {objectName.toLowerCase()}.
-            Required fields are marked with <span className="text-destructive">*</span>.
+            Required fields are marked with{" "}
+            <span className="text-destructive">*</span>.
           </DialogDescription>
         </DialogHeader>
 
@@ -195,11 +196,17 @@ export function CreateRecordModal({
             }}
             className="mr-auto"
           >
-            <ToggleGroupItem value="single" className="text-xs px-3 h-8 gap-1.5">
+            <ToggleGroupItem
+              value="single"
+              className="text-xs px-3 h-8 gap-1.5"
+            >
               <FileIcon className="size-3.5" />
               Create one
             </ToggleGroupItem>
-            <ToggleGroupItem value="multiple" className="text-xs px-3 h-8 gap-1.5">
+            <ToggleGroupItem
+              value="multiple"
+              className="text-xs px-3 h-8 gap-1.5"
+            >
               <CopySimpleIcon className="size-3.5" />
               Create many
             </ToggleGroupItem>

@@ -190,7 +190,9 @@ function viewStateReducer(
       return {
         ...state,
         isDirty: true,
-        columns: state.columns.filter((column) => column.id !== action.columnId),
+        columns: state.columns.filter(
+          (column) => column.id !== action.columnId,
+        ),
       };
     case "UPDATE_SORT":
       return {
@@ -205,7 +207,9 @@ function viewStateReducer(
         ...state,
         isDirty: true,
         filters: state.filters.map((filter) =>
-          filter.id === action.filterId ? { ...filter, ...action.updates } : filter,
+          filter.id === action.filterId
+            ? { ...filter, ...action.updates }
+            : filter,
         ),
       };
     case "ADD_SORT":
@@ -372,7 +376,11 @@ export function useViewState(viewId: string): UseViewStateReturn {
       dispatch({ type: "UPDATE_COLUMN", columnId, updates });
       // Immediately persist title/order/width changes to the server (but not show — that goes through save/discard)
       const { show: _show, ...serverUpdates } = updates;
-      if (serverUpdates.title !== undefined || serverUpdates.order !== undefined || serverUpdates.width !== undefined) {
+      if (
+        serverUpdates.title !== undefined ||
+        serverUpdates.order !== undefined ||
+        serverUpdates.width !== undefined
+      ) {
         void updateColumnMutation.mutateAsync({ columnId, ...serverUpdates });
       }
     },
@@ -420,9 +428,12 @@ export function useViewState(viewId: string): UseViewStateReturn {
     dispatch({ type: "REMOVE_SORT", sortId });
   }, []);
 
-  const updateSort = useCallback((sortId: string, updates: Partial<ViewSort>) => {
-    dispatch({ type: "UPDATE_SORT", sortId, updates });
-  }, []);
+  const updateSort = useCallback(
+    (sortId: string, updates: Partial<ViewSort>) => {
+      dispatch({ type: "UPDATE_SORT", sortId, updates });
+    },
+    [],
+  );
 
   const addFilter = useCallback(
     (

@@ -16,7 +16,11 @@ interface CompanyOption {
   name: string;
 }
 
-export function CompanyCellEditor({ value, onSave, onCancel }: CellEditorProps) {
+export function CompanyCellEditor({
+  value,
+  onSave,
+  onCancel,
+}: CellEditorProps) {
   const [open, setOpen] = useState(true);
   const [search, setSearch] = useState("");
   const didCommitRef = useRef(false);
@@ -38,7 +42,10 @@ export function CompanyCellEditor({ value, onSave, onCancel }: CellEditorProps) 
   const { data: _selectedCompany } = useQuery({
     queryKey: ["companies", companyId],
     queryFn: async () => {
-      const row = await getOne<Record<string, unknown>>("companies", companyId!);
+      const row = await getOne<Record<string, unknown>>(
+        "companies",
+        companyId!,
+      );
       return snakeToCamel(row) as CompanyOption;
     },
     enabled: companyId != null && companyId > 0,

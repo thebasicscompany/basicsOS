@@ -3,6 +3,7 @@ export async function executeGmailSend(
   _context: Record<string, unknown>,
   apiKey: string,
   env: { BASICSOS_API_URL: string },
+  userId: string,
 ): Promise<void> {
   const { to, subject, body } = config as {
     to: string;
@@ -17,8 +18,9 @@ export async function executeGmailSend(
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-User-Id": userId,
       },
-      body: JSON.stringify({ to, subject, body }),
+      body: JSON.stringify({ to, subject, body, userId }),
     },
   );
 

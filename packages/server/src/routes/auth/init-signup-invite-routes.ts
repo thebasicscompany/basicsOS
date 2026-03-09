@@ -7,10 +7,7 @@ import * as schema from "@/db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { writeAuditLogSafe } from "@/lib/audit-log.js";
 import { authMiddleware } from "@/middleware/auth.js";
-import {
-  signupBodySchema,
-  invitesBodySchema,
-} from "@/schemas/auth.js";
+import { signupBodySchema, invitesBodySchema } from "@/schemas/auth.js";
 
 function generateInviteToken(): string {
   return randomBytes(24).toString("hex");
@@ -189,9 +186,7 @@ export function registerInitSignupInviteRoutes(
       return c.json({ error: msg }, 400);
     }
     const { email, expiresInHours } = parsed.data;
-    const emailNormalized = email?.trim()
-      ? email.trim().toLowerCase()
-      : null;
+    const emailNormalized = email?.trim() ? email.trim().toLowerCase() : null;
     const token = generateInviteToken();
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
 

@@ -11,6 +11,7 @@ import {
   NotePencilIcon,
   CheckSquareIcon,
   SidebarIcon,
+  VideoCameraIcon,
 } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NavUser } from "@/components/nav-user";
@@ -53,7 +54,11 @@ function ChatThreadsNav() {
   const [open, setOpen] = useState(true);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+    >
       <SidebarGroup>
         <div className="flex items-center">
           <SidebarGroupLabel asChild className="flex-1">
@@ -125,7 +130,11 @@ function AutomationsNav() {
   const [open, setOpen] = useState(true);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+    >
       <SidebarGroup>
         <div className="flex items-center">
           <SidebarGroupLabel asChild className="flex-1">
@@ -172,7 +181,10 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <div className="flex h-14 min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-md px-2 group-data-[collapsible=icon]:hidden">
               {organization?.logo?.src ? (
                 <Avatar className="size-8 shrink-0 rounded">
-                  <AvatarImage src={organization.logo.src} alt={organization?.name ?? "Org"} />
+                  <AvatarImage
+                    src={organization.logo.src}
+                    alt={organization?.name ?? "Org"}
+                  />
                   <AvatarFallback className="rounded text-xs font-medium">
                     {(organization?.name ?? "B").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -215,7 +227,11 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.CRM} tooltip="Home">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.CRM}
+                  tooltip="Home"
+                >
                   <Link to={ROUTES.CRM}>
                     <HouseIcon className="size-4" />
                     <span>Home</span>
@@ -223,7 +239,11 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.VOICE} tooltip="Voice">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.VOICE}
+                  tooltip="Voice"
+                >
                   <Link to={ROUTES.VOICE}>
                     <MicrophoneIcon className="size-4" />
                     <span>Voice</span>
@@ -231,7 +251,11 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.NOTES} tooltip="Notes">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.NOTES}
+                  tooltip="Notes"
+                >
                   <Link to={ROUTES.NOTES}>
                     <NotePencilIcon className="size-4" />
                     <span>Notes</span>
@@ -239,10 +263,26 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === ROUTES.TASKS} tooltip="Tasks">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.TASKS}
+                  tooltip="Tasks"
+                >
                   <Link to={ROUTES.TASKS}>
                     <CheckSquareIcon className="size-4" />
                     <span>Tasks</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === ROUTES.MEETINGS}
+                  tooltip="Meetings"
+                >
+                  <Link to={ROUTES.MEETINGS}>
+                    <VideoCameraIcon className="size-4" />
+                    <span>Meetings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

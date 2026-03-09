@@ -1,7 +1,12 @@
 import type { Context } from "hono";
 import type { Db } from "@/db/client.js";
 import { jsonError } from "@/lib/api-error.js";
-import { PERMISSIONS, getCrmUserFromSession, getPermissionSetForUser, hasPermission } from "@/lib/rbac.js";
+import {
+  PERMISSIONS,
+  getCrmUserFromSession,
+  getPermissionSetForUser,
+  hasPermission,
+} from "@/lib/rbac.js";
 import { deleteRecord } from "@/services/crm/delete-record.js";
 import {
   CRM_RESOURCES,
@@ -23,12 +28,19 @@ export function createDeleteHandler(db: Db) {
     }
 
     const crmUser = await getCrmUserFromSession(c, db);
-    if (!crmUser) return jsonError(c, "User not found in CRM", 404, "NOT_FOUND");
+    if (!crmUser)
+      return jsonError(c, "User not found in CRM", 404, "NOT_FOUND");
     const orgId = crmUser.organizationId;
     if (!orgId) return jsonError(c, "Organization not found", 404, "NOT_FOUND");
 
     // Handle custom object tables
-    if (!CRM_RESOURCES.includes(resource) || (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">] && !resource.endsWith("_summary"))) {
+    if (
+      !CRM_RESOURCES.includes(resource) ||
+      (!TABLE_MAP[
+        resource as Exclude<Resource, "companies_summary" | "contacts_summary">
+      ] &&
+        !resource.endsWith("_summary"))
+    ) {
       const customTable = await resolveCustomTable(db, resource, orgId);
       if (!customTable) return c.json({ error: "Unknown resource" }, 404);
       const existing = await getCustomRecord(db, customTable, orgId, id);
@@ -49,7 +61,11 @@ export function createDeleteHandler(db: Db) {
       hasPermission(permissions, "*") ||
       hasPermission(permissions, PERMISSIONS.recordsArchive);
 
-    if (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">]) {
+    if (
+      !TABLE_MAP[
+        resource as Exclude<Resource, "companies_summary" | "contacts_summary">
+      ]
+    ) {
       return c.json({ error: "Unknown resource" }, 404);
     }
 

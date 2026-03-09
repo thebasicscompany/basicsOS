@@ -27,6 +27,14 @@ import {
   useSaveAdminTranscriptionByok,
 } from "@/hooks/use-admin";
 import { ConnectionsContent } from "@/components/connections";
+import {
+  useEmailSyncStatus,
+  useStartEmailSync,
+  useUpdateSyncSettings,
+  useTriggerSync,
+  useStopEmailSync,
+} from "@/hooks/use-email-sync";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -222,7 +230,11 @@ export function SettingsPage() {
         }
       };
       try {
-        const electronCopy = (window as unknown as { electronAPI?: { copyToClipboard?: (t: string) => Promise<void> } }).electronAPI?.copyToClipboard;
+        const electronCopy = (
+          window as unknown as {
+            electronAPI?: { copyToClipboard?: (t: string) => Promise<void> };
+          }
+        ).electronAPI?.copyToClipboard;
         if (electronCopy) {
           await electronCopy(value);
         } else if (navigator.clipboard?.writeText) {
@@ -463,9 +475,7 @@ export function SettingsPage() {
                         size="sm"
                         className="h-9 text-[13px]"
                         onClick={handleSaveAiConfig}
-                        disabled={
-                          !aiKeyInput.trim() || saveAiConfig.isPending
-                        }
+                        disabled={!aiKeyInput.trim() || saveAiConfig.isPending}
                       >
                         {saveAiConfig.isPending ? "Saving..." : "Save"}
                       </Button>
@@ -497,9 +507,7 @@ export function SettingsPage() {
                           </DialogTrigger>
                           <DialogContent className="max-w-sm">
                             <DialogHeader>
-                              <DialogTitle>
-                                Clear AI configuration?
-                              </DialogTitle>
+                              <DialogTitle>Clear AI configuration?</DialogTitle>
                               <DialogDescription>
                                 Chat, voice, and automation features will stop
                                 working for all users until a new key is
@@ -563,11 +571,7 @@ export function SettingsPage() {
                     <Label className="pt-2 text-[12px] text-muted-foreground">
                       Provider
                     </Label>
-                    <Select
-                      value="deepgram"
-                      disabled
-                      onValueChange={() => {}}
-                    >
+                    <Select value="deepgram" disabled onValueChange={() => {}}>
                       <SelectTrigger className="h-9 w-full sm:max-w-[260px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -586,9 +590,7 @@ export function SettingsPage() {
                         <div className="relative flex-1">
                           <Input
                             id="transcription-api-key"
-                            type={
-                              showTranscriptionKey ? "text" : "password"
-                            }
+                            type={showTranscriptionKey ? "text" : "password"}
                             placeholder={
                               aiConfigData?.config?.hasTranscriptionKey
                                 ? "Key configured — enter new key to replace"
@@ -606,9 +608,7 @@ export function SettingsPage() {
                             variant="ghost"
                             size="icon"
                             className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
-                            onClick={() =>
-                              setShowTranscriptionKey((p) => !p)
-                            }
+                            onClick={() => setShowTranscriptionKey((p) => !p)}
                             aria-label={
                               showTranscriptionKey ? "Hide key" : "Show key"
                             }
@@ -1009,6 +1009,8 @@ export function SettingsPage() {
             <ConnectionsContent embeddedInSettings />
           </section>
 
+          <EmailSyncSection isAdmin={isAdmin} />
+
           {hasPendingChanges && (
             <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-3 backdrop-blur-sm sm:px-8">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1051,6 +1053,176 @@ export function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
+  const { data: syncStatus, isLoading } = useEmailSyncStatus();
+  const startSync = useStartEmailSync();
+  const updateSettings = useUpdateSyncSettings();
+  const triggerSync = useTriggerSync();
+  const stopSync = useStopEmailSync();
+  const [confirmStop, setConfirmStop] = useState(false);
+
+  if (isLoading) return null;
+
+  const isActive = syncStatus?.syncStatus !== "not_started";
+  const settings = syncStatus?.settings;
+
+  if (!isActive) {
+    return (
+      <section className="space-y-4">
+        <Separator />
+        <div>
+          <h2 className="text-base font-medium">Email Sync</h2>
+          <p className="text-xs text-muted-foreground">
+            Sync emails from Gmail to discover contacts and link conversations.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() =>
+            startSync.mutate(undefined, {
+              onSuccess: () => toast.success("Email sync started"),
+            })
+          }
+          disabled={startSync.isPending}
+        >
+          {startSync.isPending ? "Starting..." : "Enable Email Sync"}
+        </Button>
+      </section>
+    );
+  }
+
+  const lastSynced = syncStatus?.lastSyncedAt
+    ? new Date(syncStatus.lastSyncedAt).toLocaleString()
+    : "Never";
+
+  return (
+    <section className="space-y-4">
+      <Separator />
+      <div>
+        <h2 className="text-base font-medium">Email Sync</h2>
+        <p className="text-xs text-muted-foreground">
+          {syncStatus?.syncStatus === "syncing"
+            ? "Syncing..."
+            : syncStatus?.syncStatus === "error"
+              ? "Error — check logs"
+              : `Active — last synced ${lastSynced}`}
+          {syncStatus?.totalSynced
+            ? ` · ${syncStatus.totalSynced.toLocaleString()} emails synced`
+            : ""}
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {isAdmin && settings && (
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-sm">AI enrichment</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enrich accepted contacts with job titles and phone numbers
+                </p>
+              </div>
+              <Switch
+                checked={settings.enrichWithAi}
+                onCheckedChange={(checked) =>
+                  updateSettings.mutate({ enrichWithAi: checked })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-sm">Sync period</Label>
+                <p className="text-xs text-muted-foreground">
+                  How far back to sync emails
+                </p>
+              </div>
+              <Select
+                value={String(settings.syncPeriodDays)}
+                onValueChange={(v) =>
+                  updateSettings.mutate({ syncPeriodDays: parseInt(v, 10) })
+                }
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="60">60 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                  <SelectItem value="180">180 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              triggerSync.mutate(undefined, {
+                onSuccess: () => toast.success("Sync triggered"),
+              })
+            }
+            disabled={
+              triggerSync.isPending || syncStatus?.syncStatus === "syncing"
+            }
+          >
+            Sync Now
+          </Button>
+          {isAdmin && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive"
+                onClick={() => setConfirmStop(true)}
+              >
+                Stop Sync
+              </Button>
+              <Dialog open={confirmStop} onOpenChange={setConfirmStop}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Stop email sync?</DialogTitle>
+                    <DialogDescription>
+                      This will stop syncing emails. Existing synced emails and
+                      contact links will be preserved.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setConfirmStop(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() =>
+                        stopSync.mutate(undefined, {
+                          onSuccess: () => {
+                            setConfirmStop(false);
+                            toast.success("Email sync stopped");
+                          },
+                        })
+                      }
+                      disabled={stopSync.isPending}
+                    >
+                      {stopSync.isPending ? "Stopping..." : "Stop Sync"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

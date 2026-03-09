@@ -43,7 +43,9 @@ const DEAL_TARGET_COLUMNS = [
   { value: "amount", label: "Amount" },
 ];
 
-function getStandardColumnsForObject(objectSlug: string): Array<{ value: string; label: string }> {
+function getStandardColumnsForObject(
+  objectSlug: string,
+): Array<{ value: string; label: string }> {
   switch (objectSlug) {
     case "contacts":
       return CONTACT_TARGET_COLUMNS;
@@ -76,7 +78,10 @@ export function ImportColumnMapper({
   onNext,
 }: ImportColumnMapperProps) {
   const attributes = useAttributes(objectSlug);
-  const [createFieldFor, setCreateFieldFor] = useState<{ header: string; index: number } | null>(null);
+  const [createFieldFor, setCreateFieldFor] = useState<{
+    header: string;
+    index: number;
+  } | null>(null);
 
   const customColumns = useMemo(
     () =>
@@ -151,8 +156,8 @@ export function ImportColumnMapper({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[12px] text-muted-foreground">
-        Map each CSV column to a {OBJECT_LABELS[objectSlug] ?? "record"} field. Unmapped columns
-        can be used to create new custom fields.
+        Map each CSV column to a {OBJECT_LABELS[objectSlug] ?? "record"} field.
+        Unmapped columns can be used to create new custom fields.
       </p>
       <div className="space-y-3">
         {parsed.headers.map((header, idx) => (
@@ -160,9 +165,15 @@ export function ImportColumnMapper({
             key={`${header}-${idx}`}
             className="flex items-center gap-3 rounded-md border p-3"
           >
-            <Label className="min-w-[140px] text-[13px] font-medium">{header}</Label>
+            <Label className="min-w-[140px] text-[13px] font-medium">
+              {header}
+            </Label>
             <Select
-              value={getTargetForHeaderIndex(idx) ?? getSuggested(header) ?? SKIP_VALUE}
+              value={
+                getTargetForHeaderIndex(idx) ??
+                getSuggested(header) ??
+                SKIP_VALUE
+              }
               onValueChange={(v) => {
                 if (v === "__create__") {
                   setCreateFieldFor({ header, index: idx });
@@ -197,7 +208,8 @@ export function ImportColumnMapper({
       </div>
       <div className="flex justify-between pt-2">
         <span className="text-[12px] text-muted-foreground">
-          {parsed.rows.length} rows • {Object.keys(mapping).length} columns mapped
+          {parsed.rows.length} rows • {Object.keys(mapping).length} columns
+          mapped
         </span>
         <Button onClick={onNext} disabled={!canProceed}>
           Continue

@@ -160,25 +160,28 @@ export function CreateObjectModal({
             fieldType: f.fieldType,
           })),
       };
-      const created = await fetchApi<{ slug: string }>(
-        "/api/object-config",
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        },
-      );
+      const created = await fetchApi<{ slug: string }>("/api/object-config", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
       await queryClient.invalidateQueries({ queryKey: ["object-config"] });
       toast.success(`${singularName} object created`);
       handleOpenChange(false);
       navigate(`/objects/${created.slug}`);
     } catch (err) {
-      toast.error(
-        (err as Error).message || "Failed to create object",
-      );
+      toast.error((err as Error).message || "Failed to create object");
     } finally {
       setSubmitting(false);
     }
-  }, [singularName, pluralName, icon, fields, queryClient, handleOpenChange, navigate]);
+  }, [
+    singularName,
+    pluralName,
+    icon,
+    fields,
+    queryClient,
+    handleOpenChange,
+    navigate,
+  ]);
 
   const SelectedIcon =
     ICON_OPTIONS.find((o) => o.value === icon)?.Icon ?? BuildingIcon;
@@ -273,9 +276,7 @@ export function CreateObjectModal({
                 </div>
                 <Select
                   value={field.fieldType}
-                  onValueChange={(v) =>
-                    updateField(field.id, "fieldType", v)
-                  }
+                  onValueChange={(v) => updateField(field.id, "fieldType", v)}
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />

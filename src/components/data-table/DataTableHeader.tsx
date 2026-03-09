@@ -13,7 +13,10 @@ import type { Attribute } from "@/field-types/types";
 interface DataTableHeaderProps<T> {
   headerGroups: HeaderGroup<T>[];
   sortableColumnIds: string[];
-  visibleCols: Array<{ attribute: Attribute; viewColumn: { fieldId: string; title: string } }>;
+  visibleCols: Array<{
+    attribute: Attribute;
+    viewColumn: { fieldId: string; title: string };
+  }>;
   singularName: string;
   onColumnResize: (fieldId: string, delta: number) => void;
   onAddSort?: (fieldId: string, direction: "asc" | "desc") => void;
@@ -47,7 +50,9 @@ export function DataTableHeader<T extends Record<string, unknown>>({
           {headerGroup.headers.map((header: Header<T, unknown>) => {
             const colIndex = sortableColumnIds.indexOf(header.id);
             const isDataColumn = colIndex !== -1;
-            const visCol = visibleCols.find((c) => c.attribute.id === header.id);
+            const visCol = visibleCols.find(
+              (c) => c.attribute.id === header.id,
+            );
             const isPrimaryAttr =
               visibleCols.length > 0 &&
               header.id === visibleCols[0].attribute.id;
@@ -76,10 +81,7 @@ export function DataTableHeader<T extends Record<string, unknown>>({
 
             const headerContent = header.isPlaceholder
               ? null
-              : flexRender(
-                  header.column.columnDef.header,
-                  header.getContext(),
-                );
+              : flexRender(header.column.columnDef.header, header.getContext());
 
             if (isDataColumn && visCol) {
               const isCombinedNameColumn =
@@ -90,7 +92,7 @@ export function DataTableHeader<T extends Record<string, unknown>>({
                 ? "Name"
                 : visCol.attribute.isPrimary
                   ? singularName
-                : (visCol.attribute.name || visCol.viewColumn.title);
+                  : visCol.attribute.name || visCol.viewColumn.title;
 
               return (
                 <TableHead

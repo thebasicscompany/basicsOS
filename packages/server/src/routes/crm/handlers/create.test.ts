@@ -136,7 +136,11 @@ describe("createCreateHandler security boundaries", () => {
   });
 
   it("injects crmUserId and organizationId from server-side identity", async () => {
-    const authCrmUser = { id: 77, organizationId: "org-secure", userId: "user-1" };
+    const authCrmUser = {
+      id: 77,
+      organizationId: "org-secure",
+      userId: "user-1",
+    };
     const requirePermissionMock = await getRequirePermissionMock();
     requirePermissionMock.mockResolvedValue({
       ok: true,

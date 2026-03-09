@@ -10,7 +10,10 @@ export function CompanyCellDisplay({ value }: CellDisplayProps) {
   const { data: company } = useQuery({
     queryKey: ["companies", companyId],
     queryFn: async () => {
-      const row = await getOne<Record<string, unknown>>("companies", companyId!);
+      const row = await getOne<Record<string, unknown>>(
+        "companies",
+        companyId!,
+      );
       return snakeToCamel(row) as { id: number; name: string };
     },
     enabled: companyId != null && companyId > 0,

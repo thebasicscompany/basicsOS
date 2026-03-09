@@ -401,15 +401,13 @@ async function seed(db: Db, crmUserId: number) {
       text: "Closed the deal. Great partnership.",
     },
   ]);
-  await db
-    .insert(schema.dealNotes)
-    .values([
-      {
-        dealId: deals[0].id,
-        crmUserId,
-        text: "Sent proposal. Awaiting feedback.",
-      },
-    ]);
+  await db.insert(schema.dealNotes).values([
+    {
+      dealId: deals[0].id,
+      crmUserId,
+      text: "Sent proposal. Awaiting feedback.",
+    },
+  ]);
 
   log.info("Inserting tags...");
   await db.insert(schema.tags).values([

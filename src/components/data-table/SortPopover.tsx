@@ -88,10 +88,7 @@ export function SortPopover({
   const hasNameEntry = nameSubOptions.length > 0;
 
   const nonNameAttributes = React.useMemo(
-    () =>
-      availableAttributes.filter(
-        (a) => !isNameFieldId(a.id, attributes),
-      ),
+    () => availableAttributes.filter((a) => !isNameFieldId(a.id, attributes)),
     [availableAttributes, attributes],
   );
 

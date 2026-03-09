@@ -22,7 +22,9 @@ export function snakeToCamelField(field: string): string {
 
 /** Escape % and _ for use in SQL ILIKE patterns (they are wildcards). */
 function escapeIlikeValue(value: string): string {
-  return value.replace(/[%_\\]/g, (char) => (char === "\\" ? "\\\\" : `\\${char}`));
+  return value.replace(/[%_\\]/g, (char) =>
+    char === "\\" ? "\\\\" : `\\${char}`,
+  );
 }
 
 export interface GenericFilter {
@@ -38,10 +40,14 @@ export function buildGenericFilterCondition(
 ): SQL | null {
   const columnKey = snakeToCamelField(f.field);
   const col = (table as Record<string, unknown>)[columnKey];
-  const hasColumn = !!col && typeof (col as { getSQL: unknown }).getSQL === "function";
+  const hasColumn =
+    !!col && typeof (col as { getSQL: unknown }).getSQL === "function";
   const hasCustomFieldsColumn =
-    typeof ((table as Record<string, unknown>).customFields as { getSQL?: unknown } | undefined)?.getSQL ===
-    "function";
+    typeof (
+      (table as Record<string, unknown>).customFields as
+        | { getSQL?: unknown }
+        | undefined
+    )?.getSQL === "function";
 
   const rawExpr = hasColumn
     ? (col as SQL)
@@ -80,9 +86,11 @@ export function buildGenericFilterCondition(
     case "lte":
       return lte(rawExpr, f.value);
     case "blank":
-      return hasColumn ? isNull(rawExpr) : or(isNull(rawExpr), eq(rawExpr, ""));
+      return hasColumn ? isNull(rawExpr) : (or(isNull(rawExpr), eq(rawExpr, "")) ?? null);
     case "notblank":
-      return hasColumn ? isNotNull(rawExpr) : and(isNotNull(rawExpr), ne(rawExpr, ""));
+      return hasColumn
+        ? isNotNull(rawExpr)
+        : (and(isNotNull(rawExpr), ne(rawExpr, "")) ?? null);
     default:
       return null;
   }

@@ -40,7 +40,9 @@ export const CompanyFieldType: FieldTypeDefinition = {
   serializeValue: (value: unknown) => value,
   getEmptyValue: () => null,
   isEmpty: (value: unknown) =>
-    value == null || value === "" || (typeof value === "number" && !Number.isInteger(value)),
+    value == null ||
+    value === "" ||
+    (typeof value === "number" && !Number.isInteger(value)),
   formatDisplayValue: (value: unknown) => {
     if (value == null || value === "") return "";
     if (typeof value === "object" && value !== null && "name" in value)

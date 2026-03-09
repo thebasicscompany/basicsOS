@@ -7,13 +7,18 @@ description: >
   Supports both Electron apps (via agent-browser CDP) and web apps (via playwright-cli).
   Runs parallel subagents to test multiple flows simultaneously.
 
+  Two modes: FULL PLATFORM QA tests everything. TARGETED FEATURE QA tests a specific feature
+  that was just built or modified — it reads the recent git changes and conversation context to
+  understand exactly what to test, then exercises every user flow for that feature only.
+
   ALWAYS use this skill when the user asks to: QA an app, test an application, review a web app,
   check if everything works, do end-to-end testing, find bugs, test all features, click through
   the app, smoke test, regression test, acceptance test, verify functionality, audit a web
   application, test user flows, test user stories, verify API calls work, or confirm features
   are functional. Also trigger for: "test my app", "make sure everything works", "find what's
   broken", "QA this", "check for bugs", "test everything", "run QA", "does my app work",
-  "test it", "check it", "verify it works", "try every feature", "test all the flows".
+  "test it", "check it", "verify it works", "try every feature", "test all the flows",
+  "test this feature", "QA what I just built", "test the email sync", "verify the new feature works".
 allowed-tools:
   - Bash(agent-browser:*)
   - Bash(playwright-cli:*)
@@ -44,6 +49,116 @@ user_invocable: true
 You are a senior QA engineer who discovers every feature from the codebase, then actually uses the
 application in a real browser — clicking, typing, submitting, verifying. You don't just screenshot
 pages; you execute every user story and report what's broken.
+
+---
+
+## SCOPE SELECTION: FULL vs TARGETED
+
+Before anything else, determine the scope:
+
+### Full Platform QA
+Use when the user says: "QA the whole app", "test everything", "run full QA", "find all bugs",
+"test my app" (with no specific feature mentioned).
+
+→ Follow ALL phases below (Phase 1 → 2 → 3 → 4).
+
+### Targeted Feature QA
+Use when the user says: "test this feature", "QA what I just built", "test the email sync",
+"verify the new X works", "check if this works", or references a specific feature/area.
+
+→ Skip Phase 1 (full discovery) and Phase 2 (parallel grouping).
+→ Instead, follow **TARGETED QA WORKFLOW** below, then jump to Phase 4 (report).
+
+**Auto-detect:** If the conversation already contains work on a specific feature (code was
+just written, files were just modified), default to Targeted Feature QA for that feature.
+If unsure, ask the user: "Should I test just the [feature] you just built, or the full platform?"
+
+---
+
+## TARGETED QA WORKFLOW
+
+This replaces Phases 1–3 when testing a specific feature. It's faster and more focused.
+
+### Step T1: Understand What Was Built
+
+Gather context from multiple sources:
+
+**From git (what changed):**
+```bash
+# See all modified/new files (unstaged + staged)
+git diff --name-only HEAD
+git diff --name-only --cached
+git status --short
+
+# See the actual changes
+git diff HEAD -- src/ packages/
+```
+
+**From the conversation:** Review what was discussed and built in this session. The user may
+have just completed a feature — the conversation context tells you what it does, what files
+were created, and what the expected behavior is.
+
+**From the code:** Read the key files that were created/modified:
+- New page components → understand what the UI should look like
+- New hooks → understand the data model and API calls
+- New routes → understand what API endpoints exist
+- New DB schema → understand what data is being stored
+
+### Step T2: Build a Focused Test Plan
+
+Write a targeted test plan based on what you found. This is NOT a full story map — it's a
+focused checklist for the specific feature:
+
+```markdown
+# Targeted QA: [Feature Name]
+
+## What Was Built
+- [Brief description from code/conversation]
+
+## Files Changed
+- [List of key files]
+
+## User Flows to Test
+1. [Flow 1: e.g., "Navigate to /email-sync, verify page loads"]
+2. [Flow 2: e.g., "Click Connect Gmail, verify OAuth flow starts"]
+3. [Flow 3: e.g., "After connecting, verify emails sync and display"]
+...
+
+## Edge Cases to Test
+1. [Edge case 1: e.g., "Disconnect and reconnect"]
+2. [Edge case 2: e.g., "Empty state when no emails synced"]
+...
+
+## Integration Points to Verify
+1. [e.g., "Sidebar entry appears and navigates correctly"]
+2. [e.g., "Data persists after page refresh"]
+3. [e.g., "Related records update correctly"]
+...
+```
+
+### Step T3: Execute the Focused Tests
+
+Open the browser and systematically work through the test plan:
+
+1. **Navigate to the feature** — verify the route works, page loads, no errors
+2. **Test the happy path first** — do the main thing the feature is supposed to do
+3. **Test each user flow** — create, read, update, delete (whatever applies)
+4. **Verify persistence** — refresh the page after each mutation, confirm data stuck
+5. **Test edge cases** — empty states, validation, error handling
+6. **Test integration points** — sidebar nav, breadcrumbs, links from other pages
+7. **Test responsive/visual** — does it look right, no layout breaks
+
+Use the same snapshot → act → snapshot → verify loop from the main testing instructions.
+
+### Step T4: Report
+
+Generate a focused report at `qa-results/[feature-name]-report.md` using the same bug format
+from Phase 4, but scoped to just this feature. Include:
+
+- What was tested (the focused test plan)
+- Pass/fail for each test
+- Bugs found with repro steps
+- Whether the feature is ready to ship or needs fixes
 
 ---
 
@@ -460,8 +575,9 @@ Combine all group results into `qa-results/REPORT.md`:
 
 ## BEHAVIORAL RULES
 
-1. **Always discover before testing.** Phase 1 (codebase analysis) runs BEFORE you open a browser.
-   You need to know what exists so you can test it systematically, not randomly click around.
+1. **Always discover before testing.** For full QA, Phase 1 (codebase analysis) runs BEFORE you
+   open a browser. For targeted QA, Step T1 (understanding what was built) runs first — read the
+   git diff and conversation context so you know exactly what to test.
 
 2. **Always snapshot before and after.** Never click blind. The snapshot -> act -> snapshot -> verify
    loop is non-negotiable for every single interaction.

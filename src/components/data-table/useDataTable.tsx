@@ -174,7 +174,7 @@ export function useDataTable(props: DataTableProps) {
             ? "Name"
             : attribute.isPrimary
               ? singularName
-            : (attribute.name || viewColumn.title);
+              : attribute.name || viewColumn.title;
           const HeaderIcon = fieldType.icon;
           return (
             <div className="flex items-center gap-1.5 text-xs font-medium truncate">
@@ -253,7 +253,10 @@ export function useDataTable(props: DataTableProps) {
                 <span>Add column</span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 max-h-64 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="w-48 max-h-64 overflow-y-auto"
+            >
               {hiddenColumns.length > 0 && (
                 <>
                   <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
@@ -286,7 +289,19 @@ export function useDataTable(props: DataTableProps) {
     }
 
     return cols;
-  }, [visibleCols, hiddenEmptyCount, hiddenColumns, columnWidths, onCellUpdate, onAddColumn, onShowColumn, singularName, attributes, firstNameAttr, usesSplitName]);
+  }, [
+    visibleCols,
+    hiddenEmptyCount,
+    hiddenColumns,
+    columnWidths,
+    onCellUpdate,
+    onAddColumn,
+    onShowColumn,
+    singularName,
+    attributes,
+    firstNameAttr,
+    usesSplitName,
+  ]);
 
   const table = useReactTable({
     data,
@@ -404,7 +419,11 @@ export function useDataTable(props: DataTableProps) {
     ) => {
       setSelectedCell({ rowIndex, colId });
       if (getFieldType(attribute.uiType).editorStyle === "toggle") {
-        onCellUpdate(recordId, attribute.columnName, !getRecordValue(data[rowIndex] ?? {}, attribute.columnName));
+        onCellUpdate(
+          recordId,
+          attribute.columnName,
+          !getRecordValue(data[rowIndex] ?? {}, attribute.columnName),
+        );
         return;
       }
       if (attribute.isPrimary) {

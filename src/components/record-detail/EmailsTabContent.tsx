@@ -1,30 +1,59 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { format } from "date-fns";
-import {
-  EnvelopeSimpleIcon,
-  CircleIcon,
-} from "@phosphor-icons/react";
-import { getMockEmails, type MockEmail } from "./mock-data/emails";
+import { EnvelopeSimpleIcon, CircleIcon } from "@phosphor-icons/react";
 import { EmailViewDialog } from "./EmailViewDialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useContactEmails, useEmailSyncStatus } from "@/hooks/use-email-sync";
+import type { SyncedEmail } from "@/types/email-sync";
 
 export function EmailsTabContent({ recordId }: { recordId: number }) {
-  const emails = useMemo(() => getMockEmails(recordId), [recordId]);
-  const [selectedEmail, setSelectedEmail] = useState<MockEmail | null>(null);
+  const { data: syncStatus } = useEmailSyncStatus();
+  const { data, isLoading } = useContactEmails(recordId);
+  const emails = data?.data ?? [];
+  const [selectedEmail, setSelectedEmail] = useState<SyncedEmail | null>(null);
+
+  const isSyncActive =
+    syncStatus?.syncStatus === "idle" || syncStatus?.syncStatus === "syncing";
 
   return (
     <div className="space-y-1">
-      {emails.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-start gap-3 px-4 py-3">
+              <Skeleton className="mt-0.5 size-4" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : emails.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center">
-          <p className="text-sm text-muted-foreground">No emails yet.</p>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Connect Gmail in Settings to use email in Automations. Record-level
-            email sync is planned.
-          </p>
-          <Button variant="outline" size="sm" className="mt-4" asChild>
-            <Link to="/settings#connections">Connect Gmail</Link>
-          </Button>
+          {!isSyncActive ? (
+            <>
+              <p className="text-sm text-muted-foreground">No emails yet.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Connect Gmail in Settings and enable email sync to see emails
+                here.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4" asChild>
+                <Link to="/settings#connections">Connect Gmail</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                No emails found for this contact.
+              </p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Emails will appear here as they sync from Gmail.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="divide-y rounded-lg border bg-card">
@@ -42,7 +71,7 @@ export function EmailsTabContent({ recordId }: { recordId: number }) {
                   <span
                     className={`truncate text-sm ${!email.isRead ? "font-semibold" : ""}`}
                   >
-                    {email.subject}
+                    {email.subject ?? "(no subject)"}
                   </span>
                   {!email.isRead && (
                     <CircleIcon
@@ -52,7 +81,9 @@ export function EmailsTabContent({ recordId }: { recordId: number }) {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="truncate">{email.from.name}</span>
+                  <span className="truncate">
+                    {email.fromName ?? email.fromEmail}
+                  </span>
                   <span>&middot;</span>
                   <span className="shrink-0">
                     {format(new Date(email.date), "MMM d")}

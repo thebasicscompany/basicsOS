@@ -21,13 +21,13 @@ const CONTACT_HEADER_ALIASES: Record<string, string> = {
   "e-mail": "email",
   linkedin: "linkedinUrl",
   "linkedin url": "linkedinUrl",
-  "linkedin_url": "linkedinUrl",
+  linkedin_url: "linkedinUrl",
 };
 
 const COMPANY_HEADER_ALIASES: Record<string, string> = {
   name: "name",
   "company name": "name",
-  "company": "name",
+  company: "name",
   domain: "domain",
   website: "domain",
   url: "domain",
@@ -64,14 +64,20 @@ export function suggestColumnMapping(
 export function parseCSVFile(file: File): Promise<ParsedCSV> {
   return new Promise((resolve, reject) => {
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      reject(new Error(`File too large. Max size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`));
+      reject(
+        new Error(
+          `File too large. Max size is ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`,
+        ),
+      );
       return;
     }
 
     Papa.parse(file, {
       skipEmptyLines: true,
       complete(result) {
-        const errors: { row: number; message: string }[] = (result.errors ?? []).map((e) => ({
+        const errors: { row: number; message: string }[] = (
+          result.errors ?? []
+        ).map((e) => ({
           row: (e.row ?? 0) + 1,
           message: e.message ?? "Parse error",
         }));
@@ -87,7 +93,9 @@ export function parseCSVFile(file: File): Promise<ParsedCSV> {
         }
 
         resolve({
-          headers: headers.map((h) => (typeof h === "string" ? h : String(h)).trim()),
+          headers: headers.map((h) =>
+            (typeof h === "string" ? h : String(h)).trim(),
+          ),
           rows: dataRows,
           errors,
         });

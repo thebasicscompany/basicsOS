@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   screen,
   ipcMain,
   clipboard,
@@ -28,8 +29,16 @@ import { getOverlaySettings, setOverlaySettings } from "./settings-store";
 import { createShortcutManager } from "./shortcut-manager";
 import type { ShortcutManager } from "./shortcut-manager";
 import { createHoldKeyDetector } from "./hold-key-detector";
-import { createMeetingManager } from "./meeting-manager-stub";
-import type { ActivationMode, DictationInsertResult } from "@/shared-overlay/types";
+import { createMeetingManager } from "./meeting-manager";
+import {
+  startSystemAudioCapture,
+  stopSystemAudioCapture,
+  checkSystemAudioPermission,
+} from "./system-audio-capture";
+import type {
+  ActivationMode,
+  DictationInsertResult,
+} from "@/shared-overlay/types";
 import { PILL_WIDTH, PILL_HEIGHT } from "@/shared-overlay/constants";
 
 let mainWindow: BrowserWindow | null = null;
@@ -212,7 +221,7 @@ function createMainWindow(): void {
     show: false,
     autoHideMenuBar: true,
     icon: iconPath,
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 20, y: 18 },
     webPreferences: {
       preload: getPreloadPath(),
@@ -364,19 +373,16 @@ ipcMain.handle(
         registeredDictationAccelerator = null;
         dictationToggleActive = false;
       }
-      globalShortcut.register(
-        updated.shortcuts.dictationHoldKey,
-        () => {
-          if (!overlayWindow) return;
-          if (!dictationToggleActive) {
-            startDictationOverlay();
-            dictationToggleActive = true;
-          } else {
-            stopDictationOverlay();
-            dictationToggleActive = false;
-          }
-        },
-      );
+      globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
+        if (!overlayWindow) return;
+        if (!dictationToggleActive) {
+          startDictationOverlay();
+          dictationToggleActive = true;
+        } else {
+          stopDictationOverlay();
+          dictationToggleActive = false;
+        }
+      });
       registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
     }
     overlayWindow?.webContents.send("settings-changed", updated);
@@ -450,7 +456,13 @@ ipcMain.handle(
   ) => {
     const method = (req.method ?? "GET").toUpperCase();
     const pathName = req.path?.trim();
-    if (!pathName || !ALLOWED_PROXY_PATHS.has(pathName)) {
+    if (
+      !pathName ||
+      !(
+        ALLOWED_PROXY_PATHS.has(pathName) ||
+        pathName.startsWith("/api/meetings")
+      )
+    ) {
       return {
         ok: false,
         status: 400,
@@ -526,7 +538,10 @@ const requestMainWindowDictationInsert = (text: string): Promise<boolean> => {
     }, 1000);
 
     pendingDictationInsertRequests.set(requestId, { resolve, timeout });
-    mainWindow?.webContents.send("dictation-insert-request", { requestId, text });
+    mainWindow?.webContents.send("dictation-insert-request", {
+      requestId,
+      text,
+    });
   });
 };
 
@@ -579,21 +594,30 @@ ipcMain.handle("copy-to-clipboard", (_event, text: string): void => {
   clipboard.writeText(text ?? "");
 });
 
+ipcMain.on("log-from-overlay", (_event, msg: string) => {
+  console.log("[overlay]", msg);
+});
+
 ipcMain.handle("start-meeting", async () => {
+  console.log("[IPC] start-meeting received, meetingMgr=", !!meetingMgr);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
+  console.log("[IPC] start-meeting: apiUrl=", apiUrl, "hasToken=", !!token);
   if (!token) throw new Error("No session token");
   await meetingMgr.start(apiUrl, token);
+  console.log("[IPC] start-meeting completed");
 });
 
 ipcMain.handle("stop-meeting", async () => {
+  console.log("[IPC] stop-meeting received, meetingMgr=", !!meetingMgr);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   await meetingMgr.stop(apiUrl);
+  console.log("[IPC] stop-meeting completed");
 });
 
 ipcMain.handle("meeting-state", () => {
@@ -604,6 +628,43 @@ ipcMain.handle("meeting-state", () => {
 
 ipcMain.handle("get-persisted-meeting", () => {
   return meetingMgr?.getPersistedState() ?? null;
+});
+
+ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
+  const cookies = await session.defaultSession.cookies.get({
+    name: "better-auth.session_token",
+  });
+  const token = cookies[0]?.value;
+  if (!token) return false;
+  return startSystemAudioCapture(meetingId, API_URL, token);
+});
+
+ipcMain.handle("stop-system-audio", async () => {
+  return stopSystemAudioCapture();
+});
+
+ipcMain.handle("check-system-audio-permission", () => {
+  return checkSystemAudioPermission();
+});
+
+ipcMain.handle("prompt-screen-recording", () => {
+  if (process.platform !== "darwin") return true;
+  const hasPermission = checkSystemAudioPermission();
+  if (!hasPermission) {
+    shell
+      .openExternal(
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+      )
+      .catch(() => {});
+  }
+  return hasPermission;
+});
+
+ipcMain.handle("get-session-token", async () => {
+  const cookies = await session.defaultSession.cookies.get({
+    name: "better-auth.session_token",
+  });
+  return cookies[0]?.value ?? "";
 });
 
 ipcMain.handle("show-overlay", () => {
@@ -637,19 +698,40 @@ const registerMeetingShortcut = (accelerator: string): void => {
     registeredMeetingAccelerator = null;
   }
   const ok = globalShortcut.register(accelerator, () => {
+    console.log("[SHORTCUT] Meeting toggle fired, overlayWindow=", !!overlayWindow);
     overlayWindow?.webContents.send("meeting-toggle");
   });
   if (ok) registeredMeetingAccelerator = accelerator;
+  console.log("[SHORTCUT] Meeting shortcut registered:", accelerator, "ok=", ok);
 };
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");
 
-  // Allow microphone (and camera) for voice overlay and main window
+  // Allow microphone, camera, and display-capture for voice overlay and main window
   session.defaultSession.setPermissionRequestHandler(
     (_, permission, callback) => {
-      const allowed = permission === "media";
+      const allowed =
+        permission === "media" || permission === "display-capture";
       callback(allowed);
+    },
+  );
+
+  // Handle getDisplayMedia requests — auto-select entire screen with system audio loopback
+  // This avoids the native screen picker (Finder-like window)
+  session.defaultSession.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      desktopCapturer.getSources({ types: ["screen"] }).then((srcs) => {
+        const primary = srcs[0];
+        if (primary) {
+          // enableLocalEcho: false so captured audio doesn't echo back
+          // Passing video source — Electron will provide system audio loopback
+          // automatically when the renderer requests audio: true in getDisplayMedia
+          callback({ video: primary, enableLocalEcho: false });
+        } else {
+          callback({});
+        }
+      }).catch(() => callback({}));
     },
   );
 
@@ -680,9 +762,11 @@ app.whenReady().then(async () => {
 
   meetingMgr = createMeetingManager({
     onMeetingStart: (meetingId) => {
+      console.log("[meeting-manager] onMeetingStart callback: sending meeting-started IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
       overlayWindow?.webContents.send("meeting-started", meetingId);
     },
     onMeetingStop: (meetingId) => {
+      console.log("[meeting-manager] onMeetingStop callback: sending meeting-stopped IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
       overlayWindow?.webContents.send("meeting-stopped", meetingId);
     },
   });
@@ -726,19 +810,16 @@ app.whenReady().then(async () => {
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
 
   if (process.platform === "win32") {
-    globalShortcut.register(
-      settings.shortcuts.dictationHoldKey,
-      () => {
-        if (!overlayWindow) return;
-        if (!dictationToggleActive) {
-          startDictationOverlay();
-          dictationToggleActive = true;
-        } else {
-          stopDictationOverlay();
-          dictationToggleActive = false;
-        }
-      },
-    );
+    globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
+      if (!overlayWindow) return;
+      if (!dictationToggleActive) {
+        startDictationOverlay();
+        dictationToggleActive = true;
+      } else {
+        stopDictationOverlay();
+        dictationToggleActive = false;
+      }
+    });
     registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
   }
 

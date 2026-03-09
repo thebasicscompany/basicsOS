@@ -12,20 +12,28 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useObjects } from "@/hooks/use-object-registry";
 import { getObjectIcon } from "@/lib/object-icon-map";
 import { CreateObjectModal } from "@/components/create-object/CreateObjectModal";
+import { useEmailSyncStatus } from "@/hooks/use-email-sync";
 
 export function ObjectRegistryNavSection() {
   const objects = useObjects();
   const [createOpen, setCreateOpen] = useState(false);
   const [open, setOpen] = useState(true);
+  const { data: syncStatus } = useEmailSyncStatus();
+  const pendingSuggestions = syncStatus?.pendingSuggestions ?? 0;
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+    >
       <SidebarGroup>
         <div className="flex items-center">
           <SidebarGroupLabel asChild className="flex-1">
@@ -51,6 +59,7 @@ export function ObjectRegistryNavSection() {
                   slug={obj.slug}
                   label={obj.pluralName}
                   iconSlug={obj.icon}
+                  badgeCount={obj.slug === "contacts" ? pendingSuggestions : 0}
                 />
               ))}
             </SidebarMenu>
@@ -65,10 +74,12 @@ function ObjectNavItem({
   slug,
   label,
   iconSlug,
+  badgeCount,
 }: {
   slug: string;
   label: string;
   iconSlug: string;
+  badgeCount?: number;
 }) {
   const location = useLocation();
   const objectPath = `/objects/${slug}`;
@@ -83,6 +94,9 @@ function ObjectNavItem({
           {label}
         </Link>
       </SidebarMenuButton>
+      {badgeCount != null && badgeCount > 0 && (
+        <SidebarMenuBadge>{badgeCount}</SidebarMenuBadge>
+      )}
     </SidebarMenuItem>
   );
 }

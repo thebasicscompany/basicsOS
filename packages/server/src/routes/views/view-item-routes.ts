@@ -5,7 +5,10 @@ import { viewPatchSchema } from "@/schemas/views.js";
 import * as schema from "@/db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { viewRowToNocoRaw } from "@/routes/views/mappers.js";
-import { getCrmUserId, getViewAndCheckOwnership } from "@/routes/views/shared.js";
+import {
+  getCrmUserId,
+  getViewAndCheckOwnership,
+} from "@/routes/views/shared.js";
 
 export function registerViewItemRoutes(app: Hono, db: Db): void {
   app.patch("/view/:viewId", async (c) => {

@@ -29,7 +29,13 @@ export function createCreateHandler(db: Db, env: Env) {
     }
 
     // Handle custom object tables
-    if (!CRM_RESOURCES.includes(resource) || (!TABLE_MAP[resource as Exclude<Resource, "companies_summary" | "contacts_summary">] && !resource.endsWith("_summary"))) {
+    if (
+      !CRM_RESOURCES.includes(resource) ||
+      (!TABLE_MAP[
+        resource as Exclude<Resource, "companies_summary" | "contacts_summary">
+      ] &&
+        !resource.endsWith("_summary"))
+    ) {
       const customTable = await resolveCustomTable(db, resource, orgId);
       if (!customTable) {
         return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
@@ -42,13 +48,24 @@ export function createCreateHandler(db: Db, env: Env) {
         return jsonError(c, "Invalid JSON body", 400, "VALIDATION_FAILED");
       }
 
-      const record = await insertCustomRecord(db, customTable, rawBody, crmUserId, orgId);
+      const record = await insertCustomRecord(
+        db,
+        customTable,
+        rawBody,
+        crmUserId,
+        orgId,
+      );
       if (!record) return jsonError(c, "Insert failed", 500, "INSERT_FAILED");
       return c.json(record, 201);
     }
 
     if (resource.endsWith("_summary")) {
-      return jsonError(c, "Cannot create on this resource", 400, "INVALID_RESOURCE");
+      return jsonError(
+        c,
+        "Cannot create on this resource",
+        400,
+        "INVALID_RESOURCE",
+      );
     }
     if (resource === "crm_users" && !authz.permissions.has("*")) {
       return jsonError(c, "Forbidden", 403, "FORBIDDEN");

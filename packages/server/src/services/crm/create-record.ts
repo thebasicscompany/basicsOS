@@ -1,7 +1,11 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
-import { buildEntityText, getEntityType, upsertEntityEmbedding } from "@/lib/embeddings.js";
+import {
+  buildEntityText,
+  getEntityType,
+  upsertEntityEmbedding,
+} from "@/lib/embeddings.js";
 import { fireEvent, reloadRule } from "@/lib/automation-engine.js";
 import { decryptApiKey } from "@/lib/api-key-crypto.js";
 import * as schema from "@/db/schema/index.js";
@@ -10,7 +14,11 @@ import { getWriteAllowlist } from "@/routes/crm/handlers/field-allowlists.js";
 import { validateWritePayload } from "@/schemas/crm/write-payloads.js";
 import type { Resource } from "@/routes/crm/constants.js";
 
-async function resolveOrgApiKey(db: Db, env: Env, orgId: string): Promise<string | null> {
+async function resolveOrgApiKey(
+  db: Db,
+  env: Env,
+  orgId: string,
+): Promise<string | null> {
   const [config] = await db
     .select()
     .from(schema.orgAiConfig)
@@ -69,7 +77,12 @@ export async function createRecord(
   const entityType = getEntityType(resource);
   const apiKey = await resolveOrgApiKey(db, env, orgId);
   const insertedId = (inserted as { id?: number }).id;
-  if (entityType && apiKey && insertedId != null && typeof insertedId === "number") {
+  if (
+    entityType &&
+    apiKey &&
+    insertedId != null &&
+    typeof insertedId === "number"
+  ) {
     const chunkText = buildEntityText(entityType, inserted);
     upsertEntityEmbedding(
       db,

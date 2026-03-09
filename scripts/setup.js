@@ -96,7 +96,8 @@ function checkPrereqs() {
 async function askMode() {
   return choose("Deploy for development or production?", [
     {
-      label: "Development — local Postgres, dev admin (admin@example.com), seed DB",
+      label:
+        "Development — local Postgres, dev admin (admin@example.com), seed DB",
       value: "dev",
     },
     {
@@ -123,7 +124,7 @@ async function createEnv(mode) {
 
   if (existsSync(ENV_FILE)) {
     const overwrite = await prompt(
-      `packages/server/.env already exists. Overwrite? [y/N]: `
+      `packages/server/.env already exists. Overwrite? [y/N]: `,
     );
     if (overwrite.toLowerCase() !== "y") {
       console.log("Skipping .env creation.\n");
@@ -137,11 +138,11 @@ async function createEnv(mode) {
 
   content = content.replace(
     "BETTER_AUTH_SECRET=generate-with-openssl-rand-base64-32",
-    `BETTER_AUTH_SECRET=${authSecret}`
+    `BETTER_AUTH_SECRET=${authSecret}`,
   );
   content = content.replace(
     "API_KEY_ENCRYPTION_KEY=generate-32-byte-base64-or-hex",
-    `API_KEY_ENCRYPTION_KEY=${encKey}`
+    `API_KEY_ENCRYPTION_KEY=${encKey}`,
   );
 
   if (mode === "prod") {
@@ -218,14 +219,14 @@ async function main() {
     printDevDone();
   } else {
     const startLocalPostgres = await prompt(
-      "Start local Postgres via Docker for this machine? [y/N]: "
+      "Start local Postgres via Docker for this machine? [y/N]: ",
     );
     install();
     if (startLocalPostgres.toLowerCase() === "y") {
       startPostgres();
     } else {
       console.log(
-        "\nSkipping Docker Postgres. Ensure DATABASE_URL points to your database.\n"
+        "\nSkipping Docker Postgres. Ensure DATABASE_URL points to your database.\n",
       );
     }
     await createEnv("prod");

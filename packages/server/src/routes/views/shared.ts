@@ -73,7 +73,10 @@ async function getColumnListForTable(
     .from(schema.objectAttributeOverrides)
     .innerJoin(
       schema.objectConfig,
-      eq(schema.objectAttributeOverrides.objectConfigId, schema.objectConfig.id),
+      eq(
+        schema.objectAttributeOverrides.objectConfigId,
+        schema.objectConfig.id,
+      ),
     )
     .where(
       and(
@@ -85,7 +88,9 @@ async function getColumnListForTable(
       ),
     );
   const overrideMap = new Map(
-    overrides.filter((o) => o.displayName).map((o) => [o.columnName, o.displayName!]),
+    overrides
+      .filter((o) => o.displayName)
+      .map((o) => [o.columnName, o.displayName!]),
   );
 
   const out: { fieldId: string; title: string }[] = rows.map((r) => ({

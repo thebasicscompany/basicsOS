@@ -16,12 +16,7 @@ export async function restoreDeal(
   const [restored] = await db
     .update(schema.deals)
     .set({ archivedAt: null, updatedAt: new Date() })
-    .where(
-      and(
-        eq(schema.deals.id, id),
-        eq(schema.deals.organizationId, orgId),
-      ),
-    )
+    .where(and(eq(schema.deals.id, id), eq(schema.deals.organizationId, orgId)))
     .returning();
 
   return (restored as Record<string, unknown>) ?? null;

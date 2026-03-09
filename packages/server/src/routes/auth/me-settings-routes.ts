@@ -42,9 +42,7 @@ export function registerMeSettingsRoutes(
       const [orgConfig] = await db
         .select({ id: schema.orgAiConfig.id })
         .from(schema.orgAiConfig)
-        .where(
-          eq(schema.orgAiConfig.organizationId, crmUser.organizationId),
-        )
+        .where(eq(schema.orgAiConfig.organizationId, crmUser.organizationId))
         .limit(1);
       hasOrgAiConfig =
         Boolean(orgConfig) ||
@@ -95,5 +93,4 @@ export function registerMeSettingsRoutes(
 
     return c.json({ ok: true });
   });
-
 }

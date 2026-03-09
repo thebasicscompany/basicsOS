@@ -36,6 +36,11 @@ import { useViews, useViewState } from "@/hooks/use-views";
 import { useRenameView, useDeleteView } from "@/hooks/use-view-queries";
 import type { ViewSort, ViewFilter } from "@/types/views";
 import { usePageTitle, usePageHeaderActions } from "@/contexts/page-header";
+import { useEmailSyncStatus } from "@/hooks/use-email-sync";
+import { SuggestedContactsSheet } from "@/components/email-sync/SuggestedContactsSheet";
+import { FindFromEmailDialog } from "@/components/email-sync/FindFromEmailDialog";
+import { SparkleIcon, XIcon } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
 
 /* ------------------------------------------------------------------ */
 /*  ObjectListPage                                                     */
@@ -52,9 +57,19 @@ export function ObjectListPage() {
     recordId: number;
     record: Record<string, unknown>;
   } | null>(null);
+  const [suggestionsSheetOpen, setSuggestionsSheetOpen] = useState(false);
+  const [findFromEmailOpen, setFindFromEmailOpen] = useState(false);
+  const [suggestionsBannerDismissed, setSuggestionsBannerDismissed] =
+    useState(false);
 
   const obj = useObject(objectSlug);
   const attributes = useAttributes(objectSlug);
+  const isContacts = objectSlug === "contacts";
+  const { data: syncStatus } = useEmailSyncStatus();
+  const pendingSuggestions =
+    isContacts && !suggestionsBannerDismissed
+      ? (syncStatus?.pendingSuggestions ?? 0)
+      : 0;
 
   usePageTitle(obj?.pluralName ?? "");
 
@@ -76,7 +91,9 @@ export function ObjectListPage() {
       try {
         const stored = localStorage.getItem(layoutKey);
         if (stored === "kanban") return "kanban" as const;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     return "table" as const;
   })();
@@ -84,7 +101,9 @@ export function ObjectListPage() {
     (newLayout: "table" | "kanban") => {
       try {
         localStorage.setItem(layoutKey, newLayout);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -120,8 +139,12 @@ export function ObjectListPage() {
       const colName = attr?.columnName ?? f.fieldId;
       return {
         field: colName,
-        op: attr ? normalizeFilterOperator(f.operator || "eq", attr) : f.operator || "eq",
-        value: attr ? normalizeFilterValue(f.operator || "eq", f.value, attr) : String(f.value ?? ""),
+        op: attr
+          ? normalizeFilterOperator(f.operator || "eq", attr)
+          : f.operator || "eq",
+        value: attr
+          ? normalizeFilterValue(f.operator || "eq", f.value, attr)
+          : String(f.value ?? ""),
         logicalOp: f.logicalOp,
       };
     });
@@ -155,7 +178,9 @@ export function ObjectListPage() {
 
   const handleCellUpdate = useCallback(
     (recordId: number, columnName: string, value: unknown) => {
-      const attribute = attributes.find((attr) => attr.columnName === columnName);
+      const attribute = attributes.find(
+        (attr) => attr.columnName === columnName,
+      );
       if (!attribute) return;
 
       const { firstNameAttr, lastNameAttr, usesSplitName } =
@@ -209,9 +234,7 @@ export function ObjectListPage() {
     if (!deleteTarget) return;
     try {
       await deleteRecord.mutateAsync(deleteTarget.recordId);
-      toast.success(
-        `${obj?.singularName ?? "Record"} deleted`,
-      );
+      toast.success(`${obj?.singularName ?? "Record"} deleted`);
       setDeleteTarget(null);
     } catch (err) {
       showError(
@@ -267,6 +290,9 @@ export function ObjectListPage() {
           onAddColumn={() => setAddColumnOpen(true)}
           onRefresh={refreshCrm}
           isRefreshing={isFetching}
+          onFindFromEmail={
+            isContacts ? () => setFindFromEmailOpen(true) : undefined
+          }
         />
       </>
     );
@@ -282,6 +308,7 @@ export function ObjectListPage() {
     setLayout,
     isFetching,
     refreshCrm,
+    isContacts,
   ]);
 
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
@@ -382,6 +409,33 @@ export function ObjectListPage() {
             />
           )}
 
+        {pendingSuggestions > 0 && (
+          <div className="mx-1 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-900 dark:bg-blue-950/30">
+            <SparkleIcon className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm">
+              <strong>{pendingSuggestions}</strong> contact
+              {pendingSuggestions !== 1 ? "s" : ""} discovered from your email
+            </span>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => setSuggestionsSheetOpen(true)}
+            >
+              Review
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-6 text-muted-foreground"
+              onClick={() => setSuggestionsBannerDismissed(true)}
+            >
+              <XIcon className="size-3.5" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex min-h-0 flex-1 flex-col">
           {isDeals && layout === "kanban" ? (
             <DealsKanbanBoard />
@@ -405,8 +459,12 @@ export function ObjectListPage() {
                 if (vc) viewState.updateColumn(vc.id, { width: String(width) });
               }}
               onSwapColumns={(fieldIdA, fieldIdB) => {
-                const vcA = viewState.columns.find((c) => c.fieldId === fieldIdA);
-                const vcB = viewState.columns.find((c) => c.fieldId === fieldIdB);
+                const vcA = viewState.columns.find(
+                  (c) => c.fieldId === fieldIdA,
+                );
+                const vcB = viewState.columns.find(
+                  (c) => c.fieldId === fieldIdB,
+                );
                 if (vcA && vcB) {
                   const orderA = vcA.order;
                   const orderB = vcB.order;
@@ -473,13 +531,26 @@ export function ObjectListPage() {
         <EditAttributeDialog
           attribute={
             editAttrFieldId
-              ? attributes.find((a) => a.id === editAttrFieldId) ?? null
+              ? (attributes.find((a) => a.id === editAttrFieldId) ?? null)
               : null
           }
           objectSlug={objectSlug}
           open={editAttrFieldId != null}
           onOpenChange={(open) => !open && setEditAttrFieldId(null)}
         />
+
+        {isContacts && (
+          <>
+            <SuggestedContactsSheet
+              open={suggestionsSheetOpen}
+              onOpenChange={setSuggestionsSheetOpen}
+            />
+            <FindFromEmailDialog
+              open={findFromEmailOpen}
+              onOpenChange={setFindFromEmailOpen}
+            />
+          </>
+        )}
       </div>
     </>
   );

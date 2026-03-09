@@ -23,11 +23,7 @@ interface CompanyOption {
   name: string;
 }
 
-export function CompanyFormInput({
-  value,
-  onChange,
-  error,
-}: FormInputProps) {
+export function CompanyFormInput({ value, onChange, error }: FormInputProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -49,7 +45,10 @@ export function CompanyFormInput({
   const { data: selectedCompany } = useQuery({
     queryKey: ["companies", companyId],
     queryFn: async () => {
-      const row = await getOne<Record<string, unknown>>("companies", companyId!);
+      const row = await getOne<Record<string, unknown>>(
+        "companies",
+        companyId!,
+      );
       return snakeToCamel(row) as CompanyOption;
     },
     enabled: companyId != null && companyId > 0,
@@ -58,12 +57,15 @@ export function CompanyFormInput({
 
   const companies = useMemo(() => data?.data ?? [], [data?.data]);
   const selectedInList = useMemo(
-    () => (value != null ? companies.find((c) => c.id === Number(value)) : null),
+    () =>
+      value != null ? companies.find((c) => c.id === Number(value)) : null,
     [companies, value],
   );
 
   const displayLabel =
-    selectedInList?.name ?? selectedCompany?.name ?? (value != null ? String(value) : null);
+    selectedInList?.name ??
+    selectedCompany?.name ??
+    (value != null ? String(value) : null);
 
   return (
     <div className="flex flex-col gap-1">
@@ -91,7 +93,10 @@ export function CompanyFormInput({
             <CaretDownIcon className="text-muted-foreground size-4 shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0">
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0"
+        >
           <Command shouldFilter={false}>
             <CommandInput
               placeholder="Search by name, category..."
@@ -134,9 +139,7 @@ export function CompanyFormInput({
           </Command>
         </PopoverContent>
       </Popover>
-      {error && (
-        <span className="text-destructive text-xs">{error}</span>
-      )}
+      {error && <span className="text-destructive text-xs">{error}</span>}
     </div>
   );
 }

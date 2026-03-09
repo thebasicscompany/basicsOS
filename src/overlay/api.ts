@@ -181,17 +181,32 @@ export const transcribeAudioBlob = async (
   }
 };
 
-/** Stub — no backend. Used by meeting recorder. */
+/** Upload transcript text to backend. */
 export const uploadMeetingTranscript = async (
-  _meetingId: string,
-  _transcriptText: string,
+  meetingId: string,
+  transcriptText: string,
 ): Promise<void> => {
-  // No-op when stubbed
+  await fetchWithSession(
+    `/api/meetings/${meetingId}/transcript`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: transcriptText }),
+    },
+    { retries: 1 },
+  );
 };
 
-/** Stub — no backend. Used by meeting recorder. */
-export const processMeeting = async (_meetingId: string): Promise<void> => {
-  // No-op when stubbed
+/** Trigger LLM summarization for a completed meeting. */
+export const processMeeting = async (meetingId: string): Promise<void> => {
+  await fetchWithSession(
+    `/api/meetings/${meetingId}/process`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    },
+    { retries: 1, timeoutMs: 60_000 },
+  );
 };
 
 export async function* streamAssistant(
@@ -214,8 +229,7 @@ export async function* streamAssistant(
     },
     { timeoutMs: options?.timeoutMs ?? DEFAULT_TIMEOUT_MS },
   );
-  const nextThreadId =
-    res.headers["x-thread-id"] ?? res.headers["X-Thread-Id"];
+  const nextThreadId = res.headers["x-thread-id"] ?? res.headers["X-Thread-Id"];
   if (nextThreadId) {
     options?.onThreadId?.(nextThreadId);
   }

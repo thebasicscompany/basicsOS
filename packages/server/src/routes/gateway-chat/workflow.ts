@@ -69,7 +69,11 @@ export type WorkflowPlan = {
 };
 
 export type ResolvedWorkflowStep =
-  | { mode: "tool"; tool: (typeof TOOL_NAMES)[number]; args: Record<string, unknown> }
+  | {
+      mode: "tool";
+      tool: (typeof TOOL_NAMES)[number];
+      args: Record<string, unknown>;
+    }
   | { mode: "blocked"; message: string };
 
 type LookupCandidate = {
@@ -84,10 +88,7 @@ function extractStructuredText(text: string): string {
   return trimmed;
 }
 
-function parseJsonWithSchema<T>(
-  text: string,
-  schema: z.ZodType<T>,
-): T | null {
+function parseJsonWithSchema<T>(text: string, schema: z.ZodType<T>): T | null {
   const candidate = extractStructuredText(text);
   if (!candidate) return null;
   try {
@@ -159,18 +160,20 @@ function inferLookupQueryFromUserRequest(
             : null;
   if (!entityWord) return undefined;
 
-  const betweenEntityAndTo = new RegExp(`\\b${entityWord}\\b\\s+(.+?)\\s+\\bto\\b`, "i").exec(
-    userQuery,
-  );
+  const betweenEntityAndTo = new RegExp(
+    `\\b${entityWord}\\b\\s+(.+?)\\s+\\bto\\b`,
+    "i",
+  ).exec(userQuery);
   if (betweenEntityAndTo?.[1]) {
     const cleaned = cleanLookupQuery(betweenEntityAndTo[1]);
     if (cleaned) return cleaned;
   }
 
   if (/\b(update|rename|change|edit|set)\b/.test(lower)) {
-    const ofEntity = new RegExp(`\\bof\\s+${entityWord}\\b\\s+(.+?)\\s+\\bto\\b`, "i").exec(
-      userQuery,
-    );
+    const ofEntity = new RegExp(
+      `\\bof\\s+${entityWord}\\b\\s+(.+?)\\s+\\bto\\b`,
+      "i",
+    ).exec(userQuery);
     if (ofEntity?.[1]) {
       const cleaned = cleanLookupQuery(ofEntity[1]);
       if (cleaned) return cleaned;
@@ -188,7 +191,9 @@ function normalizeLookupStepArgs(
   if (!isLookupTool(tool)) return rawArgs;
 
   const explicitQuery =
-    typeof rawArgs.query === "string" ? cleanLookupQuery(rawArgs.query) : undefined;
+    typeof rawArgs.query === "string"
+      ? cleanLookupQuery(rawArgs.query)
+      : undefined;
   const inferredQuery = inferLookupQueryFromUserRequest(userQuery, tool);
   const query = inferredQuery || explicitQuery;
 
@@ -197,7 +202,9 @@ function normalizeLookupStepArgs(
 
 function extractLookupCandidates(result: string): LookupCandidate[] {
   const candidates: LookupCandidate[] = [];
-  const wikiMatches = result.matchAll(/\[\[[a-z][a-z0-9-]*\/(\d+)\|([^\]]+)\]\]/gi);
+  const wikiMatches = result.matchAll(
+    /\[\[[a-z][a-z0-9-]*\/(\d+)\|([^\]]+)\]\]/gi,
+  );
   for (const match of wikiMatches) {
     const id = Number(match[1]);
     const name = match[2]?.trim();
@@ -259,11 +266,11 @@ export async function planToolWorkflow(args: {
     "- Non-deferred steps should include complete args and should be executable immediately.",
     "- Valid tools: " + TOOL_NAMES.join(", "),
     "Example:",
-    'User: update the name of company about toching to touching company',
+    "User: update the name of company about toching to touching company",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_companies","args":{"query":"about toching"}},{"tool":"update_company","args":{"name":"touching company"},"deferred":true}]}',
-    'User: update the name of company about toching to touching company and also change the description to not touching people',
+    "User: update the name of company about toching to touching company and also change the description to not touching people",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_companies","args":{"query":"about toching"}},{"tool":"update_company","args":{"name":"touching company","description":"not touching people"},"deferred":true}]}',
-    'User: update the name of company about toching to touching company and also change the description to not touching people also create a new company called speakl',
+    "User: update the name of company about toching to touching company and also change the description to not touching people also create a new company called speakl",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_companies","args":{"query":"about toching"}},{"tool":"update_company","args":{"name":"touching company","description":"not touching people"},"deferred":true},{"tool":"create_company","args":{"name":"speekl"}}]}',
     "",
     `User request: ${args.queryText}`,

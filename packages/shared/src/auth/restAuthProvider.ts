@@ -7,7 +7,11 @@ export interface RestAuthProvider {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   checkError: (error: unknown) => Promise<void>;
-  getIdentity: () => Promise<{ id: string; fullName?: string; avatar?: string }>;
+  getIdentity: () => Promise<{
+    id: string;
+    fullName?: string;
+    avatar?: string;
+  }>;
   getAuthorizationDetails: () => never;
   approveAuthorization: () => never;
   denyAuthorization: () => never;
@@ -79,7 +83,14 @@ export function createRestAuthProvider(apiUrl: string): RestAuthProvider {
       if (!res.ok) return false;
       const sale = await res.json();
       const role = sale.administrator ? "admin" : "user";
-      return canAccess(role, params as { action: string; resource: string; record?: Record<string, unknown> });
+      return canAccess(
+        role,
+        params as {
+          action: string;
+          resource: string;
+          record?: Record<string, unknown>;
+        },
+      );
     },
   };
 }

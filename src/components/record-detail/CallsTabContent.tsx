@@ -1,10 +1,6 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import {
-  PhoneIcon,
-  VideoCameraIcon,
-  UsersIcon,
-} from "@phosphor-icons/react";
+import { PhoneIcon, VideoCameraIcon, UsersIcon } from "@phosphor-icons/react";
 import { getMockCalls, type MockCall } from "./mock-data/calls";
 import { CallViewDialog } from "./CallViewDialog";
 
@@ -41,8 +37,8 @@ export function CallsTabContent({
         <div className="rounded-lg border border-dashed py-12 text-center">
           <p className="text-sm text-muted-foreground">No calls yet.</p>
           <p className="mt-1.5 text-xs text-muted-foreground">
-            Log calls manually as Notes, or add a Note with meeting summary after
-            a call. Calendar and call sync coming soon.
+            Log calls manually as Notes, or add a Note with meeting summary
+            after a call. Calendar and call sync coming soon.
           </p>
         </div>
       ) : (

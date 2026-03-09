@@ -129,13 +129,20 @@ export function useUpdateRecord<T = Record<string, unknown>>(
       qc.setQueriesData({ queryKey: ["records", objectSlug] }, (current) => {
         if (!current || typeof current !== "object") return current;
 
-        if ("data" in current && Array.isArray((current as RecordListResult<Record<string, unknown>>).data)) {
+        if (
+          "data" in current &&
+          Array.isArray(
+            (current as RecordListResult<Record<string, unknown>>).data,
+          )
+        ) {
           const typed = current as RecordListResult<Record<string, unknown>>;
           return {
             ...typed,
             data: typed.data.map((record) =>
-              ((record as { id?: number | string; Id?: number | string }).id === id ||
-                (record as { id?: number | string; Id?: number | string }).Id === id)
+              (record as { id?: number | string; Id?: number | string }).id ===
+                id ||
+              (record as { id?: number | string; Id?: number | string }).Id ===
+                id
                 ? applyPatch(record as Record<string, unknown>)
                 : record,
             ),

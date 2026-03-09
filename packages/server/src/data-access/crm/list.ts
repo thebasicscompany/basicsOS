@@ -44,7 +44,8 @@ function buildGenericFilterExpression(
     }
 
     expression =
-      (gf.logicalOp === "or" ? or(expression, cond) : and(expression, cond)) ?? null;
+      (gf.logicalOp === "or" ? or(expression, cond) : and(expression, cond)) ??
+      null;
   }
 
   return expression;
@@ -55,27 +56,31 @@ function buildOrderByExpression(
   sort: { field: string; order: "ASC" | "DESC" },
 ): SQL | null {
   const sortParamCamel = snakeToCamelField(sort.field);
-  const orderByCol = (table as unknown as Record<string, unknown>)[sortParamCamel];
+  const orderByCol = (table as unknown as Record<string, unknown>)[
+    sortParamCamel
+  ];
   const orderDir = sort.order === "DESC" ? desc : asc;
 
   if (orderByCol) {
     return orderDir(orderByCol as SQL);
   }
 
-  const customFieldsColumn = (table as unknown as Record<string, unknown>).customFields;
+  const customFieldsColumn = (table as unknown as Record<string, unknown>)
+    .customFields;
   if (
     customFieldsColumn &&
     typeof (customFieldsColumn as { getSQL?: unknown }).getSQL === "function"
   ) {
-    return orderDir(
-      sql`(${customFieldsColumn as SQL} ->> ${sort.field})`,
-    );
+    return orderDir(sql`(${customFieldsColumn as SQL} ->> ${sort.field})`);
   }
 
   return null;
 }
 
-export async function listRecords(db: Db, params: ListParams): Promise<ListResult> {
+export async function listRecords(
+  db: Db,
+  params: ListParams,
+): Promise<ListResult> {
   const { resource, orgId, start, end, filter, genericFilters, sorts } = params;
   const limit = Math.max(0, end - start + 1);
   const offset = start;
@@ -92,7 +97,9 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
       );
     }
     if (filter.category)
-      companyConds.push(eq(schema.companies.category, filter.category as string));
+      companyConds.push(
+        eq(schema.companies.category, filter.category as string),
+      );
 
     const rows = await db
       // @ts-expect-error - SelectedFields typing with spread + SQL aliased
@@ -101,10 +108,9 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
         nbDeals: sql<number>`count(distinct ${schema.deals.id})::int`.as(
           "nb_deals",
         ),
-        nbContacts:
-          sql<number>`count(distinct ${schema.contacts.id})::int`.as(
-            "nb_contacts",
-          ),
+        nbContacts: sql<number>`count(distinct ${schema.contacts.id})::int`.as(
+          "nb_contacts",
+        ),
       })
       .from(schema.companies)
       .leftJoin(schema.deals, eq(schema.companies.id, schema.deals.companyId))
@@ -223,7 +229,9 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
     conditions.push(eq(schema.dealNotes.dealId, Number(filter.deal_id)));
   }
   if (resource === "company_notes" && filter.company_id != null) {
-    conditions.push(eq(schema.companyNotes.companyId, Number(filter.company_id)));
+    conditions.push(
+      eq(schema.companyNotes.companyId, Number(filter.company_id)),
+    );
   }
 
   const genericExpression = buildGenericFilterExpression(
@@ -255,9 +263,10 @@ export async function listRecords(db: Db, params: ListParams): Promise<ListResul
           .from(table)
           .where(and(...conditions))
       : db.select().from(table);
-  const finalQuery = orderByExpressions.length > 0
-    ? baseQuery.orderBy(...orderByExpressions)
-    : baseQuery;
+  const finalQuery =
+    orderByExpressions.length > 0
+      ? baseQuery.orderBy(...orderByExpressions)
+      : baseQuery;
   const rows = await finalQuery.limit(limit).offset(offset);
 
   return { rows, total };

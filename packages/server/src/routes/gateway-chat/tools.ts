@@ -54,8 +54,9 @@ type RecordRow = {
 };
 
 function mdLink(row: RecordRow, objectSlug: string): string {
-  const name = (row.name as string | undefined)
-    ?? (([row.firstName, row.lastName].filter(Boolean).join(" ")) || `#${row.id}`);
+  const name =
+    (row.name as string | undefined) ??
+    ([row.firstName, row.lastName].filter(Boolean).join(" ") || `#${row.id}`);
   return `[[${objectSlug}/${row.id}|${name}]]`;
 }
 
@@ -77,7 +78,8 @@ function formatCompany(row: RecordRow): string {
   const parts = [mdLink(row, "companies")];
   if (row.category) parts.push(`Category: ${row.category}`);
   if (row.domain) parts.push(String(row.domain));
-  if (row.description) parts.push(`Description: ${String(row.description).slice(0, 100)}`);
+  if (row.description)
+    parts.push(`Description: ${String(row.description).slice(0, 100)}`);
   return parts.join(" — ");
 }
 
@@ -94,17 +96,25 @@ function formatTask(row: RecordRow): string {
         : `[${name}](/tasks)`;
   const parts = [taskLink];
   if (row.type) parts.push(`Type: ${row.type}`);
-  if (row.dueDate) parts.push(`Due: ${new Date(String(row.dueDate)).toLocaleDateString()}`);
+  if (row.dueDate)
+    parts.push(`Due: ${new Date(String(row.dueDate)).toLocaleDateString()}`);
   if (row.description) parts.push(String(row.description).slice(0, 80));
   return parts.join(" — ");
 }
 
-function formatRows(rows: RecordRow[], formatter: (r: RecordRow) => string): string {
+function formatRows(
+  rows: RecordRow[],
+  formatter: (r: RecordRow) => string,
+): string {
   if (rows.length === 0) return "No results found.";
   return rows.map((r, i) => `${i + 1}. ${formatter(r)}`).join("\n");
 }
 
-function formatSingle(row: RecordRow | null, objectSlug: string, formatter: (r: RecordRow) => string): string {
+function formatSingle(
+  row: RecordRow | null,
+  objectSlug: string,
+  formatter: (r: RecordRow) => string,
+): string {
   if (!row) return "Not found.";
   return `Found: ${formatter(row)}`;
 }
@@ -176,12 +186,13 @@ export async function executeValidatedTool(
       return { error: "Invalid arguments", details: parsed.error.flatten() };
     let id = parsed.data.id;
     if (id == null && parsed.data.contact_name) {
-      id = (await resolveContactByName(
-        db,
-        organizationId,
-        parsed.data.contact_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveContactByName(
+          db,
+          organizationId,
+          parsed.data.contact_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No contact found matching that name.";
     }
     if (id == null) return { error: "Provide id or contact_name" };
@@ -223,7 +234,9 @@ export async function executeValidatedTool(
         companyId,
       })
       .returning();
-    return row ? formatCreated(row, "contacts") : "Error: failed to create contact";
+    return row
+      ? formatCreated(row, "contacts")
+      : "Error: failed to create contact";
   }
 
   if (toolName === "update_contact") {
@@ -233,12 +246,13 @@ export async function executeValidatedTool(
     const args = parsed.data;
     let id = args.id;
     if (id == null && args.contact_name) {
-      id = (await resolveContactByName(
-        db,
-        organizationId,
-        args.contact_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveContactByName(
+          db,
+          organizationId,
+          args.contact_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No contact found matching that name.";
     }
     if (id == null) return { error: "Provide id or contact_name" };
@@ -283,12 +297,13 @@ export async function executeValidatedTool(
       return { error: "Invalid arguments", details: parsed.error.flatten() };
     let id = parsed.data.id;
     if (id == null && parsed.data.deal_name) {
-      id = (await resolveDealByName(
-        db,
-        organizationId,
-        parsed.data.deal_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveDealByName(
+          db,
+          organizationId,
+          parsed.data.deal_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No deal found matching that name.";
     }
     if (id == null) return { error: "Provide id or deal_name" };
@@ -341,12 +356,13 @@ export async function executeValidatedTool(
     const args = parsed.data;
     let id = args.id;
     if (id == null && args.deal_name) {
-      id = (await resolveDealByName(
-        db,
-        organizationId,
-        args.deal_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveDealByName(
+          db,
+          organizationId,
+          args.deal_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No deal found matching that name.";
     }
     if (id == null) return { error: "Provide id or deal_name" };
@@ -391,12 +407,13 @@ export async function executeValidatedTool(
       return { error: "Invalid arguments", details: parsed.error.flatten() };
     let id = parsed.data.id;
     if (id == null && parsed.data.company_name) {
-      id = (await resolveCompanyByName(
-        db,
-        organizationId,
-        parsed.data.company_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveCompanyByName(
+          db,
+          organizationId,
+          parsed.data.company_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No company found matching that name.";
     }
     if (id == null) return { error: "Provide id or company_name" };
@@ -429,7 +446,9 @@ export async function executeValidatedTool(
         description: args.description ?? null,
       })
       .returning();
-    return row ? formatCreated(row, "companies") : "Error: failed to create company";
+    return row
+      ? formatCreated(row, "companies")
+      : "Error: failed to create company";
   }
 
   if (toolName === "update_company") {
@@ -439,12 +458,13 @@ export async function executeValidatedTool(
     const args = parsed.data;
     let id = args.id;
     if (id == null && args.company_name) {
-      id = (await resolveCompanyByName(
-        db,
-        organizationId,
-        args.company_name,
-        searchContext,
-      )) ?? undefined;
+      id =
+        (await resolveCompanyByName(
+          db,
+          organizationId,
+          args.company_name,
+          searchContext,
+        )) ?? undefined;
       if (id == null) return "No company found matching that name.";
     }
     if (id == null) return { error: "Provide id or company_name" };
@@ -493,15 +513,17 @@ export async function executeValidatedTool(
     if (byContact) {
       let contactId = args.contact_id;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          args.contact_name,
-          searchContext,
-        )) ?? undefined;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            args.contact_name,
+            searchContext,
+          )) ?? undefined;
         if (contactId == null) return "No contact found matching that name.";
       }
-      if (contactId == null) return { error: "Provide contact_id or contact_name" };
+      if (contactId == null)
+        return { error: "Provide contact_id or contact_name" };
       const rows = await db
         .select()
         .from(schema.tasks)
@@ -518,15 +540,17 @@ export async function executeValidatedTool(
     if (byCompany) {
       let companyId = args.company_id;
       if (companyId == null && args.company_name) {
-        companyId = (await resolveCompanyByName(
-          db,
-          organizationId,
-          args.company_name,
-          searchContext,
-        )) ?? undefined;
+        companyId =
+          (await resolveCompanyByName(
+            db,
+            organizationId,
+            args.company_name,
+            searchContext,
+          )) ?? undefined;
         if (companyId == null) return "No company found matching that name.";
       }
-      if (companyId == null) return { error: "Provide company_id or company_name" };
+      if (companyId == null)
+        return { error: "Provide company_id or company_name" };
       const rows = await db
         .select()
         .from(schema.tasks)
@@ -540,7 +564,9 @@ export async function executeValidatedTool(
         .limit(limitFrom(args.limit));
       return formatRows(rows, formatTask);
     }
-    return { error: "Provide contact_id/contact_name or company_id/company_name" };
+    return {
+      error: "Provide contact_id/contact_name or company_id/company_name",
+    };
   }
 
   if (toolName === "create_task") {
@@ -555,12 +581,13 @@ export async function executeValidatedTool(
     if (byContact) {
       contactId = args.contact_id ?? null;
       if (contactId == null && args.contact_name) {
-        contactId = (await resolveContactByName(
-          db,
-          organizationId,
-          args.contact_name,
-          searchContext,
-        )) ?? null;
+        contactId =
+          (await resolveContactByName(
+            db,
+            organizationId,
+            args.contact_name,
+            searchContext,
+          )) ?? null;
         if (contactId == null) return "No contact found matching that name.";
       }
       if (!(await contactExists(contactId!)))
@@ -569,19 +596,22 @@ export async function executeValidatedTool(
     if (byCompany) {
       companyId = args.company_id ?? null;
       if (companyId == null && args.company_name) {
-        companyId = (await resolveCompanyByName(
-          db,
-          organizationId,
-          args.company_name,
-          searchContext,
-        )) ?? null;
+        companyId =
+          (await resolveCompanyByName(
+            db,
+            organizationId,
+            args.company_name,
+            searchContext,
+          )) ?? null;
         if (companyId == null) return "No company found matching that name.";
       }
       if (!(await companyExists(companyId!)))
         return { error: "company not found" };
     }
     if (!contactId && !companyId)
-      return { error: "Provide contact_id/contact_name or company_id/company_name" };
+      return {
+        error: "Provide contact_id/contact_name or company_id/company_name",
+      };
 
     let dueDate: Date | null = null;
     if (args.due_date) {
@@ -628,15 +658,17 @@ export async function executeValidatedTool(
     const args = parsed.data;
     let contactId = args.contact_id;
     if (contactId == null && args.contact_name) {
-      contactId = (await resolveContactByName(
-        db,
-        organizationId,
-        args.contact_name,
-        searchContext,
-      )) ?? undefined;
+      contactId =
+        (await resolveContactByName(
+          db,
+          organizationId,
+          args.contact_name,
+          searchContext,
+        )) ?? undefined;
       if (contactId == null) return "No contact found matching that name.";
     }
-    if (contactId == null) return { error: "Provide contact_id or contact_name" };
+    if (contactId == null)
+      return { error: "Provide contact_id or contact_name" };
     return db
       .select()
       .from(schema.contactNotes)
@@ -657,15 +689,17 @@ export async function executeValidatedTool(
     const args = parsed.data;
     let contactId = args.contact_id;
     if (contactId == null && args.contact_name) {
-      contactId = (await resolveContactByName(
-        db,
-        organizationId,
-        args.contact_name,
-        searchContext,
-      )) ?? undefined;
+      contactId =
+        (await resolveContactByName(
+          db,
+          organizationId,
+          args.contact_name,
+          searchContext,
+        )) ?? undefined;
       if (contactId == null) return "No contact found matching that name.";
     }
-    if (contactId == null) return { error: "Provide contact_id or contact_name" };
+    if (contactId == null)
+      return { error: "Provide contact_id or contact_name" };
     if (!(await contactExists(contactId)))
       return { error: "contact not found" };
 
@@ -690,21 +724,23 @@ export async function executeValidatedTool(
     let contactId = args.contact_id;
     let dealId = args.deal_id;
     if (contactId == null && args.contact_name) {
-      contactId = (await resolveContactByName(
-        db,
-        organizationId,
-        args.contact_name,
-        searchContext,
-      )) ?? undefined;
+      contactId =
+        (await resolveContactByName(
+          db,
+          organizationId,
+          args.contact_name,
+          searchContext,
+        )) ?? undefined;
       if (contactId == null) return "No contact found matching that name.";
     }
     if (dealId == null && args.deal_name) {
-      dealId = (await resolveDealByName(
-        db,
-        organizationId,
-        args.deal_name,
-        searchContext,
-      )) ?? undefined;
+      dealId =
+        (await resolveDealByName(
+          db,
+          organizationId,
+          args.deal_name,
+          searchContext,
+        )) ?? undefined;
       if (dealId == null) return "No deal found matching that name.";
     }
 
@@ -721,7 +757,9 @@ export async function executeValidatedTool(
           status: null,
         })
         .returning();
-      return row ? `Note added to contact (id: ${row.id})` : { error: "failed to add note" };
+      return row
+        ? `Note added to contact (id: ${row.id})`
+        : { error: "failed to add note" };
     }
 
     if (dealId != null) {
@@ -747,10 +785,14 @@ export async function executeValidatedTool(
           text: args.text.trim(),
         })
         .returning();
-      return row ? `Note added to deal (id: ${row.id})` : { error: "failed to add note" };
+      return row
+        ? `Note added to deal (id: ${row.id})`
+        : { error: "failed to add note" };
     }
 
-    return { error: "Must specify contact_id/contact_name or deal_id/deal_name" };
+    return {
+      error: "Must specify contact_id/contact_name or deal_id/deal_name",
+    };
   }
 
   return { error: `Unknown tool: ${toolName}` };

@@ -1,10 +1,6 @@
 import { useMemo } from "react";
 import { formatDistanceToNow, parseISO } from "date-fns";
-import {
-  NoteIcon,
-  CheckCircleIcon,
-  PhoneIcon,
-} from "@phosphor-icons/react";
+import { NoteIcon, CheckCircleIcon, PhoneIcon } from "@phosphor-icons/react";
 import { useNotes } from "@/hooks/use-notes";
 import { useTasks } from "@/hooks/use-tasks";
 import { getMockCalls } from "./mock-data/calls";

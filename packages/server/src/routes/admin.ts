@@ -22,11 +22,7 @@ const aiConfigPutSchema = z.object({
   apiKey: z.string().min(1),
 });
 
-export function createAdminRoutes(
-  db: Db,
-  auth: BetterAuthInstance,
-  env: Env,
-) {
+export function createAdminRoutes(db: Db, auth: BetterAuthInstance, env: Env) {
   const app = new Hono();
 
   app.get("/ai-config", authMiddleware(auth, db), async (c) => {
@@ -53,7 +49,7 @@ export function createAdminRoutes(
 
     const hasEnvKey = Boolean(
       env.SERVER_BASICS_API_KEY ||
-        (env.SERVER_BYOK_PROVIDER && env.SERVER_BYOK_API_KEY),
+      (env.SERVER_BYOK_PROVIDER && env.SERVER_BYOK_API_KEY),
     );
 
     return c.json({
@@ -135,9 +131,7 @@ export function createAdminRoutes(
           configuredBy: crmUser.id,
           updatedAt: new Date(),
         })
-        .where(
-          eq(schema.orgAiConfig.organizationId, crmUser.organizationId),
-        );
+        .where(eq(schema.orgAiConfig.organizationId, crmUser.organizationId));
     } else {
       await db.insert(schema.orgAiConfig).values({
         organizationId: crmUser.organizationId,
@@ -203,9 +197,7 @@ export function createAdminRoutes(
             transcriptionApiKeyEnc: null,
             updatedAt: new Date(),
           })
-          .where(
-            eq(schema.orgAiConfig.organizationId, crmUser.organizationId),
-          );
+          .where(eq(schema.orgAiConfig.organizationId, crmUser.organizationId));
       }
       return c.json({ ok: true });
     }
@@ -232,9 +224,7 @@ export function createAdminRoutes(
           transcriptionApiKeyEnc: encrypted,
           updatedAt: new Date(),
         })
-        .where(
-          eq(schema.orgAiConfig.organizationId, crmUser.organizationId),
-        );
+        .where(eq(schema.orgAiConfig.organizationId, crmUser.organizationId));
     } else {
       return c.json(
         {
@@ -345,7 +335,9 @@ export function createAdminRoutes(
         requestCount: sql<number>`count(*)::int`,
         totalInputTokens: sql<number>`coalesce(sum(${schema.aiUsageLogs.inputTokens}), 0)::int`,
         totalOutputTokens: sql<number>`coalesce(sum(${schema.aiUsageLogs.outputTokens}), 0)::int`,
-        totalDurationMs: sql<number | null>`sum(${schema.aiUsageLogs.durationMs})::int`,
+        totalDurationMs: sql<
+          number | null
+        >`sum(${schema.aiUsageLogs.durationMs})::int`,
       })
       .from(schema.aiUsageLogs)
       .innerJoin(
@@ -372,7 +364,9 @@ export function createAdminRoutes(
         requestCount: sql<number>`count(*)::int`,
         totalInputTokens: sql<number>`coalesce(sum(${schema.aiUsageLogs.inputTokens}), 0)::int`,
         totalOutputTokens: sql<number>`coalesce(sum(${schema.aiUsageLogs.outputTokens}), 0)::int`,
-        totalDurationMs: sql<number | null>`sum(${schema.aiUsageLogs.durationMs})::int`,
+        totalDurationMs: sql<
+          number | null
+        >`sum(${schema.aiUsageLogs.durationMs})::int`,
       })
       .from(schema.aiUsageLogs)
       .where(

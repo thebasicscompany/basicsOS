@@ -149,7 +149,8 @@ export function FilterPopover({
                     >
                       <SelectTrigger className="h-7 w-28 text-xs shrink-0">
                         <SelectValue>
-                          {getAttributeDisplayName(attr, attributes) || filter.fieldId}
+                          {getAttributeDisplayName(attr, attributes) ||
+                            filter.fieldId}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

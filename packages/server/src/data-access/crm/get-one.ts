@@ -27,10 +27,9 @@ export async function getOneRecord(
         nbDeals: sql<number>`count(distinct ${schema.deals.id})::int`.as(
           "nb_deals",
         ),
-        nbContacts:
-          sql<number>`count(distinct ${schema.contacts.id})::int`.as(
-            "nb_contacts",
-          ),
+        nbContacts: sql<number>`count(distinct ${schema.contacts.id})::int`.as(
+          "nb_contacts",
+        ),
       })
       .from(schema.companies)
       .leftJoin(schema.deals, eq(schema.companies.id, schema.deals.companyId))

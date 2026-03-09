@@ -160,7 +160,13 @@ export function useUpdateViewColumn(viewId: string) {
   return useMutation<
     ViewColumn,
     Error,
-    { columnId: string; show?: boolean; order?: number; width?: string; title?: string }
+    {
+      columnId: string;
+      show?: boolean;
+      order?: number;
+      width?: string;
+      title?: string;
+    }
   >({
     mutationFn: async ({ columnId, ...updates }) => {
       const raw = await fetchApi<ViewColumnRaw>(

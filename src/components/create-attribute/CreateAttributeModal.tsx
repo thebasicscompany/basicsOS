@@ -49,10 +49,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { getFieldType } from "@/field-types";
-import {
-  useCreateColumn,
-  type SchemaColumn,
-} from "@/hooks/use-columns";
+import { useCreateColumn, type SchemaColumn } from "@/hooks/use-columns";
 
 export interface CreateAttributeModalProps {
   resource: string;
@@ -224,39 +221,39 @@ export function CreateAttributeModal({
 
             <ScrollArea className="max-h-[70vh]">
               <div className="pb-6 space-y-0">
-              {/* Standard section */}
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Standard
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {standardTypes.map((typeOpt) => (
-                    <TypeCard
-                      key={typeOpt.key}
-                      typeOption={typeOpt}
-                      onClick={() => handleSelectType(typeOpt.key)}
-                    />
-                  ))}
+                {/* Standard section */}
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Standard
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {standardTypes.map((typeOpt) => (
+                      <TypeCard
+                        key={typeOpt.key}
+                        typeOption={typeOpt}
+                        onClick={() => handleSelectType(typeOpt.key)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <Separator className="my-4" />
+                <Separator className="my-4" />
 
-              {/* Relational section */}
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Relational
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {relationalTypes.map((typeOpt) => (
-                    <TypeCard
-                      key={typeOpt.key}
-                      typeOption={typeOpt}
-                      onClick={() => handleSelectType(typeOpt.key)}
-                    />
-                  ))}
+                {/* Relational section */}
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Relational
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {relationalTypes.map((typeOpt) => (
+                      <TypeCard
+                        key={typeOpt.key}
+                        typeOption={typeOpt}
+                        onClick={() => handleSelectType(typeOpt.key)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
               </div>
             </ScrollArea>
           </>

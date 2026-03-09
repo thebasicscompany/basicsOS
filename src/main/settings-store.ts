@@ -71,7 +71,8 @@ export const getOverlaySettings = (): OverlaySettings => {
         ...OVERLAY_DEFAULTS.voice,
         ...parsed.voice,
         audioInputDeviceId:
-          parsed.voice?.audioInputDeviceId ?? OVERLAY_DEFAULTS.voice.audioInputDeviceId,
+          parsed.voice?.audioInputDeviceId ??
+          OVERLAY_DEFAULTS.voice.audioInputDeviceId,
       },
       behavior: { ...OVERLAY_DEFAULTS.behavior, ...parsed.behavior },
       meeting: { ...OVERLAY_DEFAULTS.meeting, ...parsed.meeting },

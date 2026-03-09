@@ -32,9 +32,9 @@ import {
   RecordDetailDeleteDialog,
   useRecordDetail,
 } from "@/components/record-detail";
-import { getMockEmails } from "@/components/record-detail/mock-data/emails";
 import { getMockCalls } from "@/components/record-detail/mock-data/calls";
 import { useRefreshCrm } from "@/hooks/use-records";
+import { useContactEmails } from "@/hooks/use-email-sync";
 
 export function RecordDetailPage() {
   const { objectSlug = "" } = useParams<{ objectSlug: string }>();
@@ -77,10 +77,8 @@ export function RecordDetailPage() {
 
   const refreshCrm = useRefreshCrm(objectSlug);
 
-  const emailCount = useMemo(
-    () => getMockEmails(numericRecordId).length,
-    [numericRecordId],
-  );
+  const { data: emailsData } = useContactEmails(numericRecordId || undefined);
+  const emailCount = emailsData?.total ?? 0;
   const callCount = useMemo(
     () => getMockCalls(numericRecordId).length,
     [numericRecordId],
@@ -128,9 +126,9 @@ export function RecordDetailPage() {
       {breadcrumbPortal}
       {headerActionsPortal}
 
-      <div className="space-y-5 pb-8">
+      <div className="flex min-h-0 flex-1 flex-col gap-5">
         {/* Record header — single line with inline actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -203,8 +201,8 @@ export function RecordDetailPage() {
         </div>
 
         {/* Main content grid */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_440px]">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_440px]">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-col">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -229,7 +227,7 @@ export function RecordDetailPage() {
             </TabsList>
 
             {/* Overview: recent activity feed + quick links */}
-            <TabsContent value="overview" className="mt-4 space-y-5">
+            <TabsContent value="overview" className="mt-4 min-h-0 flex-1 space-y-5 overflow-y-auto">
               {/* Recent Emails */}
               <div>
                 <button
@@ -285,7 +283,7 @@ export function RecordDetailPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-4">
+            <TabsContent value="activity" className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <ActivityTabContent
                 objectSlug={objSlug}
                 recordId={numericRecordId}
@@ -293,11 +291,11 @@ export function RecordDetailPage() {
               />
             </TabsContent>
 
-            <TabsContent value="emails" className="mt-4">
+            <TabsContent value="emails" className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <EmailsTabContent recordId={numericRecordId} />
             </TabsContent>
 
-            <TabsContent value="calls" className="mt-4">
+            <TabsContent value="calls" className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <CallsTabContent
                 recordId={numericRecordId}
                 objectSlug={objSlug}
@@ -305,14 +303,14 @@ export function RecordDetailPage() {
               />
             </TabsContent>
 
-            <TabsContent value="notes" className="mt-4">
+            <TabsContent value="notes" className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <NotesTabContent
                 objectSlug={objSlug}
                 recordId={numericRecordId}
               />
             </TabsContent>
 
-            <TabsContent value="tasks" className="mt-4">
+            <TabsContent value="tasks" className="mt-4 min-h-0 flex-1 overflow-y-auto">
               <TasksTabContent
                 objectSlug={objSlug}
                 recordId={numericRecordId}
@@ -320,6 +318,7 @@ export function RecordDetailPage() {
             </TabsContent>
           </Tabs>
 
+          <div className="min-h-0 overflow-y-auto">
           <RecordDetailDetailsSidebar
             displayName={displayName}
             nameFieldLabel={nameFieldLabel}
@@ -337,6 +336,7 @@ export function RecordDetailPage() {
             onShowAllFields={() => setShowAllFields(true)}
             onHideEmptyFields={() => setShowAllFields(false)}
           />
+          </div>
         </div>
       </div>
 

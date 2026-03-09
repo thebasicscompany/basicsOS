@@ -53,14 +53,14 @@ function LayoutHeader() {
   const registerTitleSlotContainer = useRegisterTitleSlotContainer();
   const isBuilder = /^\/automations\/(create|\d+)/.test(location.pathname);
   const isRecordDetail = /^\/objects\/[^/]+\/\d+/.test(location.pathname);
-  const sidebarWidth = state === "expanded" ? "pl-[216px]" : "pl-[3rem]";
+  const sidebarWidth = state === "expanded" ? "pl-[216px]" : "pl-[5.5rem]";
   return (
     <header className="drag-region flex h-[52px] shrink-0 items-center gap-3 bg-surface-canvas">
       <div
         className={cn(
           "flex min-w-0 flex-1 items-center gap-2 transition-[padding] duration-200",
           sidebarWidth,
-          isBuilder ? "pr-14" : isRecordDetail ? "px-6" : "px-14"
+          isBuilder ? "pr-14" : isRecordDetail ? "pr-6" : "px-14",
         )}
       >
         {titleSlotInUse && (
@@ -145,13 +145,25 @@ function useTrackPageVisits() {
 
     // Check for chat thread pages → track as "Chat"
     if (pathname.startsWith("/chat")) {
-      addRecentPage({ key: "/chat", label: "Chat", path: "/chat", icon: "chat", visitedAt: Date.now() });
+      addRecentPage({
+        key: "/chat",
+        label: "Chat",
+        path: "/chat",
+        icon: "chat",
+        visitedAt: Date.now(),
+      });
       return;
     }
 
     // Check for automations sub-pages → track as "Automations"
     if (pathname.startsWith("/automations")) {
-      addRecentPage({ key: "/automations", label: "Automations", path: "/automations", icon: "automations", visitedAt: Date.now() });
+      addRecentPage({
+        key: "/automations",
+        label: "Automations",
+        path: "/automations",
+        icon: "automations",
+        visitedAt: Date.now(),
+      });
       return;
     }
 
@@ -192,7 +204,13 @@ function useTrackPageVisits() {
     // Static pages
     const staticPage = STATIC_PAGES[pathname];
     if (staticPage) {
-      addRecentPage({ key: pathname, label: staticPage.label, path: pathname, icon: staticPage.icon, visitedAt: Date.now() });
+      addRecentPage({
+        key: pathname,
+        label: staticPage.label,
+        path: pathname,
+        icon: staticPage.icon,
+        visitedAt: Date.now(),
+      });
     }
   }, [pathname, objects, addRecentPage]);
 }

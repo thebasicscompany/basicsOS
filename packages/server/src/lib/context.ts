@@ -169,12 +169,17 @@ export async function searchEmbeddings(
 
   const embeddingStr = `[${embeddingVec.join(",")}]`;
 
-  const rows = entityTypeFilter?.length
+  // Build a safe SQL array literal from the filter values (all are internal constants)
+  const entityTypeArrayLiteral = entityTypeFilter?.length
+    ? `{${entityTypeFilter.map((t) => `"${t}"`).join(",")}}`
+    : null;
+
+  const rows = entityTypeArrayLiteral
     ? await db.execute(sql`
         SELECT entity_type, chunk_text
         FROM context_embeddings
         WHERE organization_id = ${organizationId}
-          AND entity_type = ANY(${entityTypeFilter}::text[])
+          AND entity_type = ANY(${entityTypeArrayLiteral}::text[])
         ORDER BY embedding <=> ${embeddingStr}::vector
         LIMIT ${limit}
       `)
@@ -287,6 +292,7 @@ export async function retrieveDualContext(
     }
 
     const strategy = classifyQueryIntent(query);
+    console.log(`[rag] query="${query.slice(0, 80)}" strategy=${JSON.stringify(strategy)} embeddingLen=${embedding.length}`);
 
     const [crmContext, meetingContext] = await Promise.all([
       searchEmbeddings(
@@ -305,8 +311,10 @@ export async function retrieveDualContext(
       ),
     ]);
 
+    console.log(`[rag] crmContext=${crmContext ? crmContext.length + ' chars' : 'null'}, meetingContext=${meetingContext ? meetingContext.length + ' chars' : 'null'}`);
     return { crmContext, meetingContext };
-  } catch {
+  } catch (err) {
+    console.error(`[rag] retrieveDualContext error:`, err);
     return empty;
   }
 }

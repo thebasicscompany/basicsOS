@@ -31,6 +31,11 @@ import type { ShortcutManager } from "./shortcut-manager";
 import { createHoldKeyDetector } from "./hold-key-detector";
 import { createMeetingManager } from "./meeting-manager";
 import {
+  createKeyboardHook,
+  DEFAULT_BINDINGS,
+  type KeyboardHook,
+} from "./keyboard-hook";
+import {
   startSystemAudioCapture,
   stopSystemAudioCapture,
   checkSystemAudioPermission,
@@ -48,9 +53,18 @@ let activeMode: ActivationMode = "assistant";
 let shortcutMgr: ShortcutManager | null = null;
 let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
 let meetingMgr: ReturnType<typeof createMeetingManager> | null = null;
+let keyboardHook: KeyboardHook | null = null;
 let registeredMeetingAccelerator: string | null = null;
 let registeredDictationAccelerator: string | null = null;
 let dictationToggleActive = false;
+/** Tracks the current session type for the keyboard hook */
+let hookSessionType:
+  | "idle"
+  | "hold-dictation"
+  | "continuous-dictation"
+  | "hold-assistant"
+  | "continuous-assistant"
+  | "single-assistant" = "idle";
 const pendingDictationInsertRequests = new Map<
   string,
   {
@@ -347,42 +361,135 @@ ipcMain.handle(
     const updated = setOverlaySettings(
       partial as Parameters<typeof setOverlaySettings>[0],
     );
-    if (shortcutMgr) {
-      shortcutMgr.registerAll(
-        updated.shortcuts.assistantToggle,
-        updated.behavior.doubleTapWindowMs,
+
+    if (keyboardHook && process.platform === "darwin") {
+      // Re-register keyboard hook slots with updated bindings
+      const dict =
+        updated.shortcuts.dictation ?? DEFAULT_BINDINGS.dictation;
+      const assist =
+        updated.shortcuts.assistant ?? DEFAULT_BINDINGS.assistant;
+      const meet =
+        updated.shortcuts.meeting ?? DEFAULT_BINDINGS.meeting;
+      // The hook slots are re-registered via the same pattern used in whenReady
+      // We need to re-set slots since bindings may have changed
+      keyboardHook.setSlots([
+        {
+          id: "dictation",
+          binding: dict,
+          holdThresholdMs: updated.behavior.holdThresholdMs,
+          doubleTapWindowMs: updated.behavior.doubleTapWindowMs,
+          onKeyDown: () => {
+            if (hookSessionType === "continuous-dictation") {
+              overlayWindow?.webContents.send("activate-overlay", "dictation");
+              hookSessionType = "idle";
+              return true;
+            }
+            return false;
+          },
+          onHoldStart: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "hold-dictation";
+            startDictationOverlay();
+          },
+          onHoldEnd: () => {
+            if (hookSessionType === "hold-dictation") {
+              hookSessionType = "idle";
+              stopDictationOverlay();
+            }
+          },
+          onDoubleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "continuous-dictation";
+            activateOverlay("dictation");
+          },
+        },
+        {
+          id: "assistant",
+          binding: assist,
+          holdThresholdMs: updated.behavior.holdThresholdMs,
+          doubleTapWindowMs: updated.behavior.doubleTapWindowMs,
+          onKeyDown: () => {
+            if (
+              hookSessionType === "continuous-assistant" ||
+              hookSessionType === "single-assistant"
+            ) {
+              overlayWindow?.webContents.send("activate-overlay", activeMode);
+              hookSessionType = "idle";
+              return true;
+            }
+            return false;
+          },
+          onHoldStart: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "hold-assistant";
+            activateOverlay("assistant");
+          },
+          onHoldEnd: () => {
+            if (hookSessionType === "hold-assistant") {
+              overlayWindow?.webContents.send("activate-overlay", "assistant");
+              hookSessionType = "idle";
+            }
+          },
+          onDoubleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "continuous-assistant";
+            activateOverlay("continuous");
+          },
+          onSingleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "single-assistant";
+            activateOverlay("assistant");
+          },
+        },
+        {
+          id: "meeting",
+          binding: meet,
+          onKeyDown: () => {
+            overlayWindow?.webContents.send("meeting-toggle");
+            return true;
+          },
+        },
+      ]);
+    } else {
+      // Legacy fallback for non-macOS
+      if (shortcutMgr) {
+        shortcutMgr.registerAll(
+          updated.shortcuts.assistantToggle,
+          updated.behavior.doubleTapWindowMs,
+        );
+      }
+      if (registeredMeetingAccelerator) {
+        globalShortcut.unregister(registeredMeetingAccelerator);
+        registeredMeetingAccelerator = null;
+      }
+      globalShortcut.register(updated.shortcuts.meetingToggle, () =>
+        overlayWindow?.webContents.send("meeting-toggle"),
       );
-    }
-    if (registeredMeetingAccelerator) {
-      globalShortcut.unregister(registeredMeetingAccelerator);
-      registeredMeetingAccelerator = null;
-    }
-    globalShortcut.register(updated.shortcuts.meetingToggle, () =>
-      overlayWindow?.webContents.send("meeting-toggle"),
-    );
-    registeredMeetingAccelerator = updated.shortcuts.meetingToggle;
-    if (holdDetector) {
-      holdDetector.updateConfig({
-        accelerator: updated.shortcuts.dictationHoldKey,
-        holdThresholdMs: updated.behavior.holdThresholdMs,
-      });
-    }
-    if (registeredDictationAccelerator) {
-      globalShortcut.unregister(registeredDictationAccelerator);
-      registeredDictationAccelerator = null;
-      dictationToggleActive = false;
-    }
-    globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
-      if (!overlayWindow) return;
-      if (!dictationToggleActive) {
-        startDictationOverlay();
-        dictationToggleActive = true;
-      } else {
-        stopDictationOverlay();
+      registeredMeetingAccelerator = updated.shortcuts.meetingToggle;
+      if (holdDetector) {
+        holdDetector.updateConfig({
+          accelerator: updated.shortcuts.dictationHoldKey,
+          holdThresholdMs: updated.behavior.holdThresholdMs,
+        });
+      }
+      if (registeredDictationAccelerator) {
+        globalShortcut.unregister(registeredDictationAccelerator);
+        registeredDictationAccelerator = null;
         dictationToggleActive = false;
       }
-    });
-    registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
+      globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
+        if (!overlayWindow) return;
+        if (!dictationToggleActive) {
+          startDictationOverlay();
+          dictationToggleActive = true;
+        } else {
+          stopDictationOverlay();
+          dictationToggleActive = false;
+        }
+      });
+      registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
+    }
+
     overlayWindow?.webContents.send("settings-changed", updated);
     return updated;
   },
@@ -410,6 +517,7 @@ ipcMain.on("set-ignore-mouse", (_event, ignore: boolean) => {
 ipcMain.on("overlay-dismissed", () => {
   overlayActive = false;
   dictationToggleActive = false;
+  hookSessionType = "idle";
   broadcastOverlayStatus();
 });
 
@@ -769,55 +877,198 @@ app.whenReady().then(async () => {
     },
   });
 
-  shortcutMgr = createShortcutManager({
-    onAssistantPress: () => {
-      if (!overlayWindow) return;
-      if (overlayActive) {
-        overlayWindow.webContents.send("activate-overlay", activeMode);
-      } else {
-        activateOverlay("assistant");
-      }
-    },
-    onAssistantDoubleTap: () => {
-      if (!overlayWindow) return;
-      if (overlayActive) {
-        deactivateOverlay();
-      } else {
-        activateOverlay("continuous");
-      }
-    },
-  });
-
-  holdDetector = createHoldKeyDetector(
-    {
-      accelerator: getOverlaySettings().shortcuts.dictationHoldKey,
-      holdThresholdMs: getOverlaySettings().behavior.holdThresholdMs,
-    },
-    {
-      onHoldStart: () => startDictationOverlay(),
-      onHoldEnd: () => stopDictationOverlay(),
-    },
-  );
-
   const settings = getOverlaySettings();
-  shortcutMgr.registerAll(
-    settings.shortcuts.assistantToggle,
-    settings.behavior.doubleTapWindowMs,
-  );
-  holdDetector.start();
-  registerMeetingShortcut(settings.shortcuts.meetingToggle);
 
-  globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
-    if (!overlayWindow) return;
-    if (!dictationToggleActive) {
-      startDictationOverlay();
-      dictationToggleActive = true;
-    } else {
-      stopDictationOverlay();
-      dictationToggleActive = false;
+  if (process.platform === "darwin") {
+    // ── macOS: use native keyboard hook (CGEventTap) ──────────────────
+    // Supports Fn key, hold-to-talk, double-tap, single modifier keys
+    keyboardHook = createKeyboardHook();
+
+    const dictBinding =
+      settings.shortcuts.dictation ?? DEFAULT_BINDINGS.dictation;
+    const assistBinding =
+      settings.shortcuts.assistant ?? DEFAULT_BINDINGS.assistant;
+    const meetBinding =
+      settings.shortcuts.meeting ?? DEFAULT_BINDINGS.meeting;
+
+    const registerHookSlots = (
+      dict = dictBinding,
+      assist = assistBinding,
+      meet = meetBinding,
+    ): void => {
+      keyboardHook?.setSlots([
+        {
+          id: "dictation",
+          binding: dict,
+          holdThresholdMs: settings.behavior.holdThresholdMs,
+          doubleTapWindowMs: settings.behavior.doubleTapWindowMs,
+          onKeyDown: () => {
+            // If overlay is in continuous dictation, stop immediately
+            if (hookSessionType === "continuous-dictation") {
+              overlayWindow?.webContents.send("activate-overlay", "dictation");
+              hookSessionType = "idle";
+              return true;
+            }
+            return false;
+          },
+          onHoldStart: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "hold-dictation";
+            startDictationOverlay();
+          },
+          onHoldEnd: () => {
+            if (hookSessionType === "hold-dictation") {
+              hookSessionType = "idle";
+              stopDictationOverlay();
+            }
+          },
+          onDoubleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "continuous-dictation";
+            activateOverlay("dictation");
+          },
+          onSingleTap: () => {
+            // Single tap dictation key: no action (avoid accidental triggers)
+          },
+        },
+        {
+          id: "assistant",
+          binding: assist,
+          holdThresholdMs: settings.behavior.holdThresholdMs,
+          doubleTapWindowMs: settings.behavior.doubleTapWindowMs,
+          onKeyDown: () => {
+            // If overlay is active via assistant, stop immediately
+            if (
+              hookSessionType === "continuous-assistant" ||
+              hookSessionType === "single-assistant"
+            ) {
+              overlayWindow?.webContents.send("activate-overlay", activeMode);
+              hookSessionType = "idle";
+              return true;
+            }
+            return false;
+          },
+          onHoldStart: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "hold-assistant";
+            activateOverlay("assistant");
+          },
+          onHoldEnd: () => {
+            if (hookSessionType === "hold-assistant") {
+              // Send activation again to toggle off (overlay handles this)
+              overlayWindow?.webContents.send("activate-overlay", "assistant");
+              hookSessionType = "idle";
+            }
+          },
+          onDoubleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "continuous-assistant";
+            activateOverlay("continuous");
+          },
+          onSingleTap: () => {
+            if (!overlayWindow) return;
+            hookSessionType = "single-assistant";
+            activateOverlay("assistant");
+          },
+        },
+        {
+          id: "meeting",
+          binding: meet,
+          onKeyDown: () => {
+            overlayWindow?.webContents.send("meeting-toggle");
+            return true; // No timing detection needed
+          },
+        },
+      ]);
+    };
+
+    registerHookSlots();
+    keyboardHook.start();
+
+    // Register combo shortcuts with globalShortcut to suppress system handlers
+    // (e.g., prevent Cmd+Space from opening Spotlight)
+    // Only for non-modifier-only bindings (Fn alone can't be registered)
+    const MODIFIER_KEYCODES_SET = new Set([
+      55, 54, 56, 60, 58, 61, 59, 62, 63, 57,
+    ]);
+    if (!MODIFIER_KEYCODES_SET.has(assistBinding.keyCode)) {
+      try {
+        globalShortcut.register(settings.shortcuts.assistantToggle, () => {
+          /* suppressed — keyboard hook handles timing */
+        });
+      } catch {
+        /* ignore registration failure */
+      }
     }
-  });
-  registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+    if (!MODIFIER_KEYCODES_SET.has(meetBinding.keyCode)) {
+      try {
+        globalShortcut.register(settings.shortcuts.meetingToggle, () => {
+          /* suppressed — keyboard hook handles it */
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // IPC for shortcut recording
+    ipcMain.handle("start-shortcut-recording", async () => {
+      if (!keyboardHook) return null;
+      return keyboardHook.startRecording();
+    });
+    ipcMain.handle("cancel-shortcut-recording", () => {
+      keyboardHook?.cancelRecording();
+    });
+  } else {
+    // ── Non-macOS: fall back to Electron globalShortcut (legacy) ───────
+    shortcutMgr = createShortcutManager({
+      onAssistantPress: () => {
+        if (!overlayWindow) return;
+        if (overlayActive) {
+          overlayWindow.webContents.send("activate-overlay", activeMode);
+        } else {
+          activateOverlay("assistant");
+        }
+      },
+      onAssistantDoubleTap: () => {
+        if (!overlayWindow) return;
+        if (overlayActive) {
+          deactivateOverlay();
+        } else {
+          activateOverlay("continuous");
+        }
+      },
+    });
+
+    holdDetector = createHoldKeyDetector(
+      {
+        accelerator: settings.shortcuts.dictationHoldKey,
+        holdThresholdMs: settings.behavior.holdThresholdMs,
+      },
+      {
+        onHoldStart: () => startDictationOverlay(),
+        onHoldEnd: () => stopDictationOverlay(),
+      },
+    );
+
+    shortcutMgr.registerAll(
+      settings.shortcuts.assistantToggle,
+      settings.behavior.doubleTapWindowMs,
+    );
+    holdDetector.start();
+    registerMeetingShortcut(settings.shortcuts.meetingToggle);
+
+    globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
+      if (!overlayWindow) return;
+      if (!dictationToggleActive) {
+        startDictationOverlay();
+        dictationToggleActive = true;
+      } else {
+        stopDictationOverlay();
+        dictationToggleActive = false;
+      }
+    });
+    registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+  }
 
   createMainWindow();
   createOverlayWindow();
@@ -836,6 +1087,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("will-quit", () => {
+  keyboardHook?.stop();
   shortcutMgr?.unregisterAll();
   holdDetector?.stop();
   if (registeredDictationAccelerator) {

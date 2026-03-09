@@ -1,12 +1,24 @@
 import { app } from "electron";
 import fs from "fs";
 import path from "path";
-import type { OverlaySettings } from "@/shared-overlay/types.js";
+import type { OverlaySettings, ShortcutBinding } from "@/shared-overlay/types.js";
 import { createDesktopLogger } from "@/shared-overlay/logger.js";
 
 const log = createDesktopLogger("settings");
 
+/** Native key bindings (macOS CGEventTap keycodes + flags) */
+const DEFAULT_NATIVE_BINDINGS: Record<string, ShortcutBinding> = {
+  dictation: { keyCode: 63, modifiers: 0, label: "Fn" },
+  assistant: { keyCode: 49, modifiers: 0x100000, label: "⌘Space" },
+  meeting: { keyCode: 49, modifiers: 0x180000, label: "⌥⌘Space" },
+};
+
 const DEFAULT_SHORTCUTS: OverlaySettings["shortcuts"] = {
+  // Native bindings
+  dictation: DEFAULT_NATIVE_BINDINGS.dictation,
+  assistant: DEFAULT_NATIVE_BINDINGS.assistant,
+  meeting: DEFAULT_NATIVE_BINDINGS.meeting,
+  // Legacy accelerator strings (fallback for non-macOS)
   assistantToggle: "CommandOrControl+Space",
   dictationToggle: "CommandOrControl+Shift+Space",
   dictationHoldKey: "CommandOrControl+Shift+Space",

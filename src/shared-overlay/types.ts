@@ -6,8 +6,23 @@ export type ActivationMode =
   | "dictation"
   | "transcribe";
 
+/** A key binding: keyCode + modifier flags + display label */
+export type ShortcutBinding = {
+  /** macOS virtual keycode (e.g., 63 for Fn, 49 for Space) */
+  keyCode: number;
+  /** Required modifier flags mask (macOS CGEventFlags, 0 for no extra modifiers) */
+  modifiers: number;
+  /** Human-readable label (e.g., "Fn", "⌘Space") */
+  label: string;
+};
+
 export type OverlaySettings = {
   shortcuts: {
+    /** New native key bindings (macOS CGEventTap-based) */
+    dictation?: ShortcutBinding;
+    assistant?: ShortcutBinding;
+    meeting?: ShortcutBinding;
+    /** Legacy Electron accelerator strings (used as fallback on non-macOS) */
     assistantToggle: string;
     dictationToggle: string;
     dictationHoldKey: string;

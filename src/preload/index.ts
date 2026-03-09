@@ -5,6 +5,7 @@ import type {
   OverlaySettings,
   BrandingInfo,
   DictationInsertResult,
+  ShortcutBinding,
 } from "@/shared-overlay/types";
 
 const overlayAPI = {
@@ -144,6 +145,10 @@ const overlayAPI = {
   }) => {
     ipcRenderer.send("dictation-insert-result", payload);
   },
+  startShortcutRecording: () =>
+    ipcRenderer.invoke("start-shortcut-recording") as Promise<ShortcutBinding | null>,
+  cancelShortcutRecording: () =>
+    ipcRenderer.invoke("cancel-shortcut-recording") as Promise<void>,
   removeAllListeners: () => {
     const channels = [
       "activate-overlay",

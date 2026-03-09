@@ -1,10 +1,9 @@
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useState, useRef } from "react";
 import {
   usePageTitle,
   usePageHeaderActions,
 } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
-import { Kbd } from "basics-os/src/components/ui/kbd";
 import {
   Select,
   SelectContent,
@@ -13,11 +12,17 @@ import {
   SelectValue,
 } from "basics-os/src/components/ui/select";
 import { Label } from "basics-os/src/components/ui/label";
-import { getPrimaryModifierLabel } from "basics-os/src/lib/keyboard-shortcuts";
 import { toast } from "sonner";
+import type { ShortcutBinding } from "basics-os/src/shared-overlay/types";
 
 /** Shape of overlay settings used for microphone selection (matches shared-overlay types). */
 type OverlaySettings = {
+  shortcuts: {
+    dictation?: ShortcutBinding;
+    assistant?: ShortcutBinding;
+    meeting?: ShortcutBinding;
+    [key: string]: unknown;
+  };
   voice: {
     audioInputDeviceId: string | null;
     [key: string]: unknown;
@@ -37,13 +42,44 @@ const DEFAULT_MIC_VALUE = "__default__";
 
 type AudioDevice = { deviceId: string; label: string };
 
+/** Interactive shortcut row — click to record a new key binding. */
+function ShortcutRow({
+  label,
+  description,
+  binding,
+  onRecord,
+}: {
+  label: string;
+  description: string;
+  binding: ShortcutBinding | undefined;
+  onRecord: () => void;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">{description}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onRecord}
+        className="shrink-0 min-w-[100px] rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer text-center"
+        title="Click to change shortcut"
+      >
+        {binding?.label ?? "Not set"}
+      </button>
+    </li>
+  );
+}
+
 export function VoiceApp() {
   usePageTitle("Voice");
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlaySettings, setOverlaySettings] =
     useState<OverlaySettings | null>(null);
   const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([]);
-  const primaryModifier = getPrimaryModifierLabel();
+  const [recordingSlot, setRecordingSlot] = useState<string | null>(null);
+  const recordingRef = useRef(false);
 
   useEffect(() => {
     if (!isElectron()) return;
@@ -106,6 +142,49 @@ export function VoiceApp() {
           },
         })
         .then((updated: OverlaySettings) => setOverlaySettings(updated));
+    },
+    [overlaySettings],
+  );
+
+  const handleRecordShortcut = useCallback(
+    async (slot: "dictation" | "assistant" | "meeting") => {
+      const api = window.electronAPI as
+        | {
+            startShortcutRecording?: () => Promise<ShortcutBinding | null>;
+            cancelShortcutRecording?: () => Promise<void>;
+            updateOverlaySettings?: (
+              partial: Partial<OverlaySettings>,
+            ) => Promise<OverlaySettings>;
+          }
+        | undefined;
+      if (!api?.startShortcutRecording || !api?.updateOverlaySettings) return;
+
+      if (recordingRef.current) {
+        // Cancel any existing recording
+        await api.cancelShortcutRecording?.();
+      }
+
+      setRecordingSlot(slot);
+      recordingRef.current = true;
+
+      try {
+        const binding = await api.startShortcutRecording();
+        if (!binding) return;
+
+        const updated = await api.updateOverlaySettings({
+          shortcuts: {
+            ...overlaySettings?.shortcuts,
+            [slot]: binding,
+          },
+        } as Partial<OverlaySettings>);
+        setOverlaySettings(updated);
+        toast.success(`${slot} shortcut set to ${binding.label}`);
+      } catch {
+        toast.error("Failed to record shortcut");
+      } finally {
+        setRecordingSlot(null);
+        recordingRef.current = false;
+      }
     },
     [overlaySettings],
   );
@@ -177,10 +256,6 @@ export function VoiceApp() {
     );
   }
 
-  const dictationShortcutText = isWindows()
-    ? "Press once to start recording, press again to stop and paste into the focused field."
-    : "Hold the key to record; release to transcribe and paste into the focused field.";
-
   return (
     <>
       {headerActionsPortal}
@@ -233,48 +308,47 @@ export function VoiceApp() {
             <div>
               <h3 className="text-[15px] font-semibold">Shortcuts</h3>
               <p className="text-[12px] text-muted-foreground">
-                Global keyboard shortcuts to control the overlay.
+                Click a shortcut to change it. Press any key or key combo.
               </p>
             </div>
-            <ul className="space-y-4 text-sm">
-              <li className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Kbd>{`${primaryModifier}+Space`}</Kbd>
-                  <span className="font-medium">AI Assistant</span>
-                </div>
-                <span className="text-muted-foreground">
-                  Tap to listen, auto-stops after silence.
-                </span>
-              </li>
-              <li className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                    Double Tap
-                  </span>
-                  <Kbd>{`${primaryModifier}+Space`}</Kbd>
-                </div>
-                <span className="text-muted-foreground">
-                  Continuous listening mode.
-                </span>
-              </li>
-              <li className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Kbd>{`${primaryModifier}+Shift+Space`}</Kbd>
-                  <span className="font-medium">Dictation</span>
-                </div>
-                <span className="text-muted-foreground">
-                  {dictationShortcutText}
-                </span>
-              </li>
-              <li className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <Kbd>{`${primaryModifier}+Alt+Space`}</Kbd>
-                  <span className="font-medium">Meetings</span>
-                </div>
-                <span className="text-muted-foreground">
-                  Toggle meeting mode (stub).
-                </span>
-              </li>
+
+            {recordingSlot && (
+              <div className="rounded-lg border border-primary/50 bg-primary/5 px-4 py-3 text-sm text-primary animate-pulse">
+                Press any key or key combo for{" "}
+                <strong>{recordingSlot}</strong>...
+                <button
+                  type="button"
+                  onClick={() => {
+                    void (window.electronAPI as { cancelShortcutRecording?: () => Promise<void> })?.cancelShortcutRecording?.();
+                    setRecordingSlot(null);
+                    recordingRef.current = false;
+                  }}
+                  className="ml-2 underline cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            <ul className="space-y-3">
+              <ShortcutRow
+                label="Dictation"
+                description="Hold to dictate + paste. Double-tap for continuous."
+                binding={overlaySettings?.shortcuts?.dictation as ShortcutBinding | undefined}
+                onRecord={() => void handleRecordShortcut("dictation")}
+              />
+              <ShortcutRow
+                label="AI Assistant"
+                description="Tap for AI. Hold for manual control. Double-tap for continuous."
+                binding={overlaySettings?.shortcuts?.assistant as ShortcutBinding | undefined}
+                onRecord={() => void handleRecordShortcut("assistant")}
+              />
+              <ShortcutRow
+                label="Meeting"
+                description="Toggle meeting recording."
+                binding={overlaySettings?.shortcuts?.meeting as ShortcutBinding | undefined}
+                onRecord={() => void handleRecordShortcut("meeting")}
+              />
             </ul>
           </div>
 

@@ -50,3 +50,12 @@ export type DictationInsertResult = {
   handled: boolean;
   method: "app" | "clipboard" | "none";
 };
+
+// ElectronAPI extensions for system audio capture
+export type SystemAudioAPI = {
+  startSystemAudio?: (meetingId: string) => Promise<boolean>;
+  stopSystemAudio?: () => Promise<Array<{ speaker: string; text: string; timestamp: number }>>;
+  checkSystemAudioPermission?: () => Promise<boolean>;
+  promptScreenRecording?: () => Promise<boolean>;
+  getSessionToken?: () => Promise<string>;
+};

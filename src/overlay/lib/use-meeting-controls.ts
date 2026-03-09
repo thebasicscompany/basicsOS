@@ -2,7 +2,8 @@ import { useCallback } from "react";
 import { FLASH_MEDIUM_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
 import { createOverlayLogger } from "./overlay-logger";
 import type { PillAction, PillContext } from "./notch-pill-state";
-import type { MeetingRecorderActions } from "@/overlay/meeting-recorder-stub";
+import type { MeetingRecorderActions } from "@/overlay/meeting-recorder";
+import { uploadMeetingTranscript, processMeeting } from "@/overlay/api";
 
 const log = createOverlayLogger("meeting-controls");
 
@@ -26,16 +27,21 @@ export const useMeetingControls = (deps: {
   const handleMeetingToggle = useCallback(() => {
     const cur = pillRef.current;
     const api = window.electronAPI;
-    if (!api) return;
+    log.info("[TOGGLE] meetingActive=", cur.meetingActive, "meetingId=", cur.meetingId, "api=", !!api);
+    if (!api) { log.error("[TOGGLE] No electronAPI!"); return; }
 
     if (cur.meetingActive) {
+      log.info("[TOGGLE] Stopping meeting...");
       api.stopMeeting?.().catch((err) => log.error("stopMeeting failed:", err));
     } else {
+      log.info("[TOGGLE] Starting meeting...");
       void (async () => {
         try {
           await api.startMeeting?.();
+          log.info("[TOGGLE] startMeeting IPC resolved");
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
+          log.error("[TOGGLE] startMeeting failed:", msg);
           showFlash("Meeting failed: " + msg, FLASH_LONG_MS);
         }
       })();
@@ -44,7 +50,7 @@ export const useMeetingControls = (deps: {
 
   const handleMeetingStarted = useCallback(
     (meetingId: string) => {
-      log.info("meeting-started:", meetingId);
+      log.info("[STARTED] meeting-started IPC received, meetingId=", meetingId);
       dispatch({
         type: "MEETING_UPDATE",
         active: true,
@@ -54,10 +60,13 @@ export const useMeetingControls = (deps: {
 
       void (async () => {
         try {
-          await meetingRecorderRef.current.startRecording(meetingId);
-          showFlash("Recording (stub — no backend)", FLASH_LONG_MS);
+          log.info("[STARTED] Calling meetingRecorder.startRecording...");
+          const result = await meetingRecorderRef.current.startRecording(meetingId);
+          const mode = result.micOnly ? "mic only" : "mic + system audio";
+          log.info("[STARTED] Recording started successfully, mode=", mode);
+          showFlash(`Recording (${mode})`, FLASH_LONG_MS);
         } catch (err) {
-          log.error("Failed to start meeting recording:", err);
+          log.error("[STARTED] Failed to start recording:", err instanceof Error ? err.message : err);
           showFlash("Recording failed", FLASH_LONG_MS);
           window.electronAPI?.stopMeeting?.().catch(() => undefined);
         }
@@ -68,11 +77,14 @@ export const useMeetingControls = (deps: {
 
   const handleMeetingStopped = useCallback(
     (_meetingId: string) => {
-      log.info("meeting-stopped");
+      log.info("[STOPPED] meeting-stopped IPC received, meetingId=", _meetingId);
+      log.info("[STOPPED] Current pill state: meetingActive=", pillRef.current.meetingActive);
       showFlash("Saving meeting...", 5000);
 
       void (async () => {
+        log.info("[STOPPED] Calling meetingRecorder.stopRecording...");
         const result = await meetingRecorderRef.current.stopRecording();
+        log.info("[STOPPED] stopRecording returned, meetingId=", result.meetingId, "transcriptLen=", result.transcript?.length ?? 0);
         dispatch({
           type: "MEETING_UPDATE",
           active: false,
@@ -80,10 +92,26 @@ export const useMeetingControls = (deps: {
           startedAt: null,
         });
 
-        if (result.meetingId && result.transcript) {
-          showFlash("Meeting saved", FLASH_MEDIUM_MS);
+        log.info("[STOPPED] transcript preview (first 200 chars):", result.transcript?.slice(0, 200));
+        log.info("[STOPPED] transcript preview (last 200 chars):", result.transcript?.slice(-200));
+        log.info("[STOPPED] segments count:", result.segments?.length ?? 0);
+
+        if (result.meetingId && (result.transcript || result.segments?.length)) {
+          try {
+            log.info("[STOPPED] Uploading transcript for meetingId=", result.meetingId, "textLen=", result.transcript?.length);
+            await uploadMeetingTranscript(result.meetingId, result.transcript);
+            log.info("[STOPPED] Upload complete, now processing...");
+            showFlash("Processing meeting...", FLASH_LONG_MS);
+            await processMeeting(result.meetingId);
+            log.info("[STOPPED] Processing complete");
+            showFlash("Meeting saved", FLASH_MEDIUM_MS);
+          } catch (err) {
+            log.error("Failed to upload/process meeting:", err);
+            showFlash("Meeting saved (summary failed)", FLASH_MEDIUM_MS);
+          }
         } else {
-          showFlash("Meeting ended (stub — no transcript)", FLASH_MEDIUM_MS);
+          log.warn("[STOPPED] No transcript to upload! meetingId=", result.meetingId, "transcriptLen=", result.transcript?.length, "segmentsLen=", result.segments?.length);
+          showFlash("Meeting ended (no transcript)", FLASH_MEDIUM_MS);
         }
       })();
     },

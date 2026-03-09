@@ -18,6 +18,7 @@ export type OverlayElectronAPI = {
   injectText?: (text: string) => Promise<void>;
   insertDictationText?: (text: string) => Promise<DictationInsertResult>;
   copyToClipboard?: (text: string) => Promise<void>;
+  logToMain?: (msg: string) => void;
   getApiUrl?: () => Promise<string>;
   proxyOverlayRequest?: (req: {
     path: string;
@@ -33,7 +34,9 @@ export type OverlayElectronAPI = {
     encoding: "text" | "base64";
   }>;
   getOverlaySettings?: () => Promise<OverlaySettings>;
-  updateOverlaySettings?: (partial: Record<string, unknown>) => Promise<unknown>;
+  updateOverlaySettings?: (
+    partial: Record<string, unknown>,
+  ) => Promise<unknown>;
   onHoldStart?: (cb: () => void) => void;
   onHoldEnd?: (cb: () => void) => void;
   onMeetingToggle?: (cb: () => void) => void;
@@ -59,6 +62,9 @@ export type OverlayElectronAPI = {
     requestId: string;
     handled: boolean;
   }) => void;
+  getSessionToken?: () => Promise<string>;
+  startSystemAudio?: (meetingId: string) => Promise<boolean>;
+  stopSystemAudio?: () => Promise<Array<{ speaker: string; text: string; timestamp: number }>>;
   removeAllListeners?: () => void;
   resizeOverlay?: (height: number) => Promise<void>;
 };

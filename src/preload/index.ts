@@ -36,9 +36,13 @@ const overlayAPI = {
   navigateMain: (path: string) => ipcRenderer.send("navigate-main", path),
   injectText: (text: string) => ipcRenderer.invoke("inject-text", text),
   insertDictationText: (text: string) =>
-    ipcRenderer.invoke("insert-dictation-text", text) as Promise<DictationInsertResult>,
+    ipcRenderer.invoke(
+      "insert-dictation-text",
+      text,
+    ) as Promise<DictationInsertResult>,
   copyToClipboard: (text: string) =>
     ipcRenderer.invoke("copy-to-clipboard", text) as Promise<void>,
+  logToMain: (msg: string) => ipcRenderer.send("log-from-overlay", msg),
   getApiUrl: () => ipcRenderer.invoke("get-api-url") as Promise<string>,
   proxyOverlayRequest: (req: {
     path: string;
@@ -114,6 +118,16 @@ const overlayAPI = {
       (_e, speaker: number | undefined, text: string) => cb(speaker, text),
     );
   },
+  startSystemAudio: (meetingId: string) =>
+    ipcRenderer.invoke("start-system-audio", meetingId) as Promise<boolean>,
+  stopSystemAudio: () =>
+    ipcRenderer.invoke("stop-system-audio") as Promise<Array<{ speaker: string; text: string; timestamp: number }>>,
+  checkSystemAudioPermission: () =>
+    ipcRenderer.invoke("check-system-audio-permission") as Promise<boolean>,
+  promptScreenRecording: () =>
+    ipcRenderer.invoke("prompt-screen-recording") as Promise<boolean>,
+  getSessionToken: () =>
+    ipcRenderer.invoke("get-session-token") as Promise<string>,
   onDictationInsertRequest: (
     cb: (payload: { requestId: string; text: string }) => void | Promise<void>,
   ) => {

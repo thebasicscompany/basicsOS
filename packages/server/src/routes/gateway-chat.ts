@@ -3,7 +3,7 @@ import { authMiddleware } from "@/middleware/auth.js";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
-import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
+import { buildCrmSummary, retrieveDualContext } from "@/lib/context.js";
 import {
   resolveOrgAiConfig,
   buildGatewayHeaders,
@@ -514,21 +514,21 @@ export function createGatewayChatRoutes(
             })),
     );
 
-    const [crmSummary, ragContext] = await Promise.all([
+    const [crmSummary, { crmContext, meetingContext }] = await Promise.all([
       buildCrmSummary(db, crmUser.organizationId),
-      retrieveRelevantContext(
+      retrieveDualContext(
         db,
         env.BASICSOS_API_URL,
         gatewayHeaders,
         crmUser.organizationId,
         queryText,
-        5,
         crmUser.id,
       ),
     ]);
 
     let systemPrompt = `${BASE_SYSTEM_PROMPT}\n\n## Your CRM\n${crmSummary}`;
-    if (ragContext) systemPrompt += `\n\n## Relevant context\n${ragContext}`;
+    if (crmContext) systemPrompt += `\n\n## Relevant context\n${crmContext}`;
+    if (meetingContext) systemPrompt += `\n\n## Meeting context\n${meetingContext}`;
     const recentConversationContext = buildRecentConversationContext([
       ...priorConversationMessages,
       { role: "user", content: queryText },

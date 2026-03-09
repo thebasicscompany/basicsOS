@@ -4,7 +4,17 @@ import * as schema from "@/db/schema/index.js";
 import { writeUsageLogSafe } from "@/lib/usage-log.js";
 
 const MAX_CONTEXT_CHARS_PER_CHUNK = 1_200;
-const MAX_TOTAL_CONTEXT_CHARS = 6_000;
+const MAX_TOTAL_CONTEXT_CHARS = 4_000;
+
+const CRM_ENTITY_TYPES = [
+  "contact",
+  "company",
+  "deal",
+  "task",
+  "contact_note",
+  "deal_note",
+];
+const MEETING_ENTITY_TYPES = ["meeting_chunk", "meeting_summary"];
 
 function truncateContextText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
@@ -60,9 +70,152 @@ export async function buildCrmSummary(
   return lines.join("\n");
 }
 
+export interface RetrievalStrategy {
+  crmLimit: number;
+  meetingLimit: number;
+}
+
+const MEETING_FOCUSED_PATTERNS = [
+  /\bmeeting\b/i,
+  /\bdiscussed\b/i,
+  /\btranscript\b/i,
+  /\bcall with\b/i,
+  /\bwho said\b/i,
+  /\baction items? from\b/i,
+  /\bmeeting notes?\b/i,
+  /\bin the call\b/i,
+  /\bduring the meeting\b/i,
+];
+
+const IMPLICIT_MEETING_PATTERNS = [
+  /\bdecided\b/i,
+  /\bagreed\b/i,
+  /\bfollow up\b/i,
+  /\bmentioned\b/i,
+  /\btold me\b/i,
+  /\bpromised\b/i,
+  /\bwe talked about\b/i,
+  /\bthey said\b/i,
+  /\bbrought up\b/i,
+];
+
+/**
+ * Keyword-based heuristic to determine how many retrieval slots
+ * to allocate to CRM records vs meeting transcripts.
+ */
+export function classifyQueryIntent(query: string): RetrievalStrategy {
+  if (MEETING_FOCUSED_PATTERNS.some((p) => p.test(query))) {
+    return { crmLimit: 2, meetingLimit: 5 };
+  }
+  if (IMPLICIT_MEETING_PATTERNS.some((p) => p.test(query))) {
+    return { crmLimit: 3, meetingLimit: 4 };
+  }
+  // Default: mostly CRM, but always include 2 meeting slots
+  // so cosine similarity can surface relevant meetings organically
+  return { crmLimit: 5, meetingLimit: 2 };
+}
+
+/**
+ * Embeds the query via the gateway and returns the vector + usage info.
+ * Returns null embedding on failure.
+ */
+export async function embedQuery(
+  gatewayUrl: string,
+  gatewayHeaders: Record<string, string>,
+  query: string,
+): Promise<{
+  embedding: number[] | null;
+  inputTokens: number;
+}> {
+  try {
+    const embRes = await fetch(`${gatewayUrl}/v1/embeddings`, {
+      method: "POST",
+      headers: gatewayHeaders,
+      body: JSON.stringify({ model: "basics-embed", input: query }),
+    });
+
+    if (!embRes.ok) {
+      await embRes.text().catch(() => {});
+      return { embedding: null, inputTokens: 0 };
+    }
+
+    const embJson = (await embRes.json()) as {
+      data?: Array<{ embedding?: number[] }>;
+      usage?: { prompt_tokens?: number; total_tokens?: number };
+    };
+    const embedding = embJson.data?.[0]?.embedding ?? null;
+    const fromApi =
+      embJson.usage?.prompt_tokens ?? embJson.usage?.total_tokens ?? 0;
+    const inputTokens =
+      fromApi > 0 ? fromApi : Math.max(1, Math.ceil(query.length / 4));
+    return { embedding, inputTokens };
+  } catch {
+    return { embedding: null, inputTokens: 0 };
+  }
+}
+
+/**
+ * Runs a pgvector similarity search with a pre-computed embedding vector.
+ * Optionally filters by entity_type.
+ */
+export async function searchEmbeddings(
+  db: Db,
+  organizationId: string,
+  embeddingVec: number[],
+  limit: number,
+  entityTypeFilter?: string[],
+): Promise<string | null> {
+  if (limit <= 0) return null;
+
+  const embeddingStr = `[${embeddingVec.join(",")}]`;
+
+  const rows = entityTypeFilter?.length
+    ? await db.execute(sql`
+        SELECT entity_type, chunk_text
+        FROM context_embeddings
+        WHERE organization_id = ${organizationId}
+          AND entity_type = ANY(${entityTypeFilter}::text[])
+        ORDER BY embedding <=> ${embeddingStr}::vector
+        LIMIT ${limit}
+      `)
+    : await db.execute(sql`
+        SELECT entity_type, chunk_text
+        FROM context_embeddings
+        WHERE organization_id = ${organizationId}
+        ORDER BY embedding <=> ${embeddingStr}::vector
+        LIMIT ${limit}
+      `);
+
+  const results = (
+    Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
+  ) as { entity_type: string; chunk_text: string }[];
+
+  if (results.length === 0) return null;
+
+  const lines: string[] = [];
+  let remainingChars = MAX_TOTAL_CONTEXT_CHARS;
+  for (const result of results) {
+    const prefix = `[${result.entity_type}] `;
+    const availableChars = Math.min(
+      MAX_CONTEXT_CHARS_PER_CHUNK,
+      Math.max(0, remainingChars - prefix.length),
+    );
+    if (availableChars <= 0) break;
+    const chunkText = truncateContextText(result.chunk_text, availableChars);
+    if (!chunkText) continue;
+    const line = `${prefix}${chunkText}`;
+    lines.push(line);
+    remainingChars -= line.length + 1;
+    if (remainingChars <= 0) break;
+  }
+
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
 /**
  * Embeds the query and runs a pgvector similarity search against context_embeddings.
  * Returns formatted top-K results, or null if unavailable/empty.
+ * Backward-compatible — existing callers work without changes.
  */
 export async function retrieveRelevantContext(
   db: Db,
@@ -76,29 +229,14 @@ export async function retrieveRelevantContext(
   if (!query.trim()) return null;
 
   try {
-    const embRes = await fetch(`${gatewayUrl}/v1/embeddings`, {
-      method: "POST",
-      headers: gatewayHeaders,
-      body: JSON.stringify({ model: "basics-embed", input: query }),
-    });
-
-    if (!embRes.ok) {
-      await embRes.text().catch(() => {});
-      return null;
-    }
-
-    const embJson = (await embRes.json()) as {
-      data?: Array<{ embedding?: number[] }>;
-      usage?: { prompt_tokens?: number; total_tokens?: number };
-    };
-    const embedding = embJson.data?.[0]?.embedding;
+    const { embedding, inputTokens } = await embedQuery(
+      gatewayUrl,
+      gatewayHeaders,
+      query,
+    );
     if (!embedding?.length) return null;
 
     if (crmUserId != null) {
-      const fromApi =
-        embJson.usage?.prompt_tokens ?? embJson.usage?.total_tokens ?? 0;
-      const inputTokens =
-        fromApi > 0 ? fromApi : Math.max(1, Math.ceil(query.length / 4));
       writeUsageLogSafe(db, {
         organizationId,
         crmUserId,
@@ -108,40 +246,67 @@ export async function retrieveRelevantContext(
       });
     }
 
-    const embeddingStr = `[${embedding.join(",")}]`;
-    const rows = await db.execute(sql`
-      SELECT entity_type, chunk_text
-      FROM context_embeddings
-      WHERE organization_id = ${organizationId}
-      ORDER BY embedding <=> ${embeddingStr}::vector
-      LIMIT ${limit}
-    `);
-
-    const results = (
-      Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? [])
-    ) as { entity_type: string; chunk_text: string }[];
-
-    if (results.length === 0) return null;
-
-    const lines: string[] = [];
-    let remainingChars = MAX_TOTAL_CONTEXT_CHARS;
-    for (const result of results) {
-      const prefix = `[${result.entity_type}] `;
-      const availableChars = Math.min(
-        MAX_CONTEXT_CHARS_PER_CHUNK,
-        Math.max(0, remainingChars - prefix.length),
-      );
-      if (availableChars <= 0) break;
-      const chunkText = truncateContextText(result.chunk_text, availableChars);
-      if (!chunkText) continue;
-      const line = `${prefix}${chunkText}`;
-      lines.push(line);
-      remainingChars -= line.length + 1;
-      if (remainingChars <= 0) break;
-    }
-
-    return lines.length > 0 ? lines.join("\n") : null;
+    return searchEmbeddings(db, organizationId, embedding, limit);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Dual retrieval: embeds query once, then searches CRM and meeting embeddings
+ * separately with limits determined by query intent classification.
+ * Returns { crmContext, meetingContext } — each may be null.
+ */
+export async function retrieveDualContext(
+  db: Db,
+  gatewayUrl: string,
+  gatewayHeaders: Record<string, string>,
+  organizationId: string,
+  query: string,
+  crmUserId?: number,
+): Promise<{ crmContext: string | null; meetingContext: string | null }> {
+  const empty = { crmContext: null, meetingContext: null };
+  if (!query.trim()) return empty;
+
+  try {
+    const { embedding, inputTokens } = await embedQuery(
+      gatewayUrl,
+      gatewayHeaders,
+      query,
+    );
+    if (!embedding?.length) return empty;
+
+    if (crmUserId != null) {
+      writeUsageLogSafe(db, {
+        organizationId,
+        crmUserId,
+        feature: "embedding_rag",
+        model: "basics-embed",
+        inputTokens,
+      });
+    }
+
+    const strategy = classifyQueryIntent(query);
+
+    const [crmContext, meetingContext] = await Promise.all([
+      searchEmbeddings(
+        db,
+        organizationId,
+        embedding,
+        strategy.crmLimit,
+        CRM_ENTITY_TYPES,
+      ),
+      searchEmbeddings(
+        db,
+        organizationId,
+        embedding,
+        strategy.meetingLimit,
+        MEETING_ENTITY_TYPES,
+      ),
+    ]);
+
+    return { crmContext, meetingContext };
+  } catch {
+    return empty;
   }
 }

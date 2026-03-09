@@ -8,7 +8,7 @@ import { authMiddleware } from "@/middleware/auth.js";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { createAuth } from "@/auth.js";
-import { buildCrmSummary, retrieveRelevantContext } from "@/lib/context.js";
+import { buildCrmSummary, retrieveDualContext } from "@/lib/context.js";
 import {
   resolveOrgAiConfig,
   buildGatewayHeaders,
@@ -462,22 +462,24 @@ export function createStreamAssistantRoutes(
     );
     await persistMessage(db, threadId, "user", message);
 
-    const [crmSummary, ragContext] = await Promise.all([
+    const [crmSummary, { crmContext, meetingContext }] = await Promise.all([
       buildCrmSummary(db, crmUser.organizationId!),
-      retrieveRelevantContext(
+      retrieveDualContext(
         db,
         env.BASICSOS_API_URL,
         gatewayHeaders,
         crmUser.organizationId!,
         message,
-        5,
         crmUser.id,
       ),
     ]);
 
     let contextText = `## Your CRM\n${crmSummary}`;
-    if (ragContext) {
-      contextText += `\n\n## Relevant context\n${ragContext}`;
+    if (crmContext) {
+      contextText += `\n\n## Relevant context\n${crmContext}`;
+    }
+    if (meetingContext) {
+      contextText += `\n\n## Meeting context\n${meetingContext}`;
     }
     const recentConversationContext = buildRecentConversationContext([
       ...priorConversationMessages,

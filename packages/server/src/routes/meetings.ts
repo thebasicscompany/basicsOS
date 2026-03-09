@@ -9,6 +9,10 @@ import {
   resolveOrgAiConfig,
   buildGatewayHeaders,
 } from "@/lib/org-ai-config.js";
+import {
+  embedMeetingTranscript,
+  deleteMeetingEmbeddings,
+} from "@/lib/meeting-embeddings.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -326,17 +330,23 @@ Return ONLY valid JSON, no markdown fences.`,
           })
           .where(eq(schema.meetings.id, meetingId));
 
+        // Fire-and-forget: embed transcript chunks + summary for RAG
+        embedMeetingTranscript(db, env, crmUser, meetingId).catch(() => {});
+
         return c.json({ ok: true, summary: summaryJson });
       }
     } catch (err) {
       console.error("[meetings] LLM summarization failed:", err);
     }
 
-    // Mark completed even if summarization fails
+    // Mark completed even if summarization fails — still embed transcript chunks
     await db
       .update(schema.meetings)
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(schema.meetings.id, meetingId));
+
+    // Even without a summary, embed the raw transcript chunks
+    embedMeetingTranscript(db, env, crmUser, meetingId).catch(() => {});
 
     return c.json({ ok: true, summary: null });
   });
@@ -348,6 +358,9 @@ Return ONLY valid JSON, no markdown fences.`,
 
     const meetingId = parseInt(c.req.param("id"), 10);
     if (isNaN(meetingId)) return c.json({ error: "Invalid ID" }, 400);
+
+    // Delete embeddings before meeting (FK cascade removes transcript rows)
+    await deleteMeetingEmbeddings(db, crmUser.organizationId!, meetingId);
 
     await db
       .delete(schema.meetings)

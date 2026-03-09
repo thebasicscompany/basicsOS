@@ -10,6 +10,8 @@ export const EMBEDDABLE_RESOURCES = new Set([
   "tasks",
   "contact_notes",
   "deal_notes",
+  "meeting_chunks",
+  "meeting_summaries",
 ]);
 
 // Maps CRM resource name to entity_type stored in context_embeddings.
@@ -20,6 +22,8 @@ const ENTITY_TYPE_MAP: Record<string, string> = {
   tasks: "task",
   contact_notes: "contact_note",
   deal_notes: "deal_note",
+  meeting_chunks: "meeting_chunk",
+  meeting_summaries: "meeting_summary",
 };
 
 export function getEntityType(resource: string): string | null {

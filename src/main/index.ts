@@ -367,24 +367,22 @@ ipcMain.handle(
         holdThresholdMs: updated.behavior.holdThresholdMs,
       });
     }
-    if (process.platform === "win32") {
-      if (registeredDictationAccelerator) {
-        globalShortcut.unregister(registeredDictationAccelerator);
-        registeredDictationAccelerator = null;
+    if (registeredDictationAccelerator) {
+      globalShortcut.unregister(registeredDictationAccelerator);
+      registeredDictationAccelerator = null;
+      dictationToggleActive = false;
+    }
+    globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
+      if (!overlayWindow) return;
+      if (!dictationToggleActive) {
+        startDictationOverlay();
+        dictationToggleActive = true;
+      } else {
+        stopDictationOverlay();
         dictationToggleActive = false;
       }
-      globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
-        if (!overlayWindow) return;
-        if (!dictationToggleActive) {
-          startDictationOverlay();
-          dictationToggleActive = true;
-        } else {
-          stopDictationOverlay();
-          dictationToggleActive = false;
-        }
-      });
-      registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
-    }
+    });
+    registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
     overlayWindow?.webContents.send("settings-changed", updated);
     return updated;
   },
@@ -809,19 +807,17 @@ app.whenReady().then(async () => {
   holdDetector.start();
   registerMeetingShortcut(settings.shortcuts.meetingToggle);
 
-  if (process.platform === "win32") {
-    globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
-      if (!overlayWindow) return;
-      if (!dictationToggleActive) {
-        startDictationOverlay();
-        dictationToggleActive = true;
-      } else {
-        stopDictationOverlay();
-        dictationToggleActive = false;
-      }
-    });
-    registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
-  }
+  globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
+    if (!overlayWindow) return;
+    if (!dictationToggleActive) {
+      startDictationOverlay();
+      dictationToggleActive = true;
+    } else {
+      stopDictationOverlay();
+      dictationToggleActive = false;
+    }
+  });
+  registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
 
   createMainWindow();
   createOverlayWindow();

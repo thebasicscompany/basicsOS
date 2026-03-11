@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { Message } from "@ai-sdk/react";
 import { usePageTitle } from "@/contexts/page-header";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { ToolSteps, type ToolStep } from "@/components/ai-elements/tool-steps";
 import {
   Attachment,
   AttachmentPreview,
@@ -95,6 +96,36 @@ function rewriteCrmLinks(text: string): string {
     return `<crm-link path="${path}">${label}</crm-link>`;
   });
   return result;
+}
+
+function extractToolSteps(message: { annotations?: unknown[] }): ToolStep[] {
+  const annotations = (message as { annotations?: Array<Record<string, unknown>> }).annotations;
+  if (!annotations) return [];
+  const steps: ToolStep[] = [];
+  for (const ann of annotations) {
+    if (ann.type === "tool_start") {
+      steps.push({
+        id: ann.id as string,
+        toolName: ann.toolName as string,
+        args: ann.args as string[] | undefined,
+        status: "running",
+      });
+    } else if (ann.type === "tool_result") {
+      const existing = steps.find((s) => s.id === ann.id);
+      if (existing) {
+        existing.status = (ann.success as boolean) ? "complete" : "error";
+        existing.result = ann.result as string | undefined;
+      } else {
+        steps.push({
+          id: ann.id as string,
+          toolName: ann.toolName as string,
+          result: ann.result as string | undefined,
+          status: (ann.success as boolean) ? "complete" : "error",
+        });
+      }
+    }
+  }
+  return steps;
 }
 
 const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = {
@@ -351,24 +382,28 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
       <PromptInputProvider>
         <Conversation className="min-h-0 flex-1">
           <ConversationContent className="pb-2">
-            {displayMessages.map((m) => (
-              <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
-                <MessageContent>
-                  <EntityAwareMessageResponse
-                    animated={
-                      m.role === "assistant"
-                        ? { animation: "blurIn" }
-                        : undefined
-                    }
-                    isAnimating={
-                      m.role === "assistant" && status === "streaming"
-                    }
-                  >
-                    {getTextContent(m)}
-                  </EntityAwareMessageResponse>
-                </MessageContent>
-              </MessageEl>
-            ))}
+            {displayMessages.map((m) => {
+              const toolSteps = m.role === "assistant" ? extractToolSteps(m) : [];
+              return (
+                <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
+                  <MessageContent>
+                    {toolSteps.length > 0 && <ToolSteps steps={toolSteps} />}
+                    <EntityAwareMessageResponse
+                      animated={
+                        m.role === "assistant"
+                          ? { animation: "blurIn" }
+                          : undefined
+                      }
+                      isAnimating={
+                        m.role === "assistant" && status === "streaming"
+                      }
+                    >
+                      {getTextContent(m)}
+                    </EntityAwareMessageResponse>
+                  </MessageContent>
+                </MessageEl>
+              );
+            })}
             {isThinking && (
               <MessageEl from="assistant">
                 <MessageContent>

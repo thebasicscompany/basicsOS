@@ -126,7 +126,21 @@ export function useGatewayChat(opts?: UseGatewayChatOptions) {
         pendingToolsRef.current = new Set();
       }
     },
-    onFinish: () => {
+    onFinish: (message) => {
+      // Check for thread_id and tools_used annotations (streamed via 8: prefix)
+      const annotations = (message as unknown as { annotations?: Array<{ type?: string; threadId?: string; tools?: string[] }> }).annotations;
+      if (annotations) {
+        for (const ann of annotations) {
+          if (ann.type === "thread_id" && ann.threadId) {
+            setThreadId(ann.threadId);
+          }
+          if (ann.type === "tools_used" && ann.tools) {
+            for (const name of ann.tools) {
+              pendingToolsRef.current.add(name);
+            }
+          }
+        }
+      }
       handleFinish();
       queryClient.invalidateQueries({ queryKey: ["threads"] });
     },

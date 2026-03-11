@@ -427,6 +427,12 @@ async function synthesizeFinalAnswer(args: {
   );
 }
 
+export interface StreamCallback {
+  onToolStart: (id: string, toolName: string, args: Record<string, unknown>) => void;
+  onToolResult: (id: string, toolName: string, result: string, success: boolean) => void;
+  onTextDelta: (text: string) => void;
+}
+
 export type ProcessChatTurnParams = {
   crmUser: typeof schema.crmUsers.$inferSelect;
   gatewayHeaders: Record<string, string>;
@@ -434,6 +440,7 @@ export type ProcessChatTurnParams = {
   messages: unknown[];
   threadId?: string;
   channel?: "chat" | "voice" | "automation";
+  streamCallback?: StreamCallback;
 };
 
 export type ProcessChatTurnResult = {
@@ -455,6 +462,7 @@ export async function processChatTurn(
     messages: uiMessages,
     threadId: threadIdParam,
     channel = "chat",
+    streamCallback,
   } = params;
 
   if (!crmUser.organizationId) {
@@ -626,6 +634,8 @@ export async function processChatTurn(
     const { toolName, toolArgs } = getLookupToolForRecord(
       resolvedRecentRecord.record,
     );
+    const tcId1 = `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    streamCallback?.onToolStart(tcId1, toolName, toolArgs as Record<string, unknown>);
     const result = await executeValidatedTool(
       db,
       crmUser.id,
@@ -638,6 +648,8 @@ export async function processChatTurn(
         crmUserId: crmUser.id,
       },
     );
+    const resultStr1 = typeof result === "string" ? result : JSON.stringify(result);
+    streamCallback?.onToolResult(tcId1, toolName, resultStr1.slice(0, 500), !isLookupFailure(result));
     usedTools.add(toolName);
     latestToolOutputs.push({ name: toolName, result });
     if (typeof result === "string") {
@@ -711,6 +723,8 @@ export async function processChatTurn(
         }
         executedToolSignatures.add(signature);
 
+        const tcId2 = `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        streamCallback?.onToolStart(tcId2, toolName, toolArgs);
         const result = await executeValidatedTool(
           db,
           crmUser.id,
@@ -723,6 +737,8 @@ export async function processChatTurn(
             crmUserId: crmUser.id,
           },
         );
+        const resultStr2 = typeof result === "string" ? result : JSON.stringify(result);
+        streamCallback?.onToolResult(tcId2, toolName, resultStr2.slice(0, 500), !isLookupFailure(result));
         usedTools.add(toolName);
         latestToolOutputs.push({ name: toolName, result });
         if (typeof result === "string") {
@@ -880,6 +896,8 @@ export async function processChatTurn(
       }
       executedToolSignatures.add(signature);
 
+      const tcId3 = `tc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      streamCallback?.onToolStart(tcId3, tc.function.name, args);
       const result = await executeValidatedTool(
         db,
         crmUser.id,
@@ -892,6 +910,8 @@ export async function processChatTurn(
           crmUserId: crmUser.id,
         },
       );
+      const resultStr3 = typeof result === "string" ? result : JSON.stringify(result);
+      streamCallback?.onToolResult(tcId3, tc.function.name, resultStr3.slice(0, 500), !isLookupFailure(result));
       usedTools.add(tc.function.name);
       latestToolOutputs.push({ name: tc.function.name, result });
       if (typeof result === "string") {
@@ -1021,59 +1041,81 @@ export function createGatewayChatRoutes(
       );
     }
 
-    let result: ProcessChatTurnResult;
-    try {
-      result = await processChatTurn(db, env, {
-        crmUser,
-        gatewayHeaders,
-        gatewayUrl: env.BASICSOS_API_URL,
-        messages: parsed.data.messages,
-        threadId: parsed.data.threadId,
-        channel: parsed.data.channel,
-      });
-    } catch (err) {
-      const status = (err as { status?: number })?.status;
-      const details = (err as { details?: string })?.details;
-      if (status === 502) {
-        return c.json(
-          {
-            error: (err as Error).message,
-            ...(details && { details }),
-          },
-          502,
-        );
-      }
-      if ((err as Error).message === "No user message found") {
-        return c.json({ error: "No user message found" }, 400);
-      }
-      if ((err as Error).message === "Organization not found") {
-        return c.json({ error: "Organization not found" }, 404);
-      }
-      throw err;
-    }
-
     const encoder = new TextEncoder();
-    const parts = result.finalContent.match(/[\s\S]{1,140}/g) ?? [
-      result.finalContent,
-    ];
-    const outStream = new ReadableStream({
-      start(controller) {
-        for (const part of parts)
-          controller.enqueue(encoder.encode(sdkPart("0", part)));
-        controller.enqueue(
-          encoder.encode(sdkPart("d", { finishReason: "stop" })),
-        );
-        controller.close();
-      },
-    });
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
 
-    return new Response(outStream, {
+    const streamCallback: StreamCallback = {
+      onToolStart: (id, toolName, args) => {
+        const annotation = JSON.stringify([{ type: "tool_start", id, toolName, args: Object.keys(args) }]);
+        writer.write(encoder.encode(`8:${annotation}\n`));
+      },
+      onToolResult: (id, toolName, resultText, success) => {
+        const annotation = JSON.stringify([{ type: "tool_result", id, toolName, result: resultText.slice(0, 200), success }]);
+        writer.write(encoder.encode(`8:${annotation}\n`));
+      },
+      onTextDelta: () => {},
+    };
+
+    // Run processChatTurn in the background, streaming tool events and final text
+    let resultThreadId = parsed.data.threadId ?? "";
+    const processingDone = (async () => {
+      try {
+        const result = await processChatTurn(db, env, {
+          crmUser,
+          gatewayHeaders,
+          gatewayUrl: env.BASICSOS_API_URL,
+          messages: parsed.data.messages,
+          threadId: parsed.data.threadId,
+          channel: parsed.data.channel,
+          streamCallback,
+        });
+
+        resultThreadId = result.threadId;
+
+        // Stream the threadId as an annotation so the client can pick it up
+        const threadAnnotation = JSON.stringify([{ type: "thread_id", threadId: result.threadId }]);
+        await writer.write(encoder.encode(`8:${threadAnnotation}\n`));
+
+        // Stream tools-used as annotation
+        if (result.usedTools.length > 0) {
+          const toolsAnnotation = JSON.stringify([{ type: "tools_used", tools: result.usedTools }]);
+          await writer.write(encoder.encode(`8:${toolsAnnotation}\n`));
+        }
+
+        const parts = result.finalContent.match(/[\s\S]{1,140}/g) ?? [result.finalContent];
+        for (const part of parts) {
+          await writer.write(encoder.encode(sdkPart("0", part)));
+        }
+        await writer.write(encoder.encode(sdkPart("d", { finishReason: "stop" })));
+      } catch (err) {
+        const errMsg = (err as Error).message ?? "Unknown error";
+        try {
+          await writer.write(encoder.encode(sdkPart("0", `Error: ${errMsg}`)));
+          await writer.write(encoder.encode(sdkPart("d", { finishReason: "error" })));
+        } catch { /* writer may already be closed */ }
+      } finally {
+        try {
+          await writer.close();
+        } catch { /* already closed */ }
+      }
+    })();
+
+    // We need the threadId for the header, but processChatTurn creates it asynchronously.
+    // For existing threads, the threadId is already known from the request.
+    // For new threads, we also send the threadId as an annotation so the client can use it.
+    // The header will contain the request threadId (or empty) as a best-effort.
+
+    // Keep the promise reference to avoid unhandled rejection
+    processingDone.catch(() => {});
+
+    return new Response(readable, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Vercel-AI-Data-Stream": "v1",
         "Cache-Control": "no-cache",
-        "X-Thread-Id": result.threadId,
-        "X-Tools-Used": result.usedTools.join(","),
+        "X-Thread-Id": resultThreadId,
+        "X-Tools-Used": "",
         "Access-Control-Expose-Headers": "X-Thread-Id, X-Tools-Used",
       },
     });

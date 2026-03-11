@@ -36,7 +36,6 @@ import {
   useDismissDealSuggestion,
 } from "@/hooks/use-email-sync";
 import { useMeetings } from "@/hooks/use-meetings";
-import type { MeetingSummary } from "@/hooks/use-meetings";
 import { SuggestedContactCard } from "@/components/email-sync/SuggestedContactCard";
 
 /* ------------------------------------------------------------------ */

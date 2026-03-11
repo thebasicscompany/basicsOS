@@ -1321,7 +1321,44 @@ export async function executeValidatedTool(
   }
 
   if (toolName === "browse_web") {
-    return "Browser automation coming soon.";
+    const parsed = browseWebSchema.safeParse(rawArgs);
+    if (!parsed.success)
+      return { error: "Invalid arguments", details: parsed.error.flatten() };
+
+    const { url, action, selector, extract_schema } = parsed.data;
+
+    try {
+      const { extractText, extractStructured } = await import(
+        "../../lib/browser-actions.js"
+      );
+
+      if (action === "extract_text") {
+        const text = await extractText(url, selector);
+        if (!text) return `No content found at ${url}.`;
+        return `**Content from ${url}:**\n\n${text.slice(0, 4000)}`;
+      }
+
+      if (action === "extract_structured" && extract_schema) {
+        const data = await extractStructured(url, extract_schema);
+        const entries = Object.entries(data)
+          .filter(([, v]) => v)
+          .map(([k, v]) => `- **${k}**: ${v}`)
+          .join("\n");
+        return entries
+          ? `**Extracted from ${url}:**\n${entries}`
+          : `No structured data found at ${url}.`;
+      }
+
+      if (action === "screenshot") {
+        const text = await extractText(url, selector);
+        return `**Page content from ${url}** (screenshot not available, extracted text instead):\n\n${text.slice(0, 4000)}`;
+      }
+
+      return `Browsed ${url} successfully.`;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return `Failed to browse ${url}: ${message}`;
+    }
   }
 
   if (toolName === "create_object") {

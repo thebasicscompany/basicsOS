@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import * as schema from "@/db/schema/index.js";
-import { writeUsageLogSafe } from "@/lib/usage-log.js";
+import * as schema from "../db/schema/index.js";
+import { writeUsageLogSafe } from "../lib/usage-log.js";
 export const EMBEDDABLE_RESOURCES = new Set([
     "contacts",
     "companies",

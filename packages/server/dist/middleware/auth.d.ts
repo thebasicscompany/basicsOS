@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import type { Db } from "@/db/client.js";
+import type { Db } from "../db/client.js";
 type AuthWithApi = {
     handler: (req: Request) => Promise<Response>;
     api: {

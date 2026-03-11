@@ -1,4 +1,4 @@
-import * as schema from "@/db/schema/index.js";
+import * as schema from "../../db/schema/index.js";
 import { eq, and } from "drizzle-orm";
 async function getOrganizationIdForUser(db, crmUserId) {
     const [crmUser] = await db

@@ -1,4 +1,4 @@
-import type { Db } from "@/db/client.js";
+import type { Db } from "../../db/client.js";
 export type AiAgentResult = {
     ai_agent_result: string;
     usage: {

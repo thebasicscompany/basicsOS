@@ -1,6 +1,6 @@
-import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
-import { mergeContacts } from "@/data-access/crm/merge-contacts.js";
-import { mergeContactsBodySchema } from "@/schemas/crm/merge-contacts.js";
+import { PERMISSIONS, requirePermission } from "../../../lib/rbac.js";
+import { mergeContacts } from "../../../data-access/crm/merge-contacts.js";
+import { mergeContactsBodySchema } from "../../../schemas/crm/merge-contacts.js";
 export function createMergeContactsHandler(db) {
     return async (c) => {
         let rawBody;

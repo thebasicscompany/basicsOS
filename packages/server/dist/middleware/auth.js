@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import * as schema from "@/db/schema/index.js";
+import * as schema from "../db/schema/index.js";
 /**
  * Supports both cookie-based auth (web) and Bearer token (pill overlay).
  * When the pill sends Authorization: Bearer <session_token>, we synthesize

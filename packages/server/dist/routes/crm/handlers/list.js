@@ -1,7 +1,7 @@
-import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
-import { listRecords, isListableResource } from "@/data-access/crm/list.js";
-import { parseRange, parseFilter, parseGenericFilters, parseSorts, } from "@/schemas/crm/list-params.js";
-import { resolveCustomTable, listCustomRecords, } from "@/data-access/crm/dynamic-table.js";
+import { PERMISSIONS, requirePermission } from "../../../lib/rbac.js";
+import { listRecords, isListableResource } from "../../../data-access/crm/list.js";
+import { parseRange, parseFilter, parseGenericFilters, parseSorts, } from "../../../schemas/crm/list-params.js";
+import { resolveCustomTable, listCustomRecords, } from "../../../data-access/crm/dynamic-table.js";
 export function createListHandler(db) {
     return async (c) => {
         const resource = c.req.param("resource");

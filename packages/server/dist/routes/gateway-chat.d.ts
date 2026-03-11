@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import type { Db } from "@/db/client.js";
-import type { Env } from "@/env.js";
-import type { createAuth } from "@/auth.js";
-import type * as schema from "@/db/schema/index.js";
+import type { Db } from "../db/client.js";
+import type { Env } from "../env.js";
+import type { createAuth } from "../auth.js";
+import type * as schema from "../db/schema/index.js";
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 export type ProcessChatTurnParams = {
     crmUser: typeof schema.crmUsers.$inferSelect;

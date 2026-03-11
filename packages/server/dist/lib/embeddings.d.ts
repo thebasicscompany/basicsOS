@@ -1,4 +1,4 @@
-import type { Db } from "@/db/client.js";
+import type { Db } from "../db/client.js";
 export declare const EMBEDDABLE_RESOURCES: Set<string>;
 export declare function getEntityType(resource: string): string | null;
 /**

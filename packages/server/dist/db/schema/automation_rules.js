@@ -1,6 +1,6 @@
 import { pgTable, bigserial, varchar, boolean, jsonb, timestamp, bigint, uuid, } from "drizzle-orm/pg-core";
-import { crmUsers } from "@/db/schema/crm_users.js";
-import { organizations } from "@/db/schema/organizations.js";
+import { crmUsers } from "../../db/schema/crm_users.js";
+import { organizations } from "../../db/schema/organizations.js";
 export const automationRules = pgTable("automation_rules", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     crmUserId: bigint("crm_user_id", { mode: "number" })

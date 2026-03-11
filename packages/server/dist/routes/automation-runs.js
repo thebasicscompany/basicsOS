@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { authMiddleware } from "@/middleware/auth.js";
-import { runPostSchema, runsListQuerySchema, } from "@/schemas/automation-runs.js";
-import * as schema from "@/db/schema/index.js";
+import { authMiddleware } from "../middleware/auth.js";
+import { runPostSchema, runsListQuerySchema, } from "../schemas/automation-runs.js";
+import * as schema from "../db/schema/index.js";
 import { eq, and, desc } from "drizzle-orm";
-import { triggerRunNow } from "@/lib/automation-engine.js";
-import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { triggerRunNow } from "../lib/automation-engine.js";
+import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
 export function createAutomationRunsRoutes(db, auth, _env) {
     const app = new Hono();
     app.use("*", authMiddleware(auth, db));

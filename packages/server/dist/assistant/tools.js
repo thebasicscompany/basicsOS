@@ -1,6 +1,6 @@
-import * as schema from "@/db/schema/index.js";
+import * as schema from "../db/schema/index.js";
 import { eq, and, isNull } from "drizzle-orm";
-import { resolveCompanyByName, resolveContactByName, resolveDealByName, searchCompaniesByQuery, searchContactsByQuery, searchDealsByQuery, } from "@/lib/resolve-by-name.js";
+import { resolveCompanyByName, resolveContactByName, resolveDealByName, searchCompaniesByQuery, searchContactsByQuery, searchDealsByQuery, } from "../lib/resolve-by-name.js";
 export const ASSISTANT_TOOLS = [
     {
         type: "function",

@@ -1,7 +1,7 @@
 import { generateText, tool } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import * as schema from "@/db/schema/index.js";
+import * as schema from "../../db/schema/index.js";
 import { and, eq, like, or } from "drizzle-orm";
 export async function executeAIAgent(config, _context, db, crmUserId, apiKey, env) {
     const { objective = "", model = "basics-chat-smart", maxSteps = 6, } = config;

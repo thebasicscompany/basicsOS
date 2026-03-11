@@ -1,9 +1,9 @@
-import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
-import { jsonError } from "@/lib/api-error.js";
-import { updateRecordService } from "@/services/crm/update-record.js";
-import { snakeToCamel } from "@/routes/crm/utils.js";
-import { CRM_RESOURCES, TABLE_MAP, } from "@/routes/crm/constants.js";
-import { resolveCustomTable, updateCustomRecord, } from "@/data-access/crm/dynamic-table.js";
+import { PERMISSIONS, requirePermission } from "../../../lib/rbac.js";
+import { jsonError } from "../../../lib/api-error.js";
+import { updateRecordService } from "../../../services/crm/update-record.js";
+import { snakeToCamel } from "../../../routes/crm/utils.js";
+import { CRM_RESOURCES, TABLE_MAP, } from "../../../routes/crm/constants.js";
+import { resolveCustomTable, updateCustomRecord, } from "../../../data-access/crm/dynamic-table.js";
 export function createUpdateHandler(db, env) {
     return async (c) => {
         const resource = c.req.param("resource");

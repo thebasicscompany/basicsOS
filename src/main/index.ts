@@ -19,6 +19,9 @@ if (process.env["REMOTE_DEBUGGING_PORT"]) {
   );
 }
 
+// Prevent GPU process crash from killing the app (macOS Mission Control + transparent windows)
+app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
+
 import electronUpdater from "electron-updater";
 const { autoUpdater } = electronUpdater;
 import path from "path";
@@ -342,6 +345,21 @@ function createOverlayWindow(): void {
     overlayWindow = null;
     overlayActive = false;
     broadcastOverlayStatus();
+  });
+
+  // Recover overlay if its renderer crashes (e.g. GPU process restart during Mission Control)
+  overlayWindow.webContents.on("render-process-gone", (_event, details) => {
+    console.warn(`[main] Overlay render process gone reason=${details.reason} exitCode=${details.exitCode} — recreating`);
+    if (details.reason !== "killed" && details.reason !== "clean-exit") {
+      // Delay slightly to let GPU process restart
+      setTimeout(() => {
+        if (!overlayWindow || overlayWindow.isDestroyed()) {
+          createOverlayWindow();
+        } else {
+          overlayWindow.webContents.reload();
+        }
+      }, 1000);
+    }
   });
 
   overlayWindow.webContents.on("did-finish-load", () => {
@@ -706,6 +724,7 @@ ipcMain.on("log-from-overlay", (_event, msg: string) => {
 
 ipcMain.handle("start-meeting", async () => {
   console.warn("[IPC] start-meeting received, meetingMgr=", !!meetingMgr);
+  console.warn(`[MEETING:MAIN:HN] start-meeting entry meetingMgr=${!!meetingMgr} t=${Date.now()}`);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
@@ -713,17 +732,33 @@ ipcMain.handle("start-meeting", async () => {
   });
   const token = cookies[0]?.value;
   console.warn("[IPC] start-meeting: apiUrl=", apiUrl, "hasToken=", !!token);
+  console.warn(`[MEETING:MAIN:HN] start-meeting tokenPresent=${!!token} t=${Date.now()}`);
   if (!token) throw new Error("No session token");
-  await meetingMgr.start(apiUrl, token);
-  console.warn("[IPC] start-meeting completed");
+  try {
+    console.warn(`[MEETING:MAIN:HN] start-meeting before meetingMgr.start apiUrl=${apiUrl} t=${Date.now()}`);
+    await meetingMgr.start(apiUrl, token);
+    console.warn("[IPC] start-meeting completed");
+    console.warn(`[MEETING:MAIN:HN] start-meeting success t=${Date.now()}`);
+  } catch (err) {
+    console.warn(`[MEETING:MAIN:HN] start-meeting error msg=${(err as Error).message} t=${Date.now()}`);
+    throw err;
+  }
 });
 
 ipcMain.handle("stop-meeting", async () => {
   console.warn("[IPC] stop-meeting received, meetingMgr=", !!meetingMgr);
+  console.warn(`[MEETING:MAIN:HN] stop-meeting entry meetingMgr=${!!meetingMgr} t=${Date.now()}`);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
-  await meetingMgr.stop(apiUrl);
-  console.warn("[IPC] stop-meeting completed");
+  try {
+    console.warn(`[MEETING:MAIN:HN] stop-meeting before meetingMgr.stop t=${Date.now()}`);
+    await meetingMgr.stop(apiUrl);
+    console.warn("[IPC] stop-meeting completed");
+    console.warn(`[MEETING:MAIN:HN] stop-meeting success t=${Date.now()}`);
+  } catch (err) {
+    console.warn(`[MEETING:MAIN:HN] stop-meeting error msg=${(err as Error).message} t=${Date.now()}`);
+    throw err;
+  }
 });
 
 ipcMain.handle("meeting-state", () => {
@@ -737,16 +772,21 @@ ipcMain.handle("get-persisted-meeting", () => {
 });
 
 ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
+  console.warn(`[MEETING:MAIN:HN] start-system-audio entry meetingId=${meetingId} t=${Date.now()}`);
   const cookies = await session.defaultSession.cookies.get({
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
+  console.warn(`[MEETING:MAIN:HN] start-system-audio tokenPresent=${!!token} meetingId=${meetingId} t=${Date.now()}`);
   if (!token) return false;
   return startSystemAudioCapture(meetingId, API_URL, token);
 });
 
 ipcMain.handle("stop-system-audio", async () => {
-  return stopSystemAudioCapture();
+  console.warn(`[MEETING:MAIN:HN] stop-system-audio entry t=${Date.now()}`);
+  const result = stopSystemAudioCapture();
+  console.warn(`[MEETING:MAIN:HN] stop-system-audio result=${result} t=${Date.now()}`);
+  return result;
 });
 
 ipcMain.handle("check-system-audio-permission", () => {
@@ -866,13 +906,23 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window);
   });
 
+  // Handle GPU process crash (e.g. from Mission Control on macOS with transparent windows)
+  app.on("child-process-gone", (_event, details) => {
+    if (details.type === "GPU" || details.name === "GPU") {
+      console.warn(`[main] GPU process gone reason=${details.reason} exitCode=${details.exitCode} — app will recover`);
+      // Don't crash the app — Electron will restart the GPU process automatically
+    }
+  });
+
   meetingMgr = createMeetingManager({
     onMeetingStart: (meetingId) => {
       console.warn("[meeting-manager] onMeetingStart callback: sending meeting-started IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
+      console.warn(`[MEETING:MAIN:HN] onMeetingStart meetingId=${meetingId} overlayWindow=${!!overlayWindow} t=${Date.now()}`);
       overlayWindow?.webContents.send("meeting-started", meetingId);
     },
     onMeetingStop: (meetingId) => {
       console.warn("[meeting-manager] onMeetingStop callback: sending meeting-stopped IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
+      console.warn(`[MEETING:MAIN:HN] onMeetingStop meetingId=${meetingId} overlayWindow=${!!overlayWindow} t=${Date.now()}`);
       overlayWindow?.webContents.send("meeting-stopped", meetingId);
     },
   });
@@ -975,6 +1025,7 @@ app.whenReady().then(async () => {
           id: "meeting",
           binding: meet,
           onKeyDown: () => {
+            console.warn(`[MEETING:MAIN:HN] meeting-toggle sent to overlay via keyboard hook t=${Date.now()}`);
             overlayWindow?.webContents.send("meeting-toggle");
             return true; // No timing detection needed
           },

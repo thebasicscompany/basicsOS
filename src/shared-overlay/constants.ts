@@ -18,7 +18,7 @@ export const MIC_AUDIO_GAIN = 1.0;
 export const PCM_SAMPLE_RATE = 16000;
 export const PCM_BUFFER_SIZE = 4096; // ~256ms at 16kHz
 export const WS_CONNECT_TIMEOUT_MS = 10_000;
-export const WS_CLOSE_ACK_TIMEOUT_MS = 2_000;
+export const WS_CLOSE_ACK_TIMEOUT_MS = 3_000;
 
 // ScreenCaptureKit silence detection
 export const SILENCE_RMS_THRESHOLD = 0.001;

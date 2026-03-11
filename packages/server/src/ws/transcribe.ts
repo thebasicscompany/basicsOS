@@ -26,7 +26,10 @@ type BetterAuthInstance = ReturnType<typeof createAuth>;
 
 const KEEPALIVE_INTERVAL_MS = 5_000;
 const MAX_RECONNECT_ATTEMPTS = 5;
+const MAX_TOTAL_RECONNECTS = 15;
 const BACKOFF_BASE_MS = 500;
+/** If a connection lives less than this, it counts as "unstable" */
+const MIN_STABLE_CONNECTION_MS = 10_000;
 
 type DeepgramWord = { word: string; speaker?: number };
 type DeepgramResult = {
@@ -99,7 +102,10 @@ async function resolveDeepgramConfig(
     orgConfig.transcriptionApiKeyEnc
   ) {
     const key = decryptApiKey(orgConfig.transcriptionApiKeyEnc);
-    if (key) return { key, gatewayUrl: null, basicsApiKey: null };
+    if (key) {
+      console.warn(`[MEETING:WS:HN] deepgram-key-resolved path=org_byok orgId=${organizationId} t=${Date.now()}`);
+      return { key, gatewayUrl: null, basicsApiKey: null };
+    }
   }
 
   // Fallback to env transcription BYOK
@@ -107,6 +113,7 @@ async function resolveDeepgramConfig(
     env.SERVER_TRANSCRIPTION_BYOK_PROVIDER === "deepgram" &&
     env.SERVER_TRANSCRIPTION_BYOK_API_KEY
   ) {
+    console.warn(`[MEETING:WS:HN] deepgram-key-resolved path=env_byok orgId=${organizationId} t=${Date.now()}`);
     return { key: env.SERVER_TRANSCRIPTION_BYOK_API_KEY, gatewayUrl: null, basicsApiKey: null };
   }
 
@@ -118,28 +125,29 @@ async function resolveDeepgramConfig(
   if (basicsKey) {
     // Fetch the Deepgram key from the Basics gateway
     try {
-      console.warn(`[ws/transcribe] Fetching Deepgram key from gateway: ${env.BASICSOS_API_URL}/v1/transcription/key`);
+      console.warn(`[MEETING:WS:HN] deepgram-key-fetching path=gateway url=${env.BASICSOS_API_URL}/v1/transcription/key t=${Date.now()}`);
       const res = await fetch(`${env.BASICSOS_API_URL}/v1/transcription/key`, {
         headers: { Authorization: `Bearer ${basicsKey}` },
       });
-      console.warn(`[ws/transcribe] Gateway key response: ${res.status}`);
+      console.warn(`[MEETING:WS:HN] deepgram-key-gateway-response status=${res.status} t=${Date.now()}`);
       if (res.ok) {
         const data = (await res.json()) as { key?: string };
         if (data.key) {
-          console.warn(`[ws/transcribe] Got Deepgram key from gateway (direct connection)`);
+          console.warn(`[MEETING:WS:HN] deepgram-key-resolved path=gateway_direct orgId=${organizationId} t=${Date.now()}`);
           return { key: data.key, gatewayUrl: null, basicsApiKey: basicsKey };
         }
       }
     } catch (err) {
-      console.warn(`[ws/transcribe] Gateway key endpoint failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[MEETING:WS:HN] deepgram-key-gateway-error error=${err instanceof Error ? err.message : String(err)} t=${Date.now()}`);
     }
 
     // If gateway doesn't provide a key endpoint, use the Basics API key directly
     // and connect to Deepgram via the gateway WebSocket proxy
-    console.warn(`[ws/transcribe] Falling back to gateway WS proxy`);
+    console.warn(`[MEETING:WS:HN] deepgram-key-resolved path=gateway_ws_proxy orgId=${organizationId} t=${Date.now()}`);
     return { key: basicsKey, gatewayUrl: env.BASICSOS_API_URL, basicsApiKey: basicsKey };
   }
 
+  console.warn(`[MEETING:WS:HN] deepgram-key-resolved path=none orgId=${organizationId} t=${Date.now()}`);
   return null;
 }
 
@@ -190,7 +198,6 @@ export function attachTranscribeWs(
   });
 
   wss.on("connection", (clientWs: WsWebSocket, req: IncomingMessage) => {
-    console.warn(`[ws/transcribe] New client connection from ${req.headers.origin ?? "unknown"}`);
     const url = new URL(
       req.url ?? "/",
       `http://${req.headers.host ?? "localhost"}`,
@@ -200,8 +207,10 @@ export function attachTranscribeWs(
     const encoding = url.searchParams.get("encoding"); // "linear16" for raw PCM
     const sampleRate = url.searchParams.get("sample_rate"); // "16000"
 
+    console.warn(`[MEETING:WS:HN] client-connect source=${source ?? "default"} encoding=${encoding ?? "webm"} sample_rate=${sampleRate ?? "auto"} t=${Date.now()}`);
+
     if (!token) {
-      console.warn(`[ws/transcribe] Missing token, closing`);
+      console.warn(`[MEETING:WS:HN] auth-fail reason=missing_token t=${Date.now()}`);
       sendToClient(clientWs, { type: "error", message: "Missing token" });
       clientWs.close();
       return;
@@ -210,10 +219,12 @@ export function attachTranscribeWs(
     void (async () => {
       const crmUser = await authenticateWs(db, auth, token);
       if (!crmUser || !crmUser.organizationId) {
+        console.warn(`[MEETING:WS:HN] auth-fail reason=unauthorized userId=${crmUser?.userId ?? "none"} t=${Date.now()}`);
         sendToClient(clientWs, { type: "error", message: "Unauthorized" });
         clientWs.close();
         return;
       }
+      console.warn(`[MEETING:WS:HN] auth-success userId=${crmUser.userId} orgId=${crmUser.organizationId} t=${Date.now()}`);
 
       const dgConfig = await resolveDeepgramConfig(
         db,
@@ -221,6 +232,7 @@ export function attachTranscribeWs(
         crmUser.organizationId,
       );
       if (!dgConfig) {
+        console.warn(`[MEETING:WS:HN] deepgram-key-fail reason=no_config orgId=${crmUser.organizationId} t=${Date.now()}`);
         sendToClient(clientWs, {
           type: "error",
           message:
@@ -253,16 +265,18 @@ export function attachTranscribeWs(
         const gwBase = dgConfig.gatewayUrl.replace(/^http/, "ws");
         dgUrl = `${gwBase}/v1/listen?${params.toString()}`;
         dgAuthHeader = `Bearer ${dgConfig.basicsApiKey ?? dgConfig.key}`;
-        console.warn(`[ws/transcribe] Using Basics gateway: ${dgUrl.split("?")[0]}`);
+        console.warn(`[MEETING:WS:HN] deepgram-connect-url mode=gateway url=${dgUrl.split("?")[0]} t=${Date.now()}`);
       } else {
         dgUrl = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
         dgAuthHeader = `Token ${dgConfig.key}`;
-        console.warn(`[ws/transcribe] Using direct Deepgram connection`);
+        console.warn(`[MEETING:WS:HN] deepgram-connect-url mode=direct url=wss://api.deepgram.com/v1/listen t=${Date.now()}`);
       }
 
       const tag = source === "system" ? "system" : "mixed";
       let closedByUs = false;
       let reconnectAttempt = 0;
+      let totalReconnects = 0;
+      let lastConnectTime = 0;
       let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
       let currentDgWs: WsWebSocket | null = null;
       let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
@@ -275,16 +289,17 @@ export function attachTranscribeWs(
       };
 
       const connectDeepgram = (): void => {
+        console.warn(`[MEETING:WS:HN] deepgram-connecting tag=${tag} attempt=${reconnectAttempt} t=${Date.now()}`);
         const dgWs = new WsWebSocket(dgUrl, {
           headers: { Authorization: dgAuthHeader },
         } as ClientOptions);
         currentDgWs = dgWs;
 
         dgWs.on("open", () => {
-          console.warn(
-            `[ws/transcribe][${tag}] Connected to Deepgram${reconnectAttempt > 0 ? ` (reconnect #${reconnectAttempt})` : ""}`,
-          );
-          reconnectAttempt = 0;
+          lastConnectTime = Date.now();
+          console.warn(`[MEETING:WS:HN] deepgram-connected tag=${tag} reconnectAttempt=${reconnectAttempt} totalReconnects=${totalReconnects} t=${lastConnectTime}`);
+          // Only reset consecutive counter if this isn't the initial connect
+          // (reconnectAttempt resets happen in close handler based on stability)
           sendToClient(clientWs, { type: "ready" });
 
           keepAliveInterval = setInterval(() => {
@@ -307,7 +322,11 @@ export function attachTranscribeWs(
             if (!transcript) return;
 
             const speaker = getDominantSpeaker(alt?.words);
-            console.warn(`[ws/transcribe][${tag}] DG#${dgMsgCount} is_final=${result.is_final} speech_final=${result.speech_final} speaker=${speaker} text="${transcript.slice(0, 60)}"`);
+            if (result.is_final) {
+              console.warn(`[MEETING:WS:HN] transcript-final tag=${tag} dgMsg=${dgMsgCount} speaker=${speaker} is_final=${result.is_final} speech_final=${result.speech_final} text="${transcript.slice(0, 50)}" t=${Date.now()}`);
+            }
+            transcriptsSentCount++;
+            console.warn(`[MEETING:WS:HN] transcript-forward tag=${tag} count=${transcriptsSentCount} is_final=${result.is_final} t=${Date.now()}`);
             sendToClient(clientWs, {
               type: "transcript",
               transcript,
@@ -316,12 +335,12 @@ export function attachTranscribeWs(
               ...(speaker !== undefined ? { speaker } : {}),
             });
           } catch (err) {
-            console.error(`[ws/transcribe][${tag}] Parse error:`, err);
+            console.error(`[MEETING:WS:HN] deepgram-parse-error tag=${tag} error=${err instanceof Error ? err.message : String(err)} t=${Date.now()}`);
           }
         });
 
         dgWs.on("error", (err: Error) => {
-          console.error(`[ws/transcribe][${tag}] Deepgram WS error:`, err.message ?? err);
+          console.warn(`[MEETING:WS:HN] deepgram-error tag=${tag} error=${err.message ?? String(err)} t=${Date.now()}`);
           sendToClient(clientWs, {
             type: "error",
             message: "Deepgram connection error",
@@ -330,38 +349,54 @@ export function attachTranscribeWs(
 
         dgWs.on("close", (code: number, reason: Buffer) => {
           clearKeepAlive();
-          console.warn(`[ws/transcribe][${tag}] Deepgram WS closed, code=${code} reason="${reason?.toString() ?? ""}" closedByUs=${closedByUs} audioChunks=${audioChunkCount} dgMsgs=${dgMsgCount}`);
+          const connectionDuration = Date.now() - lastConnectTime;
+          const wasStable = connectionDuration >= MIN_STABLE_CONNECTION_MS;
+          console.warn(`[MEETING:WS:HN] deepgram-disconnect tag=${tag} code=${code} reason="${reason?.toString() ?? ""}" closedByUs=${closedByUs} connectionDurationMs=${connectionDuration} wasStable=${wasStable} totalReconnects=${totalReconnects} totalAudioChunks=${audioChunkCount} totalDgMsgs=${dgMsgCount} totalTranscriptsSent=${transcriptsSentCount} t=${Date.now()}`);
           if (closedByUs) return;
+
+          // Only reset consecutive counter if the connection was stable (lived long enough)
+          if (wasStable) {
+            reconnectAttempt = 0;
+          }
+
+          // Check both consecutive and total limits
+          if (totalReconnects >= MAX_TOTAL_RECONNECTS) {
+            console.warn(`[MEETING:WS:HN] deepgram-reconnect-total-exhausted tag=${tag} totalReconnects=${totalReconnects} t=${Date.now()}`);
+            sendToClient(clientWs, { type: "closed", reason: "max_total_retries" });
+            return;
+          }
 
           if (reconnectAttempt < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempt++;
-            const delay = BACKOFF_BASE_MS * Math.pow(2, reconnectAttempt - 1);
-            console.warn(
-              `[ws/transcribe][${tag}] Reconnecting in ${delay}ms (attempt ${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS})`,
-            );
+            totalReconnects++;
+            // Use longer backoff for unstable connections
+            const backoffMultiplier = wasStable ? 1 : Math.min(totalReconnects, 5);
+            const delay = BACKOFF_BASE_MS * Math.pow(2, reconnectAttempt - 1) * backoffMultiplier;
+            console.warn(`[MEETING:WS:HN] deepgram-reconnect tag=${tag} attempt=${reconnectAttempt} maxAttempts=${MAX_RECONNECT_ATTEMPTS} totalReconnects=${totalReconnects} delayMs=${delay} t=${Date.now()}`);
             sendToClient(clientWs, {
               type: "reconnecting",
               attempt: reconnectAttempt,
             });
             reconnectTimeout = setTimeout(connectDeepgram, delay);
           } else {
-            console.error(
-              `[ws/transcribe][${tag}] Max reconnect attempts reached`,
-            );
+            console.warn(`[MEETING:WS:HN] deepgram-reconnect-exhausted tag=${tag} attempts=${reconnectAttempt} totalReconnects=${totalReconnects} t=${Date.now()}`);
             sendToClient(clientWs, { type: "closed", reason: "max_retries" });
           }
         });
       };
 
       let audioChunkCount = 0;
+      let transcriptsSentCount = 0;
 
       connectDeepgram();
       clientWs.on("message", (rawData, isBinary) => {
         if (isBinary) {
           audioChunkCount++;
-          if (audioChunkCount <= 3 || audioChunkCount % 200 === 0) {
-            const size = Array.isArray(rawData) ? rawData.reduce((s, b) => s + b.length, 0) : (rawData as Buffer).length;
-            console.warn(`[ws/transcribe][${tag}] Audio chunk #${audioChunkCount}, size=${size}`);
+          const size = Array.isArray(rawData) ? rawData.reduce((s, b) => s + b.length, 0) : (rawData as Buffer).length;
+          if (audioChunkCount === 1) {
+            console.warn(`[MEETING:WS:HN] audio-first-chunk tag=${tag} size=${size} t=${Date.now()}`);
+          } else if (audioChunkCount % 200 === 0) {
+            console.warn(`[MEETING:WS:HN] audio-chunk-progress tag=${tag} count=${audioChunkCount} size=${size} t=${Date.now()}`);
           }
           // Forward audio to Deepgram — convert RawData to Buffer
           if (currentDgWs?.readyState === WsWebSocket.OPEN) {
@@ -369,6 +404,8 @@ export function attachTranscribeWs(
               ? Buffer.concat(rawData)
               : rawData;
             currentDgWs.send(buf);
+          } else {
+            console.warn(`[MEETING:WS:HN] audio-chunk-dropped tag=${tag} count=${audioChunkCount} dgReadyState=${currentDgWs?.readyState ?? "null"} t=${Date.now()}`);
           }
           return;
         }
@@ -378,6 +415,8 @@ export function attachTranscribeWs(
         try {
           const msg = JSON.parse(data.toString()) as { type: string };
           if (msg.type === "CloseStream") {
+            const closeStreamReceivedAt = Date.now();
+            console.warn(`[MEETING:WS:HN] closestream-received tag=${tag} totalAudioChunks=${audioChunkCount} t=${closeStreamReceivedAt}`);
             closedByUs = true;
             clearKeepAlive();
             if (reconnectTimeout) {
@@ -385,16 +424,28 @@ export function attachTranscribeWs(
               reconnectTimeout = null;
             }
             if (currentDgWs?.readyState === WsWebSocket.OPEN) {
+              console.warn(`[MEETING:WS:HN] closestream-forward-to-deepgram tag=${tag} t=${Date.now()}`);
               currentDgWs.send(JSON.stringify({ type: "CloseStream" }));
               // Wait for Deepgram to close, then send closed to client
+              let closeAckSent = false;
               currentDgWs.once("close", () => {
+                if (closeAckSent) return;
+                closeAckSent = true;
+                const elapsed = Date.now() - closeStreamReceivedAt;
+                console.warn(`[MEETING:WS:HN] deepgram-close-ack tag=${tag} elapsedMs=${elapsed} t=${Date.now()}`);
+                console.warn(`[MEETING:WS:HN] client-close-sent tag=${tag} totalAudioChunks=${audioChunkCount} totalTranscriptsSent=${transcriptsSentCount} t=${Date.now()}`);
                 sendToClient(clientWs, { type: "closed" });
               });
-              // Timeout fallback
+              // Timeout fallback (5s — Deepgram typically acks in ~2s)
               setTimeout(() => {
+                if (closeAckSent) return;
+                closeAckSent = true;
+                console.warn(`[MEETING:WS:HN] closestream-timeout-fallback tag=${tag} elapsedMs=${Date.now() - closeStreamReceivedAt} t=${Date.now()}`);
                 sendToClient(clientWs, { type: "closed" });
-              }, 2000);
+              }, 5000);
             } else {
+              console.warn(`[MEETING:WS:HN] closestream-dg-not-open tag=${tag} dgReadyState=${currentDgWs?.readyState ?? "null"} t=${Date.now()}`);
+              console.warn(`[MEETING:WS:HN] client-close-sent tag=${tag} totalAudioChunks=${audioChunkCount} totalTranscriptsSent=${transcriptsSentCount} t=${Date.now()}`);
               sendToClient(clientWs, { type: "closed" });
             }
           } else if (msg.type === "KeepAlive") {
@@ -408,7 +459,7 @@ export function attachTranscribeWs(
       });
 
       clientWs.on("close", (code: number, reason: Buffer) => {
-        console.warn(`[ws/transcribe][${tag}] Client WS closed, code=${code} reason="${reason?.toString() ?? ""}" audioChunks=${audioChunkCount}`);
+        console.warn(`[MEETING:WS:HN] client-disconnect tag=${tag} code=${code} reason="${reason?.toString() ?? ""}" totalAudioChunks=${audioChunkCount} totalTranscriptsSent=${transcriptsSentCount} t=${Date.now()}`);
         closedByUs = true;
         clearKeepAlive();
         if (reconnectTimeout) {

@@ -36,6 +36,7 @@ export const emailSyncState = pgTable(
         syncPeriodDays: number;
         enrichWithAi: boolean;
         autoAcceptThreshold: number | null;
+        dealCriteriaText?: string | null;
       }>()
       .default({
         syncPeriodDays: 90,

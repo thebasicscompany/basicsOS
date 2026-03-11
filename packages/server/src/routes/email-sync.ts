@@ -152,6 +152,7 @@ export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
       syncPeriodDays?: number;
       enrichWithAi?: boolean;
       autoAcceptThreshold?: number | null;
+      dealCriteriaText?: string | null;
     }>();
 
     const [syncState] = await db
@@ -166,6 +167,7 @@ export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
       syncPeriodDays: number;
       enrichWithAi: boolean;
       autoAcceptThreshold: number | null;
+      dealCriteriaText?: string | null;
     };
 
     const newSettings = {
@@ -175,6 +177,10 @@ export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
         body.autoAcceptThreshold !== undefined
           ? body.autoAcceptThreshold
           : currentSettings.autoAcceptThreshold,
+      dealCriteriaText:
+        body.dealCriteriaText !== undefined
+          ? (body.dealCriteriaText && body.dealCriteriaText.trim() ? body.dealCriteriaText.trim() : null)
+          : currentSettings.dealCriteriaText ?? null,
     };
 
     await db
@@ -381,7 +387,8 @@ export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
       } else {
         const nameParts = (suggestion.founderName ?? "").trim().split(/\s+/);
         const firstName = nameParts[0] ?? null;
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+        const lastName =
+          nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
         const [newContact] = await db
           .insert(schema.contacts)
           .values({
@@ -442,7 +449,9 @@ export function createEmailSyncRoutes(db: Db, auth: Auth, _env: Env) {
         await db
           .select({ settings: schema.emailSyncState.settings })
           .from(schema.emailSyncState)
-          .where(eq(schema.emailSyncState.organizationId, crmUser.organizationId))
+          .where(
+            eq(schema.emailSyncState.organizationId, crmUser.organizationId),
+          )
           .limit(1)
       )?.[0]?.settings as { enrichWithAi: boolean } | undefined;
 

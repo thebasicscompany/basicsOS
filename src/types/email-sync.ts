@@ -52,6 +52,7 @@ export interface EmailSyncSettings {
   syncPeriodDays: number;
   enrichWithAi: boolean;
   autoAcceptThreshold: number | null;
+  dealCriteriaText?: string | null;
 }
 
 export interface SuggestedDeal {

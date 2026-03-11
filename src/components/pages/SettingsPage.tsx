@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -422,8 +423,8 @@ export function SettingsPage() {
                   <p className="text-[12px] text-muted-foreground">
                     Configure the API key used by all users for AI chat, voice,
                     and automations. This key is shared across your
-                    organization. With a BasicsOS key, transcription and
-                    SMTP (email) are included — we handle it for you.
+                    organization. With a BasicsOS key, transcription and SMTP
+                    (email) are included — we handle it for you.
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
@@ -587,9 +588,9 @@ export function SettingsPage() {
                     {aiConfigData?.config?.keyType === "basicsos" ||
                     aiKeyType === "basicsos" ? (
                       <>
-                        With a BasicsOS key, we handle transcription and
-                        SMTP (email) for you — don&apos;t worry! Only configure
-                        below if you use BYOK and want your own Deepgram key.
+                        With a BasicsOS key, we handle transcription and SMTP
+                        (email) for you — don&apos;t worry! Only configure below
+                        if you use BYOK and want your own Deepgram key.
                       </>
                     ) : (
                       <>
@@ -760,9 +761,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="mt-6 border-t pt-6">
-                  <h3 className="text-[13px] font-medium mb-1">
-                    Email (SMTP)
-                  </h3>
+                  <h3 className="text-[13px] font-medium mb-1">Email (SMTP)</h3>
                   <p className="text-[12px] text-muted-foreground mb-3">
                     Only required if you&apos;re not using a BasicsOS key above.
                     With BasicsOS, we handle SMTP (email) for you — don&apos;t
@@ -860,7 +859,8 @@ export function SettingsPage() {
                             );
                             return;
                           }
-                          const hasExisting = smtpConfigData?.config?.hasPassword;
+                          const hasExisting =
+                            smtpConfigData?.config?.hasPassword;
                           if (!password.trim() && !hasExisting) {
                             toast.error("Password is required for new config");
                             return;
@@ -870,7 +870,9 @@ export function SettingsPage() {
                             return;
                           }
                           if (!/@/.test(from)) {
-                            toast.error("From must contain a valid email address");
+                            toast.error(
+                              "From must contain a valid email address",
+                            );
                             return;
                           }
                           try {
@@ -911,7 +913,9 @@ export function SettingsPage() {
                           </DialogTrigger>
                           <DialogContent className="max-w-sm">
                             <DialogHeader>
-                              <DialogTitle>Clear SMTP configuration?</DialogTitle>
+                              <DialogTitle>
+                                Clear SMTP configuration?
+                              </DialogTitle>
                               <DialogDescription>
                                 Password reset emails will use the BasicsOS key
                                 (if set) or env vars instead.
@@ -957,27 +961,28 @@ export function SettingsPage() {
                     {smtpConfigData?.config && (
                       <div className="sm:col-span-2">
                         <span className="text-[12px] text-muted-foreground">
-                          Active: {smtpConfigData.config.host}:{smtpConfigData.config.port} —
-                          last updated{" "}
+                          Active: {smtpConfigData.config.host}:
+                          {smtpConfigData.config.port} — last updated{" "}
                           {new Date(
                             smtpConfigData.config.updatedAt,
                           ).toLocaleDateString()}
                         </span>
                       </div>
                     )}
-                    {smtpConfigData?.hasEnvFallback && !smtpConfigData?.config && (
-                      <div className="sm:col-span-2">
-                        <p className="text-[12px] text-muted-foreground">
-                          Using env fallback (
-                          {smtpConfigData.hasEnvSmtp
-                            ? "SMTP"
-                            : smtpConfigData.hasEnvBasicsos
-                              ? "BasicsOS key"
-                              : "—"}
-                          ). Set above to override.
-                        </p>
-                      </div>
-                    )}
+                    {smtpConfigData?.hasEnvFallback &&
+                      !smtpConfigData?.config && (
+                        <div className="sm:col-span-2">
+                          <p className="text-[12px] text-muted-foreground">
+                            Using env fallback (
+                            {smtpConfigData.hasEnvSmtp
+                              ? "SMTP"
+                              : smtpConfigData.hasEnvBasicsos
+                                ? "BasicsOS key"
+                                : "—"}
+                            ). Set above to override.
+                          </p>
+                        </div>
+                      )}
                   </div>
                 </div>
               </section>
@@ -1092,8 +1097,8 @@ export function SettingsPage() {
                           htmlFor="invite-send-email"
                           className="text-[12px] text-muted-foreground font-normal cursor-pointer"
                         >
-                          Email invite using configured method (SMTP or
-                          BasicsOS key)
+                          Email invite using configured method (SMTP or BasicsOS
+                          key)
                         </Label>
                       </div>
                     )}
@@ -1339,6 +1344,11 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
   const triggerSync = useTriggerSync();
   const stopSync = useStopEmailSync();
   const [confirmStop, setConfirmStop] = useState(false);
+  const [dealCriteriaLocal, setDealCriteriaLocal] = useState("");
+
+  useEffect(() => {
+    setDealCriteriaLocal(syncStatus?.settings?.dealCriteriaText ?? "");
+  }, [syncStatus?.settings?.dealCriteriaText]);
 
   if (isLoading) return null;
 
@@ -1432,6 +1442,26 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
                   <SelectItem value="180">180 days</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">What counts as a deal (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Describe in plain language what you want the AI to treat as a
+                potential deal (e.g. founder intros, partnership proposals,
+                enterprise leads). Leave blank to use the default.
+              </p>
+              <Textarea
+                placeholder="e.g. Introductions to founders, partnership proposals, enterprise sales leads"
+                value={dealCriteriaLocal}
+                onChange={(e) => setDealCriteriaLocal(e.target.value)}
+                onBlur={() => {
+                  const v = dealCriteriaLocal.trim() || null;
+                  if (v !== (settings.dealCriteriaText ?? null))
+                    updateSettings.mutate({ dealCriteriaText: v });
+                }}
+                className="min-h-[80px] resize-y"
+              />
             </div>
           </>
         )}

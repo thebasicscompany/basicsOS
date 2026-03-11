@@ -68,9 +68,6 @@ const PERSONAL_DOMAINS = new Set([
 export function isDealCandidate(email: DealCandidateEmail): boolean {
   if (shouldAutoExclude(email.fromEmail)) return false;
 
-  const domain = email.fromEmail.split("@")[1]?.toLowerCase() ?? "";
-  if (PERSONAL_DOMAINS.has(domain)) return false;
-
   const subjectLower = (email.subject ?? "").toLowerCase();
   const hasKeyword = DEAL_KEYWORDS.some((kw) => subjectLower.includes(kw));
   const hasManyCC = (email.ccAddresses?.length ?? 0) >= 2;
@@ -223,19 +220,31 @@ export async function analyzeDealCandidates(
     "Found deal candidate threads",
   );
 
-  // 5. Resolve AI config
+  // 5. Load email sync settings for deal criteria (optional custom prompt)
+  let dealCriteriaText: string | null = null;
+  const [syncState] = await db
+    .select({ settings: schema.emailSyncState.settings })
+    .from(schema.emailSyncState)
+    .where(eq(schema.emailSyncState.organizationId, orgId))
+    .limit(1);
+  if (syncState?.settings && typeof syncState.settings === "object" && "dealCriteriaText" in syncState.settings) {
+    const text = (syncState.settings as { dealCriteriaText?: string | null }).dealCriteriaText;
+    dealCriteriaText = text && String(text).trim() ? String(text).trim() : null;
+  }
+
+  // 6. Resolve AI config
   const aiConfig = await resolveAiConfigForOrg(db, env, orgId);
   if (!aiConfig) {
     log.warn({ orgId }, "No AI config available, skipping deal analysis");
     return;
   }
 
-  // 6. Batch up to 5 threads per AI call
+  // 7. Batch up to 5 threads per AI call
   const BATCH_SIZE = 5;
   for (let i = 0; i < candidateThreads.length; i += BATCH_SIZE) {
     const batch = candidateThreads.slice(i, i + BATCH_SIZE);
     try {
-      await analyzeBatch(db, env, orgId, aiConfig, batch);
+      await analyzeBatch(db, env, orgId, aiConfig, batch, dealCriteriaText);
     } catch (err) {
       log.error({ err, orgId, batchIndex: i }, "Failed to analyze deal batch");
     }
@@ -254,6 +263,7 @@ async function analyzeBatch(
   orgId: string,
   aiConfig: AiKeyConfig,
   threads: ThreadGroup[],
+  dealCriteriaText: string | null,
 ): Promise<void> {
   // Build the user message with thread summaries
   const threadSummaries = threads.map((thread, idx) => {
@@ -264,8 +274,9 @@ async function analyzeBatch(
 
   const userMessage = threadSummaries.join("\n\n---\n\n");
 
-  const systemPrompt =
-    "You analyze email threads to identify potential business deal opportunities (introductions to founders, investment discussions, partnership proposals, sales leads). For each thread, determine if it contains a deal opportunity and extract information. Return ONLY a valid JSON array. Return [] if no deals found.";
+  const systemPrompt = dealCriteriaText
+    ? `Consider the following as deal opportunities for this organization: ${dealCriteriaText}\n\nFor each thread, determine if it contains such a deal and extract information. Return ONLY a valid JSON array. Return [] if no deals found.`
+    : "You analyze email threads to identify potential business deal opportunities (introductions to founders, investment discussions, partnership proposals, sales leads). For each thread, determine if it contains a deal opportunity and extract information. Return ONLY a valid JSON array. Return [] if no deals found.";
 
   const responseFormat = `Return format: [{ "threadIndex": number, "isDeal": boolean, "confidence": number (0-1), "dealName": string|null, "founderName": string|null, "founderEmail": string|null, "companyName": string|null, "companyDomain": string|null, "companyCategory": string|null, "description": string|null }]`;
 

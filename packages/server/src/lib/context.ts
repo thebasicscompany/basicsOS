@@ -4,7 +4,7 @@ import * as schema from "@/db/schema/index.js";
 import { writeUsageLogSafe } from "@/lib/usage-log.js";
 
 const MAX_CONTEXT_CHARS_PER_CHUNK = 1_200;
-const MAX_TOTAL_CONTEXT_CHARS = 4_000;
+const MAX_TOTAL_CONTEXT_CHARS = 6_000;
 
 const CRM_ENTITY_TYPES = [
   "contact",
@@ -13,6 +13,7 @@ const CRM_ENTITY_TYPES = [
   "task",
   "contact_note",
   "deal_note",
+  "automation",
 ];
 const MEETING_ENTITY_TYPES = ["meeting_chunk", "meeting_summary"];
 

@@ -31,8 +31,33 @@ export function getEntityType(resource: string): string | null {
 }
 
 /**
+ * Extracts human-readable text from custom fields on a record.
+ * Handles both `customFields` and `custom_fields` property names.
+ * Skips internal keys (prefixed with `_`) and empty values.
+ */
+function formatCustomFields(record: Record<string, unknown>): string {
+  const customFields = (record.customFields ?? record.custom_fields) as
+    | Record<string, unknown>
+    | undefined;
+  if (!customFields || typeof customFields !== "object") return "";
+
+  return Object.entries(customFields)
+    .filter(([k]) => !k.startsWith("_"))
+    .filter(([, v]) => v != null && v !== "")
+    .map(([k, v]) => {
+      const label = k
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .trim();
+      return `${label}: ${String(v)}`;
+    })
+    .join(". ");
+}
+
+/**
  * Builds a human-readable text chunk from a CRM record for embedding.
  * The record uses camelCase field names (Drizzle ORM output).
+ * Includes custom fields and enrichment data for richer semantic search.
  */
 export function buildEntityText(
   entityType: string,
@@ -43,7 +68,9 @@ export function buildEntityText(
       const parts = [
         [record.firstName, record.lastName].filter(Boolean).join(" "),
         record.email ? `Email: ${record.email}` : null,
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+      const custom = formatCustomFields(record);
+      if (custom) parts.push(custom);
       return parts.join(". ");
     }
     case "company": {
@@ -52,7 +79,9 @@ export function buildEntityText(
         record.category ? `Category: ${record.category}` : null,
         record.domain ? `Domain: ${record.domain}` : null,
         record.description ? `Description: ${record.description}` : null,
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+      const custom = formatCustomFields(record);
+      if (custom) parts.push(custom);
       return parts.join(". ");
     }
     case "deal": {
@@ -60,7 +89,9 @@ export function buildEntityText(
         record.name,
         record.status ? `Status: ${record.status}` : null,
         record.amount ? `Value: $${record.amount}` : null,
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+      const custom = formatCustomFields(record);
+      if (custom) parts.push(custom);
       return parts.join(". ");
     }
     case "task": {
@@ -68,7 +99,9 @@ export function buildEntityText(
         record.text ? String(record.text).trim() : null,
         record.description ? String(record.description).trim() : null,
         record.type ? `Type: ${record.type}` : null,
-      ].filter(Boolean);
+      ].filter(Boolean) as string[];
+      const custom = formatCustomFields(record);
+      if (custom) parts.push(custom);
       return parts.join(". ");
     }
     case "contact_note":

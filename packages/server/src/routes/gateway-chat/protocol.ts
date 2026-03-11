@@ -75,6 +75,7 @@ You can also:
 - **Generate reports** with generate_report to create visual data summaries
 - **Browse web pages** with browse_web to navigate URLs, extract text/structured data for research
 - **Update custom fields** on contacts, companies, and deals by passing custom_fields in update tools
+- **Create custom objects** with create_object to define new CRM entity types (e.g. projects, tickets). Max 5 custom objects per org.
 
 When enriching: search for the record first, then call enrich_record with the ID.
 When deleting: always search first to confirm the exact record, then delete.
@@ -510,6 +511,58 @@ export const browseWebSchema = z.object({
     .describe(
       "For extract_structured: field name → CSS selector mapping",
     ),
+});
+
+export const createObjectSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .describe("Display name for the object (e.g. 'Projects')"),
+  slug: z
+    .string()
+    .regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$/)
+    .describe(
+      "URL-safe slug (lowercase, hyphens, e.g. 'projects')",
+    ),
+  singular_name: z
+    .string()
+    .min(1)
+    .max(64)
+    .describe("Singular form (e.g. 'Project')"),
+  icon: z.string().optional().describe("Icon name (e.g. 'Folder', 'Briefcase')"),
+  fields: z
+    .array(
+      z.object({
+        name: z.string().describe("Field display name"),
+        key: z.string().describe("Field key (snake_case)"),
+        type: z
+          .enum([
+            "text",
+            "long-text",
+            "number",
+            "currency",
+            "select",
+            "multi-select",
+            "status",
+            "checkbox",
+            "date",
+            "email",
+            "phone",
+            "domain",
+            "rating",
+          ])
+          .describe("Field type"),
+        required: z.boolean().optional().default(false),
+        options: z
+          .array(z.string())
+          .optional()
+          .describe("Options for select/multi-select/status fields"),
+      }),
+    )
+    .min(1)
+    .max(20)
+    .describe("Fields for the object"),
 });
 
 export const OPENAI_TOOL_DEFS = [
@@ -1270,6 +1323,81 @@ export const OPENAI_TOOL_DEFS = [
           },
         },
         required: ["url"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_object",
+      description:
+        "Create a new custom CRM object type with fields. Use when the user wants to track a new type of entity (e.g. projects, tickets, products). Max 5 custom objects per org.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Display name (e.g. 'Projects')",
+          },
+          slug: {
+            type: "string",
+            description:
+              "URL-safe slug (lowercase, hyphens, e.g. 'projects')",
+          },
+          singular_name: {
+            type: "string",
+            description: "Singular form (e.g. 'Project')",
+          },
+          icon: {
+            type: "string",
+            description:
+              "Icon name (e.g. 'Folder', 'Briefcase')",
+          },
+          fields: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Field display name",
+                },
+                key: {
+                  type: "string",
+                  description: "Field key (snake_case)",
+                },
+                type: {
+                  type: "string",
+                  enum: [
+                    "text",
+                    "long-text",
+                    "number",
+                    "currency",
+                    "select",
+                    "multi-select",
+                    "status",
+                    "checkbox",
+                    "date",
+                    "email",
+                    "phone",
+                    "domain",
+                    "rating",
+                  ],
+                },
+                required: { type: "boolean" },
+                options: {
+                  type: "array",
+                  items: { type: "string" },
+                  description:
+                    "Options for select/multi-select/status",
+                },
+              },
+              required: ["name", "key", "type"],
+            },
+            description: "Fields for the object (1-20)",
+          },
+        },
+        required: ["name", "slug", "singular_name", "fields"],
       },
     },
   },

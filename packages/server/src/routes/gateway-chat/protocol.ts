@@ -334,6 +334,65 @@ export const addNoteSchema = z
     }
   });
 
+export const webSearchSchema = z.object({
+  query: z.string().min(1),
+  num_results: z.number().int().min(1).max(20).optional(),
+});
+
+export const searchAllSchema = z.object({
+  query: z.string().min(1),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+
+export const deleteRecordSchema = z
+  .object({
+    entity_type: z.enum(["contact", "company", "deal"]),
+    entity_id: z.number().int().positive().optional(),
+    entity_name: z.string().min(1).optional(),
+  })
+  .refine((v) => v.entity_id || v.entity_name, {
+    message: "Provide entity_id or entity_name",
+  });
+
+export const bulkUpdateSchema = z.object({
+  entity_type: z.enum(["contact", "company", "deal"]),
+  ids: z.array(z.number().int().positive()).min(1),
+  updates: z.record(z.unknown()),
+});
+
+export const deleteTaskSchema = z.object({
+  id: z.number().int().positive(),
+});
+
+export const manageViewSchema = z.object({
+  action: z.string(),
+  object_slug: z.string().optional(),
+  view_name: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+});
+
+export const createAutomationSchema = z.object({
+  name: z.string().min(1),
+  trigger: z.record(z.unknown()).optional(),
+  actions: z.array(z.record(z.unknown())).optional(),
+});
+
+export const generateReportSchema = z.object({
+  report_type: z.string().min(1),
+  filters: z.record(z.unknown()).optional(),
+});
+
+export const enrichRecordSchema = z.object({
+  entity_type: z.enum(["contact", "company", "deal"]),
+  entity_id: z.number().int().positive().optional(),
+  entity_name: z.string().min(1).optional(),
+});
+
+export const browseWebSchema = z.object({
+  url: z.string().url(),
+  instruction: z.string().optional(),
+});
+
 export const OPENAI_TOOL_DEFS = [
   {
     type: "function",

@@ -4,7 +4,10 @@ import { PlusIcon, NoteBlankIcon, MicrophoneIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotes, type Note } from "@/hooks/use-notes";
-import { useMeetingsByRecord, type MeetingWithSummary } from "@/hooks/use-meetings";
+import {
+  useMeetingsByRecord,
+  type MeetingWithSummary,
+} from "@/hooks/use-meetings";
 import { NoteCard } from "./NoteCard";
 import { NoteEditorDialog } from "./NoteEditorDialog";
 import { MeetingDetailDialog } from "@/components/meetings/MeetingDetailDialog";
@@ -65,11 +68,9 @@ export function NotesTabContent({
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [meetingDialogId, setMeetingDialogId] = useState<number | null>(null);
 
-  // F2: Fetch linked meetings for this record
+  // F2: Fetch linked meetings for contacts only
   const meetingParams = useMemo(() => {
     if (objectSlug === "contacts") return { contactId: recordId };
-    if (objectSlug === "companies") return { companyId: recordId };
-    if (objectSlug === "deals") return { dealId: recordId };
     return {};
   }, [objectSlug, recordId]);
 

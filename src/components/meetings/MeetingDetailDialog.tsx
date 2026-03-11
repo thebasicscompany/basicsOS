@@ -245,23 +245,19 @@ function ActionableItemsSection({
   label,
   items,
   contactId,
-  companyId,
 }: {
   label: string;
   items: string[];
   contactId?: number;
-  companyId?: number;
 }) {
   const createTask = useCreateTask();
-  const [createdIndexes, setCreatedIndexes] = useState<Set<number>>(
-    new Set(),
-  );
+  const [createdIndexes, setCreatedIndexes] = useState<Set<number>>(new Set());
 
   if (!items.length) return null;
 
   const handleCreateTask = (text: string, index: number, dueDate: string) => {
     createTask.mutate(
-      { text, dueDate, contactId, companyId },
+      { text, dueDate, contactId },
       {
         onSuccess: () => {
           setCreatedIndexes((prev) => new Set(prev).add(index));
@@ -416,26 +412,23 @@ export function MeetingDetailDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meeting?.id, hasActionItems]);
 
-  // F2: linked records
+  // F2: linked contact (one per meeting)
   const links = meeting?.links;
-  const firstContactId = links?.contacts?.[0]?.id;
-  const firstCompanyId = links?.companies?.[0]?.id;
+  const linkedContact = links?.contacts?.[0] ?? null;
+  const firstContactId = linkedContact?.id;
 
-  const handleLink = useCallback(
-    (
-      type: "contactId" | "companyId" | "dealId",
-      item: { id: number },
-    ) => {
+  const handleLinkContact = useCallback(
+    (item: { id: number }) => {
       if (!meetingId) return;
-      linkMeeting.mutate({ meetingId, [type]: item.id });
+      linkMeeting.mutate({ meetingId, contactId: item.id });
     },
     [meetingId, linkMeeting],
   );
 
-  const handleUnlink = useCallback(
-    (type: "contactId" | "companyId" | "dealId", id: number) => {
+  const handleUnlinkContact = useCallback(
+    (id: number) => {
       if (!meetingId) return;
-      unlinkMeeting.mutate({ meetingId, [type]: id });
+      unlinkMeeting.mutate({ meetingId, contactId: id });
     },
     [meetingId, unlinkMeeting],
   );
@@ -489,7 +482,10 @@ export function MeetingDetailDialog({
             {/* Meta */}
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <span>
-                {format(new Date(meeting.startedAt), "MMM d, yyyy \u00B7 h:mm a")}
+                {format(
+                  new Date(meeting.startedAt),
+                  "MMM d, yyyy \u00B7 h:mm a",
+                )}
               </span>
               <span>&middot;</span>
               <span>{formatDuration(meeting.duration)}</span>
@@ -497,93 +493,34 @@ export function MeetingDetailDialog({
               <span className="capitalize">{meeting.status}</span>
             </div>
 
-            {/* F2: Assign to records */}
+            {/* F2: Assign to contact (one per meeting) */}
             <div className="rounded-lg border bg-muted/20 p-3">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">
-                Assign to
+                Assign to contact
               </h4>
               <div className="flex flex-wrap items-center gap-1.5">
-                {/* Linked contacts */}
-                {links?.contacts?.map((c) => (
-                  <span
-                    key={`c-${c.id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-medium"
-                  >
-                    {c.name}
+                {linkedContact && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-medium">
+                    {linkedContact.name}
                     <button
-                      onClick={() => handleUnlink("contactId", c.id)}
+                      onClick={() => handleUnlinkContact(linkedContact.id)}
                       className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100"
                     >
                       &times;
                     </button>
                   </span>
-                ))}
-                {/* Linked companies */}
-                {links?.companies?.map((c) => (
-                  <span
-                    key={`co-${c.id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2.5 py-0.5 text-xs font-medium"
-                  >
-                    {c.name}
-                    <button
-                      onClick={() => handleUnlink("companyId", c.id)}
-                      className="ml-0.5 hover:text-purple-900 dark:hover:text-purple-100"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
-                {/* Linked deals */}
-                {links?.deals?.map((d) => (
-                  <span
-                    key={`d-${d.id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2.5 py-0.5 text-xs font-medium"
-                  >
-                    {d.name}
-                    <button
-                      onClick={() => handleUnlink("dealId", d.id)}
-                      className="ml-0.5 hover:text-green-900 dark:hover:text-green-100"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
+                )}
 
-                {/* Add buttons */}
                 <RecordSearchPopover
                   type="contacts"
-                  onSelect={(item) => handleLink("contactId", item)}
+                  onSelect={(item) => handleLinkContact(item)}
                 >
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2 text-xs text-muted-foreground"
                   >
-                    + Contact
-                  </Button>
-                </RecordSearchPopover>
-                <RecordSearchPopover
-                  type="companies"
-                  onSelect={(item) => handleLink("companyId", item)}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground"
-                  >
-                    + Company
-                  </Button>
-                </RecordSearchPopover>
-                <RecordSearchPopover
-                  type="deals"
-                  onSelect={(item) => handleLink("dealId", item)}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground"
-                  >
-                    + Deal
+                    {linkedContact ? "Change contact" : "+ Contact"}
                   </Button>
                 </RecordSearchPopover>
               </div>
@@ -595,13 +532,12 @@ export function MeetingDetailDialog({
                 {summaryJson?.note && (
                   <p className="text-sm leading-relaxed">{summaryJson.note}</p>
                 )}
-                {summaryJson?.decisions &&
-                  summaryJson.decisions.length > 0 && (
-                    <SummaryList
-                      label="Decisions"
-                      items={summaryJson.decisions}
-                    />
-                  )}
+                {summaryJson?.decisions && summaryJson.decisions.length > 0 && (
+                  <SummaryList
+                    label="Decisions"
+                    items={summaryJson.decisions}
+                  />
+                )}
                 {/* F3: Actionable items replace static SummaryList */}
                 {summaryJson?.actionItems &&
                   summaryJson.actionItems.length > 0 && (
@@ -609,18 +545,15 @@ export function MeetingDetailDialog({
                       label="Action Items"
                       items={summaryJson.actionItems}
                       contactId={firstContactId}
-                      companyId={firstCompanyId}
                     />
                   )}
-                {summaryJson?.followUps &&
-                  summaryJson.followUps.length > 0 && (
-                    <ActionableItemsSection
-                      label="Follow-ups"
-                      items={summaryJson.followUps}
-                      contactId={firstContactId}
-                      companyId={firstCompanyId}
-                    />
-                  )}
+                {summaryJson?.followUps && summaryJson.followUps.length > 0 && (
+                  <ActionableItemsSection
+                    label="Follow-ups"
+                    items={summaryJson.followUps}
+                    contactId={firstContactId}
+                  />
+                )}
               </div>
             )}
 

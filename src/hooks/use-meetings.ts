@@ -39,8 +39,6 @@ export interface MeetingSummary {
 
 export interface MeetingLink {
   contacts: { id: number; name: string }[];
-  companies: { id: number; name: string }[];
-  deals: { id: number; name: string }[];
 }
 
 export interface MeetingWithSummary extends Meeting {
@@ -89,7 +87,9 @@ export function useUpdateMeetingNotes() {
         headers: { "Content-Type": "application/json" },
       }),
     onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["meetings", "detail", vars.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["meetings", "detail", vars.id],
+      });
     },
   });
 }
@@ -108,21 +108,17 @@ export function useDeleteMeeting() {
 
 // ─── Meeting Links (F2) ──────────────────────────────────────────
 
-export function useMeetingsByRecord(params: {
-  contactId?: number;
-  companyId?: number;
-  dealId?: number;
-}) {
+export function useMeetingsByRecord(params: { contactId?: number }) {
   const qs = new URLSearchParams();
   if (params.contactId) qs.set("contactId", String(params.contactId));
-  if (params.companyId) qs.set("companyId", String(params.companyId));
-  if (params.dealId) qs.set("dealId", String(params.dealId));
 
   return useQuery({
     queryKey: ["meetings", "by-record", params],
     queryFn: () =>
-      fetchApi<MeetingWithSummary[]>(`/api/meetings/by-record?${qs.toString()}`),
-    enabled: !!(params.contactId || params.companyId || params.dealId),
+      fetchApi<MeetingWithSummary[]>(
+        `/api/meetings/by-record?${qs.toString()}`,
+      ),
+    enabled: !!params.contactId,
   });
 }
 
@@ -132,16 +128,14 @@ export function useLinkMeeting() {
   return useMutation({
     mutationFn: ({
       meetingId,
-      ...body
+      contactId,
     }: {
       meetingId: number;
-      contactId?: number;
-      companyId?: number;
-      dealId?: number;
+      contactId: number;
     }) =>
       fetchApi<{ ok: boolean }>(`/api/meetings/${meetingId}/links`, {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ contactId }),
       }),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({
@@ -158,16 +152,14 @@ export function useUnlinkMeeting() {
   return useMutation({
     mutationFn: ({
       meetingId,
-      ...body
+      contactId,
     }: {
       meetingId: number;
-      contactId?: number;
-      companyId?: number;
-      dealId?: number;
+      contactId: number;
     }) =>
       fetchApi<{ ok: boolean }>(`/api/meetings/${meetingId}/links`, {
         method: "DELETE",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ contactId }),
       }),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({

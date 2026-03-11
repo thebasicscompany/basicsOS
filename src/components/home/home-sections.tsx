@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
 import type { ComponentType } from "react";
 import {
@@ -36,6 +36,7 @@ import {
   useDismissDealSuggestion,
 } from "@/hooks/use-email-sync";
 import { useMeetings } from "@/hooks/use-meetings";
+import { MeetingDetailDialog } from "@/components/meetings/MeetingDetailDialog";
 import { SuggestedContactCard } from "@/components/email-sync/SuggestedContactCard";
 
 /* ------------------------------------------------------------------ */
@@ -820,8 +821,11 @@ export function DealOpportunitiesSection() {
 
 export function UnreviewedMeetingsSection() {
   const { data: meetings } = useMeetings({ page: 1, perPage: 10 });
+  const [selectedMeetingId, setSelectedMeetingId] = useState<number | null>(
+    null,
+  );
 
-  // Filter to completed meetings with unreviewed action items from last 7 days
+  // Filter to completed meetings from last 7 days
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const unreviewedMeetings = useMemo(() => {
     if (!meetings) return [];
@@ -829,8 +833,6 @@ export function UnreviewedMeetingsSection() {
       .filter((m) => {
         if (m.status !== "completed") return false;
         if (new Date(m.startedAt).getTime() < cutoff) return false;
-        // We don't have summaryJson on the list response, so just show completed meetings
-        // The user can click to review action items in the dialog
         return true;
       })
       .slice(0, 3);
@@ -846,10 +848,10 @@ export function UnreviewedMeetingsSection() {
       />
       <div className="-mx-3.5 space-y-0.5">
         {unreviewedMeetings.map((meeting) => (
-          <Link
+          <button
             key={meeting.id}
-            to={`#meeting-${meeting.id}`}
-            className="group flex items-center gap-3 rounded-lg px-3.5 py-2.5 transition-all hover:bg-accent/50"
+            onClick={() => setSelectedMeetingId(meeting.id)}
+            className="group flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-all hover:bg-accent/50"
           >
             <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-purple-500/15 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
               <MicrophoneIcon className="size-3.5" />
@@ -865,9 +867,16 @@ export function UnreviewedMeetingsSection() {
                   : ""}
               </p>
             </div>
-          </Link>
+          </button>
         ))}
       </div>
+      <MeetingDetailDialog
+        meetingId={selectedMeetingId}
+        open={selectedMeetingId != null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMeetingId(null);
+        }}
+      />
     </div>
   );
 }

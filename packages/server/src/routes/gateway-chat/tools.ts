@@ -34,6 +34,12 @@ import {
   updateDealSchema,
 } from "@/routes/gateway-chat/protocol.js";
 
+export type ToolExecutionContext = {
+  env: Record<string, string>;
+  gatewayUrl: string;
+  gatewayHeaders: Record<string, string>;
+};
+
 type RecordRow = {
   id: number | string;
   name?: unknown;
@@ -136,6 +142,7 @@ export async function executeValidatedTool(
   toolName: string,
   rawArgs: Record<string, unknown>,
   searchContext?: HybridSearchContext,
+  ctx?: ToolExecutionContext,
 ): Promise<unknown> {
   const contactExists = async (contactId: number): Promise<boolean> => {
     const rows = await db

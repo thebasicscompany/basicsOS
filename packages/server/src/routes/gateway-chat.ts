@@ -37,7 +37,7 @@ import {
   updateThreadTitle,
   touchThread,
 } from "@/routes/gateway-chat/storage.js";
-import { executeValidatedTool } from "@/routes/gateway-chat/tools.js";
+import { executeValidatedTool, type ToolExecutionContext } from "@/routes/gateway-chat/tools.js";
 import {
   isLookupFailure,
   isLookupTool,
@@ -598,7 +598,13 @@ export async function processChatTurn(
     "create_contact",
     "create_company",
     "create_deal",
+    "delete_record",
   ]);
+  const ctx: ToolExecutionContext = {
+    env: env as unknown as Record<string, string>,
+    gatewayUrl,
+    gatewayHeaders,
+  };
   const toolsEnabled = routingDecision.mode !== "direct";
 
   if (routingDecision.mode === "direct" && routingDecision.reply?.trim()) {
@@ -637,6 +643,7 @@ export async function processChatTurn(
         gatewayHeaders,
         crmUserId: crmUser.id,
       },
+      ctx,
     );
     usedTools.add(toolName);
     latestToolOutputs.push({ name: toolName, result });
@@ -722,6 +729,7 @@ export async function processChatTurn(
             gatewayHeaders,
             crmUserId: crmUser.id,
           },
+          ctx,
         );
         usedTools.add(toolName);
         latestToolOutputs.push({ name: toolName, result });
@@ -891,6 +899,7 @@ export async function processChatTurn(
           gatewayHeaders,
           crmUserId: crmUser.id,
         },
+        ctx,
       );
       usedTools.add(tc.function.name);
       latestToolOutputs.push({ name: tc.function.name, result });

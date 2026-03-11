@@ -334,6 +334,13 @@ export const addNoteSchema = z
     }
   });
 
+export const browseWebSchema = z.object({
+  url: z.string().url(),
+  action: z.enum(["extract_text", "extract_structured", "screenshot"]).default("extract_text"),
+  selector: z.string().optional(),
+  fields: z.array(z.string()).optional(),
+});
+
 export const OPENAI_TOOL_DEFS = [
   {
     type: "function",
@@ -729,6 +736,41 @@ export const OPENAI_TOOL_DEFS = [
           text: { type: "string", description: "The note content" },
         },
         required: ["text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browse_web",
+      description:
+        "Fetch and extract content from a web page. Use extract_text to get page text, extract_structured to pull specific fields, or screenshot (falls back to text). Provide a CSS selector to narrow results.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The URL to fetch",
+          },
+          action: {
+            type: "string",
+            enum: ["extract_text", "extract_structured", "screenshot"],
+            description:
+              "What to extract. screenshot falls back to extract_text.",
+          },
+          selector: {
+            type: "string",
+            description:
+              "Optional CSS selector (#id, .class, or tag) to narrow extraction",
+          },
+          fields: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Field names to extract (only for extract_structured action)",
+          },
+        },
+        required: ["url"],
       },
     },
   },

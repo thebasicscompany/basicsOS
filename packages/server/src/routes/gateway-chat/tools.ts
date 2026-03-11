@@ -13,6 +13,7 @@ import {
 } from "@/lib/resolve-by-name.js";
 import {
   addNoteSchema,
+  browseWebSchema,
   completeTaskSchema,
   createCompanySchema,
   createContactSchema,
@@ -793,6 +794,34 @@ export async function executeValidatedTool(
     return {
       error: "Must specify contact_id/contact_name or deal_id/deal_name",
     };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  browse_web                                                        */
+  /* ------------------------------------------------------------------ */
+  if (toolName === "browse_web") {
+    const args = browseWebSchema.parse(rawArgs);
+    try {
+      const { extractText, extractStructured } = await import(
+        "@/lib/browser-actions.js"
+      );
+
+      if (args.action === "extract_structured" && args.fields?.length) {
+        const data = await extractStructured(
+          args.url,
+          args.fields,
+          args.selector,
+        );
+        return data;
+      }
+
+      // extract_text or screenshot (fallback to text extraction)
+      const text = await extractText(args.url, args.selector);
+      return { url: args.url, content: text };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: `Failed to browse ${args.url}: ${message}` };
+    }
   }
 
   return { error: `Unknown tool: ${toolName}` };

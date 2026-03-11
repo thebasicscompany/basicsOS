@@ -719,15 +719,17 @@ app.whenReady().then(async () => {
 
   // Handle getDisplayMedia requests — auto-select entire screen with system audio loopback
   // This avoids the native screen picker (Finder-like window)
+  // audio: 'loopback' requests system audio on macOS and Windows (when supported by Electron/Chromium)
   session.defaultSession.setDisplayMediaRequestHandler(
     (_request, callback) => {
       desktopCapturer.getSources({ types: ["screen"] }).then((srcs) => {
         const primary = srcs[0];
         if (primary) {
-          // enableLocalEcho: false so captured audio doesn't echo back
-          // Passing video source — Electron will provide system audio loopback
-          // automatically when the renderer requests audio: true in getDisplayMedia
-          callback({ video: primary, enableLocalEcho: false });
+          callback({
+            video: primary,
+            audio: "loopback",
+            enableLocalEcho: false,
+          });
         } else {
           callback({});
         }

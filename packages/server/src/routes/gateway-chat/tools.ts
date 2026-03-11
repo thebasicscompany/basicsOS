@@ -992,7 +992,51 @@ export async function executeValidatedTool(
   }
 
   if (toolName === "enrich_record") {
-    return "Enrichment coming soon.";
+    const parsed = enrichRecordSchema.safeParse(rawArgs);
+    if (!parsed.success)
+      return { error: "Invalid arguments", details: parsed.error.flatten() };
+    if (!ctx)
+      return { error: "Enrichment requires gateway context" };
+
+    let resolvedId = parsed.data.entity_id;
+    if (!resolvedId && parsed.data.entity_name) {
+      resolvedId =
+        parsed.data.entity_type === "contact"
+          ? (await resolveContactByName(
+              db,
+              organizationId,
+              parsed.data.entity_name,
+              searchContext,
+            )) ?? undefined
+          : (await resolveCompanyByName(
+              db,
+              organizationId,
+              parsed.data.entity_name,
+              searchContext,
+            )) ?? undefined;
+    }
+    if (!resolvedId)
+      return `No ${parsed.data.entity_type} found matching "${parsed.data.entity_name}".`;
+
+    try {
+      const { enrichEntity } = await import("../../lib/enrichment/engine.js");
+      const result = await enrichEntity({
+        db,
+        organizationId,
+        crmUserId,
+        entityType: parsed.data.entity_type,
+        entityId: resolvedId,
+        gatewayUrl: ctx.gatewayUrl,
+        gatewayHeaders: ctx.gatewayHeaders,
+        env: ctx.env,
+      });
+
+      if (!result.fieldsUpdated.length)
+        return `${parsed.data.entity_type} is already up to date.`;
+      return `Enriched ${parsed.data.entity_type} (id: ${resolvedId}). Updated fields: ${result.fieldsUpdated.join(", ")}. Sources: ${result.sources.join(", ")}.`;
+    } catch (err) {
+      return `Enrichment failed: ${(err as Error).message}`;
+    }
   }
 
   if (toolName === "browse_web") {

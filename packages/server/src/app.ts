@@ -21,6 +21,7 @@ import { createStreamAssistantRoutes } from "@/routes/stream-assistant.js";
 import { createThreadsRoutes } from "@/routes/threads.js";
 import { createMeetingsRoutes } from "@/routes/meetings.js";
 import { createEmailSyncRoutes } from "@/routes/email-sync.js";
+import { createEnrichmentRoutes } from "@/routes/enrichment.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { sql } from "drizzle-orm";
@@ -172,6 +173,9 @@ export function createApp(db: Db, env: Env) {
 
   // Email sync + contact discovery
   app.route("/api/email-sync", createEmailSyncRoutes(db, auth, env));
+
+  // Enrichment (OpenClaw integration)
+  app.route("/api/enrichment", createEnrichmentRoutes(db, auth, env));
 
   // Automation runs — must be before CRM generic routes
   app.route("/api/automation-runs", createAutomationRunsRoutes(db, auth, env));

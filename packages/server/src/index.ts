@@ -13,7 +13,7 @@ import {
   stopEmailSyncEngine,
 } from "@/lib/email-sync/sync-engine.js";
 import { logger } from "@/lib/logger.js";
-import { attachTranscribeWs } from "@/ws/transcribe.js";
+import { attachTranscribeWs } from "@/websocket/transcribe.js";
 
 const log = logger.child({ component: "server" });
 

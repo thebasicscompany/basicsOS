@@ -1,5 +1,5 @@
 import { pgTable, bigserial, varchar, uuid } from "drizzle-orm/pg-core";
-import { organizations } from "../../db/schema/organizations";
+import { organizations } from "../../db/schema/organizations.js";
 export const tags = pgTable("tags", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),

@@ -11,8 +11,8 @@ import {
   index,
   unique,
 } from "drizzle-orm/pg-core";
-import { crmUsers } from "@/db/schema/crm_users";
-import { organizations } from "@/db/schema/organizations";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 
 export const meetings = pgTable(
   "meetings",

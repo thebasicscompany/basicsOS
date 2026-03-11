@@ -9,9 +9,9 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
-import { companies } from "@/db/schema/companies";
-import { crmUsers } from "@/db/schema/crm_users";
-import { organizations } from "@/db/schema/organizations";
+import { companies } from "@/db/schema/companies.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 
 export const companyNotes = pgTable(
   "company_notes",

@@ -7,7 +7,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { organizations } from "@/db/schema/organizations";
+import { organizations } from "@/db/schema/organizations.js";
 
 export interface CustomFieldOption {
   id: string;

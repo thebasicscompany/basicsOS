@@ -10,8 +10,8 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { organizations } from "@/db/schema/organizations";
-import { crmUsers } from "@/db/schema/crm_users";
+import { organizations } from "@/db/schema/organizations.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
 
 export const aiThreads = pgTable(
   "ai_threads",

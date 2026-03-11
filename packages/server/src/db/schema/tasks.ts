@@ -8,10 +8,10 @@ import {
   uuid,
   index,
 } from "drizzle-orm/pg-core";
-import { contacts } from "@/db/schema/contacts";
-import { companies } from "@/db/schema/companies";
-import { crmUsers } from "@/db/schema/crm_users";
-import { organizations } from "@/db/schema/organizations";
+import { contacts } from "@/db/schema/contacts.js";
+import { companies } from "@/db/schema/companies.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 
 export const tasks = pgTable(
   "tasks",

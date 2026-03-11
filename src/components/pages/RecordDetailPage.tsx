@@ -10,6 +10,8 @@ import {
   CopyIcon,
   TrashIcon,
   ArrowsClockwiseIcon,
+  SparkleIcon,
+  CircleNotchIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,8 @@ import {
 import { getMockCalls } from "@/components/record-detail/mock-data/calls";
 import { useRefreshCrm } from "@/hooks/use-records";
 import { useContactEmails } from "@/hooks/use-email-sync";
+import { useEnrich } from "@/hooks/use-enrichment";
+import { toast } from "sonner";
 
 export function RecordDetailPage() {
   const { objectSlug = "" } = useParams<{ objectSlug: string }>();
@@ -76,6 +80,30 @@ export function RecordDetailPage() {
   } = useRecordDetail();
 
   const refreshCrm = useRefreshCrm(objectSlug);
+  const enrich = useEnrich();
+
+  const isEnrichable =
+    objectSlug === "contacts" || objectSlug === "companies";
+
+  const handleEnrich = () => {
+    if (!numericRecordId) return;
+    enrich.mutate(
+      {
+        entityType: objectSlug === "contacts" ? "contact" : "company",
+        entityId: numericRecordId,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Record enriched successfully");
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to enrich record",
+          );
+        },
+      },
+    );
+  };
 
   const { data: emailsData } = useContactEmails(numericRecordId || undefined);
   const emailCount = emailsData?.total ?? 0;
@@ -172,6 +200,22 @@ export function RecordDetailPage() {
                   <CaretRightIcon className="size-3.5" />
                 </Button>
               </div>
+            )}
+            {isEnrichable && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleEnrich}
+                disabled={enrich.isPending}
+                title="Enrich record"
+              >
+                {enrich.isPending ? (
+                  <CircleNotchIcon className="size-3.5 animate-spin" />
+                ) : (
+                  <SparkleIcon className="size-3.5" />
+                )}
+              </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

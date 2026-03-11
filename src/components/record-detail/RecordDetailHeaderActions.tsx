@@ -4,6 +4,8 @@ import {
   TrashIcon,
   CopyIcon,
   DotsThreeIcon,
+  SparkleIcon,
+  CircleNotchIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +14,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useEnrich } from "@/hooks/use-enrichment";
+import { toast } from "sonner";
 
 export interface RecordDetailHeaderActionsProps {
+  objectSlug?: string;
+  recordId?: number | string;
   listIdsLength: number;
   prevId: number | null;
   nextId: number | null;
@@ -28,6 +34,8 @@ export interface RecordDetailHeaderActionsProps {
 }
 
 export function RecordDetailHeaderActions({
+  objectSlug,
+  recordId,
   listIdsLength,
   prevId,
   nextId,
@@ -36,6 +44,33 @@ export function RecordDetailHeaderActions({
   onDuplicate,
   onDeleteOpen,
 }: RecordDetailHeaderActionsProps) {
+  const enrich = useEnrich();
+
+  const isEnrichable =
+    objectSlug === "contacts" || objectSlug === "companies";
+
+  const handleEnrich = () => {
+    if (!recordId) return;
+    enrich.mutate(
+      {
+        entityType: objectSlug === "contacts" ? "contact" : "company",
+        entityId: Number(recordId),
+      },
+      {
+        onSuccess: () => {
+          toast.success("Record enriched successfully");
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to enrich record",
+          );
+        },
+      },
+    );
+  };
+
   return (
     <>
       {listIdsLength > 1 && (
@@ -59,6 +94,22 @@ export function RecordDetailHeaderActions({
             <CaretRightIcon className="h-4 w-4" />
           </Button>
         </div>
+      )}
+      {isEnrichable && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleEnrich}
+          disabled={enrich.isPending}
+          title="Enrich record"
+        >
+          {enrich.isPending ? (
+            <CircleNotchIcon className="h-4 w-4 animate-spin" />
+          ) : (
+            <SparkleIcon className="h-4 w-4" />
+          )}
+        </Button>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

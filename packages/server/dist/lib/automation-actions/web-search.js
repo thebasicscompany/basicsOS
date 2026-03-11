@@ -1,6 +1,6 @@
 export async function executeWebSearch(config, _context, env, apiKey) {
     const { query, numResults = 5 } = config;
-    const res = await fetch(`${env.BASICOS_API_URL}/v1/execute/web/search`, {
+    const res = await fetch(`${env.BASICSOS_API_URL}/v1/execute/web/search`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",

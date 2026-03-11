@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware } from "@/middleware/auth.js";
 import { sql, eq, asc, and, or, isNull } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import * as schema from "@/db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 const ALLOWED_TABLES = new Set([
     "contacts",
     "companies",
@@ -19,8 +19,12 @@ const SYSTEM_COLUMNS = new Set([
     "id",
     "created_at",
     "updated_at",
+    "archived_at",
     "crm_user_id",
     "organization_id",
+    "attachments",
+    // Internal JSONB bucket for user-defined custom fields; not edited directly
+    "custom_fields",
 ]);
 const PG_TYPE_TO_UIDT = {
     "character varying": "SingleLineText",
@@ -71,6 +75,27 @@ function formatTitle(columnName) {
     }
     return columnName;
 }
+function normalizeCustomFieldOptions(options) {
+    if (!Array.isArray(options))
+        return [];
+    return options.map((option, index) => {
+        if (typeof option === "string") {
+            return {
+                id: option,
+                label: option,
+                color: undefined,
+                order: index,
+            };
+        }
+        return {
+            id: option.id,
+            label: option.label,
+            color: option.color,
+            order: option.order ?? index,
+            isTerminal: option.isTerminal,
+        };
+    });
+}
 function toNocoDBColumnShape(row, tableName, order) {
     return {
         id: row.column_name,
@@ -113,7 +138,15 @@ export function createSchemaRoutes(db, auth) {
             return c.json({ error: "Organization not found" }, 404);
         const tableName = c.req.param("tableName");
         if (!ALLOWED_TABLES.has(tableName)) {
-            return c.json({ error: "Table not found" }, 404);
+            // Check if it's a custom object table registered in object_config
+            const [customObj] = await db
+                .select()
+                .from(schema.objectConfig)
+                .where(and(eq(schema.objectConfig.tableName, tableName), or(eq(schema.objectConfig.organizationId, orgId), isNull(schema.objectConfig.organizationId))))
+                .limit(1);
+            if (!customObj) {
+                return c.json({ error: "Table not found" }, 404);
+            }
         }
         const baseTable = tableName.replace("_summary", "");
         const result = await db.execute(sql `SELECT column_name, data_type, ordinal_position, is_nullable, column_default
@@ -165,6 +198,7 @@ export function createSchemaRoutes(db, auth) {
             .orderBy(asc(schema.customFieldDefs.position), asc(schema.customFieldDefs.id));
         for (const def of customRows) {
             const uidt = FIELD_TYPE_TO_UIDT[def.fieldType] ?? "SingleLineText";
+            const normalizedOptions = normalizeCustomFieldOptions(def.options);
             columns.push({
                 id: `custom_${def.id}`,
                 fk_model_id: tableName,
@@ -179,10 +213,13 @@ export function createSchemaRoutes(db, auth) {
                 ai: false,
                 unique: false,
                 cdf: null,
-                dtxp: Array.isArray(def.options) ? def.options.join(",") : "",
+                dtxp: normalizedOptions.map((option) => option.label).join(","),
                 order: columns.length + 1,
                 system: false,
-                meta: null,
+                meta: {
+                    fieldType: def.fieldType,
+                    options: normalizedOptions,
+                },
                 np: null,
                 ns: null,
                 clen: null,

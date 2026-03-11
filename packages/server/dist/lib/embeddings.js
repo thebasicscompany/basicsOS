@@ -1,19 +1,26 @@
 import { and, eq, sql } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
+import * as schema from "@/db/schema/index.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
 export const EMBEDDABLE_RESOURCES = new Set([
     "contacts",
     "companies",
     "deals",
+    "tasks",
     "contact_notes",
     "deal_notes",
+    "meeting_chunks",
+    "meeting_summaries",
 ]);
 // Maps CRM resource name to entity_type stored in context_embeddings.
 const ENTITY_TYPE_MAP = {
     contacts: "contact",
     companies: "company",
     deals: "deal",
+    tasks: "task",
     contact_notes: "contact_note",
     deal_notes: "deal_note",
+    meeting_chunks: "meeting_chunk",
+    meeting_summaries: "meeting_summary",
 };
 export function getEntityType(resource) {
     return ENTITY_TYPE_MAP[resource] ?? null;
@@ -28,16 +35,14 @@ export function buildEntityText(entityType, record) {
             const parts = [
                 [record.firstName, record.lastName].filter(Boolean).join(" "),
                 record.email ? `Email: ${record.email}` : null,
-                record.title ? `Title: ${record.title}` : null,
-                record.background ? `Background: ${record.background}` : null,
             ].filter(Boolean);
             return parts.join(". ");
         }
         case "company": {
             const parts = [
                 record.name,
-                record.sector ? `Sector: ${record.sector}` : null,
-                record.city ? `City: ${record.city}` : null,
+                record.category ? `Category: ${record.category}` : null,
+                record.domain ? `Domain: ${record.domain}` : null,
                 record.description ? `Description: ${record.description}` : null,
             ].filter(Boolean);
             return parts.join(". ");
@@ -45,10 +50,16 @@ export function buildEntityText(entityType, record) {
         case "deal": {
             const parts = [
                 record.name,
-                record.stage ? `Stage: ${record.stage}` : null,
+                record.status ? `Status: ${record.status}` : null,
                 record.amount ? `Value: $${record.amount}` : null,
-                record.category ? `Category: ${record.category}` : null,
-                record.description ? `Description: ${record.description}` : null,
+            ].filter(Boolean);
+            return parts.join(". ");
+        }
+        case "task": {
+            const parts = [
+                record.text ? String(record.text).trim() : null,
+                record.description ? String(record.description).trim() : null,
+                record.type ? `Type: ${record.type}` : null,
             ].filter(Boolean);
             return parts.join(". ");
         }
@@ -70,12 +81,18 @@ async function generateEmbedding(gatewayUrl, apiKey, text) {
             body: JSON.stringify({ model: "basics-embed", input: text }),
         });
         if (!res.ok)
-            return null;
+            return { embedding: null, inputTokens: 0 };
         const json = (await res.json());
-        return json.data?.[0]?.embedding ?? null;
+        const fromApi = json.usage?.prompt_tokens ?? json.usage?.total_tokens ?? 0;
+        // Gateway often returns 0 for embeddings; estimate from text when so (≈4 chars/token)
+        const inputTokens = fromApi > 0 ? fromApi : Math.max(1, Math.ceil(text.length / 4));
+        return {
+            embedding: json.data?.[0]?.embedding ?? null,
+            inputTokens,
+        };
     }
     catch {
-        return null;
+        return { embedding: null, inputTokens: 0 };
     }
 }
 /**
@@ -85,7 +102,7 @@ async function generateEmbedding(gatewayUrl, apiKey, text) {
 export async function upsertEntityEmbedding(db, gatewayUrl, apiKey, crmUserId, entityType, entityId, chunkText) {
     if (!chunkText.trim())
         return;
-    const embedding = await generateEmbedding(gatewayUrl, apiKey, chunkText);
+    const { embedding, inputTokens } = await generateEmbedding(gatewayUrl, apiKey, chunkText);
     if (!embedding)
         return;
     const [crmUser] = await db
@@ -95,6 +112,13 @@ export async function upsertEntityEmbedding(db, gatewayUrl, apiKey, crmUserId, e
         .limit(1);
     if (!crmUser?.organizationId)
         return;
+    writeUsageLogSafe(db, {
+        organizationId: crmUser.organizationId,
+        crmUserId,
+        feature: "embedding_record",
+        model: "basics-embed",
+        inputTokens,
+    });
     const embeddingStr = `[${embedding.join(",")}]`;
     await db.execute(sql `
     INSERT INTO context_embeddings (crm_user_id, organization_id, entity_type, entity_id, chunk_text, embedding, updated_at)

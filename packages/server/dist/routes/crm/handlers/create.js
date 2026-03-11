@@ -1,34 +1,53 @@
-import { PERMISSIONS, requirePermission } from "../../../lib/rbac.js";
-import { createRecord } from "../../../services/crm/create-record.js";
-import { snakeToCamel } from "../../../routes/crm/utils.js";
-import { CRM_RESOURCES, TABLE_MAP, } from "../../../routes/crm/constants.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { jsonError } from "@/lib/api-error.js";
+import { createRecord } from "@/services/crm/create-record.js";
+import { snakeToCamel } from "@/routes/crm/utils.js";
+import { CRM_RESOURCES, TABLE_MAP, } from "@/routes/crm/constants.js";
+import { resolveCustomTable, insertCustomRecord, } from "@/data-access/crm/dynamic-table.js";
 export function createCreateHandler(db, env) {
     return async (c) => {
         const resource = c.req.param("resource");
-        if (!CRM_RESOURCES.includes(resource) || resource.endsWith("_summary")) {
-            return c.json({ error: "Cannot create on this resource" }, 400);
-        }
         const authz = await requirePermission(c, db, PERMISSIONS.recordsWrite);
         if (!authz.ok)
             return authz.response;
         const { crmUser } = authz;
-        if (resource === "crm_users" && !authz.permissions.has("*")) {
-            return c.json({ error: "Forbidden" }, 403);
-        }
         const crmUserId = crmUser.id;
         const orgId = crmUser.organizationId;
         if (!crmUserId || !orgId) {
-            return c.json({ error: "Organization not found" }, 404);
+            return jsonError(c, "Organization not found", 404, "NOT_FOUND");
         }
-        if (!TABLE_MAP[resource]) {
-            return c.json({ error: "Unknown resource" }, 404);
+        // Handle custom object tables
+        if (!CRM_RESOURCES.includes(resource) ||
+            (!TABLE_MAP[resource] &&
+                !resource.endsWith("_summary"))) {
+            const customTable = await resolveCustomTable(db, resource, orgId);
+            if (!customTable) {
+                return jsonError(c, "Unknown resource", 404, "NOT_FOUND");
+            }
+            let rawBody;
+            try {
+                rawBody = (await c.req.json());
+            }
+            catch {
+                return jsonError(c, "Invalid JSON body", 400, "VALIDATION_FAILED");
+            }
+            const record = await insertCustomRecord(db, customTable, rawBody, crmUserId, orgId);
+            if (!record)
+                return jsonError(c, "Insert failed", 500, "INSERT_FAILED");
+            return c.json(record, 201);
+        }
+        if (resource.endsWith("_summary")) {
+            return jsonError(c, "Cannot create on this resource", 400, "INVALID_RESOURCE");
+        }
+        if (resource === "crm_users" && !authz.permissions.has("*")) {
+            return jsonError(c, "Forbidden", 403, "FORBIDDEN");
         }
         let rawBody;
         try {
             rawBody = (await c.req.json());
         }
         catch {
-            return c.json({ error: "Invalid JSON body" }, 400);
+            return jsonError(c, "Invalid JSON body", 400, "VALIDATION_FAILED");
         }
         const body = snakeToCamel(rawBody);
         const result = await createRecord(db, env, {
@@ -44,7 +63,12 @@ export function createCreateHandler(db, env) {
                 : result.error === "Not found"
                     ? 404
                     : 400;
-            return c.json({ error: result.error }, status);
+            const code = result.error === "Insert failed"
+                ? "INSERT_FAILED"
+                : result.error === "Not found"
+                    ? "NOT_FOUND"
+                    : "VALIDATION_FAILED";
+            return jsonError(c, result.error, status, code);
         }
         return c.json(result.record, 201);
     };

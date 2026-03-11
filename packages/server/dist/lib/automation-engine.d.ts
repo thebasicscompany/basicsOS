@@ -1,5 +1,5 @@
-import type { Db } from "../db/client.js";
-import type { Env } from "../env.js";
+import type { Db } from "@/db/client.js";
+import type { Env } from "@/env.js";
 export interface WorkflowDefinition {
     nodes: Array<{
         id: string;

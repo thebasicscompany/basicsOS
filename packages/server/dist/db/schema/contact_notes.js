@@ -1,12 +1,13 @@
 import { pgTable, bigserial, varchar, text, timestamp, bigint, uuid, jsonb, index, } from "drizzle-orm/pg-core";
-import { contacts } from "../../db/schema/contacts";
-import { crmUsers } from "../../db/schema/crm_users";
-import { organizations } from "../../db/schema/organizations";
+import { contacts } from "@/db/schema/contacts";
+import { crmUsers } from "@/db/schema/crm_users";
+import { organizations } from "@/db/schema/organizations";
 export const contactNotes = pgTable("contact_notes", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     contactId: bigint("contact_id", { mode: "number" })
         .notNull()
         .references(() => contacts.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 512 }),
     text: text("text"),
     date: timestamp("date", { withTimezone: true }).defaultNow(),
     crmUserId: bigint("crm_user_id", { mode: "number" }).references(() => crmUsers.id, {

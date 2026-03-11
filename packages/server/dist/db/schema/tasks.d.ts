@@ -26,7 +26,24 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
             columnType: "PgBigInt53";
             data: number;
             driverParam: string | number;
-            notNull: true;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        companyId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "company_id";
+            tableName: "tasks";
+            dataType: "number";
+            columnType: "PgBigInt53";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -38,6 +55,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
         }, {}, {}>;
         crmUserId: import("drizzle-orm/pg-core").PgColumn<{
             name: "crm_user_id";
+            tableName: "tasks";
+            dataType: "number";
+            columnType: "PgBigInt53";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        assigneeId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "assignee_id";
             tableName: "tasks";
             dataType: "number";
             columnType: "PgBigInt53";
@@ -89,6 +123,23 @@ export declare const tasks: import("drizzle-orm/pg-core").PgTableWithColumns<{
         }, {}, {}>;
         text: import("drizzle-orm/pg-core").PgColumn<{
             name: "text";
+            tableName: "tasks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        description: import("drizzle-orm/pg-core").PgColumn<{
+            name: "description";
             tableName: "tasks";
             dataType: "string";
             columnType: "PgText";

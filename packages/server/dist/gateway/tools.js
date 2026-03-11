@@ -14,10 +14,6 @@ const CRM_TOOL_SCHEMAS = [
                     type: "string",
                     description: "Free-text search across first name, last name, email, and company name",
                 },
-                status: {
-                    type: "string",
-                    description: "Filter by contact status (e.g. lead, prospect, customer)",
-                },
                 company_id: {
                     type: "number",
                     description: "Filter by company ID",
@@ -54,7 +50,6 @@ const CRM_TOOL_SCHEMAS = [
                     type: "number",
                     description: "Company ID to link",
                 },
-                status: { type: "string", description: "Contact status" },
             },
             required: [],
         },
@@ -69,14 +64,13 @@ const CRM_TOOL_SCHEMAS = [
                 first_name: { type: "string", description: "First name" },
                 last_name: { type: "string", description: "Last name" },
                 email: { type: "string", description: "Email address" },
-                status: { type: "string", description: "Contact status" },
             },
             required: ["id"],
         },
     },
     {
         name: "search_deals",
-        description: "Search and list deals. Use when the user asks about deals, pipeline, or opportunities. Supports filtering by stage and category.",
+        description: "Search and list deals. Use when the user asks about deals, pipeline, or opportunities. Supports filtering by status.",
         parameters: {
             type: "object",
             properties: {
@@ -84,13 +78,9 @@ const CRM_TOOL_SCHEMAS = [
                     type: "string",
                     description: "Free-text search on deal name",
                 },
-                stage: {
+                status: {
                     type: "string",
-                    description: "Filter by deal stage (e.g. qualification, proposal, negotiation)",
-                },
-                category: {
-                    type: "string",
-                    description: "Filter by deal category",
+                    description: "Filter by deal status (e.g. opportunity, proposal-made, in-negotiation, won, lost)",
                 },
                 company_id: {
                     type: "number",
@@ -120,8 +110,7 @@ const CRM_TOOL_SCHEMAS = [
             type: "object",
             properties: {
                 name: { type: "string", description: "Deal name" },
-                stage: { type: "string", description: "Deal stage" },
-                category: { type: "string", description: "Deal category" },
+                status: { type: "string", description: "Deal status" },
                 company_id: {
                     type: "number",
                     description: "Company ID to link",
@@ -130,31 +119,22 @@ const CRM_TOOL_SCHEMAS = [
                     type: "number",
                     description: "Deal amount in cents",
                 },
-                description: {
-                    type: "string",
-                    description: "Deal description",
-                },
             },
             required: ["name"],
         },
     },
     {
         name: "update_deal",
-        description: "Update an existing deal. Use when the user wants to change deal stage, amount, or other details.",
+        description: "Update an existing deal. Use when the user wants to change deal status, amount, or other details.",
         parameters: {
             type: "object",
             properties: {
                 id: { type: "number", description: "Deal ID" },
                 name: { type: "string", description: "Deal name" },
-                stage: { type: "string", description: "Deal stage" },
-                category: { type: "string", description: "Deal category" },
+                status: { type: "string", description: "Deal status" },
                 amount: {
                     type: "number",
                     description: "Deal amount in cents",
-                },
-                description: {
-                    type: "string",
-                    description: "Deal description",
                 },
             },
             required: ["id"],
@@ -162,17 +142,17 @@ const CRM_TOOL_SCHEMAS = [
     },
     {
         name: "search_companies",
-        description: "Search and list companies. Use when the user asks about companies, organizations, or accounts. Supports free-text search on name, city, and sector.",
+        description: "Search and list companies. Use when the user asks about companies, organizations, or accounts. Supports free-text search on name and category.",
         parameters: {
             type: "object",
             properties: {
                 query: {
                     type: "string",
-                    description: "Free-text search across company name, city, and sector",
+                    description: "Free-text search across company name and category",
                 },
-                sector: {
+                category: {
                     type: "string",
-                    description: "Filter by sector/industry",
+                    description: "Filter by category",
                 },
                 limit: {
                     type: "number",
@@ -189,9 +169,8 @@ const CRM_TOOL_SCHEMAS = [
             type: "object",
             properties: {
                 name: { type: "string", description: "Company name" },
-                sector: { type: "string", description: "Industry/sector" },
-                city: { type: "string", description: "City" },
-                website: { type: "string", description: "Website URL" },
+                category: { type: "string", description: "Category" },
+                domain: { type: "string", description: "Domain URL" },
             },
             required: ["name"],
         },

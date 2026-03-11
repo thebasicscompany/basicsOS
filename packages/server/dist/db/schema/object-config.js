@@ -1,7 +1,7 @@
 import { pgTable, bigserial, bigint, varchar, boolean, smallint, jsonb, timestamp, uuid, unique, } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { crmUsers } from "../../db/schema/crm_users.js";
-import { organizations } from "../../db/schema/organizations.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 export const objectConfig = pgTable("object_config", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     slug: varchar("slug", { length: 64 }).notNull().unique(),

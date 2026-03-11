@@ -53,65 +53,14 @@ export declare const deals: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        contactIds: import("drizzle-orm/pg-core").PgColumn<{
-            name: "contact_ids";
-            tableName: "deals";
-            dataType: "json";
-            columnType: "PgJsonb";
-            data: number[];
-            driverParam: unknown;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        category: import("drizzle-orm/pg-core").PgColumn<{
-            name: "category";
-            tableName: "deals";
-            dataType: "string";
-            columnType: "PgVarchar";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        stage: import("drizzle-orm/pg-core").PgColumn<{
-            name: "stage";
+        status: import("drizzle-orm/pg-core").PgColumn<{
+            name: "status";
             tableName: "deals";
             dataType: "string";
             columnType: "PgVarchar";
             data: string;
             driverParam: string;
             notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        description: import("drizzle-orm/pg-core").PgColumn<{
-            name: "description";
-            tableName: "deals";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -189,23 +138,6 @@ export declare const deals: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        expectedClosingDate: import("drizzle-orm/pg-core").PgColumn<{
-            name: "expected_closing_date";
-            tableName: "deals";
-            dataType: "date";
-            columnType: "PgTimestamp";
-            data: Date;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         crmUserId: import("drizzle-orm/pg-core").PgColumn<{
             name: "crm_user_id";
             tableName: "deals";
@@ -230,23 +162,6 @@ export declare const deals: import("drizzle-orm/pg-core").PgTableWithColumns<{
             columnType: "PgUUID";
             data: string;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        index: import("drizzle-orm/pg-core").PgColumn<{
-            name: "index";
-            tableName: "deals";
-            dataType: "number";
-            columnType: "PgSmallInt";
-            data: number;
-            driverParam: string | number;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;

@@ -6,7 +6,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { logger } from "../lib/logger.js";
+import { logger } from "@/lib/logger.js";
 const log = logger.child({ component: "migrate" });
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

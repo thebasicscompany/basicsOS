@@ -8,13 +8,28 @@ const envSchema = z.object({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url().default("http://localhost:5173"),
     // Override for self-hosting / BYOK
-    BASICOS_API_URL: z.string().url().default("https://api.basicsos.com"),
+    BASICSOS_API_URL: z.string().url().default("https://api.basicsos.com"),
     API_KEY_ENCRYPTION_KEY: z.string().optional(),
     API_KEY_ENCRYPTION_KEY_PREVIOUS: z.string().optional(),
     API_KEY_HASH_SECRET: z.string().optional(),
     // Comma-separated origins for CORS (e.g. https://app.example.com,https://admin.example.com)
     // If set, used in addition to localhost. If empty, only localhost is allowed.
     ALLOWED_ORIGINS: z.string().optional().default(""),
+    // Server-level AI key fallbacks (used when no org_ai_config row exists)
+    SERVER_BASICS_API_KEY: z.string().optional(),
+    SERVER_BYOK_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).optional(),
+    SERVER_BYOK_API_KEY: z.string().optional(),
+    // Optional transcription BYOK (e.g. Deepgram) for voice STT when no org-level key
+    SERVER_TRANSCRIPTION_BYOK_PROVIDER: z.enum(["deepgram"]).optional(),
+    SERVER_TRANSCRIPTION_BYOK_API_KEY: z.string().optional(),
+    // Path to built frontend static files (e.g. /app/dist). When set, server serves web app + API from same origin.
+    STATIC_DIR: z.string().optional(),
+    // Optional SMTP for password reset emails (when not using BasicsOS key). If both SMTP and SERVER_BASICS_API_KEY are set, SMTP takes precedence.
+    MAIL_HOST: z.string().optional(),
+    MAIL_PORT: z.coerce.number().optional(),
+    MAIL_USER: z.string().optional(),
+    MAIL_PASS: z.string().optional(),
+    MAIL_FROM: z.string().email().optional(),
 });
 export function getEnv() {
     return envSchema.parse(process.env);

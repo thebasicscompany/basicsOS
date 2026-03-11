@@ -1,6 +1,6 @@
 import { pgTable, bigserial, varchar, text, bigint, uuid, timestamp, vector, uniqueIndex, index, } from "drizzle-orm/pg-core";
-import { crmUsers } from "../../db/schema/crm_users";
-import { organizations } from "../../db/schema/organizations";
+import { crmUsers } from "@/db/schema/crm_users";
+import { organizations } from "@/db/schema/organizations";
 export const contextEmbeddings = pgTable("context_embeddings", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     crmUserId: bigint("crm_user_id", { mode: "number" })

@@ -1,79 +1,62 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import * as schema from "../db/schema/index.js";
-import { eq } from "drizzle-orm";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
-import { resolveStoredApiKey } from "../lib/api-key-crypto.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { resolveOrgAiConfig, buildGatewayHeaders, } from "@/lib/org-ai-config.js";
 export function createConnectionsRoutes(db, auth, env) {
     const app = new Hono();
-    async function getCrmUserApiKey(userId) {
-        const rows = await db
-            .select({
-            basicsApiKey: schema.crmUsers.basicsApiKey,
-            basicsApiKeyEnc: schema.crmUsers.basicsApiKeyEnc,
-        })
-            .from(schema.crmUsers)
-            .where(eq(schema.crmUsers.userId, userId))
-            .limit(1);
-        return rows[0] ? resolveStoredApiKey(rows[0]) : null;
-    }
-    // List all connections for the authenticated user
+    /** Extract Better Auth user ID from session */
+    const getUserId = (c) => {
+        const session = c.get("session");
+        return session.user.id;
+    };
     app.get("/", authMiddleware(auth, db), async (c) => {
         const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
         if (!authz.ok)
             return authz.response;
-        const session = c.get("session");
-        const userId = session?.user?.id;
-        if (!userId)
-            return c.json({ error: "Unauthorized" }, 401);
-        const apiKey = await getCrmUserApiKey(userId);
-        if (!apiKey)
+        const aiResult = await resolveOrgAiConfig(c, db, env);
+        if (!aiResult.ok)
             return c.json([]);
-        const res = await fetch(`${env.BASICOS_API_URL}/v1/connections`, {
-            headers: { Authorization: `Bearer ${apiKey}` },
+        const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+        headers["X-User-Id"] = getUserId(c);
+        const res = await fetch(`${env.BASICSOS_API_URL}/v1/connections`, {
+            headers,
         });
         if (!res.ok)
             return c.json([]);
         return c.json(await res.json());
     });
-    // Initiate OAuth — fetches the provider URL and redirects the browser
     app.get("/:provider/authorize", authMiddleware(auth, db), async (c) => {
         const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
         if (!authz.ok)
             return authz.response;
-        const session = c.get("session");
-        const userId = session?.user?.id;
-        if (!userId)
-            return c.json({ error: "Unauthorized" }, 401);
+        const aiResult = await resolveOrgAiConfig(c, db, env);
+        if (!aiResult.ok)
+            return aiResult.response;
+        const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+        headers["X-User-Id"] = getUserId(c);
         const provider = c.req.param("provider");
-        const apiKey = await getCrmUserApiKey(userId);
-        if (!apiKey)
-            return c.json({ error: "Basics API key not configured" }, 400);
         const redirectAfter = encodeURIComponent(`${env.BETTER_AUTH_URL}/connections`);
-        const res = await fetch(`${env.BASICOS_API_URL}/v1/connections/${provider}/authorize?redirect_after=${redirectAfter}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+        const res = await fetch(`${env.BASICSOS_API_URL}/v1/connections/${provider}/authorize?redirect_after=${redirectAfter}`, { headers });
         if (!res.ok) {
             const text = await res.text();
             return c.json({ error: text }, 400);
         }
         const { url } = (await res.json());
-        return c.redirect(url);
+        return c.json({ url });
     });
-    // Delete / disconnect a provider
     app.delete("/:provider", authMiddleware(auth, db), async (c) => {
         const authz = await requirePermission(c, db, PERMISSIONS.recordsRead);
         if (!authz.ok)
             return authz.response;
-        const session = c.get("session");
-        const userId = session?.user?.id;
-        if (!userId)
-            return c.json({ error: "Unauthorized" }, 401);
+        const aiResult = await resolveOrgAiConfig(c, db, env);
+        if (!aiResult.ok)
+            return aiResult.response;
+        const headers = buildGatewayHeaders(aiResult.data.aiConfig);
+        headers["X-User-Id"] = getUserId(c);
         const provider = c.req.param("provider");
-        const apiKey = await getCrmUserApiKey(userId);
-        if (!apiKey)
-            return c.json({ error: "Basics API key not configured" }, 400);
-        const res = await fetch(`${env.BASICOS_API_URL}/v1/connections/${provider}`, {
+        const res = await fetch(`${env.BASICSOS_API_URL}/v1/connections/${provider}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${apiKey}` },
+            headers,
         });
         if (!res.ok)
             return c.json({ error: "Failed to delete connection" }, 500);

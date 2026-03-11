@@ -1,10 +1,11 @@
-import * as schema from "../../db/schema/index.js";
+import * as schema from "@/db/schema/index.js";
 export const CRM_RESOURCES = [
     "contacts",
     "companies",
     "deals",
     "contact_notes",
     "deal_notes",
+    "company_notes",
     "tasks",
     "crm_users",
     "tags",
@@ -19,6 +20,7 @@ export const TABLE_MAP = {
     deals: schema.deals,
     contact_notes: schema.contactNotes,
     deal_notes: schema.dealNotes,
+    company_notes: schema.companyNotes,
     tasks: schema.tasks,
     crm_users: schema.crmUsers,
     tags: schema.tags,
@@ -32,6 +34,7 @@ export function hasCrmUserId(resource) {
         "deals",
         "contact_notes",
         "deal_notes",
+        "company_notes",
         "tasks",
         "crm_users",
         "automation_rules",
@@ -44,6 +47,7 @@ export function hasOrganizationId(resource) {
         "deals",
         "contact_notes",
         "deal_notes",
+        "company_notes",
         "tasks",
         "crm_users",
         "tags",

@@ -1,6 +1,6 @@
 export async function executeAI(config, _context, apiKey, env) {
     const { prompt, model = "claude-sonnet-4-5-20251001" } = config;
-    const response = await fetch(`${env.BASICOS_API_URL}/v1/chat/completions`, {
+    const response = await fetch(`${env.BASICSOS_API_URL}/v1/chat/completions`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -17,5 +17,12 @@ export async function executeAI(config, _context, apiKey, env) {
         throw new Error(`AI request failed (${response.status}): ${text}`);
     }
     const data = (await response.json());
-    return data.choices[0]?.message?.content ?? "";
+    return {
+        result: data.choices[0]?.message?.content ?? "",
+        usage: {
+            inputTokens: data.usage?.prompt_tokens ?? 0,
+            outputTokens: data.usage?.completion_tokens ?? 0,
+            model,
+        },
+    };
 }

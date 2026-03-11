@@ -31,5 +31,8 @@ export function jsonError(
     ...(code && { code }),
     ...(details !== undefined && { details }),
   };
-  return c.json(body, { status } as ResponseInit);
+  return c.json(
+    body,
+    status as 200 | 400 | 403 | 404 | 500,
+  );
 }

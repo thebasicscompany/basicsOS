@@ -1,9 +1,8 @@
 import { PgBoss } from "pg-boss";
-import * as schema from "../db/schema/index.js";
+import * as schema from "@/db/schema/index.js";
 import { eq, and } from "drizzle-orm";
-import { executeWorkflow } from "../lib/automation-executor.js";
-import { resolveStoredApiKey } from "../lib/api-key-crypto.js";
-import { logger } from "../lib/logger.js";
+import { executeWorkflow } from "@/lib/automation-executor.js";
+import { logger } from "@/lib/logger.js";
 const log = logger.child({ component: "automation-engine" });
 let _boss = null;
 let _db = null;
@@ -65,6 +64,7 @@ async function registerScheduleRule(ruleId, crmUserId, cron) {
         return;
     const queueName = `rule-schedule-${ruleId}`;
     try {
+        await _boss.createQueue(queueName);
         await _boss.schedule(queueName, cron, { ruleId, crmUserId });
         await _boss.work(queueName, async (jobs) => {
             for (const job of jobs) {
@@ -152,19 +152,33 @@ async function runAutomation(ruleId, crmUserId, triggerData) {
     if (!_db || !_env)
         return;
     const db = _db;
+    const rules = await db
+        .select()
+        .from(schema.automationRules)
+        .where(eq(schema.automationRules.id, ruleId))
+        .limit(1);
+    const rule = rules[0];
+    if (!rule)
+        throw new Error(`Rule ${ruleId} not found`);
+    let orgId = rule.organizationId ?? rule.organization_id ?? null;
+    if (orgId == null) {
+        const [crmUser] = await db
+            .select({ organizationId: schema.crmUsers.organizationId })
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.id, crmUserId))
+            .limit(1);
+        orgId = crmUser?.organizationId ?? null;
+    }
     const [run] = await db
         .insert(schema.automationRuns)
-        .values({ ruleId, crmUserId, status: "running" })
+        .values({
+        ruleId,
+        crmUserId,
+        organizationId: orgId,
+        status: "running",
+    })
         .returning();
     try {
-        const rules = await db
-            .select()
-            .from(schema.automationRules)
-            .where(eq(schema.automationRules.id, ruleId))
-            .limit(1);
-        const rule = rules[0];
-        if (!rule)
-            throw new Error(`Rule ${ruleId} not found`);
         const crmUserRows = await db
             .select()
             .from(schema.crmUsers)
@@ -173,8 +187,7 @@ async function runAutomation(ruleId, crmUserId, triggerData) {
         const crmUserRow = crmUserRows[0];
         if (!crmUserRow)
             throw new Error(`CRM user ${crmUserId} not found`);
-        const apiKey = resolveStoredApiKey(crmUserRow);
-        const result = await executeWorkflow(rule.workflowDefinition, triggerData, { id: crmUserRow.id, basicsApiKey: apiKey }, _db, _env);
+        const result = await executeWorkflow(rule.workflowDefinition, triggerData, { id: crmUserRow.id, organizationId: (crmUserRow.organizationId ?? crmUserRow.organization_id ?? null) }, _db, _env);
         await db
             .update(schema.automationRuns)
             .set({ status: "success", result, finishedAt: new Date() })

@@ -1,3 +1,10 @@
+export interface CustomFieldOption {
+    id: string;
+    label: string;
+    color?: string;
+    order?: number;
+    isTerminal?: boolean;
+}
 export declare const customFieldDefs: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "custom_field_defs";
     schema: undefined;
@@ -92,7 +99,7 @@ export declare const customFieldDefs: import("drizzle-orm/pg-core").PgTableWithC
             tableName: "custom_field_defs";
             dataType: "json";
             columnType: "PgJsonb";
-            data: string[];
+            data: (string | CustomFieldOption)[];
             driverParam: unknown;
             notNull: false;
             hasDefault: false;

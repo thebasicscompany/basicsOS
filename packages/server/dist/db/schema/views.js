@@ -1,7 +1,7 @@
 import { pgTable, text, varchar, boolean, smallint, timestamp, bigint, uuid, unique, index, } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { crmUsers } from "../../db/schema/crm_users.js";
-import { organizations } from "../../db/schema/organizations.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 export const views = pgTable("views", {
     id: text("id")
         .primaryKey()

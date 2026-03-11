@@ -1,13 +1,35 @@
+import { eq } from "drizzle-orm";
 import { topologicalSort } from "@basics-os/shared";
-import { executeEmail } from "../lib/automation-actions/email.js";
-import { executeAI } from "../lib/automation-actions/ai-task.js";
-import { executeWebSearch } from "../lib/automation-actions/web-search.js";
-import { executeCrmAction } from "../lib/automation-actions/crm-action.js";
-import { executeSlack } from "../lib/automation-actions/slack.js";
-import { executeGmailRead } from "../lib/automation-actions/gmail-read.js";
-import { executeGmailSend } from "../lib/automation-actions/gmail-send.js";
-import { executeAIAgent } from "../lib/automation-actions/ai-agent.js";
-import { resolveStoredApiKey } from "../lib/api-key-crypto.js";
+import { executeEmail } from "@/lib/automation-actions/email.js";
+import { executeAI } from "@/lib/automation-actions/ai-task.js";
+import { executeWebSearch } from "@/lib/automation-actions/web-search.js";
+import { executeCrmAction } from "@/lib/automation-actions/crm-action.js";
+import { executeSlack } from "@/lib/automation-actions/slack.js";
+import { executeGmailRead } from "@/lib/automation-actions/gmail-read.js";
+import { executeGmailSend } from "@/lib/automation-actions/gmail-send.js";
+import { executeAIAgent } from "@/lib/automation-actions/ai-agent.js";
+import { decryptApiKey } from "@/lib/api-key-crypto.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
+import * as schema from "@/db/schema/index.js";
+async function resolveApiKeyForOrg(db, env, organizationId) {
+    if (organizationId) {
+        const [orgConfig] = await db
+            .select()
+            .from(schema.orgAiConfig)
+            .where(eq(schema.orgAiConfig.organizationId, organizationId))
+            .limit(1);
+        if (orgConfig?.apiKeyEnc) {
+            const decrypted = decryptApiKey(orgConfig.apiKeyEnc);
+            if (decrypted)
+                return decrypted;
+        }
+    }
+    if (env.SERVER_BASICS_API_KEY)
+        return env.SERVER_BASICS_API_KEY;
+    if (env.SERVER_BYOK_API_KEY)
+        return env.SERVER_BYOK_API_KEY;
+    return "";
+}
 export async function executeWorkflow(workflowDef, triggerData, crmUser, db, env) {
     const { nodes, edges } = workflowDef;
     if (!nodes?.length)
@@ -17,7 +39,19 @@ export async function executeWorkflow(workflowDef, triggerData, crmUser, db, env
         trigger_data: triggerData,
         crm_user_id: crmUser.id,
     };
-    const apiKey = resolveStoredApiKey(crmUser) ?? "";
+    const apiKey = await resolveApiKeyForOrg(db, env, crmUser.organizationId);
+    // Resolve Better Auth userId for per-user gateway connections
+    let betterAuthUserId = crmUser.userId ?? "";
+    if (!betterAuthUserId) {
+        const [row] = await db
+            .select({ userId: schema.crmUsers.userId })
+            .from(schema.crmUsers)
+            .where(eq(schema.crmUsers.id, crmUser.id))
+            .limit(1);
+        if (!row)
+            throw new Error(`CRM user ${crmUser.id} not found`);
+        betterAuthUserId = row.userId;
+    }
     for (const nodeId of order) {
         const node = nodes.find((n) => n.id === nodeId);
         if (!node)
@@ -28,12 +62,30 @@ export async function executeWorkflow(workflowDef, triggerData, crmUser, db, env
             case "trigger_schedule":
                 // Trigger nodes just initialize context
                 break;
-            case "action_email":
+            case "action_email": {
                 await executeEmail(data, context, apiKey, env);
+                if (crmUser.organizationId) {
+                    writeUsageLogSafe(db, {
+                        organizationId: crmUser.organizationId,
+                        crmUserId: crmUser.id,
+                        feature: "automation_email",
+                    });
+                }
                 break;
+            }
             case "action_ai": {
-                const result = await executeAI(data, context, apiKey, env);
-                context.ai_result = result;
+                const aiResult = await executeAI(data, context, apiKey, env);
+                context.ai_result = aiResult.result;
+                if (crmUser.organizationId) {
+                    writeUsageLogSafe(db, {
+                        organizationId: crmUser.organizationId,
+                        crmUserId: crmUser.id,
+                        feature: "automation_ai",
+                        model: aiResult.usage.model,
+                        inputTokens: aiResult.usage.inputTokens,
+                        outputTokens: aiResult.usage.outputTokens,
+                    });
+                }
                 break;
             }
             case "action_web_search": {
@@ -47,21 +99,31 @@ export async function executeWorkflow(workflowDef, triggerData, crmUser, db, env
                 break;
             }
             case "action_slack": {
-                const slackResult = await executeSlack(data, context, apiKey, env);
+                const slackResult = await executeSlack(data, context, apiKey, env, betterAuthUserId);
                 context.slack_result = slackResult;
                 break;
             }
             case "action_gmail_read": {
-                const gmailRead = await executeGmailRead(data, context, apiKey, env);
+                const gmailRead = await executeGmailRead(data, context, apiKey, env, betterAuthUserId);
                 context.gmail_messages = gmailRead.gmail_messages;
                 break;
             }
             case "action_gmail_send":
-                await executeGmailSend(data, context, apiKey, env);
+                await executeGmailSend(data, context, apiKey, env, betterAuthUserId);
                 break;
             case "action_ai_agent": {
                 const agentResult = await executeAIAgent(data, context, db, crmUser.id, apiKey, env);
                 context.ai_agent_result = agentResult.ai_agent_result;
+                if (crmUser.organizationId) {
+                    writeUsageLogSafe(db, {
+                        organizationId: crmUser.organizationId,
+                        crmUserId: crmUser.id,
+                        feature: "automation_ai_agent",
+                        model: agentResult.usage.model,
+                        inputTokens: agentResult.usage.inputTokens,
+                        outputTokens: agentResult.usage.outputTokens,
+                    });
+                }
                 break;
             }
             default:

@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import { customFieldCreateSchema } from "../schemas/custom-fields.js";
-import { eq, asc, and, or, isNull } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { customFieldCreateSchema, customFieldUpdateSchema, } from "@/schemas/custom-fields.js";
+import { eq, asc, and, or, isNull, sql } from "drizzle-orm";
+import * as schema from "@/db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 export function createCustomFieldRoutes(db, auth) {
     const app = new Hono();
     app.use("*", authMiddleware(auth, db));
@@ -63,6 +63,84 @@ export function createCustomFieldRoutes(db, auth) {
         })
             .returning();
         return c.json(row, 201);
+    });
+    app.patch("/:id", async (c) => {
+        const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+        if (!authz.ok)
+            return authz.response;
+        const id = Number(c.req.param("id"));
+        if (!authz.crmUser.organizationId) {
+            return c.json({ error: "Organization not found" }, 404);
+        }
+        let rawBody;
+        try {
+            rawBody = await c.req.json();
+        }
+        catch {
+            return c.json({ error: "Invalid JSON body" }, 400);
+        }
+        const parsed = customFieldUpdateSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            const msg = parsed.error.issues[0]?.message ?? "Validation failed";
+            return c.json({ error: msg }, 400);
+        }
+        const [existing] = await db
+            .select()
+            .from(schema.customFieldDefs)
+            .where(and(eq(schema.customFieldDefs.id, id), eq(schema.customFieldDefs.organizationId, authz.crmUser.organizationId)))
+            .limit(1);
+        if (!existing)
+            return c.json({ error: "Not found" }, 404);
+        const updates = {};
+        if (parsed.data.label !== undefined)
+            updates.label = parsed.data.label;
+        if (parsed.data.options !== undefined)
+            updates.options = parsed.data.options;
+        const newName = parsed.data.name
+            ? parsed.data.name.toLowerCase().replace(/[^a-z0-9_]/g, "_")
+            : undefined;
+        const oldName = existing.name;
+        const nameChanged = newName != null && newName !== oldName;
+        if (nameChanged)
+            updates.name = newName;
+        if (Object.keys(updates).length === 0) {
+            return c.json({ error: "No fields to update" }, 400);
+        }
+        const [updated] = await db
+            .update(schema.customFieldDefs)
+            .set(updates)
+            .where(and(eq(schema.customFieldDefs.id, id), eq(schema.customFieldDefs.organizationId, authz.crmUser.organizationId)))
+            .returning();
+        if (!updated)
+            return c.json({ error: "Not found" }, 404);
+        if (nameChanged && newName) {
+            const resourceToTable = {
+                contacts: "contacts",
+                companies: "companies",
+                deals: "deals",
+            };
+            const tableName = resourceToTable[existing.resource];
+            if (tableName) {
+                await db.execute(sql `UPDATE ${sql.identifier(tableName)}
+              SET custom_fields = (custom_fields - ${oldName}) || jsonb_build_object(${newName}, custom_fields -> ${oldName})
+              WHERE custom_fields ? ${oldName}
+                AND organization_id = ${authz.crmUser.organizationId}`);
+            }
+            else {
+                const [obj] = await db
+                    .select({ tableName: schema.objectConfig.tableName })
+                    .from(schema.objectConfig)
+                    .where(eq(schema.objectConfig.slug, existing.resource))
+                    .limit(1);
+                if (obj?.tableName) {
+                    await db.execute(sql `UPDATE ${sql.identifier(obj.tableName)}
+                SET custom_fields = (custom_fields - ${oldName}) || jsonb_build_object(${newName}, custom_fields -> ${oldName})
+                WHERE custom_fields ? ${oldName}
+                  AND organization_id = ${authz.crmUser.organizationId}`);
+                }
+            }
+        }
+        return c.json(updated);
     });
     app.delete("/:id", async (c) => {
         const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);

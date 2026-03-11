@@ -1,12 +1,12 @@
 import { generateText, tool } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import * as schema from "../../db/schema/index.js";
+import * as schema from "@/db/schema/index.js";
 import { and, eq, like, or } from "drizzle-orm";
 export async function executeAIAgent(config, _context, db, crmUserId, apiKey, env) {
     const { objective = "", model = "basics-chat-smart", maxSteps = 6, } = config;
     const openai = createOpenAI({
-        baseURL: `${env.BASICOS_API_URL}/v1`,
+        baseURL: `${env.BASICSOS_API_URL}/v1`,
         apiKey,
     });
     const [crmUser] = await db
@@ -18,7 +18,7 @@ export async function executeAIAgent(config, _context, db, crmUserId, apiKey, en
     if (!organizationId) {
         throw new Error("Organization not found for CRM user");
     }
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
         model: openai(model),
         maxSteps,
         system: "You are a CRM automation agent. You have access to CRM data and can perform actions on behalf of the user.",
@@ -74,15 +74,15 @@ export async function executeAIAgent(config, _context, db, crmUserId, apiKey, en
                 },
             }),
             updateDeal: tool({
-                description: "Update a deal's stage",
+                description: "Update a deal's status",
                 parameters: z.object({
                     dealId: z.number().describe("Deal ID"),
-                    stage: z.string().describe("New stage value"),
+                    status: z.string().describe("New status value"),
                 }),
-                execute: async ({ dealId, stage }) => {
+                execute: async ({ dealId, status }) => {
                     const [deal] = await db
                         .update(schema.deals)
-                        .set({ stage })
+                        .set({ status })
                         .where(and(eq(schema.deals.id, dealId), eq(schema.deals.crmUserId, crmUserId), eq(schema.deals.organizationId, organizationId)))
                         .returning();
                     if (!deal) {
@@ -93,5 +93,12 @@ export async function executeAIAgent(config, _context, db, crmUserId, apiKey, en
             }),
         },
     });
-    return { ai_agent_result: text };
+    return {
+        ai_agent_result: text,
+        usage: {
+            inputTokens: usage?.promptTokens ?? 0,
+            outputTokens: usage?.completionTokens ?? 0,
+            model,
+        },
+    };
 }

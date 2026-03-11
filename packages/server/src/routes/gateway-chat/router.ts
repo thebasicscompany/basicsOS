@@ -81,6 +81,25 @@ function detectFastPath(queryText: string): ChatRoutingDecision | null {
       /\b(create|add|make|update|edit|rename|change|complete|mark)\b/.test(lower)
     );
 
+  // Enrichment intent
+  const hasEnrichment = /\b(enrich|research)\b/.test(lower) && hasEntity;
+  // Delete intent
+  const hasDelete = /\b(delete|remove|trash)\b/.test(lower) && hasEntity;
+  // Web search intent
+  const hasWebSearch = /\b(search the web|google|look up online|research online)\b/.test(lower);
+  // Report intent
+  const hasReport = /\b(report|chart|graph|breakdown|pipeline summary|analytics)\b/.test(lower);
+  // View management intent
+  const hasViewMgmt = /\b(create a view|make a view|filtered view|set up a view)\b/.test(lower);
+  // Automation intent
+  const hasAutomation = /\b(automate|create an automation|when .* then)\b/.test(lower);
+  // Browse intent
+  const hasBrowse = /\b(browse|visit|scrape|extract from)\b/.test(lower) && /\b(url|page|website|site)\b/.test(lower);
+
+  if (hasEnrichment || hasDelete || hasWebSearch || hasReport || hasViewMgmt || hasAutomation || hasBrowse) {
+    return { mode: "tool_call", shouldGenerateTitle: true };
+  }
+
   if (obviousToolQuery) {
     return {
       mode: "tool_call",

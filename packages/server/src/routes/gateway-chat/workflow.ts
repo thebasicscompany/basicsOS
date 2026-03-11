@@ -20,6 +20,16 @@ const TOOL_NAMES = [
   "list_notes",
   "create_note",
   "add_note",
+  "web_search",
+  "enrich_record",
+  "search_all",
+  "delete_record",
+  "bulk_update",
+  "delete_task",
+  "manage_view",
+  "create_automation",
+  "generate_report",
+  "browse_web",
 ] as const;
 
 const LOOKUP_TOOLS = new Set([
@@ -30,6 +40,7 @@ const LOOKUP_TOOLS = new Set([
   "search_deals",
   "get_deal",
   "search_tasks",
+  "search_all",
 ]);
 
 const toolNameSchema = z.enum(TOOL_NAMES);
@@ -42,7 +53,7 @@ const workflowStepSchema = z.object({
 
 const workflowPlanSchema = z.object({
   mode: z.enum(["none", "single_tool", "multi_tool"]),
-  steps: z.array(workflowStepSchema).max(8).default([]),
+  steps: z.array(workflowStepSchema).max(15).default([]),
 });
 
 const resolvedStepSchema = z.discriminatedUnion("mode", [
@@ -113,6 +124,23 @@ export function shouldPlanToolWorkflow(queryText: string): boolean {
     /\b(create|add|make)\b/.test(lower) &&
     /\b(deal|opportunity|deals|opportunities)\b/.test(lower) &&
     /\bcompany|companies|organization\b/.test(lower);
+
+  // Enrichment patterns
+  if (/\b(enrich|research|look up info|find info|what do we know about)\b/i.test(queryText)) return true;
+  // Delete patterns
+  if (/\b(delete|remove|trash|archive)\b/i.test(queryText) && /\b(contact|company|deal|task)\b/i.test(queryText)) return true;
+  // Bulk patterns
+  if (/\b(bulk|all|every|batch|mass)\b/i.test(queryText) && /\b(update|change|set|modify)\b/i.test(queryText)) return true;
+  // Web search patterns
+  if (/\b(search the web|google|look up online|find online|research online)\b/i.test(queryText)) return true;
+  // View management patterns
+  if (/\b(create|make|build|set up)\b/i.test(queryText) && /\b(view|filter|filtered view)\b/i.test(queryText)) return true;
+  // Automation patterns
+  if (/\b(automate|automation|when|trigger|schedule)\b/i.test(queryText) && /\b(email|notify|alert|create|update)\b/i.test(queryText)) return true;
+  // Report patterns
+  if (/\b(report|chart|graph|breakdown|summary|analytics|visualize)\b/i.test(queryText)) return true;
+  // Browse web patterns
+  if (/\b(browse|visit|open|scrape|extract from|check the page|look at the website)\b/i.test(queryText)) return true;
 
   return (
     isUpdate ||
@@ -239,6 +267,21 @@ function normalizeResolvedArgs(
       args.id = first.id;
     }
   }
+  if (expectedTool === "delete_record") {
+    if (args.entity_id === undefined && args.entity_name === undefined) {
+      args.entity_id = first.id;
+    }
+  }
+  if (expectedTool === "enrich_record") {
+    if (args.entity_id === undefined && args.entity_name === undefined) {
+      args.entity_id = first.id;
+    }
+  }
+  if (expectedTool === "bulk_update") {
+    if (!args.ids || !Array.isArray(args.ids) || args.ids.length === 0) {
+      args.ids = candidates.map(c => c.id);
+    }
+  }
 
   return args;
 }
@@ -272,6 +315,12 @@ export async function planToolWorkflow(args: {
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_companies","args":{"query":"about toching"}},{"tool":"update_company","args":{"name":"touching company","description":"not touching people"},"deferred":true}]}',
     "User: update the name of company about toching to touching company and also change the description to not touching people also create a new company called speakl",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_companies","args":{"query":"about toching"}},{"tool":"update_company","args":{"name":"touching company","description":"not touching people"},"deferred":true},{"tool":"create_company","args":{"name":"speekl"}}]}',
+    'Example: "Research Acme Corp and update their description"',
+    'JSON: {"mode":"multi_tool","steps":[{"tool":"web_search","args":{"query":"Acme Corp company"}},{"tool":"search_companies","args":{"query":"Acme"}},{"tool":"update_company","args":{"description":"..."},"deferred":true}]}',
+    'Example: "Delete John Smith from contacts"',
+    'JSON: {"mode":"multi_tool","steps":[{"tool":"search_contacts","args":{"query":"John Smith"}},{"tool":"delete_record","args":{"entity_type":"contact"},"deferred":true}]}',
+    'Example: "Set all Acme contacts to VIP status"',
+    'JSON: {"mode":"multi_tool","steps":[{"tool":"search_contacts","args":{"query":"Acme"}},{"tool":"bulk_update","args":{"entity_type":"contact","updates":{"custom_fields":{"status":"VIP"}}},"deferred":true}]}',
     "",
     `User request: ${args.queryText}`,
   ].join("\n");

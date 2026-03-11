@@ -59,7 +59,27 @@ Update workflow (CRITICAL — follow exactly):
    - search_companies/search_contacts/search_deals/search_tasks -> update_company/update_contact/update_deal
    - search_contacts/search_companies/search_tasks -> create_task
    - search_contacts/search_deals -> add_note
-   - search_companies -> create_contact/create_deal`;
+   - search_companies -> create_contact/create_deal
+
+## Extended Capabilities
+
+You can also:
+- **Search the web** with web_search for company research, news, industry data
+- **Enrich records** with enrich_record to automatically fill in missing contact/company details from web data
+- **Search across all entities** with search_all to find records matching a query across contacts, companies, and deals
+- **Delete records** with delete_record (contacts, companies, deals) — always confirm with the user first
+- **Bulk update** with bulk_update to modify multiple records at once — search first to get IDs
+- **Delete tasks** with delete_task
+- **Manage views** with manage_view to create filtered/sorted views for the user
+- **Create automations** with create_automation to set up triggered workflows
+- **Generate reports** with generate_report to create visual data summaries
+- **Browse web pages** with browse_web to navigate URLs, extract text/structured data for research
+- **Update custom fields** on contacts, companies, and deals by passing custom_fields in update tools
+
+When enriching: search for the record first, then call enrich_record with the ID.
+When deleting: always search first to confirm the exact record, then delete.
+When bulk updating: search first to get the IDs, then call bulk_update.
+For custom fields: use the custom_fields parameter on update_contact/update_company/update_deal.`;
 
 export const requestSchema = z.object({
   messages: z.array(z.any()),
@@ -98,6 +118,7 @@ export const updateContactSchema = z
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     email: z.string().email().optional(),
+    custom_fields: z.record(z.unknown()).optional(),
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.contact_name) {
@@ -109,12 +130,13 @@ export const updateContactSchema = z
     if (
       v.first_name === undefined &&
       v.last_name === undefined &&
-      v.email === undefined
+      v.email === undefined &&
+      v.custom_fields === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "At least one update field (first_name, last_name, email) is required",
+          "At least one update field (first_name, last_name, email, custom_fields) is required",
       });
     }
   });
@@ -151,6 +173,7 @@ export const updateDealSchema = z
     name: z.string().optional(),
     status: z.string().optional(),
     amount: z.number().optional(),
+    custom_fields: z.record(z.unknown()).optional(),
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.deal_name) {
@@ -162,11 +185,13 @@ export const updateDealSchema = z
     if (
       v.name === undefined &&
       v.status === undefined &&
-      v.amount === undefined
+      v.amount === undefined &&
+      v.custom_fields === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one update field (name, status, amount) is required",
+        message:
+          "At least one update field (name, status, amount, custom_fields) is required",
       });
     }
   });
@@ -202,6 +227,7 @@ export const updateCompanySchema = z
     category: z.string().optional(),
     domain: z.string().optional(),
     description: z.string().optional(),
+    custom_fields: z.record(z.unknown()).optional(),
   })
   .superRefine((v, ctx) => {
     if (!v.id && !v.company_name) {
@@ -214,12 +240,13 @@ export const updateCompanySchema = z
       v.name === undefined &&
       v.category === undefined &&
       v.domain === undefined &&
-      v.description === undefined
+      v.description === undefined &&
+      v.custom_fields === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "At least one update field (name, category, domain, description) is required",
+          "At least one update field (name, category, domain, description, custom_fields) is required",
       });
     }
   });
@@ -334,6 +361,157 @@ export const addNoteSchema = z
     }
   });
 
+// --- New tool schemas for OpenClaw integration ---
+
+export const webSearchSchema = z.object({
+  query: z.string().describe("Search query"),
+  num_results: z
+    .number()
+    .optional()
+    .default(5)
+    .describe("Number of results (1-10)"),
+});
+
+export const enrichRecordSchema = z.object({
+  entity_type: z
+    .enum(["contact", "company"])
+    .describe("Type of record to enrich"),
+  entity_id: z.number().optional().describe("Record ID"),
+  entity_name: z.string().optional().describe("Record name to resolve"),
+});
+
+export const searchAllSchema = z.object({
+  query: z.string().describe("Search query across all entity types"),
+  limit: z
+    .number()
+    .optional()
+    .default(5)
+    .describe("Results per entity type"),
+});
+
+export const deleteRecordSchema = z.object({
+  entity_type: z
+    .enum(["contact", "company", "deal"])
+    .describe("Entity type"),
+  entity_id: z.number().optional().describe("Record ID"),
+  entity_name: z.string().optional().describe("Record name to resolve"),
+});
+
+export const bulkUpdateSchema = z.object({
+  entity_type: z
+    .enum(["contact", "company", "deal"])
+    .describe("Entity type"),
+  ids: z
+    .array(z.number())
+    .min(1)
+    .max(50)
+    .describe("Record IDs to update"),
+  updates: z
+    .record(z.unknown())
+    .describe("Fields to update (standard and custom_fields)"),
+});
+
+export const deleteTaskSchema = z.object({
+  id: z.number().describe("Task ID to delete"),
+});
+
+export const manageViewSchema = z.object({
+  object_slug: z
+    .string()
+    .describe("Object slug (contacts, companies, deals, tasks)"),
+  action: z.enum(["create", "update", "delete"]).describe("View action"),
+  view_name: z.string().describe("View name"),
+  view_id: z
+    .string()
+    .optional()
+    .describe("Existing view ID (for update/delete)"),
+  sorts: z
+    .array(
+      z.object({
+        field: z.string(),
+        direction: z.enum(["asc", "desc"]),
+      }),
+    )
+    .optional()
+    .describe("Sort configuration"),
+  filters: z
+    .array(
+      z.object({
+        field: z.string(),
+        op: z.string(),
+        value: z.string(),
+      }),
+    )
+    .optional()
+    .describe("Filter configuration"),
+});
+
+export const createAutomationSchema = z.object({
+  name: z.string().describe("Automation rule name"),
+  trigger_type: z.enum(["event", "schedule"]).describe("Trigger type"),
+  trigger_config: z
+    .object({
+      event: z
+        .string()
+        .optional()
+        .describe("Event name like 'deal_status_changed'"),
+      cron: z
+        .string()
+        .optional()
+        .describe("Cron expression like '0 9 * * 1'"),
+    })
+    .describe("Trigger configuration"),
+  actions: z
+    .array(
+      z.object({
+        type: z
+          .enum(["email", "ai", "crm", "slack", "web_search"])
+          .describe("Action type"),
+        config: z
+          .record(z.unknown())
+          .describe("Action-specific configuration"),
+      }),
+    )
+    .min(1)
+    .describe("List of actions to execute"),
+});
+
+export const generateReportSchema = z.object({
+  entity_type: z
+    .enum(["contacts", "companies", "deals", "tasks"])
+    .describe("Entity type to report on"),
+  report_type: z
+    .enum(["count_by_field", "sum_by_field", "timeline", "pipeline"])
+    .describe("Type of report"),
+  group_by: z.string().optional().describe("Field to group by"),
+  date_range: z
+    .string()
+    .optional()
+    .describe("Date range: '7d', '30d', '90d', '1y'"),
+});
+
+export const browseWebSchema = z.object({
+  url: z.string().url().describe("URL to navigate to"),
+  action: z
+    .enum(["extract_text", "extract_structured", "screenshot"])
+    .default("extract_text")
+    .describe("What to do on the page"),
+  selector: z
+    .string()
+    .optional()
+    .describe("CSS selector to target specific content"),
+  wait_for: z
+    .string()
+    .optional()
+    .describe("CSS selector to wait for before extracting"),
+  extract_schema: z
+    .record(z.string())
+    .optional()
+    .describe(
+      "For extract_structured: field name → CSS selector mapping",
+    ),
+});
+
 export const OPENAI_TOOL_DEFS = [
   {
     type: "function",
@@ -408,6 +586,12 @@ export const OPENAI_TOOL_DEFS = [
           first_name: { type: "string" },
           last_name: { type: "string" },
           email: { type: "string" },
+          custom_fields: {
+            type: "object",
+            description:
+              "Custom field values to set (e.g. {title: 'CEO', industry: 'Tech'})",
+            additionalProperties: true,
+          },
         },
         required: [],
       },
@@ -485,6 +669,12 @@ export const OPENAI_TOOL_DEFS = [
           name: { type: "string" },
           status: { type: "string", description: "New status/stage (stage and status mean the same thing)" },
           amount: { type: "number" },
+          custom_fields: {
+            type: "object",
+            description:
+              "Custom field values to set (e.g. {priority: 'high', source: 'referral'})",
+            additionalProperties: true,
+          },
         },
         required: [],
       },
@@ -559,6 +749,12 @@ export const OPENAI_TOOL_DEFS = [
           category: { type: "string" },
           domain: { type: "string" },
           description: { type: "string" },
+          custom_fields: {
+            type: "object",
+            description:
+              "Custom field values to set (e.g. {industry: 'SaaS', employee_count: 50})",
+            additionalProperties: true,
+          },
         },
         required: [],
       },
@@ -729,6 +925,351 @@ export const OPENAI_TOOL_DEFS = [
           text: { type: "string", description: "The note content" },
         },
         required: ["text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description:
+        "Search the web for information — company research, news, industry data, or general knowledge.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query" },
+          num_results: {
+            type: "number",
+            description: "Number of results (1-10)",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "enrich_record",
+      description:
+        "Automatically fill in missing contact or company details from web data. Search for the record first, then call this with the ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_type: {
+            type: "string",
+            enum: ["contact", "company"],
+            description: "Type of record to enrich",
+          },
+          entity_id: { type: "number", description: "Record ID" },
+          entity_name: {
+            type: "string",
+            description: "Record name to resolve",
+          },
+        },
+        required: ["entity_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_all",
+      description:
+        "Search across all entity types (contacts, companies, deals) simultaneously.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query across all entity types",
+          },
+          limit: {
+            type: "number",
+            description: "Results per entity type",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_record",
+      description:
+        "Delete a contact, company, or deal. Always search first to confirm the exact record, then delete.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_type: {
+            type: "string",
+            enum: ["contact", "company", "deal"],
+            description: "Entity type",
+          },
+          entity_id: { type: "number", description: "Record ID" },
+          entity_name: {
+            type: "string",
+            description: "Record name to resolve",
+          },
+        },
+        required: ["entity_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_update",
+      description:
+        "Update multiple records at once. Search first to get the IDs, then call this.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_type: {
+            type: "string",
+            enum: ["contact", "company", "deal"],
+            description: "Entity type",
+          },
+          ids: {
+            type: "array",
+            items: { type: "number" },
+            minItems: 1,
+            maxItems: 50,
+            description: "Record IDs to update",
+          },
+          updates: {
+            type: "object",
+            description:
+              "Fields to update (standard and custom_fields)",
+            additionalProperties: true,
+          },
+        },
+        required: ["entity_type", "ids", "updates"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_task",
+      description: "Delete a task by ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "Task ID to delete" },
+        },
+        required: ["id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "manage_view",
+      description:
+        "Create, update, or delete a filtered/sorted view for an object.",
+      parameters: {
+        type: "object",
+        properties: {
+          object_slug: {
+            type: "string",
+            description:
+              "Object slug (contacts, companies, deals, tasks)",
+          },
+          action: {
+            type: "string",
+            enum: ["create", "update", "delete"],
+            description: "View action",
+          },
+          view_name: { type: "string", description: "View name" },
+          view_id: {
+            type: "string",
+            description: "Existing view ID (for update/delete)",
+          },
+          sorts: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                field: { type: "string" },
+                direction: {
+                  type: "string",
+                  enum: ["asc", "desc"],
+                },
+              },
+              required: ["field", "direction"],
+            },
+            description: "Sort configuration",
+          },
+          filters: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                field: { type: "string" },
+                op: { type: "string" },
+                value: { type: "string" },
+              },
+              required: ["field", "op", "value"],
+            },
+            description: "Filter configuration",
+          },
+        },
+        required: ["object_slug", "action", "view_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_automation",
+      description:
+        "Create an automation rule with triggers and actions.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Automation rule name",
+          },
+          trigger_type: {
+            type: "string",
+            enum: ["event", "schedule"],
+            description: "Trigger type",
+          },
+          trigger_config: {
+            type: "object",
+            properties: {
+              event: {
+                type: "string",
+                description:
+                  "Event name like 'deal_status_changed'",
+              },
+              cron: {
+                type: "string",
+                description:
+                  "Cron expression like '0 9 * * 1'",
+              },
+            },
+            description: "Trigger configuration",
+          },
+          actions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: {
+                  type: "string",
+                  enum: [
+                    "email",
+                    "ai",
+                    "crm",
+                    "slack",
+                    "web_search",
+                  ],
+                  description: "Action type",
+                },
+                config: {
+                  type: "object",
+                  description:
+                    "Action-specific configuration",
+                  additionalProperties: true,
+                },
+              },
+              required: ["type", "config"],
+            },
+            minItems: 1,
+            description: "List of actions to execute",
+          },
+        },
+        required: [
+          "name",
+          "trigger_type",
+          "trigger_config",
+          "actions",
+        ],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_report",
+      description:
+        "Generate a data report or chart for contacts, companies, deals, or tasks.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_type: {
+            type: "string",
+            enum: ["contacts", "companies", "deals", "tasks"],
+            description: "Entity type to report on",
+          },
+          report_type: {
+            type: "string",
+            enum: [
+              "count_by_field",
+              "sum_by_field",
+              "timeline",
+              "pipeline",
+            ],
+            description: "Type of report",
+          },
+          group_by: {
+            type: "string",
+            description: "Field to group by",
+          },
+          date_range: {
+            type: "string",
+            description:
+              "Date range: '7d', '30d', '90d', '1y'",
+          },
+        },
+        required: ["entity_type", "report_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "browse_web",
+      description:
+        "Navigate to a URL and extract text or structured data for research.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "URL to navigate to",
+          },
+          action: {
+            type: "string",
+            enum: [
+              "extract_text",
+              "extract_structured",
+              "screenshot",
+            ],
+            description: "What to do on the page",
+          },
+          selector: {
+            type: "string",
+            description:
+              "CSS selector to target specific content",
+          },
+          wait_for: {
+            type: "string",
+            description:
+              "CSS selector to wait for before extracting",
+          },
+          extract_schema: {
+            type: "object",
+            description:
+              "For extract_structured: field name → CSS selector mapping",
+            additionalProperties: { type: "string" },
+          },
+        },
+        required: ["url"],
       },
     },
   },

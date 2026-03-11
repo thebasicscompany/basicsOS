@@ -1148,14 +1148,16 @@ export async function executeValidatedTool(
 
     const { entity_type, report_type, group_by, date_range } = parsed.data;
 
-    // Table lookup
-    const tableMap = {
+    // Table lookup — use `any` for the dynamic table reference since
+    // the union type doesn't let TS resolve common columns like createdAt
+    const tableMap: Record<string, unknown> = {
       contacts: schema.contacts,
       companies: schema.companies,
       deals: schema.deals,
       tasks: schema.tasks,
-    } as const;
-    const table = tableMap[entity_type];
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const table = tableMap[entity_type] as any;
     if (!table) return { error: `Unknown entity type: ${entity_type}` };
 
     // Date filter
@@ -1217,7 +1219,7 @@ export async function executeValidatedTool(
         };
       }
 
-      const col = (table as Record<string, unknown>)[group_by];
+      const col = table[group_by];
       if (!col) {
         return { error: `Field "${group_by}" not found on ${entity_type}` };
       }

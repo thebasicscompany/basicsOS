@@ -32,6 +32,7 @@ async function main() {
     env.BETTER_AUTH_URL,
     env.BETTER_AUTH_SECRET,
     allowedOrigins,
+    env,
   );
 
   const server = serve(

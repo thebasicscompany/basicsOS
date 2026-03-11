@@ -31,5 +31,5 @@ export function jsonError(
     ...(code && { code }),
     ...(details !== undefined && { details }),
   };
-  return c.json(body, status);
+  return c.json(body, { status } as ResponseInit);
 }

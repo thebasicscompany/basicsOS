@@ -22,6 +22,7 @@ import {
   createContactSchema,
   createDealSchema,
   createNoteSchema,
+  createObjectSchema,
   createTaskSchema,
   deleteRecordSchema,
   deleteTaskSchema,
@@ -1321,6 +1322,92 @@ export async function executeValidatedTool(
 
   if (toolName === "browse_web") {
     return "Browser automation coming soon.";
+  }
+
+  if (toolName === "create_object") {
+    const parsed = createObjectSchema.safeParse(rawArgs);
+    if (!parsed.success)
+      return { error: "Invalid arguments", details: parsed.error.flatten() };
+
+    const { name, slug, singular_name, icon, fields } = parsed.data;
+
+    // Check max custom objects (5 per org)
+    const existingObjects = await db
+      .select()
+      .from(schema.objectConfig)
+      .where(
+        and(
+          eq(schema.objectConfig.organizationId, organizationId),
+          eq(schema.objectConfig.type, "custom"),
+        ),
+      );
+    if (existingObjects.length >= 5) {
+      return {
+        error:
+          "Maximum of 5 custom objects per organization. Delete an existing custom object first.",
+      };
+    }
+
+    // Check slug uniqueness
+    const existingSlug = await db
+      .select()
+      .from(schema.objectConfig)
+      .where(
+        and(
+          eq(schema.objectConfig.organizationId, organizationId),
+          eq(schema.objectConfig.slug, slug),
+        ),
+      )
+      .limit(1);
+    if (existingSlug.length > 0) {
+      return { error: `An object with slug "${slug}" already exists.` };
+    }
+
+    // Create the physical table
+    const tableName = `custom_${slug.replace(/-/g, "_")}`;
+    await db.execute(
+      sql.raw(`
+      CREATE TABLE IF NOT EXISTS "${tableName}" (
+        id BIGSERIAL PRIMARY KEY,
+        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        name VARCHAR(255),
+        custom_fields JSONB DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      )
+    `),
+    );
+
+    // Insert object_config row
+    const [objConfig] = await db
+      .insert(schema.objectConfig)
+      .values({
+        organizationId,
+        slug,
+        singularName: singular_name,
+        pluralName: name,
+        tableName,
+        icon: icon ?? "Box",
+        type: "custom",
+      })
+      .returning();
+
+    if (!objConfig) return "Failed to create object configuration.";
+
+    // Insert custom_field_defs for each field
+    for (const field of fields) {
+      await db.insert(schema.customFieldDefs).values({
+        organizationId,
+        resource: slug,
+        name: field.key,
+        label: field.name,
+        fieldType: field.type,
+        options: field.options ? field.options.map((opt) => opt) : null,
+        position: fields.indexOf(field),
+      });
+    }
+
+    return `Created custom object "${name}" (slug: ${slug}) with ${fields.length} fields. The object is now available in the CRM sidebar.`;
   }
 
   return { error: `Unknown tool: ${toolName}` };

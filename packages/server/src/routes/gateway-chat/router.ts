@@ -96,7 +96,10 @@ function detectFastPath(queryText: string): ChatRoutingDecision | null {
   // Browse intent
   const hasBrowse = /\b(browse|visit|scrape|extract from)\b/.test(lower) && /\b(url|page|website|site)\b/.test(lower);
 
-  if (hasEnrichment || hasDelete || hasWebSearch || hasReport || hasViewMgmt || hasAutomation || hasBrowse) {
+  // Custom object creation intent
+  const hasObjectCreate = /\b(create|make|build|set up)\b/i.test(lower) && /\b(object|entity type|record type|custom object)\b/i.test(lower);
+
+  if (hasEnrichment || hasDelete || hasWebSearch || hasReport || hasViewMgmt || hasAutomation || hasBrowse || hasObjectCreate) {
     return { mode: "tool_call", shouldGenerateTitle: true };
   }
 

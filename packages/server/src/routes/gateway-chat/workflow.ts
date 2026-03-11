@@ -30,6 +30,7 @@ const TOOL_NAMES = [
   "create_automation",
   "generate_report",
   "browse_web",
+  "create_object",
 ] as const;
 
 const LOOKUP_TOOLS = new Set([
@@ -141,6 +142,8 @@ export function shouldPlanToolWorkflow(queryText: string): boolean {
   if (/\b(report|chart|graph|breakdown|summary|analytics|visualize)\b/i.test(queryText)) return true;
   // Browse web patterns
   if (/\b(browse|visit|open|scrape|extract from|check the page|look at the website)\b/i.test(queryText)) return true;
+  // Custom object creation patterns
+  if (/\b(create|make|build|set up)\b/i.test(queryText) && /\b(object|entity|record type)\b/i.test(queryText)) return true;
 
   return (
     isUpdate ||

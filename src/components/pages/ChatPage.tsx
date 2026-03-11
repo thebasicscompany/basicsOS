@@ -1,18 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import type { Message } from "@ai-sdk/react";
+import { FileTextIcon, PaperclipIcon, XIcon } from "@phosphor-icons/react";
 import { usePageTitle } from "@/contexts/page-header";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { ToolSteps, type ToolStep } from "@/components/ai-elements/tool-steps";
-import {
-  Attachment,
-  AttachmentPreview,
-  AttachmentRemove,
-  Attachments,
-} from "@/components/ai-elements/attachments";
 import {
   Conversation,
   ConversationContent,
@@ -26,11 +21,8 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
   PromptInputBody,
+  PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
   type PromptInputMessage,
@@ -39,7 +31,6 @@ import {
   PromptInputTools,
   PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
-import { usePromptInputAttachments } from "@/components/ai-elements/prompt-input-context";
 import { Suggestion } from "@/components/ai-elements/suggestion";
 import { useGatewayChat } from "@/hooks/useGatewayChat";
 import { useGateway } from "@/hooks/useGateway";
@@ -99,7 +90,9 @@ function rewriteCrmLinks(text: string): string {
 }
 
 function extractToolSteps(message: { annotations?: unknown[] }): ToolStep[] {
-  const annotations = (message as { annotations?: Array<Record<string, unknown>> }).annotations;
+  const annotations = (
+    message as { annotations?: Array<Record<string, unknown>> }
+  ).annotations;
   if (!annotations) return [];
   const steps: ToolStep[] = [];
   for (const ann of annotations) {
@@ -196,22 +189,98 @@ function EntityAwareMessageResponse({
   );
 }
 
-function PromptInputAttachmentsDisplay() {
-  const attachments = usePromptInputAttachments();
-  if (attachments.files.length === 0) return null;
+interface DataFileAttachment {
+  name: string;
+  content: string;
+}
+
+const DATA_FILE_ACCEPT = ".csv,.json,.txt";
+const DATA_FILE_MAX_SIZE = 512 * 1024; // 512KB
+const DATA_FILE_CONTENT_LIMIT = 10_000; // chars
+
+function DataFileChip({
+  attachment,
+  onRemove,
+}: {
+  attachment: DataFileAttachment;
+  onRemove: () => void;
+}) {
   return (
-    <Attachments variant="inline">
-      {attachments.files.map((attachment) => (
-        <Attachment
-          data={attachment}
-          key={attachment.id}
-          onRemove={() => attachments.remove(attachment.id)}
-        >
-          <AttachmentPreview />
-          <AttachmentRemove />
-        </Attachment>
-      ))}
-    </Attachments>
+    <div className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 py-1 pl-2 pr-1 text-xs font-medium">
+      <FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="max-w-[200px] truncate">{attachment.name}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="ml-0.5 rounded-full p-0.5 hover:bg-muted"
+        aria-label="Remove file"
+      >
+        <XIcon className="size-3" />
+      </button>
+    </div>
+  );
+}
+
+function DataFileAttachButton({
+  onAttach,
+}: {
+  onAttach: (file: DataFileAttachment) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > DATA_FILE_MAX_SIZE) {
+        toast.error("File too large. Maximum size is 512KB.");
+        e.target.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        let content = reader.result as string;
+
+        // For JSON files, try to format nicely
+        if (file.name.endsWith(".json")) {
+          try {
+            content = JSON.stringify(JSON.parse(content), null, 2);
+          } catch {
+            // Keep as-is if not valid JSON
+          }
+        }
+
+        onAttach({
+          name: file.name,
+          content: content.slice(0, DATA_FILE_CONTENT_LIMIT),
+        });
+      };
+      reader.readAsText(file);
+      // Reset input so same file can be re-selected
+      e.target.value = "";
+    },
+    [onAttach],
+  );
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={DATA_FILE_ACCEPT}
+        className="hidden"
+        onChange={handleFileSelect}
+        aria-label="Attach data file"
+      />
+      <PromptInputButton
+        tooltip="Attach file (.csv, .json, .txt)"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <PaperclipIcon className="size-4" />
+      </PromptInputButton>
+    </>
   );
 }
 
@@ -251,6 +320,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: savedMessages } = useThreadMessages(threadId);
+  const [dataFile, setDataFile] = useState<DataFileAttachment | null>(null);
 
   const initialMessages = useMemo<Message[] | undefined>(() => {
     if (!savedMessages || savedMessages.length === 0) return undefined;
@@ -294,19 +364,21 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
         toast.error("Add your Basics API key in Settings to use the assistant");
         return;
       }
-      const hasText = Boolean(message.text?.trim());
-      const hasAttachments = Boolean(message.files?.length);
-      if (!(hasText || hasAttachments)) return;
+      const userText = message.text?.trim() || "";
+      const hasText = Boolean(userText);
+      const hasFile = Boolean(dataFile);
+      if (!hasText && !hasFile) return;
 
-      const text = message.text?.trim() || "Sent with attachments";
-      if (hasAttachments) {
-        toast.success("Files attached", {
-          description: `${message.files!.length} file(s) attached. Note: The assistant currently supports text only.`,
-        });
+      let content = userText;
+      if (dataFile) {
+        const filePrefix = `[Attached file: ${dataFile.name}]\n${dataFile.content}\n\n`;
+        content = filePrefix + content;
+        setDataFile(null);
       }
-      await append({ role: "user", content: text });
+
+      await append({ role: "user", content });
     },
-    [append, hasKey],
+    [append, hasKey, dataFile],
   );
 
   const handleSuggestionClick = useCallback(
@@ -340,21 +412,21 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
               </p>
             </div>
             <div className="w-full">
-              <PromptInput globalDrop multiple onSubmit={handleSubmit}>
-                <PromptInputHeader>
-                  <PromptInputAttachmentsDisplay />
-                </PromptInputHeader>
+              <PromptInput onSubmit={handleSubmit}>
+                {dataFile && (
+                  <PromptInputHeader>
+                    <DataFileChip
+                      attachment={dataFile}
+                      onRemove={() => setDataFile(null)}
+                    />
+                  </PromptInputHeader>
+                )}
                 <PromptInputBody>
                   <PromptInputTextarea placeholder="Ask anything about your operating system..." />
                 </PromptInputBody>
                 <PromptInputFooter>
                   <PromptInputTools>
-                    <PromptInputActionMenu>
-                      <PromptInputActionMenuTrigger />
-                      <PromptInputActionMenuContent>
-                        <PromptInputActionAddAttachments />
-                      </PromptInputActionMenuContent>
-                    </PromptInputActionMenu>
+                    <DataFileAttachButton onAttach={setDataFile} />
                   </PromptInputTools>
                   <PromptInputSubmit status={status} onStop={stop} />
                 </PromptInputFooter>
@@ -383,7 +455,8 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
         <Conversation className="min-h-0 flex-1">
           <ConversationContent className="pb-2">
             {displayMessages.map((m) => {
-              const toolSteps = m.role === "assistant" ? extractToolSteps(m) : [];
+              const toolSteps =
+                m.role === "assistant" ? extractToolSteps(m) : [];
               return (
                 <MessageEl key={m.id} from={m.role as "user" | "assistant"}>
                   <MessageContent>
@@ -415,21 +488,21 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
           <ConversationScrollButton />
         </Conversation>
         <div className="shrink-0 px-4 pb-6 pt-2">
-          <PromptInput globalDrop multiple onSubmit={handleSubmit}>
-            <PromptInputHeader>
-              <PromptInputAttachmentsDisplay />
-            </PromptInputHeader>
+          <PromptInput onSubmit={handleSubmit}>
+            {dataFile && (
+              <PromptInputHeader>
+                <DataFileChip
+                  attachment={dataFile}
+                  onRemove={() => setDataFile(null)}
+                />
+              </PromptInputHeader>
+            )}
             <PromptInputBody>
               <PromptInputTextarea placeholder="Ask anything about your operating system..." />
             </PromptInputBody>
             <PromptInputFooter>
               <PromptInputTools>
-                <PromptInputActionMenu>
-                  <PromptInputActionMenuTrigger />
-                  <PromptInputActionMenuContent>
-                    <PromptInputActionAddAttachments />
-                  </PromptInputActionMenuContent>
-                </PromptInputActionMenu>
+                <DataFileAttachButton onAttach={setDataFile} />
               </PromptInputTools>
               <PromptInputSubmit
                 status={status}

@@ -18,6 +18,7 @@ import { useFlashMessage } from "./lib/use-flash-message";
 import { useAIResponse } from "./lib/use-ai-response";
 import { useActivationHandler } from "./lib/use-activation-handler";
 import { useMeetingControls } from "./lib/use-meeting-controls";
+import { saveMeetingNotes } from "./api";
 import {
   ACTIVE_HEIGHT,
   CONTENT_ENTER,
@@ -69,6 +70,16 @@ export const OverlayApp = () => {
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamAbortRef = useRef(false);
 
+  // Notepad state
+  const [notepadOpen, setNotepadOpen] = useState(false);
+  const [notepadLocked, setNotepadLocked] = useState(false);
+  const [meetingNotes, setMeetingNotes] = useState("");
+  const notesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meetingNotesRef = useRef(meetingNotes);
+  meetingNotesRef.current = meetingNotes;
+  // Track last known meetingId so we can flush notes even after meetingId is cleared
+  const lastMeetingIdRef = useRef<string | null>(null);
+
   const flash = useFlashMessage();
   const handleRecorderError = useCallback(
     (msg: string) => flash.show(msg, 3000),
@@ -83,6 +94,7 @@ export const OverlayApp = () => {
 
   const pillRef = useRef(pill);
   pillRef.current = pill;
+  if (pill.meetingId) lastMeetingIdRef.current = pill.meetingId;
   const speechRef = useRef<SpeechRecognitionState | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -122,6 +134,7 @@ export const OverlayApp = () => {
     pillRef,
     meetingRecorderRef,
     showFlash: flash.show,
+    getNotesRef: () => meetingNotesRef.current,
   });
 
   useAIResponse(
@@ -231,6 +244,105 @@ export const OverlayApp = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Flush notes save and reset notepad when meeting ends
+  useEffect(() => {
+    if (!pill.meetingActive) {
+      // Meeting just ended — flush any pending save
+      if (notesSaveTimerRef.current) {
+        clearTimeout(notesSaveTimerRef.current);
+        notesSaveTimerRef.current = null;
+      }
+      // Use lastMeetingIdRef since pill.meetingId is already null by now
+      const mid = lastMeetingIdRef.current;
+      if (meetingNotesRef.current && mid) {
+        saveMeetingNotes(mid, meetingNotesRef.current).catch(() => {});
+      }
+      setNotepadOpen(false);
+      setNotepadLocked(false);
+      setMeetingNotes("");
+      lastMeetingIdRef.current = null;
+    }
+  }, [pill.meetingActive]);
+
+  const debouncedSaveNotes = useCallback(
+    (text: string) => {
+      if (notesSaveTimerRef.current) clearTimeout(notesSaveTimerRef.current);
+      notesSaveTimerRef.current = setTimeout(() => {
+        const mid = pillRef.current.meetingId ?? lastMeetingIdRef.current;
+        if (mid && text) {
+          saveMeetingNotes(mid, text).catch(() => {});
+        }
+      }, 1500);
+    },
+    [],
+  );
+
+  const handleNotesChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const text = e.target.value;
+      setMeetingNotes(text);
+      debouncedSaveNotes(text);
+    },
+    [debouncedSaveNotes],
+  );
+
+  const handleNotesBlur = useCallback(() => {
+    // Immediate save on blur
+    if (notesSaveTimerRef.current) {
+      clearTimeout(notesSaveTimerRef.current);
+      notesSaveTimerRef.current = null;
+    }
+    const mid = pillRef.current.meetingId ?? lastMeetingIdRef.current;
+    if (mid && meetingNotesRef.current) {
+      saveMeetingNotes(mid, meetingNotesRef.current).catch(() => {});
+    }
+  }, []);
+
+  // Auto-insert bullet points on Enter
+  const handleNotesKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter") {
+        const textarea = e.currentTarget;
+        const { selectionStart, value } = textarea;
+        const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+        const currentLine = value.slice(lineStart, selectionStart);
+
+        // If current line starts with "• " or "- ", auto-continue the bullet
+        const bulletMatch = currentLine.match(/^([•-]\s)/);
+        if (bulletMatch) {
+          // If the line is just a bullet with no content, remove it instead
+          if (currentLine.trim() === bulletMatch[1].trim()) {
+            e.preventDefault();
+            const newValue =
+              value.slice(0, lineStart) + "\n" + value.slice(selectionStart);
+            setMeetingNotes(newValue);
+            debouncedSaveNotes(newValue);
+            // Set cursor position after React re-render
+            requestAnimationFrame(() => {
+              textarea.selectionStart = textarea.selectionEnd = lineStart + 1;
+            });
+            return;
+          }
+          e.preventDefault();
+          const bullet = bulletMatch[1];
+          const insertion = "\n" + bullet;
+          const newValue =
+            value.slice(0, selectionStart) +
+            insertion +
+            value.slice(selectionStart);
+          setMeetingNotes(newValue);
+          debouncedSaveNotes(newValue);
+          requestAnimationFrame(() => {
+            textarea.selectionStart = textarea.selectionEnd =
+              selectionStart + insertion.length;
+          });
+        }
+      }
+      e.stopPropagation();
+    },
+    [debouncedSaveNotes],
+  );
+
   // Measure response content height using ResizeObserver for reliable layout measurement
   useEffect(() => {
     const el = measureRef.current;
@@ -256,6 +368,9 @@ export const OverlayApp = () => {
   // Response layout: title(24) + bodyGap(8) + body(responseContentH) + doneGap(6) + done(~14) + bottomPad(12)
   const RESPONSE_EXTRA_H = 24 + 8 + 6 + 14 + 12;
 
+  const NOTEPAD_AREA_H = 120; // textarea area height
+  const NOTEPAD_GAP = 4;
+
   let pillHeight: number;
   const responseContentH = Math.min(
     Math.max(measuredHeight, 40), // at least 40px while measuring
@@ -263,6 +378,9 @@ export const OverlayApp = () => {
   );
   if (pill.state === "idle" && showLastResponse) {
     pillHeight = topPad + RESPONSE_EXTRA_H + responseContentH;
+  } else if (pill.state === "idle" && pill.meetingActive && notepadOpen) {
+    // menuBar + gap + textarea + bottom padding
+    pillHeight = menuBarHeight + NOTEPAD_GAP + NOTEPAD_AREA_H + 10;
   } else if (pill.state === "idle") {
     pillHeight = menuBarHeight;
   } else if (pill.state === "response") {
@@ -331,11 +449,22 @@ export const OverlayApp = () => {
     if (pillRef.current.state === "idle" && pillRef.current.lastResponseTitle) {
       setShowLastResponse(true);
     }
+    // Expand notepad on hover during meeting
+    if (
+      pillRef.current.state === "idle" &&
+      pillRef.current.meetingActive
+    ) {
+      setNotepadOpen(true);
+    }
   }, [clearDismissTimer]);
 
   const handleMouseLeave = useCallback(() => {
     setIgnoreMouse(true);
     setShowLastResponse(false);
+    // Collapse notepad if not locked
+    if (!notepadLocked) {
+      setNotepadOpen(false);
+    }
     // Restart dismiss timer if still in response state
     if (pillRef.current.state === "response") {
       clearDismissTimer();
@@ -344,11 +473,17 @@ export const OverlayApp = () => {
         settingsRef.current.behavior.autoDismissMs,
       );
     }
-  }, [clearDismissTimer]);
+  }, [clearDismissTimer, notepadLocked]);
 
   const handlePillClick = useCallback(() => {
     const cur = pillRef.current;
     const s = speechRef.current;
+    if (cur.state === "idle" && cur.meetingActive) {
+      // Any click during meeting → open + lock notepad
+      setNotepadOpen(true);
+      setNotepadLocked(true);
+      return;
+    }
     if (cur.state === "idle") {
       if (!s) return;
       dispatch({ type: "ACTIVATE", mode: "dictation" as InteractionMode });
@@ -413,7 +548,12 @@ export const OverlayApp = () => {
         style={{
           width: "100%",
           background: "#000",
-          borderRadius: pill.state === "idle" ? "0 0 8px 8px" : "0 0 16px 16px",
+          borderRadius:
+            pill.state === "idle" && notepadOpen
+              ? "0 0 14px 14px"
+              : pill.state === "idle"
+                ? "0 0 8px 8px"
+                : "0 0 16px 16px",
           overflow: "hidden",
           position: "relative",
           cursor:
@@ -429,39 +569,131 @@ export const OverlayApp = () => {
           }}
         >
           {pill.state === "idle" && !flash.message && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                height: menuBarHeight,
-                gap: 6,
-              }}
-            >
-              <CompanyLogo />
-              {pill.meetingActive && (
-                <>
-                  <motion.div
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  height: menuBarHeight,
+                  gap: 6,
+                }}
+              >
+                <CompanyLogo />
+                {pill.meetingActive && (
+                  <>
+                    <motion.div
+                      animate={{ opacity: [1, 0.3, 1] }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <MeetingTimer startedAt={pill.meetingStartedAt} />
+                  </>
+                )}
+                {/* spacer + toggle */}
+                <div style={{ marginLeft: "auto" }} />
+                {notepadOpen && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (notepadLocked) {
+                        setNotepadLocked(false);
+                        setNotepadOpen(false);
+                      } else {
+                        setNotepadLocked(true);
+                      }
                     }}
                     style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "#ef4444",
-                      flexShrink: 0,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 20,
+                      height: 20,
+                      borderRadius: 5,
+                      background: notepadLocked
+                        ? "rgba(255,255,255,0.12)"
+                        : "transparent",
+                      transition: "all 0.15s ease",
+                    }}
+                    title={notepadLocked ? "Close notepad" : "Keep notepad open"}
+                  >
+                    {notepadLocked ? (
+                      // X icon to close
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 2L8 8M8 2L2 8" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    ) : (
+                      // Pin dot to lock
+                      <div
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          background: "rgba(255,255,255,0.3)",
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+              {notepadOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: NOTEPAD_AREA_H }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  style={{ marginTop: NOTEPAD_GAP }}
+                >
+                  {/* Subtle separator line */}
+                  <div
+                    style={{
+                      height: 1,
+                      background:
+                        "linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.06) 30%, rgba(255,255,255,0.06) 70%, transparent 95%)",
+                      marginBottom: 6,
                     }}
                   />
-                  <MeetingTimer startedAt={pill.meetingStartedAt} />
-                </>
+                  <textarea
+                    value={meetingNotes}
+                    onChange={handleNotesChange}
+                    onBlur={handleNotesBlur}
+                    onKeyDown={handleNotesKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    placeholder="- Key points, decisions, action items..."
+                    autoFocus={notepadLocked}
+                    style={{
+                      width: "100%",
+                      height: NOTEPAD_AREA_H - 7, // minus separator
+                      background: "transparent",
+                      border: "none",
+                      color: "rgba(255,255,255,0.85)",
+                      fontSize: 12.5,
+                      lineHeight: "1.65",
+                      padding: "4px 2px",
+                      resize: "none",
+                      outline: "none",
+                      fontFamily:
+                        '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+                      letterSpacing: "-0.01em",
+                      boxSizing: "border-box",
+                      caretColor: "rgba(255,255,255,0.6)",
+                    }}
+                  />
+                </motion.div>
               )}
-              {/* spacer to keep layout balanced */}
-              <div style={{ marginLeft: "auto" }} />
-            </div>
+            </>
           )}
 
           {pill.state === "idle" && flash.message && (
@@ -469,21 +701,21 @@ export const OverlayApp = () => {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "flex-start",
+                justifyContent: "flex-end",
                 height: menuBarHeight,
               }}
             >
-              <motion.span
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
+              <span
                 style={{
-                  color: "#4ade80",
-                  fontSize: 12.5,
-                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.5)",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  opacity: flash.fading ? 0 : 1,
+                  transition: "opacity 0.4s ease-out",
                 }}
               >
                 {flash.message}
-              </motion.span>
+              </span>
             </div>
           )}
 

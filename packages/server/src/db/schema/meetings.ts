@@ -30,6 +30,7 @@ export const meetings = pgTable(
     endedAt: timestamp("ended_at", { withTimezone: true }),
     duration: integer("duration"),
     status: varchar("status", { length: 32 }).notNull().default("recording"),
+    notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

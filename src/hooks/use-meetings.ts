@@ -10,6 +10,7 @@ export interface Meeting {
   endedAt: string | null;
   duration: number | null;
   status: string;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +29,9 @@ export interface MeetingSummary {
   summaryJson: {
     title?: string;
     note?: string;
+    decisions?: string[];
+    actionItems?: string[];
+    followUps?: string[];
   } | null;
   createdAt: string;
 }

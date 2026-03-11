@@ -1,9 +1,13 @@
 import { useCallback, useRef } from "react";
-import { FLASH_MEDIUM_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
+import { FLASH_SHORT_MS, FLASH_MEDIUM_MS, FLASH_LONG_MS } from "@/shared-overlay/constants";
 import { createOverlayLogger } from "./overlay-logger";
 import type { PillAction, PillContext } from "./notch-pill-state";
 import type { MeetingRecorderActions } from "@/overlay/meeting-recorder";
-import { uploadMeetingTranscript, processMeeting } from "@/overlay/api";
+import {
+  uploadMeetingTranscript,
+  processMeeting,
+  saveMeetingNotes,
+} from "@/overlay/api";
 
 const log = createOverlayLogger("meeting-controls");
 
@@ -21,8 +25,9 @@ export const useMeetingControls = (deps: {
   pillRef: { current: PillContext };
   meetingRecorderRef: { current: MeetingRecorderActions };
   showFlash: (msg: string, durationMs: number) => void;
+  getNotesRef?: () => string;
 }): MeetingHandlers => {
-  const { dispatch, pillRef, meetingRecorderRef, showFlash } = deps;
+  const { dispatch, pillRef, meetingRecorderRef, showFlash, getNotesRef } = deps;
 
   /** Tracks the in-progress startRecording promise so stop can await it */
   const startPromiseRef = useRef<Promise<unknown>>(Promise.resolve());
@@ -48,7 +53,7 @@ export const useMeetingControls = (deps: {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error(`[MEETING:CTRL:HN] startMeeting failed err=${msg} t=${Date.now()}`);
-          showFlash("Meeting failed: " + msg, FLASH_LONG_MS);
+          showFlash("Failed to start", FLASH_MEDIUM_MS);
         }
       })();
     }
@@ -58,6 +63,8 @@ export const useMeetingControls = (deps: {
     (meetingId: string) => {
       const t = Date.now();
       log.info(`[MEETING:CTRL:HN] handleMeetingStarted entry meetingId=${meetingId} t=${t}`);
+      // Show "Recording" immediately, before mic setup
+      showFlash("Recording", FLASH_MEDIUM_MS);
       dispatch({
         type: "MEETING_UPDATE",
         active: true,
@@ -71,11 +78,10 @@ export const useMeetingControls = (deps: {
           const result = await meetingRecorderRef.current.startRecording(meetingId);
           const mode = result.micOnly ? "mic only" : "mic + system audio";
           log.info(`[MEETING:CTRL:HN] startRecording success mode=${mode} micOnly=${result.micOnly} t=${Date.now()}`);
-          showFlash(`Recording (${mode})`, FLASH_LONG_MS);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error(`[MEETING:CTRL:HN] startRecording failed err=${msg} t=${Date.now()}`);
-          showFlash("Recording failed", FLASH_LONG_MS);
+          showFlash("Mic error", FLASH_MEDIUM_MS);
           window.electronAPI?.stopMeeting?.().catch(() => undefined);
         }
       })();
@@ -96,11 +102,11 @@ export const useMeetingControls = (deps: {
         meetingId: null,
         startedAt: null,
       });
-      showFlash("Ending meeting...", 5000);
+      // Single persistent message until fully done
+      showFlash("Saving...", 15_000);
 
       void (async () => {
         // Wait for startRecording to finish (or be aborted) before stopping
-        // This prevents the race where stop runs before setup completes
         await startPromiseRef.current.catch(() => undefined);
         log.info(`[MEETING:CTRL:HN] stopRecording before call t=${Date.now()}`);
         const result = await meetingRecorderRef.current.stopRecording();
@@ -111,28 +117,37 @@ export const useMeetingControls = (deps: {
         log.info("[MEETING:CTRL:HN] transcript preview (first 200 chars):", result.transcript?.slice(0, 200));
         log.info("[MEETING:CTRL:HN] transcript preview (last 200 chars):", result.transcript?.slice(-200));
 
+        // Flush meeting notes before transcript upload
+        if (result.meetingId && getNotesRef) {
+          const notes = getNotesRef();
+          if (notes.trim()) {
+            log.info(`[MEETING:CTRL:HN] saveMeetingNotes before call meetingId=${result.meetingId} notesLen=${notes.length} t=${Date.now()}`);
+            await saveMeetingNotes(result.meetingId, notes).catch((err) => {
+              log.error(`[MEETING:CTRL:HN] saveMeetingNotes failed err=${err instanceof Error ? err.message : err} t=${Date.now()}`);
+            });
+          }
+        }
+
         if (result.meetingId && (result.transcript || result.segments?.length)) {
           try {
-            showFlash("Processing meeting...", 5000);
             log.info(`[MEETING:CTRL:HN] uploadMeetingTranscript before call meetingId=${result.meetingId} transcriptLen=${transcriptLen} t=${Date.now()}`);
             await uploadMeetingTranscript(result.meetingId, result.transcript);
             log.info(`[MEETING:CTRL:HN] uploadMeetingTranscript success t=${Date.now()}`);
             log.info(`[MEETING:CTRL:HN] processMeeting before call meetingId=${result.meetingId} t=${Date.now()}`);
             await processMeeting(result.meetingId);
             log.info(`[MEETING:CTRL:HN] processMeeting success t=${Date.now()}`);
-            showFlash("Meeting saved", FLASH_MEDIUM_MS);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             log.error(`[MEETING:CTRL:HN] upload/process failed meetingId=${result.meetingId} err=${msg} t=${Date.now()}`);
-            showFlash("Meeting saved (summary failed)", FLASH_MEDIUM_MS);
           }
+          showFlash("Saved", FLASH_MEDIUM_MS);
         } else {
           log.warn(`[MEETING:CTRL:HN] no transcript to upload meetingId=${result.meetingId} transcriptLen=${transcriptLen} segmentCount=${segmentCount} t=${Date.now()}`);
-          showFlash("Meeting ended", FLASH_MEDIUM_MS);
+          showFlash("Saved", FLASH_SHORT_MS);
         }
       })();
     },
-    [dispatch, meetingRecorderRef, showFlash, pillRef]
+    [dispatch, meetingRecorderRef, showFlash, pillRef, getNotesRef]
   );
 
   const handleSystemAudioTranscript = useCallback(
@@ -171,7 +186,7 @@ export const useMeetingControls = (deps: {
           meetingId: persisted.meetingId,
           startedAt: persisted.startedAt,
         });
-        showFlash("Meeting resumed", FLASH_MEDIUM_MS);
+        showFlash("Resumed", FLASH_SHORT_MS);
       } else {
         log.info(`[MEETING:CTRL:HN] restorePersistedMeeting no persisted meeting found t=${Date.now()}`);
       }

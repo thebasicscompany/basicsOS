@@ -197,6 +197,24 @@ export const uploadMeetingTranscript = async (
   );
 };
 
+/** Save meeting notes (inline notepad). */
+export const saveMeetingNotes = async (
+  meetingId: string,
+  notes: string,
+): Promise<void> => {
+  console.warn(`[MEETING:NOTES] saving meetingId=${meetingId} notesLen=${notes.length} t=${Date.now()}`);
+  await fetchWithSession(
+    `/api/meetings/${meetingId}/notes`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes }),
+    },
+    { retries: 1 },
+  );
+  console.warn(`[MEETING:NOTES] saved successfully meetingId=${meetingId} t=${Date.now()}`);
+};
+
 /** Trigger LLM summarization for a completed meeting. */
 export const processMeeting = async (meetingId: string): Promise<void> => {
   await fetchWithSession(

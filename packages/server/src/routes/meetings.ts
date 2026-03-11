@@ -146,16 +146,12 @@ export function createMeetingsRoutes(
       text?: string;
     }>();
 
-    console.warn(`[meetings] POST /${meetingId}/transcript — body.segments=${body.segments?.length ?? 0}, body.text length=${body.text?.length ?? 0}`);
-    if (body.text) {
-      const lines = body.text.split("\n").filter((l) => l.trim());
-      console.warn(`[meetings] Text transcript has ${lines.length} lines. First 3:`, lines.slice(0, 3));
-      console.warn(`[meetings] Last 3:`, lines.slice(-3));
-    }
+    const bodyKeys = Object.keys(body);
+    console.warn(`[MEETING:WS:HN] transcript-upload meetingId=${meetingId} bodyKeys=${bodyKeys.join(",")} segmentCount=${body.segments?.length ?? 0} textLength=${body.text?.length ?? 0} t=${Date.now()}`);
 
     // Support both structured segments and plain text
     if (body.segments && body.segments.length > 0) {
-      console.warn(`[meetings] Saving ${body.segments.length} structured segments`);
+      console.warn(`[MEETING:WS:HN] transcript-insert-structured meetingId=${meetingId} segmentCount=${body.segments.length} t=${Date.now()}`);
       await db.insert(schema.meetingTranscripts).values(
         body.segments.map((seg) => ({
           meetingId,
@@ -165,6 +161,7 @@ export function createMeetingsRoutes(
           organizationId: crmUser.organizationId,
         })),
       );
+      console.warn(`[MEETING:WS:HN] transcript-insert-success meetingId=${meetingId} segmentCount=${body.segments.length} t=${Date.now()}`);
     } else if (body.text) {
       // Parse plain text transcript into segments
       const lines = body.text.split("\n").filter((l) => l.trim());
@@ -178,13 +175,13 @@ export function createMeetingsRoutes(
           organizationId: crmUser.organizationId,
         };
       });
-      console.warn(`[meetings] Parsed ${segments.length} segments from text. Saving to DB...`);
+      console.warn(`[MEETING:WS:HN] transcript-parsed-text meetingId=${meetingId} parsedSegments=${segments.length} t=${Date.now()}`);
       if (segments.length > 0) {
         await db.insert(schema.meetingTranscripts).values(segments);
       }
-      console.warn(`[meetings] Saved ${segments.length} segments to DB`);
+      console.warn(`[MEETING:WS:HN] transcript-insert-success meetingId=${meetingId} segmentCount=${segments.length} t=${Date.now()}`);
     } else {
-      console.warn(`[meetings] WARNING: No transcript data received!`);
+      console.warn(`[MEETING:WS:HN] transcript-empty meetingId=${meetingId} t=${Date.now()}`);
     }
 
     // Update meeting status and end time
@@ -205,6 +202,7 @@ export function createMeetingsRoutes(
       })
       .where(eq(schema.meetings.id, meetingId));
 
+    console.warn(`[MEETING:WS:HN] transcript-status-updated meetingId=${meetingId} status=processing duration=${duration} t=${Date.now()}`);
     return c.json({ ok: true });
   });
 
@@ -229,6 +227,8 @@ export function createMeetingsRoutes(
 
     if (!meeting) return c.json({ error: "Meeting not found" }, 404);
 
+    console.warn(`[MEETING:WS:HN] process-start meetingId=${meetingId} t=${Date.now()}`);
+
     // Get transcript text
     const transcripts = await db
       .select()
@@ -236,11 +236,16 @@ export function createMeetingsRoutes(
       .where(eq(schema.meetingTranscripts.meetingId, meetingId))
       .orderBy(schema.meetingTranscripts.timestampMs);
 
+    console.warn(`[MEETING:WS:HN] process-transcripts-fetched meetingId=${meetingId} segmentCount=${transcripts.length} t=${Date.now()}`);
+
     const transcriptText = transcripts
       .map((t) => (t.speaker ? `${t.speaker}: ${t.text}` : t.text))
       .join("\n");
 
+    console.warn(`[MEETING:WS:HN] process-transcript-text meetingId=${meetingId} textLength=${transcriptText.length} truncatedLength=${Math.min(transcriptText.length, 12000)} t=${Date.now()}`);
+
     if (!transcriptText.trim()) {
+      console.warn(`[MEETING:WS:HN] process-empty-transcript meetingId=${meetingId} t=${Date.now()}`);
       await db
         .update(schema.meetings)
         .set({ status: "completed", updatedAt: new Date() })
@@ -251,6 +256,7 @@ export function createMeetingsRoutes(
     // Resolve AI config for LLM call
     const aiResult = await resolveOrgAiConfig(c, db, env);
     if (!aiResult.ok) {
+      console.warn(`[MEETING:WS:HN] process-no-ai-config meetingId=${meetingId} t=${Date.now()}`);
       // Still mark as completed even if no AI config
       await db
         .update(schema.meetings)
@@ -263,6 +269,15 @@ export function createMeetingsRoutes(
     const headers = buildGatewayHeaders(aiConfig);
 
     try {
+      console.warn(`[MEETING:WS:HN] process-llm-start meetingId=${meetingId} t=${Date.now()}`);
+
+      // Build user message, prioritizing user notes if present
+      let userMessage = "";
+      if (meeting.notes?.trim()) {
+        userMessage += `USER'S MEETING NOTES (prioritize these topics in the summary):\n${meeting.notes.trim()}\n\n---\n\n`;
+      }
+      userMessage += `TRANSCRIPT:\n${transcriptText.slice(0, 12000)}`;
+
       const res = await fetch(`${env.BASICSOS_API_URL}/v1/chat/completions`, {
         method: "POST",
         headers,
@@ -274,12 +289,17 @@ export function createMeetingsRoutes(
               content: `You are a meeting summarizer. Analyze the transcript and return a JSON object with these fields:
 - "title": a short meeting title (max 6 words, e.g. "Q1 Planning Review", "Product Demo Feedback")
 - "note": a two-sentence summary of what was discussed
+- "decisions": an array of key decisions made (omit if none)
+- "actionItems": an array of action items or tasks assigned (omit if none)
+- "followUps": an array of follow-up items or next steps (omit if none)
+
+If the user provided meeting notes, prioritize those topics in the summary and ensure the decisions/action items reflect what the user highlighted.
 
 Return ONLY valid JSON, no markdown fences.`,
             },
             {
               role: "user",
-              content: `Summarize this meeting transcript:\n\n${transcriptText.slice(0, 12000)}`,
+              content: userMessage,
             },
           ],
           temperature: 0.3,
@@ -296,6 +316,9 @@ Return ONLY valid JSON, no markdown fences.`,
         let summaryJson: {
           title?: string;
           note?: string;
+          decisions?: string[];
+          actionItems?: string[];
+          followUps?: string[];
         } = {};
 
         try {
@@ -308,6 +331,8 @@ Return ONLY valid JSON, no markdown fences.`,
         } catch {
           summaryJson = { note: content.slice(0, 2000) };
         }
+
+        console.warn(`[MEETING:WS:HN] process-llm-success meetingId=${meetingId} summaryTitle="${summaryJson.title?.slice(0, 50) ?? "none"}" t=${Date.now()}`);
 
         await db
           .insert(schema.meetingSummaries)
@@ -330,16 +355,21 @@ Return ONLY valid JSON, no markdown fences.`,
           })
           .where(eq(schema.meetings.id, meetingId));
 
+        console.warn(`[MEETING:WS:HN] process-status-updated meetingId=${meetingId} status=completed t=${Date.now()}`);
+
         // Fire-and-forget: embed transcript chunks + summary for RAG
         embedMeetingTranscript(db, env, crmUser, meetingId).catch(() => {});
 
         return c.json({ ok: true, summary: summaryJson });
+      } else {
+        console.warn(`[MEETING:WS:HN] process-llm-error meetingId=${meetingId} status=${res.status} t=${Date.now()}`);
       }
     } catch (err) {
-      console.error("[meetings] LLM summarization failed:", err);
+      console.warn(`[MEETING:WS:HN] process-llm-exception meetingId=${meetingId} error=${err instanceof Error ? err.message : String(err)} t=${Date.now()}`);
     }
 
     // Mark completed even if summarization fails — still embed transcript chunks
+    console.warn(`[MEETING:WS:HN] process-status-updated meetingId=${meetingId} status=completed reason=fallback t=${Date.now()}`);
     await db
       .update(schema.meetings)
       .set({ status: "completed", updatedAt: new Date() })
@@ -349,6 +379,31 @@ Return ONLY valid JSON, no markdown fences.`,
     embedMeetingTranscript(db, env, crmUser, meetingId).catch(() => {});
 
     return c.json({ ok: true, summary: null });
+  });
+
+  // PATCH /api/meetings/:id/notes — Save meeting notes
+  app.patch("/:id/notes", async (c) => {
+    const crmUser = await getCrmUser(c);
+    if (!crmUser) return c.json({ error: "Unauthorized" }, 401);
+
+    const meetingId = parseInt(c.req.param("id"), 10);
+    if (isNaN(meetingId)) return c.json({ error: "Invalid ID" }, 400);
+
+    const body = await c.req.json<{ notes: string }>();
+
+    const [updated] = await db
+      .update(schema.meetings)
+      .set({ notes: body.notes, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.meetings.id, meetingId),
+          eq(schema.meetings.organizationId, crmUser.organizationId!),
+        ),
+      )
+      .returning();
+
+    if (!updated) return c.json({ error: "Meeting not found" }, 404);
+    return c.json({ ok: true });
   });
 
   // DELETE /api/meetings/:id

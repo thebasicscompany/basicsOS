@@ -11,20 +11,30 @@ import {
   searchDealsByQuery,
   searchTasksByQuery,
 } from "@/lib/resolve-by-name.js";
+import { deleteEntityEmbedding } from "@/lib/embeddings.js";
 import {
   addNoteSchema,
+  browseWebSchema,
+  bulkUpdateSchema,
   completeTaskSchema,
+  createAutomationSchema,
   createCompanySchema,
   createContactSchema,
   createDealSchema,
   createNoteSchema,
   createTaskSchema,
+  deleteRecordSchema,
+  deleteTaskSchema,
+  enrichRecordSchema,
+  generateReportSchema,
   getCompanySchema,
   getContactSchema,
   getDealSchema,
   limitFrom,
   listNotesSchema,
   listTasksSchema,
+  manageViewSchema,
+  searchAllSchema,
   searchCompaniesSchema,
   searchContactsSchema,
   searchDealsSchema,
@@ -32,7 +42,14 @@ import {
   updateCompanySchema,
   updateContactSchema,
   updateDealSchema,
+  webSearchSchema,
 } from "@/routes/gateway-chat/protocol.js";
+
+export interface ToolExecutionContext {
+  env: Record<string, string>;
+  gatewayUrl: string;
+  gatewayHeaders: Record<string, string>;
+}
 
 type RecordRow = {
   id: number | string;
@@ -136,6 +153,7 @@ export async function executeValidatedTool(
   toolName: string,
   rawArgs: Record<string, unknown>,
   searchContext?: HybridSearchContext,
+  ctx?: ToolExecutionContext,
 ): Promise<unknown> {
   const contactExists = async (contactId: number): Promise<boolean> => {
     const rows = await db
@@ -271,6 +289,17 @@ export async function executeValidatedTool(
         ),
       )
       .returning();
+
+    // Merge custom_fields if provided
+    const parsedContactData = parsed.data as Record<string, unknown>;
+    if ((parsedContactData as Record<string, unknown>).custom_fields) {
+      const customFieldUpdates = (parsedContactData as Record<string, unknown>).custom_fields as Record<string, unknown>;
+      const existing = await db.select().from(schema.contacts).where(and(eq(schema.contacts.id, id), eq(schema.contacts.organizationId, organizationId))).limit(1);
+      const currentCustom = (existing[0]?.customFields as Record<string, unknown>) ?? {};
+      const mergedCustom = { ...currentCustom, ...customFieldUpdates };
+      await db.update(schema.contacts).set({ customFields: mergedCustom }).where(eq(schema.contacts.id, id));
+    }
+
     return row ? formatUpdated(row, "contacts") : "Error: contact not found";
   }
 
@@ -382,6 +411,17 @@ export async function executeValidatedTool(
         ),
       )
       .returning();
+
+    // Merge custom_fields if provided
+    const parsedDealData = parsed.data as Record<string, unknown>;
+    if ((parsedDealData as Record<string, unknown>).custom_fields) {
+      const customFieldUpdates = (parsedDealData as Record<string, unknown>).custom_fields as Record<string, unknown>;
+      const existing = await db.select().from(schema.deals).where(and(eq(schema.deals.id, id), eq(schema.deals.organizationId, organizationId))).limit(1);
+      const currentCustom = (existing[0]?.customFields as Record<string, unknown>) ?? {};
+      const mergedCustom = { ...currentCustom, ...customFieldUpdates };
+      await db.update(schema.deals).set({ customFields: mergedCustom }).where(eq(schema.deals.id, id));
+    }
+
     return row ? formatUpdated(row, "deals") : "Error: deal not found";
   }
 
@@ -484,6 +524,17 @@ export async function executeValidatedTool(
         ),
       )
       .returning();
+
+    // Merge custom_fields if provided
+    const parsedCompanyData = parsed.data as Record<string, unknown>;
+    if ((parsedCompanyData as Record<string, unknown>).custom_fields) {
+      const customFieldUpdates = (parsedCompanyData as Record<string, unknown>).custom_fields as Record<string, unknown>;
+      const existing = await db.select().from(schema.companies).where(and(eq(schema.companies.id, id), eq(schema.companies.organizationId, organizationId))).limit(1);
+      const currentCustom = (existing[0]?.customFields as Record<string, unknown>) ?? {};
+      const mergedCustom = { ...currentCustom, ...customFieldUpdates };
+      await db.update(schema.companies).set({ customFields: mergedCustom }).where(eq(schema.companies.id, id));
+    }
+
     return row ? formatUpdated(row, "companies") : "Error: company not found";
   }
 
@@ -793,6 +844,159 @@ export async function executeValidatedTool(
     return {
       error: "Must specify contact_id/contact_name or deal_id/deal_name",
     };
+  }
+
+  if (toolName === "web_search") {
+    const parsed = webSearchSchema.safeParse(rawArgs);
+    if (!parsed.success) return { error: "Invalid arguments", details: parsed.error.flatten() };
+    if (!ctx) return { error: "Web search requires gateway context" };
+
+    const { executeWebSearch } = await import("../../lib/automation-actions/web-search.js");
+    const apiKey = ctx.gatewayHeaders["authorization"]?.replace("Bearer ", "") ?? "";
+    const results = await executeWebSearch(
+      { query: parsed.data.query, numResults: parsed.data.num_results },
+      {},
+      { BASICSOS_API_URL: ctx.gatewayUrl },
+      apiKey,
+    );
+
+    if (!results || results.length === 0) return "No web results found.";
+    return results
+      .map(
+        (r: { title: string; url: string; text?: string }, i: number) =>
+          `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.text || ""}`,
+      )
+      .join("\n\n");
+  }
+
+  if (toolName === "search_all") {
+    const parsed = searchAllSchema.safeParse(rawArgs);
+    if (!parsed.success) return { error: "Invalid arguments", details: parsed.error.flatten() };
+
+    const [contactResults, companyResults, dealResults] = await Promise.all([
+      searchContactsByQuery(db, organizationId, parsed.data.query, searchContext, parsed.data.limit),
+      searchCompaniesByQuery(db, organizationId, parsed.data.query, searchContext, parsed.data.limit),
+      searchDealsByQuery(db, organizationId, parsed.data.query, searchContext, parsed.data.limit),
+    ]);
+
+    const sections: string[] = [];
+    if (contactResults?.length) sections.push("**Contacts:**\n" + formatRows(contactResults, formatContact));
+    if (companyResults?.length) sections.push("**Companies:**\n" + formatRows(companyResults, formatCompany));
+    if (dealResults?.length) sections.push("**Deals:**\n" + formatRows(dealResults, formatDeal));
+
+    return sections.length ? sections.join("\n\n") : "No records found matching that query.";
+  }
+
+  if (toolName === "delete_record") {
+    const parsed = deleteRecordSchema.safeParse(rawArgs);
+    if (!parsed.success) return { error: "Invalid arguments", details: parsed.error.flatten() };
+
+    let resolvedId = parsed.data.entity_id;
+    const entityType = parsed.data.entity_type;
+
+    if (!resolvedId && parsed.data.entity_name) {
+      if (entityType === "contact")
+        resolvedId =
+          (await resolveContactByName(db, organizationId, parsed.data.entity_name, searchContext)) ?? undefined;
+      else if (entityType === "company")
+        resolvedId =
+          (await resolveCompanyByName(db, organizationId, parsed.data.entity_name, searchContext)) ?? undefined;
+      else if (entityType === "deal")
+        resolvedId =
+          (await resolveDealByName(db, organizationId, parsed.data.entity_name, searchContext)) ?? undefined;
+    }
+    if (!resolvedId) return `No ${entityType} found matching "${parsed.data.entity_name}".`;
+
+    if (entityType === "deal") {
+      await db
+        .update(schema.deals)
+        .set({ archivedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(schema.deals.id, resolvedId), eq(schema.deals.organizationId, organizationId)));
+    } else if (entityType === "contact") {
+      await db
+        .delete(schema.contacts)
+        .where(and(eq(schema.contacts.id, resolvedId), eq(schema.contacts.organizationId, organizationId)));
+    } else {
+      await db
+        .delete(schema.companies)
+        .where(and(eq(schema.companies.id, resolvedId), eq(schema.companies.organizationId, organizationId)));
+    }
+
+    await deleteEntityEmbedding(db, crmUserId, entityType, resolvedId);
+    return `Deleted ${entityType} (id: ${resolvedId}).`;
+  }
+
+  if (toolName === "bulk_update") {
+    const parsed = bulkUpdateSchema.safeParse(rawArgs);
+    if (!parsed.success) return { error: "Invalid arguments", details: parsed.error.flatten() };
+
+    const { entity_type, ids, updates } = parsed.data;
+    const table =
+      entity_type === "contact"
+        ? schema.contacts
+        : entity_type === "company"
+          ? schema.companies
+          : schema.deals;
+
+    const customFieldUpdates: Record<string, unknown> = {};
+    const standardUpdates: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (key === "custom_fields" && typeof val === "object" && val !== null) {
+        Object.assign(customFieldUpdates, val);
+      } else {
+        standardUpdates[key] = val;
+      }
+    }
+
+    let updated = 0;
+    for (const id of ids) {
+      const existing = await db
+        .select()
+        .from(table)
+        .where(and(eq(table.id, id), eq(table.organizationId, organizationId)))
+        .limit(1);
+      if (!existing.length) continue;
+
+      const setClause: Record<string, unknown> = { ...standardUpdates, updatedAt: new Date() };
+      if (Object.keys(customFieldUpdates).length) {
+        const currentCustom = (existing[0]!.customFields as Record<string, unknown>) ?? {};
+        setClause.customFields = { ...currentCustom, ...customFieldUpdates };
+      }
+
+      await db.update(table).set(setClause).where(eq(table.id, id));
+      updated++;
+    }
+
+    return `Updated ${updated} ${entity_type}(s).`;
+  }
+
+  if (toolName === "delete_task") {
+    const parsed = deleteTaskSchema.safeParse(rawArgs);
+    if (!parsed.success) return { error: "Invalid arguments", details: parsed.error.flatten() };
+    await db
+      .delete(schema.tasks)
+      .where(and(eq(schema.tasks.id, parsed.data.id), eq(schema.tasks.organizationId, organizationId)));
+    return `Deleted task (id: ${parsed.data.id}).`;
+  }
+
+  if (toolName === "manage_view") {
+    return "View management coming soon.";
+  }
+
+  if (toolName === "create_automation") {
+    return "Automation creation coming soon.";
+  }
+
+  if (toolName === "generate_report") {
+    return "Report generation coming soon.";
+  }
+
+  if (toolName === "enrich_record") {
+    return "Enrichment coming soon.";
+  }
+
+  if (toolName === "browse_web") {
+    return "Browser automation coming soon.";
   }
 
   return { error: `Unknown tool: ${toolName}` };

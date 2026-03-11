@@ -1,7 +1,7 @@
 import { pgTable, bigserial, varchar, text, timestamp, bigint, uuid, jsonb, index, } from "drizzle-orm/pg-core";
-import { contacts } from "../../db/schema/contacts.js";
-import { crmUsers } from "../../db/schema/crm_users.js";
-import { organizations } from "../../db/schema/organizations.js";
+import { contacts } from "@/db/schema/contacts.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 export const contactNotes = pgTable("contact_notes", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     contactId: bigint("contact_id", { mode: "number" })

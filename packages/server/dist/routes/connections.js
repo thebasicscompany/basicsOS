@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
-import { resolveOrgAiConfig, buildGatewayHeaders, } from "../lib/org-ai-config.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { resolveOrgAiConfig, buildGatewayHeaders, } from "@/lib/org-ai-config.js";
 export function createConnectionsRoutes(db, auth, env) {
     const app = new Hono();
     /** Extract Better Auth user ID from session */

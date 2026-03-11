@@ -1,4 +1,4 @@
-import type { Db } from "../db/client.js";
+import type { Db } from "@/db/client.js";
 /**
  * Builds a brief CRM state summary injected into every AI request.
  * Uses aggregate queries — never loads full records.

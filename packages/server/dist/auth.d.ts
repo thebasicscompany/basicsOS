@@ -1,5 +1,5 @@
-import type { Db } from "./db/client.js";
-import type { Env } from "./env.js";
+import type { Db } from "@/db/client.js";
+import type { Env } from "@/env.js";
 export declare function createAuth(db: Db, baseUrl: string, secret: string, allowedOrigins: string[], env: Env): import("better-auth").Auth<{
     database: (options: import("better-auth").BetterAuthOptions) => import("better-auth").DBAdapter<import("better-auth").BetterAuthOptions>;
     basePath: string;

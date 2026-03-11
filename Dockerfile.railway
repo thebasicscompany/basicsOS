@@ -18,7 +18,7 @@ RUN pnpm install --frozen-lockfile
 # ---- Build server ----
 FROM deps AS server-build
 COPY . .
-RUN pnpm exec turbo run build --filter=@basics-os/server
+RUN pnpm exec turbo run build --filter=@basics-os/shared && pnpm exec turbo run build --filter=@basics-os/server
 
 # ---- Final image ----
 FROM base AS run

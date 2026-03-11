@@ -1,7 +1,7 @@
-import { PERMISSIONS, requirePermission } from "../../../lib/rbac.js";
-import { getOneRecord } from "../../../data-access/crm/get-one.js";
-import { CRM_RESOURCES } from "../../../routes/crm/constants.js";
-import { resolveCustomTable, getCustomRecord, } from "../../../data-access/crm/dynamic-table.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { getOneRecord } from "@/data-access/crm/get-one.js";
+import { CRM_RESOURCES } from "@/routes/crm/constants.js";
+import { resolveCustomTable, getCustomRecord, } from "@/data-access/crm/dynamic-table.js";
 export function createGetOneHandler(db) {
     return async (c) => {
         const resource = c.req.param("resource");

@@ -1,1 +1,1 @@
-export { ASSET_PATHS } from "./paths";
+export { ASSET_PATHS } from "./paths.js";

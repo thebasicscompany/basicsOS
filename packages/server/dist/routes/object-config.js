@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import { favoritesPostSchema, objectConfigPutSchema, objectConfigCreateSchema, attributeOverridePostSchema, } from "../schemas/object-config.js";
-import * as schema from "../db/schema/index.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { favoritesPostSchema, objectConfigPutSchema, objectConfigCreateSchema, attributeOverridePostSchema, } from "@/schemas/object-config.js";
+import * as schema from "@/db/schema/index.js";
 import { eq, and, asc, or, isNull, inArray, sql } from "drizzle-orm";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
-import { writeAuditLogSafe } from "../lib/audit-log.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { writeAuditLogSafe } from "@/lib/audit-log.js";
 export function createObjectConfigRoutes(db, auth, _env) {
     const app = new Hono();
     app.use("*", authMiddleware(auth, db));

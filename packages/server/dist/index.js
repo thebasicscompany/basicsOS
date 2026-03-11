@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
-import { createApp } from "./app.js";
-import { createAuth } from "./auth.js";
-import { createDb } from "./db/client.js";
-import { getEnv } from "./env.js";
-import { startAutomationEngine, stopAutomationEngine, } from "./lib/automation-engine.js";
-import { startEmailSyncEngine, stopEmailSyncEngine, } from "./lib/email-sync/sync-engine.js";
-import { logger } from "./lib/logger.js";
-import { attachTranscribeWs } from "./websocket/transcribe.js";
+import { createApp } from "@/app.js";
+import { createAuth } from "@/auth.js";
+import { createDb } from "@/db/client.js";
+import { getEnv } from "@/env.js";
+import { startAutomationEngine, stopAutomationEngine, } from "@/lib/automation-engine.js";
+import { startEmailSyncEngine, stopEmailSyncEngine, } from "@/lib/email-sync/sync-engine.js";
+import { logger } from "@/lib/logger.js";
+import { attachTranscribeWs } from "@/websocket/transcribe.js";
 const log = logger.child({ component: "server" });
 async function main() {
     const env = getEnv();

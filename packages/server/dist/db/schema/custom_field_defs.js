@@ -1,5 +1,5 @@
 import { pgTable, bigserial, varchar, smallint, jsonb, timestamp, uuid, } from "drizzle-orm/pg-core";
-import { organizations } from "../../db/schema/organizations.js";
+import { organizations } from "@/db/schema/organizations.js";
 export const customFieldDefs = pgTable("custom_field_defs", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     resource: varchar("resource", { length: 64 }).notNull(),

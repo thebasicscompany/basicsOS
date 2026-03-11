@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware } from "@/middleware/auth.js";
 import { sql, eq, asc, and, or, isNull } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import * as schema from "@/db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 const ALLOWED_TABLES = new Set([
     "contacts",
     "companies",

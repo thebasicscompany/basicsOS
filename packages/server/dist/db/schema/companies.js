@@ -1,6 +1,6 @@
 import { pgTable, bigserial, varchar, text, jsonb, timestamp, bigint, uuid, index, } from "drizzle-orm/pg-core";
-import { crmUsers } from "../../db/schema/crm_users.js";
-import { organizations } from "../../db/schema/organizations.js";
+import { crmUsers } from "@/db/schema/crm_users.js";
+import { organizations } from "@/db/schema/organizations.js";
 export const companies = pgTable("companies", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     createdAt: timestamp("created_at", { withTimezone: true })

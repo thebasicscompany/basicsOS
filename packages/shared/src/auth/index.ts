@@ -1,6 +1,6 @@
-export { canAccess } from "./canAccess";
+export { canAccess } from "./canAccess.js";
 export {
   createRestAuthProvider,
   createAuthClient,
   type RestAuthProvider,
-} from "./restAuthProvider";
+} from "./restAuthProvider.js";

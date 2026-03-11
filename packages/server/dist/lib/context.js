@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNull, lt, sql, sum } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
-import { writeUsageLogSafe } from "../lib/usage-log.js";
+import * as schema from "@/db/schema/index.js";
+import { writeUsageLogSafe } from "@/lib/usage-log.js";
 const MAX_CONTEXT_CHARS_PER_CHUNK = 1_200;
 const MAX_TOTAL_CONTEXT_CHARS = 4_000;
 const CRM_ENTITY_TYPES = [

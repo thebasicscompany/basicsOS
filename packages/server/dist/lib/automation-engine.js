@@ -1,8 +1,8 @@
 import { PgBoss } from "pg-boss";
-import * as schema from "../db/schema/index.js";
+import * as schema from "@/db/schema/index.js";
 import { eq, and } from "drizzle-orm";
-import { executeWorkflow } from "../lib/automation-executor.js";
-import { logger } from "../lib/logger.js";
+import { executeWorkflow } from "@/lib/automation-executor.js";
+import { logger } from "@/lib/logger.js";
 const log = logger.child({ component: "automation-engine" });
 let _boss = null;
 let _db = null;

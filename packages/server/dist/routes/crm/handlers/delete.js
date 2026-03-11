@@ -1,8 +1,8 @@
-import { jsonError } from "../../../lib/api-error.js";
-import { PERMISSIONS, getCrmUserFromSession, getPermissionSetForUser, hasPermission, } from "../../../lib/rbac.js";
-import { deleteRecord } from "../../../services/crm/delete-record.js";
-import { CRM_RESOURCES, TABLE_MAP, } from "../../../routes/crm/constants.js";
-import { resolveCustomTable, deleteCustomRecord, getCustomRecord, } from "../../../data-access/crm/dynamic-table.js";
+import { jsonError } from "@/lib/api-error.js";
+import { PERMISSIONS, getCrmUserFromSession, getPermissionSetForUser, hasPermission, } from "@/lib/rbac.js";
+import { deleteRecord } from "@/services/crm/delete-record.js";
+import { CRM_RESOURCES, TABLE_MAP, } from "@/routes/crm/constants.js";
+import { resolveCustomTable, deleteCustomRecord, getCustomRecord, } from "@/data-access/crm/dynamic-table.js";
 export function createDeleteHandler(db) {
     return async (c) => {
         const resource = c.req.param("resource");

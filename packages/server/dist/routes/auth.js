@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import { registerInitSignupInviteRoutes } from "../routes/auth/init-signup-invite-routes.js";
-import { registerMeSettingsRoutes } from "../routes/auth/me-settings-routes.js";
-import { registerOrganizationRoutes } from "../routes/auth/organization-routes.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { registerInitSignupInviteRoutes } from "@/routes/auth/init-signup-invite-routes.js";
+import { registerMeSettingsRoutes } from "@/routes/auth/me-settings-routes.js";
+import { registerOrganizationRoutes } from "@/routes/auth/organization-routes.js";
 export function createAuthRoutes(db, auth, env) {
     const app = new Hono();
     app.get("/gateway-token", authMiddleware(auth, db), async (c) => {

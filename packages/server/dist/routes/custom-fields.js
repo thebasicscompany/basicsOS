@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
-import { customFieldCreateSchema, customFieldUpdateSchema, } from "../schemas/custom-fields.js";
+import { authMiddleware } from "@/middleware/auth.js";
+import { customFieldCreateSchema, customFieldUpdateSchema, } from "@/schemas/custom-fields.js";
 import { eq, asc, and, or, isNull, sql } from "drizzle-orm";
-import * as schema from "../db/schema/index.js";
-import { PERMISSIONS, requirePermission } from "../lib/rbac.js";
+import * as schema from "@/db/schema/index.js";
+import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 export function createCustomFieldRoutes(db, auth) {
     const app = new Hono();
     app.use("*", authMiddleware(auth, db));

@@ -1,5 +1,5 @@
-import type { Db } from "../db/client.js";
-import { type HybridSearchContext } from "../lib/resolve-by-name.js";
+import type { Db } from "@/db/client.js";
+import { type HybridSearchContext } from "@/lib/resolve-by-name.js";
 export declare const ASSISTANT_TOOLS: ({
     type: "function";
     function: {

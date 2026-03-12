@@ -113,7 +113,12 @@ export function useGatewayChat(opts?: UseGatewayChatOptions) {
     maxSteps: 5,
     onResponse: (response) => {
       const nextThreadId = response.headers.get("X-Thread-Id");
-      if (nextThreadId) setThreadId(nextThreadId);
+      if (nextThreadId) {
+        setThreadId(nextThreadId);
+        if (!opts?.initialThreadId) {
+          queryClient.invalidateQueries({ queryKey: ["threads"] });
+        }
+      }
       const toolsUsed = response.headers.get("X-Tools-Used");
       if (toolsUsed) {
         pendingToolsRef.current = new Set(

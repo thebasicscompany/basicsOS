@@ -1,3 +1,4 @@
+import { TrashIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
 
 interface NoteCardProps {
@@ -5,6 +6,7 @@ interface NoteCardProps {
   text: string | null;
   date: string;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
 function truncate(str: string, len: number): string {
@@ -24,29 +26,43 @@ function stripMarkdown(str: string): string {
     .trim();
 }
 
-export function NoteCard({ title, text, date, onClick }: NoteCardProps) {
+export function NoteCard({ title, text, date, onClick, onDelete }: NoteCardProps) {
   const displayTitle = title?.trim() || "Untitled note";
   const cleaned = stripMarkdown(text ?? "");
   const preview = truncate(cleaned, 180);
 
   return (
-    <button
-      onClick={onClick}
-      className="group flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-all hover:border-border/80 hover:shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
-          {displayTitle}
-        </h3>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {format(new Date(date), "MMM d, yyyy")}
-        </span>
-      </div>
-      {preview && (
-        <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
-          {preview}
-        </p>
+    <div className="group relative">
+      <button
+        onClick={onClick}
+        className="flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-all hover:border-border/80 hover:shadow-sm"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
+            {displayTitle}
+          </h3>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {format(new Date(date), "MMM d, yyyy")}
+          </span>
+        </div>
+        {preview && (
+          <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+            {preview}
+          </p>
+        )}
+      </button>
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+          aria-label="Delete note"
+        >
+          <TrashIcon className="size-3.5" />
+        </button>
       )}
-    </button>
+    </div>
   );
 }

@@ -1279,6 +1279,7 @@ app.whenReady().then(async () => {
       console.warn("[meeting-manager] onMeetingStop callback: sending meeting-stopped IPC, meetingId=", meetingId, "overlayWindow=", !!overlayWindow);
       console.warn(`[MEETING:MAIN:HN] onMeetingStop meetingId=${meetingId} overlayWindow=${!!overlayWindow} t=${Date.now()}`);
       overlayWindow?.webContents.send("meeting-stopped", meetingId);
+      mainWindow?.webContents.send("meeting-stopped", meetingId);
     },
   });
 

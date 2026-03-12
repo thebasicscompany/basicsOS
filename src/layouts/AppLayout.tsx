@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "react-error-boundary";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   SidebarInset,
   SidebarProvider,
@@ -215,8 +216,20 @@ function useTrackPageVisits() {
   }, [pathname, objects, addRecentPage]);
 }
 
+function useMeetingSync() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const api = (window as Window & { api?: { onMeetingStopped?: (cb: (id: string) => void) => void } }).api;
+    if (!api?.onMeetingStopped) return;
+    api.onMeetingStopped(() => {
+      qc.invalidateQueries({ queryKey: ["meetings"] });
+    });
+  }, [qc]);
+}
+
 export function AppLayout() {
   useTrackPageVisits();
+  useMeetingSync();
 
   return (
     <SidebarProvider>

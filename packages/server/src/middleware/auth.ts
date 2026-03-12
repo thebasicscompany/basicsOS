@@ -22,14 +22,22 @@ export function authMiddleware(auth: AuthWithApi, db: Db) {
   return async (c: Context, next: Next) => {
     let headers = c.req.raw.headers;
     const authHeader = c.req.header("Authorization");
+    const cookieHeader = c.req.header("Cookie") ?? "";
     if (
       authHeader?.startsWith("Bearer ") &&
-      !c.req.header("Cookie")?.includes("better-auth.session_token")
+      !cookieHeader.includes("better-auth.session_token") &&
+      !cookieHeader.includes("__Secure-better-auth.session_token")
     ) {
       const token = authHeader.slice(7).trim();
       if (token) {
         headers = new Headers(headers);
-        headers.set("Cookie", `better-auth.session_token=${token}`);
+        headers.set(
+          "Cookie",
+          [
+            `better-auth.session_token=${token}`,
+            `__Secure-better-auth.session_token=${token}`,
+          ].join("; "),
+        );
       }
     }
     const session = await auth.api.getSession({ headers });

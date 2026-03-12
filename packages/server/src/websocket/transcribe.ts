@@ -160,7 +160,10 @@ async function authenticateWs(db: Db, auth: BetterAuthInstance, token: string) {
     // Better Auth expects session token as a cookie, not a Bearer token
     const session = await auth.api.getSession({
       headers: new Headers({
-        Cookie: `better-auth.session_token=${token}`,
+        Cookie: [
+          `better-auth.session_token=${token}`,
+          `__Secure-better-auth.session_token=${token}`,
+        ].join("; "),
       }),
     });
     if (!session?.user?.id) return null;

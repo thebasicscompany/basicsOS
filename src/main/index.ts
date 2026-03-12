@@ -1,4 +1,9 @@
-import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "node:url";
+import { config } from "dotenv";
+// Load .env from project root (Electron cwd can differ in dev/packaged)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.resolve(__dirname, "..", "..", ".env") });
 import {
   app,
   BrowserWindow,
@@ -25,7 +30,6 @@ app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
 
 import electronUpdater from "electron-updater";
 const { autoUpdater } = electronUpdater;
-import path from "path";
 import fs from "fs";
 import { exec, execSync } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
@@ -87,6 +91,162 @@ const ALLOWED_PROXY_PATHS = new Set([
   "/v1/audio/speech",
   "/stream/assistant",
 ]);
+const AUTH_COOKIE_NAMES = [
+  "__Secure-better-auth.session_token",
+  "better-auth.session_token",
+] as const;
+
+const isLoopbackHost = (hostname: string): boolean =>
+  hostname === "localhost" || hostname === "127.0.0.1";
+
+const cookieMatchesHost = (
+  cookieDomain: string | undefined,
+  hostname: string,
+): boolean => {
+  if (!cookieDomain || !hostname) return false;
+  const normalizedCookieDomain = cookieDomain.replace(/^\./, "");
+  return (
+    normalizedCookieDomain === hostname ||
+    hostname.endsWith(`.${normalizedCookieDomain}`)
+  );
+};
+
+const toDomainList = (domain?: string): string[] => (domain ? [domain] : []);
+
+type SessionTokenLookup = {
+  token: string | null;
+  source:
+    | "request-url"
+    | "base-url"
+    | "host-match"
+    | "localhost-fallback"
+    | "first-available"
+    | "missing";
+  apiHost: string;
+  cookieDomain?: string;
+  availableDomains: string[];
+};
+
+const getSessionTokenForApi = async (
+  targetUrl: string,
+): Promise<SessionTokenLookup> => {
+  let apiHost = "";
+  let baseUrl = API_URL.replace(/\/$/, "");
+  try {
+    const url = new URL(targetUrl);
+    apiHost = url.hostname;
+    baseUrl = url.origin;
+  } catch {
+    // keep fallback base URL
+  }
+
+  const requestCookies = (
+    await Promise.all(
+      AUTH_COOKIE_NAMES.map((name) =>
+        session.defaultSession.cookies.get({
+          url: targetUrl,
+          name,
+        }),
+      ),
+    )
+  ).flat();
+  const requestCookie = requestCookies[0];
+  if (requestCookie?.value) {
+    return {
+      token: requestCookie.value,
+      source: "request-url",
+      apiHost,
+      cookieDomain: requestCookie.domain,
+      availableDomains: toDomainList(requestCookie.domain),
+    };
+  }
+
+  const baseCookies = (
+    await Promise.all(
+      AUTH_COOKIE_NAMES.map((name) =>
+        session.defaultSession.cookies.get({
+          url: `${baseUrl}/`,
+          name,
+        }),
+      ),
+    )
+  ).flat();
+  const baseCookie = baseCookies[0];
+  if (baseCookie?.value) {
+    return {
+      token: baseCookie.value,
+      source: "base-url",
+      apiHost,
+      cookieDomain: baseCookie.domain,
+      availableDomains: toDomainList(baseCookie.domain),
+    };
+  }
+
+  const allCookies = (
+    await Promise.all(
+      AUTH_COOKIE_NAMES.map((name) =>
+        session.defaultSession.cookies.get({
+          name,
+        }),
+      ),
+    )
+  ).flat();
+  const availableDomains = Array.from(
+    new Set(
+      allCookies
+        .map((cookie) => cookie.domain)
+        .filter((domain): domain is string => Boolean(domain)),
+    ),
+  );
+
+  if (apiHost) {
+    const apiHostCookie = allCookies.find((cookie) =>
+      cookieMatchesHost(cookie.domain, apiHost),
+    );
+    if (apiHostCookie?.value) {
+      return {
+        token: apiHostCookie.value,
+        source: "host-match",
+        apiHost,
+        cookieDomain: apiHostCookie.domain,
+        availableDomains,
+      };
+    }
+  }
+
+  if (isLoopbackHost(apiHost)) {
+    const localhostCookie = allCookies.find((cookie) =>
+      isLoopbackHost(cookie.domain?.replace(/^\./, "") ?? ""),
+    );
+    if (localhostCookie?.value) {
+      return {
+        token: localhostCookie.value,
+        source: "localhost-fallback",
+        apiHost,
+        cookieDomain: localhostCookie.domain,
+        availableDomains,
+      };
+    }
+  }
+
+  const firstCookie = allCookies[0];
+  if (firstCookie?.value) {
+    return {
+      token: firstCookie.value,
+      source: "first-available",
+      apiHost,
+      cookieDomain: firstCookie.domain,
+      availableDomains,
+    };
+  }
+
+  return {
+    token: null,
+    source: "missing",
+    apiHost,
+    availableDomains,
+  };
+};
 
 const getAllowedOrigins = (): Set<string> => {
   const origins = new Set<string>();
@@ -602,6 +762,16 @@ ipcMain.handle(
   ) => {
     const method = (req.method ?? "GET").toUpperCase();
     const pathName = req.path?.trim();
+    const fullUrl = `${API_URL.replace(/\/$/, "")}${pathName ?? ""}`;
+    console.warn(
+      "[proxy-overlay] request",
+      method,
+      pathName,
+      "->",
+      fullUrl,
+      "API_URL=",
+      API_URL,
+    );
     if (
       !pathName ||
       !(
@@ -609,6 +779,7 @@ ipcMain.handle(
         pathName.startsWith("/api/meetings")
       )
     ) {
+      console.warn("[proxy-overlay] rejected: path not allowed");
       return {
         ok: false,
         status: 400,
@@ -618,6 +789,7 @@ ipcMain.handle(
       };
     }
     if (!["GET", "POST", "PATCH", "PUT", "DELETE"].includes(method)) {
+      console.warn("[proxy-overlay] rejected: method not allowed");
       return {
         ok: false,
         status: 405,
@@ -627,11 +799,40 @@ ipcMain.handle(
       };
     }
 
-    const cookies = await session.defaultSession.cookies.get({
-      name: "better-auth.session_token",
-    });
-    const token = cookies[0]?.value;
+    const tokenLookup = await getSessionTokenForApi(fullUrl);
+    const token = tokenLookup.token;
+    if (
+      tokenLookup.source === "localhost-fallback" &&
+      tokenLookup.apiHost &&
+      !isLoopbackHost(tokenLookup.apiHost)
+    ) {
+      console.warn(
+        "[proxy-overlay] no cookie for API host; using localhost session token against configured API",
+        tokenLookup.apiHost,
+        "cookieDomain=",
+        tokenLookup.cookieDomain,
+      );
+    } else if (tokenLookup.source === "host-match") {
+      console.warn(
+        "[proxy-overlay] using session cookie for API host",
+        tokenLookup.apiHost,
+        "domain=",
+        tokenLookup.cookieDomain,
+      );
+    }
     if (!token) {
+      console.warn(
+        "[proxy-overlay] 401: no session cookie for",
+        `${API_URL.replace(/\/$/, "")}/`,
+        "cookiesFound=",
+        0,
+        "lookupSource=",
+        tokenLookup.source,
+        "allAuthCookies=",
+        tokenLookup.availableDomains.length,
+        "domains=",
+        tokenLookup.availableDomains,
+      );
       return {
         ok: false,
         status: 401,
@@ -649,6 +850,20 @@ ipcMain.handle(
       headers,
       body: req.body,
     });
+    if (!res.ok) {
+      const errSnippet = (await res.clone().text()).slice(0, 200);
+      console.warn(
+        "[proxy-overlay] fetch failed",
+        res.status,
+        res.statusText,
+        "path=",
+        pathName,
+        "body=",
+        errSnippet,
+      );
+    } else {
+      console.warn("[proxy-overlay] ok", res.status, pathName);
+    }
     const contentType = res.headers.get("content-type") ?? "";
     const isBinary =
       pathName === "/v1/audio/speech" || contentType.startsWith("audio/");
@@ -749,11 +964,18 @@ ipcMain.handle("start-meeting", async () => {
   console.warn(`[MEETING:MAIN:HN] start-meeting entry meetingMgr=${!!meetingMgr} t=${Date.now()}`);
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
-  const cookies = await session.defaultSession.cookies.get({
-    name: "better-auth.session_token",
-  });
-  const token = cookies[0]?.value;
-  console.warn("[IPC] start-meeting: apiUrl=", apiUrl, "hasToken=", !!token);
+  const tokenLookup = await getSessionTokenForApi(apiUrl);
+  const token = tokenLookup.token;
+  console.warn(
+    "[IPC] start-meeting: apiUrl=",
+    apiUrl,
+    "hasToken=",
+    !!token,
+    "source=",
+    tokenLookup.source,
+    "domain=",
+    tokenLookup.cookieDomain ?? "n/a",
+  );
   console.warn(`[MEETING:MAIN:HN] start-meeting tokenPresent=${!!token} t=${Date.now()}`);
   if (!token) throw new Error("No session token");
   try {
@@ -795,10 +1017,8 @@ ipcMain.handle("get-persisted-meeting", () => {
 
 ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
   console.warn(`[MEETING:MAIN:HN] start-system-audio entry meetingId=${meetingId} t=${Date.now()}`);
-  const cookies = await session.defaultSession.cookies.get({
-    name: "better-auth.session_token",
-  });
-  const token = cookies[0]?.value;
+  const tokenLookup = await getSessionTokenForApi(API_URL);
+  const token = tokenLookup.token;
   console.warn(`[MEETING:MAIN:HN] start-system-audio tokenPresent=${!!token} meetingId=${meetingId} t=${Date.now()}`);
   if (!token) return false;
   return startSystemAudioCapture(meetingId, API_URL, token);
@@ -829,10 +1049,8 @@ ipcMain.handle("prompt-screen-recording", () => {
 });
 
 ipcMain.handle("get-session-token", async () => {
-  const cookies = await session.defaultSession.cookies.get({
-    name: "better-auth.session_token",
-  });
-  return cookies[0]?.value ?? "";
+  const tokenLookup = await getSessionTokenForApi(API_URL);
+  return tokenLookup.token ?? "";
 });
 
 ipcMain.handle("show-overlay", () => {

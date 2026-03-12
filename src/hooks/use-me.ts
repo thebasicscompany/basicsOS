@@ -11,6 +11,8 @@ export interface Identity {
   administrator?: boolean;
   hasApiKey?: boolean;
   hasOrgAiConfig?: boolean;
+  onboardingSeenAt?: string | null;
+  onboardingCompletedAt?: string | null;
 }
 
 export function useMe() {

@@ -21,11 +21,11 @@ You can find the documentation for these components on the [shadcn/ui website](h
 
 ## Customization
 
-In Basics CRM, these components are sometimes slightly modified to fit the look and feel of the application. You can customize them further by editing the source files in this directory.
+In Basics OS, these components are sometimes slightly modified to fit the look and feel of the application. You can customize them further by editing the source files in this directory.
 
 ## Updates
 
-Shadcn/ui components are actively maintained and updated. To add or update a UI component in Basics CRM, type the following command:
+Shadcn/ui components are actively maintained and updated. To add or update a UI component in Basics OS, type the following command:
 
 ```
 npx shadcn@latest add [component-name]

@@ -12,6 +12,7 @@ import {
   CheckSquareIcon,
   SidebarIcon,
   VideoCameraIcon,
+  InfoIcon,
 } from "@phosphor-icons/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NavUser } from "@/components/nav-user";
@@ -24,6 +25,7 @@ import {
   dispatchCommandPaletteShortcut,
   getCommandPaletteShortcutLabel,
 } from "@/lib/keyboard-shortcuts";
+import { useHelpCenter } from "@/hooks/use-help-center";
 import {
   Collapsible,
   CollapsibleContent,
@@ -172,6 +174,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { data: organization } = useOrganization();
   const { pathname } = useLocation();
   const { toggleSidebar } = useSidebar();
+  const { openHelp } = useHelpCenter();
   const shortcutLabel = getCommandPaletteShortcutLabel();
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -209,6 +212,16 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               <Kbd className="ml-auto text-[10px] tracking-widest group-data-[state=collapsed]:hidden">
                 {shortcutLabel}
               </Kbd>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Help"
+              className="text-muted-foreground"
+              onClick={openHelp}
+            >
+              <InfoIcon className="size-4" />
+              <span>Help</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -6,6 +6,7 @@ import {
   uuid,
   jsonb,
   text,
+  timestamp,
 } from "drizzle-orm/pg-core";
 import { organizations } from "@/db/schema/organizations.js";
 import { user } from "@/db/schema/auth.js";
@@ -27,4 +28,8 @@ export const crmUsers = pgTable("crm_users", {
   basicsApiKey: varchar("basics_api_key", { length: 255 }),
   basicsApiKeyEnc: text("basics_api_key_enc"),
   basicsApiKeyHash: varchar("basics_api_key_hash", { length: 64 }),
+  onboardingSeenAt: timestamp("onboarding_seen_at", { withTimezone: true }),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", {
+    withTimezone: true,
+  }),
 });

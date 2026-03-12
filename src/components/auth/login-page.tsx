@@ -47,7 +47,7 @@ export function LoginPage() {
           />
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-            <p className="text-sm text-muted-foreground">Basics CRM</p>
+            <p className="text-sm text-muted-foreground">Basics OS</p>
           </div>
         </div>
         {error && (

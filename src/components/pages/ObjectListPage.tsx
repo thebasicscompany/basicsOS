@@ -336,10 +336,10 @@ export function ObjectListPage() {
 
   useEffect(() => {
     if (obj) {
-      document.title = `${obj.pluralName} | Basics CRM`;
+      document.title = `${obj.pluralName} | Basics OS`;
     }
     return () => {
-      document.title = "Basics CRM";
+      document.title = "Basics OS";
     };
   }, [obj]);
 

@@ -6,7 +6,7 @@
     {
       "name": "basics-os",
       "type": "registry:block",
-      "title": "Basics CRM",
+      "title": "Basics OS",
       "description": "A fully fledged CRM application built with Shadcn Admin Kit",
       "registryDependencies": [
         "item",

@@ -418,7 +418,7 @@ async function seed(db: Db, crmUserId: number) {
 
   log.info("Updating configuration...");
   const defaultConfig = {
-    title: "Basics CRM",
+    title: "Basics OS",
     companySectors: [
       { value: "information-technology", label: "Information Technology" },
       { value: "health-care", label: "Health Care" },

@@ -1,6 +1,6 @@
 ---
 name: frontend-dev
-description: Coding practices for frontend development in Basics CRM. Use when creating or modifying React components, list pages, detail views, forms, data fetching, field types, or responsive layouts.
+description: Coding practices for frontend development in Basics OS. Use when creating or modifying React components, list pages, detail views, forms, data fetching, field types, or responsive layouts.
 ---
 
 The frontend uses React 19, TanStack Query, React Router v7, and Shadcn UI. Data flows from the Hono REST API (`/api/*`) via custom hooks. There is no React Admin.

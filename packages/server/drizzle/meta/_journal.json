@@ -225,6 +225,13 @@
       "when": 1773094000000,
       "tag": "0031_suggested_deals_and_meeting_links",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1773270000000,
+      "tag": "0032_onboarding_help_state",
+      "breakpoints": true
     }
   ]
 }

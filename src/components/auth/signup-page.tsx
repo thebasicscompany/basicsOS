@@ -90,7 +90,7 @@ export function SignupPage() {
             <h1 className="text-2xl font-bold">
               {isInitialized
                 ? "Join your organization"
-                : "Welcome to Basics CRM"}
+                : "Welcome to Basics OS"}
             </h1>
             <p className="text-muted-foreground text-sm">
               {isInitialized

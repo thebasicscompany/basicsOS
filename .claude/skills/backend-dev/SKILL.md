@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Coding practices for backend development in Basics CRM. Use when deciding whether backend logic is needed, or when creating/modifying database migrations, Drizzle schema, Hono routes, or Better Auth configuration.
+description: Coding practices for backend development in Basics OS. Use when deciding whether backend logic is needed, or when creating/modifying database migrations, Drizzle schema, Hono routes, or Better Auth configuration.
 ---
 
 Backend logic runs in `packages/server` using Node + Hono REST API, Drizzle ORM, PostgreSQL, and Better Auth.

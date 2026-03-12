@@ -57,6 +57,9 @@ import { PILL_WIDTH, PILL_HEIGHT } from "@/shared-overlay/constants";
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let overlayActive = false;
+/** Intended position (primary display) so we can re-apply after OS or drag-induced drift */
+let overlayAnchorX = 0;
+let overlayAnchorY = 0;
 let activeMode: ActivationMode = "assistant";
 let shortcutMgr: ShortcutManager | null = null;
 let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
@@ -330,6 +333,7 @@ const presentOverlayWindow = (focus: boolean): void => {
 };
 
 const activateOverlay = (mode: ActivationMode): void => {
+  if (!overlayWindow) createOverlayWindow();
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = mode;
@@ -339,6 +343,7 @@ const activateOverlay = (mode: ActivationMode): void => {
 };
 
 const startDictationOverlay = (): void => {
+  if (!overlayWindow) createOverlayWindow();
   if (!overlayWindow) return;
   overlayActive = true;
   activeMode = "dictation";
@@ -415,7 +420,28 @@ function createMainWindow(): void {
   });
 
   mainWindow.on("closed", () => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.close();
+    }
     mainWindow = null;
+  });
+
+  // Re-pin overlay position after main window is dragged (stops drift/jitter when dragging near the pill)
+  let mainMoveDebounce: ReturnType<typeof setTimeout> | null = null;
+  mainWindow.on("moved", () => {
+    if (mainMoveDebounce) clearTimeout(mainMoveDebounce);
+    mainMoveDebounce = setTimeout(() => {
+      mainMoveDebounce = null;
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        const b = overlayWindow.getBounds();
+        overlayWindow.setBounds({
+          x: overlayAnchorX,
+          y: overlayAnchorY,
+          width: b.width,
+          height: b.height,
+        });
+      }
+    }, 150);
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -439,13 +465,14 @@ function createMainWindow(): void {
 
 function createOverlayWindow(): void {
   const { width: screenW } = screen.getPrimaryDisplay().workAreaSize;
-  const x = Math.round((screenW - PILL_WIDTH) / 2);
+  overlayAnchorX = Math.round((screenW - PILL_WIDTH) / 2);
+  overlayAnchorY = 0;
 
   overlayWindow = new BrowserWindow({
     width: PILL_WIDTH,
     height: PILL_HEIGHT,
-    x,
-    y: 0,
+    x: overlayAnchorX,
+    y: overlayAnchorY,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -527,7 +554,7 @@ function createOverlayWindow(): void {
     overlayWindow?.webContents.send("notch-info", detectNotch());
   });
 
-  overlayWindow.showInactive();
+  // Do not show on startup; user opens pill via shortcut or UI
 }
 
 ipcMain.handle("get-api-url", () => API_URL);
@@ -681,7 +708,12 @@ ipcMain.handle("resize-overlay", (_event, height: number) => {
   const clampedH = Math.max(PILL_HEIGHT, Math.min(maxH, Math.round(height)));
   // Temporarily enable resizable — macOS can ignore setBounds on non-resizable windows
   overlayWindow.setResizable(true);
-  overlayWindow.setSize(PILL_WIDTH, clampedH);
+  overlayWindow.setBounds({
+    x: overlayAnchorX,
+    y: overlayAnchorY,
+    width: PILL_WIDTH,
+    height: clampedH,
+  });
   overlayWindow.setResizable(false);
 });
 
@@ -1361,6 +1393,10 @@ app.whenReady().then(async () => {
       }
     });
     registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+
+    // IPC for shortcut recording (no-op on non-macOS; handlers must exist to avoid "No handler registered")
+    ipcMain.handle("start-shortcut-recording", async () => null);
+    ipcMain.handle("cancel-shortcut-recording", () => {});
   }
 
   createMainWindow();

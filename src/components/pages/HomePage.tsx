@@ -21,6 +21,7 @@ import {
   PromptInputSubmit,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import { HomeOnboardingChecklist } from "@/components/help/HomeOnboardingChecklist";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
@@ -116,6 +117,12 @@ export function HomePage() {
       <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-16">
         {/* Greeting */}
         <h1 className="text-2xl font-semibold tracking-tight">{greeting}</h1>
+
+        <HomeOnboardingChecklist
+          userId={me?.id}
+          isAdmin={Boolean(me?.administrator)}
+          hasApiKey={hasKey || Boolean(me?.hasApiKey)}
+        />
 
         {/* Chat section */}
         <div className="mt-5">

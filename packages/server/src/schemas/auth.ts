@@ -32,4 +32,6 @@ export const organizationPatchSchema = z.object({
 export const mePatchSchema = z.object({
   firstName: z.string().trim().min(1).max(255).optional(),
   lastName: z.string().trim().min(1).max(255).optional(),
+  markOnboardingSeen: z.boolean().optional(),
+  completeOnboarding: z.boolean().optional(),
 });

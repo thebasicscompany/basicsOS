@@ -22,6 +22,7 @@ import { GatewayProvider } from "@/providers/GatewayProvider";
 import { ObjectRegistryProvider } from "@/providers/ObjectRegistryProvider";
 import { ErrorFallback } from "@/components/error-fallback";
 import { ProtectedRoute } from "@/lib/auth";
+import { HelpCenterProvider } from "@/contexts/help-center";
 import { StartPage } from "@/components/auth/start-page";
 import { SignupPage } from "@/components/auth/signup-page";
 import { ForgotPasswordPage } from "@/components/auth/forgot-password-page";
@@ -91,10 +92,12 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <ObjectRegistryProvider>
-                  <>
-                    <AppLayout />
-                    <CommandPalette />
-                  </>
+                  <HelpCenterProvider>
+                    <>
+                      <AppLayout />
+                      <CommandPalette />
+                    </>
+                  </HelpCenterProvider>
                 </ObjectRegistryProvider>
               </ProtectedRoute>
             }

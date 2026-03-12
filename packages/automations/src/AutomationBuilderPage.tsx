@@ -352,9 +352,9 @@ function BuilderInner() {
   );
 
   useEffect(() => {
-    document.title = `${name || "New Automation"} | Basics CRM`;
+    document.title = `${name || "New Automation"} | Basics OS`;
     return () => {
-      document.title = "Basics CRM";
+      document.title = "Basics OS";
     };
   }, [name]);
 

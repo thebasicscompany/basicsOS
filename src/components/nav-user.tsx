@@ -4,6 +4,7 @@ import {
   DownloadSimpleIcon,
   GearIcon,
   IdentificationCardIcon,
+  InfoIcon,
   SignOutIcon,
 } from "@phosphor-icons/react";
 import { Link, useNavigate } from "react-router";
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/lib/auth-hooks";
+import { useHelpCenter } from "@/hooks/use-help-center";
 import { useMe } from "@/hooks/use-me";
 import { ROUTES } from "@basics-os/hub";
 
@@ -39,6 +41,7 @@ export function NavUser() {
   const { isMobile } = useSidebar();
   const { data: session, isPending } = useSession();
   const { data: me } = useMe();
+  const { openHelp } = useHelpCenter();
   const navigate = useNavigate();
   const isAdmin = Boolean(me?.administrator);
 
@@ -118,6 +121,10 @@ export function NavUser() {
                   <DownloadSimpleIcon className="size-4" />
                   Import
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={openHelp}>
+                <InfoIcon className="size-4" />
+                Help Center
               </DropdownMenuItem>
               {isAdmin && (
                 <DropdownMenuItem asChild>

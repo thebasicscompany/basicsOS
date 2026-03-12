@@ -60,6 +60,8 @@ export function registerMeSettingsRoutes(
       administrator: hasPermission(permissions, PERMISSIONS.rbacManage),
       hasApiKey: hasOrgAiConfig,
       hasOrgAiConfig,
+      onboardingSeenAt: crmUser.onboardingSeenAt,
+      onboardingCompletedAt: crmUser.onboardingCompletedAt,
     });
   });
 
@@ -79,12 +81,44 @@ export function registerMeSettingsRoutes(
       const msg = parsed.error.issues[0]?.message ?? "Validation failed";
       return c.json({ error: msg }, 400);
     }
-    const updates: Partial<{ firstName: string; lastName: string }> = {};
+    const crmUserRows = await db
+      .select({
+        id: schema.crmUsers.id,
+        onboardingSeenAt: schema.crmUsers.onboardingSeenAt,
+        onboardingCompletedAt: schema.crmUsers.onboardingCompletedAt,
+      })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.userId, userId))
+      .limit(1);
+
+    const crmUser = crmUserRows[0];
+    if (!crmUser) return c.json({ error: "User not found in CRM" }, 404);
+
+    const updates: Partial<{
+      firstName: string;
+      lastName: string;
+      onboardingSeenAt: Date;
+      onboardingCompletedAt: Date;
+    }> = {};
     if (parsed.data.firstName) updates.firstName = parsed.data.firstName;
     if (parsed.data.lastName) updates.lastName = parsed.data.lastName;
+    if (parsed.data.markOnboardingSeen && !crmUser.onboardingSeenAt) {
+      updates.onboardingSeenAt = new Date();
+    }
+    if (parsed.data.completeOnboarding && !crmUser.onboardingCompletedAt) {
+      const now = new Date();
+      updates.onboardingCompletedAt = now;
+      if (!crmUser.onboardingSeenAt) {
+        updates.onboardingSeenAt = now;
+      }
+    }
 
-    if (Object.keys(updates).length === 0)
+    if (Object.keys(updates).length === 0) {
+      if (parsed.data.markOnboardingSeen || parsed.data.completeOnboarding) {
+        return c.json({ ok: true });
+      }
       return c.json({ error: "No valid fields to update" }, 400);
+    }
 
     await db
       .update(schema.crmUsers)

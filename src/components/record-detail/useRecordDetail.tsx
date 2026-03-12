@@ -280,10 +280,10 @@ export function useRecordDetail(): UseRecordDetailReturn {
 
   useEffect(() => {
     if (displayName && displayName !== "\u2026") {
-      document.title = `${displayName} | Basics CRM`;
+      document.title = `${displayName} | Basics OS`;
     }
     return () => {
-      document.title = "Basics CRM";
+      document.title = "Basics OS";
     };
   }, [displayName]);
 

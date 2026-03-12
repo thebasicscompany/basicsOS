@@ -104,6 +104,8 @@ export function createApp(db: Db, env: Env) {
     cors({
       origin: (origin) => {
         if (!origin) return null;
+        // Electron file:// sends Origin: "null"
+        if (origin === "null") return "null";
         try {
           const url = new URL(origin);
           const isLocalhost =

@@ -21,10 +21,11 @@ export function createAuth(
     basePath: "/api/auth",
     baseURL: baseUrl,
     secret,
-    // Localhost (dev) + ALLOWED_ORIGINS (production)
+    // Localhost (dev) + ALLOWED_ORIGINS (production) + null (Electron file://)
     trustedOrigins: async (req) => {
       const origin = req?.headers?.get("origin");
       if (!origin) return [];
+      if (origin === "null") return ["null"];
       try {
         const url = new URL(origin);
         const isLocal =

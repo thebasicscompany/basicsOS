@@ -661,7 +661,11 @@ export function VoiceApp() {
             <ul className="space-y-3">
               <ShortcutRow
                 label="Dictation"
-                description="Hold to dictate + paste. Double-tap for continuous."
+                description={
+                  isMac()
+                    ? "Hold to dictate + paste. Double-tap for continuous."
+                    : "Tap to toggle dictation. Tap again to stop."
+                }
                 value={getShortcutDisplayValue("dictation", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("dictation")}
                 isRecording={recordingSlot === "dictation"}
@@ -670,7 +674,11 @@ export function VoiceApp() {
               />
               <ShortcutRow
                 label="AI Assistant"
-                description="Tap for AI. Hold for manual control. Double-tap for continuous."
+                description={
+                  isMac()
+                    ? "Tap for AI. Hold for manual control. Double-tap for continuous."
+                    : "Tap to toggle AI assistant. Double-tap for continuous."
+                }
                 value={getShortcutDisplayValue("assistant", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("assistant")}
                 isRecording={recordingSlot === "assistant"}

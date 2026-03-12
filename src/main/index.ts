@@ -1058,7 +1058,7 @@ ipcMain.handle("start-meeting", async () => {
   console.warn("[IPC] start-meeting received, meetingMgr=", !!meetingMgr);
   console.warn(`[MEETING:MAIN:HN] start-meeting entry meetingMgr=${!!meetingMgr} t=${Date.now()}`);
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = API_URL;
   const tokenLookup = await getSessionTokenForApi(apiUrl);
   const token = tokenLookup.token;
   console.warn(
@@ -1088,7 +1088,7 @@ ipcMain.handle("stop-meeting", async () => {
   console.warn("[IPC] stop-meeting received, meetingMgr=", !!meetingMgr);
   console.warn(`[MEETING:MAIN:HN] stop-meeting entry meetingMgr=${!!meetingMgr} t=${Date.now()}`);
   if (!meetingMgr) return;
-  const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
+  const apiUrl = API_URL;
   try {
     console.warn(`[MEETING:MAIN:HN] stop-meeting before meetingMgr.stop t=${Date.now()}`);
     await meetingMgr.stop(apiUrl);

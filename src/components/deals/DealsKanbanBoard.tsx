@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   DragDropContext,
@@ -106,13 +106,53 @@ export function DealsKanbanBoard() {
     return map;
   }, [deals, allStageIds]);
 
+  const [localColumns, setLocalColumns] = useState<Record<
+    string,
+    Record<string, unknown>[]
+  > | null>(null);
+
+  // Sync API data to local state, preserving local ordering
+  useEffect(() => {
+    setLocalColumns((prev) => {
+      if (!prev) return dealsByStage;
+      const next: Record<string, Record<string, unknown>[]> = {};
+
+      for (const stage of allStageIds) {
+        const apiDeals = dealsByStage[stage] || [];
+        const prevDeals = prev[stage] || [];
+        const prevDealMap = new Map(
+          prevDeals.map((d) => [(d.id ?? d.Id) as number, d]),
+        );
+
+        const newDeals: Record<string, unknown>[] = [];
+        // Keep existing deals in their current order
+        for (const d of prevDeals) {
+          const apiDeal = apiDeals.find(
+            (ad) => (ad.id ?? ad.Id) === (d.id ?? d.Id),
+          );
+          if (apiDeal) newDeals.push(apiDeal);
+        }
+        // Add any new deals from API to the end
+        for (const ad of apiDeals) {
+          if (!prevDealMap.has((ad.id ?? ad.Id) as number)) {
+            newDeals.push(ad);
+          }
+        }
+        next[stage] = newDeals;
+      }
+      return next;
+    });
+  }, [dealsByStage, allStageIds]);
+
   const handleDragEnd = useCallback(
     (result: DropResult) => {
       if (!result.destination) return;
       const dealId = result.draggableId.replace(/^deal-/, "");
+      const sourceStage = result.source.droppableId;
       const targetStage = result.destination.droppableId;
-      if (targetStage === result.source.droppableId) return;
-
+      const sourceIndex = result.source.index;
+      const destinationIndex = result.destination.index;
+      
       const id = parseInt(dealId, 10);
       if (isNaN(id)) return;
 
@@ -122,6 +162,33 @@ export function DealsKanbanBoard() {
         setAddStageOpen(true);
         return;
       }
+
+      if (sourceStage === targetStage && sourceIndex === destinationIndex) {
+        return;
+      }
+
+      // Optimistically update local ordering to prevent glitching
+      setLocalColumns((prev) => {
+        if (!prev) return prev;
+        const newCols = { ...prev };
+        const sourceList = [...(newCols[sourceStage] || [])];
+        const [movedItem] = sourceList.splice(sourceIndex, 1);
+
+        if (!movedItem) return prev;
+
+        if (sourceStage === targetStage) {
+          sourceList.splice(destinationIndex, 0, movedItem);
+          newCols[sourceStage] = sourceList;
+        } else {
+          const targetList = [...(newCols[targetStage] || [])];
+          // Optimistically update the status on the item
+          const updatedItem = { ...movedItem, status: targetStage, Status: targetStage };
+          targetList.splice(destinationIndex, 0, updatedItem);
+          newCols[sourceStage] = sourceList;
+          newCols[targetStage] = targetList;
+        }
+        return newCols;
+      });
 
       updateRecord.mutate({ id, data: { status: targetStage } });
     },
@@ -205,8 +272,6 @@ export function DealsKanbanBoard() {
             <Droppable key={stageId} droppableId={stageId}>
               {(provided, snapshot) => (
                 <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
                   className={cn(
                     "flex w-72 shrink-0 flex-col rounded-lg bg-muted/50 transition-colors",
                     snapshot.isDraggingOver && "bg-muted/70",
@@ -215,11 +280,15 @@ export function DealsKanbanBoard() {
                   <div className="flex items-center gap-2 px-3 py-2">
                     <DealStageBadge stage={stageId} />
                     <span className="text-xs text-muted-foreground">
-                      {dealsByStage[stageId]?.length ?? 0} deals
+                      {(localColumns?.[stageId] || dealsByStage[stageId])?.length ?? 0} deals
                     </span>
                   </div>
-                  <div className="min-h-[120px] flex-1 space-y-2 overflow-y-auto p-2">
-                    {(dealsByStage[stageId] ?? []).map((deal, index) => {
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="min-h-[120px] flex-1 space-y-2 overflow-y-auto p-2"
+                  >
+                    {((localColumns?.[stageId] || dealsByStage[stageId]) ?? []).map((deal, index) => {
                       const id = (deal.id ?? deal.Id) as number;
                       const name = (deal.name ?? deal.Name ?? "Deal") as string;
                       const amount = Number(deal.amount ?? deal.Amount ?? 0);

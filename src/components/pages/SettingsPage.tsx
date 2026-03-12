@@ -1288,9 +1288,8 @@ export function SettingsPage() {
               </p>
             </div>
             <ConnectionsContent embeddedInSettings />
+            <EmailSyncSection isAdmin={isAdmin} />
           </section>
-
-          <EmailSyncSection isAdmin={isAdmin} />
 
           {hasPendingChanges && (
             <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-3 backdrop-blur-sm sm:px-8">
@@ -1357,10 +1356,9 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
 
   if (!isActive) {
     return (
-      <section className="space-y-4">
-        <Separator />
+      <div className="mt-6 space-y-3 border-t pt-6">
         <div>
-          <h2 className="text-base font-medium">Email Sync</h2>
+          <h3 className="text-[13px] font-medium">Email Sync</h3>
           <p className="text-xs text-muted-foreground">
             Sync emails from Gmail to discover contacts and link conversations.
           </p>
@@ -1376,7 +1374,7 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
         >
           {startSync.isPending ? "Starting..." : "Enable Email Sync"}
         </Button>
-      </section>
+      </div>
     );
   }
 
@@ -1385,10 +1383,9 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
     : "Never";
 
   return (
-    <section className="space-y-4">
-      <Separator />
+    <div className="mt-6 space-y-4 border-t pt-6">
       <div>
-        <h2 className="text-base font-medium">Email Sync</h2>
+        <h3 className="text-[13px] font-medium">Email Sync</h3>
         <p className="text-xs text-muted-foreground">
           {syncStatus?.syncStatus === "syncing"
             ? "Syncing..."
@@ -1528,7 +1525,7 @@ function EmailSyncSection({ isAdmin }: { isAdmin: boolean }) {
           )}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

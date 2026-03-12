@@ -33,7 +33,7 @@ const { autoUpdater } = electronUpdater;
 import fs from "fs";
 import { exec, execSync } from "child_process";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
-import { getOverlaySettings, setOverlaySettings } from "./settings-store";
+import { getOverlaySettings, setOverlaySettings, OVERLAY_DEFAULTS } from "./settings-store";
 import { createShortcutManager } from "./shortcut-manager";
 import type { ShortcutManager } from "./shortcut-manager";
 import { createHoldKeyDetector } from "./hold-key-detector";
@@ -53,6 +53,25 @@ import type {
   DictationInsertResult,
 } from "@/shared-overlay/types";
 import { PILL_WIDTH, PILL_HEIGHT } from "@/shared-overlay/constants";
+
+/** Electron accelerator must include a non-modifier key (e.g. Space). Returns default if invalid. */
+const ensureValidAccelerator = (acc: string, defaultAcc: string): string => {
+  if (!acc || typeof acc !== "string") return defaultAcc;
+  const parts = acc.split("+").map((p) => p.trim().toLowerCase());
+  const last = parts[parts.length - 1];
+  const modifiers = new Set([
+    "control",
+    "ctrl",
+    "alt",
+    "option",
+    "shift",
+    "command",
+    "cmd",
+    "meta",
+  ]);
+  if (!last || modifiers.has(last)) return defaultAcc;
+  return acc;
+};
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -660,7 +679,10 @@ ipcMain.handle(
       // Legacy fallback for non-macOS
       if (shortcutMgr) {
         shortcutMgr.registerAll(
-          updated.shortcuts.assistantToggle,
+          ensureValidAccelerator(
+            updated.shortcuts.assistantToggle,
+            OVERLAY_DEFAULTS.shortcuts.assistantToggle,
+          ),
           updated.behavior.doubleTapWindowMs,
         );
       }
@@ -668,13 +690,20 @@ ipcMain.handle(
         globalShortcut.unregister(registeredMeetingAccelerator);
         registeredMeetingAccelerator = null;
       }
-      globalShortcut.register(updated.shortcuts.meetingToggle, () =>
+      const meetingAcc = ensureValidAccelerator(
+        updated.shortcuts.meetingToggle,
+        OVERLAY_DEFAULTS.shortcuts.meetingToggle,
+      );
+      globalShortcut.register(meetingAcc, () =>
         overlayWindow?.webContents.send("meeting-toggle"),
       );
-      registeredMeetingAccelerator = updated.shortcuts.meetingToggle;
+      registeredMeetingAccelerator = meetingAcc;
       if (holdDetector) {
         holdDetector.updateConfig({
-          accelerator: updated.shortcuts.dictationHoldKey,
+          accelerator: ensureValidAccelerator(
+            updated.shortcuts.dictationHoldKey,
+            OVERLAY_DEFAULTS.shortcuts.dictationHoldKey,
+          ),
           holdThresholdMs: updated.behavior.holdThresholdMs,
         });
       }
@@ -683,7 +712,11 @@ ipcMain.handle(
         registeredDictationAccelerator = null;
         dictationToggleActive = false;
       }
-      globalShortcut.register(updated.shortcuts.dictationHoldKey, () => {
+      const dictationAcc = ensureValidAccelerator(
+        updated.shortcuts.dictationHoldKey,
+        OVERLAY_DEFAULTS.shortcuts.dictationHoldKey,
+      );
+      globalShortcut.register(dictationAcc, () => {
         if (!overlayWindow) return;
         if (!dictationToggleActive) {
           startDictationOverlay();
@@ -693,7 +726,7 @@ ipcMain.handle(
           dictationToggleActive = false;
         }
       });
-      registeredDictationAccelerator = updated.shortcuts.dictationHoldKey;
+      registeredDictationAccelerator = dictationAcc;
     }
 
     overlayWindow?.webContents.send("settings-changed", updated);
@@ -1111,16 +1144,20 @@ ipcMain.handle("get-overlay-status", () => {
 });
 
 const registerMeetingShortcut = (accelerator: string): void => {
+  const acc = ensureValidAccelerator(
+    accelerator,
+    OVERLAY_DEFAULTS.shortcuts.meetingToggle,
+  );
   if (registeredMeetingAccelerator) {
     globalShortcut.unregister(registeredMeetingAccelerator);
     registeredMeetingAccelerator = null;
   }
-  const ok = globalShortcut.register(accelerator, () => {
+  const ok = globalShortcut.register(acc, () => {
     console.warn("[SHORTCUT] Meeting toggle fired, overlayWindow=", !!overlayWindow);
     overlayWindow?.webContents.send("meeting-toggle");
   });
-  if (ok) registeredMeetingAccelerator = accelerator;
-  console.warn("[SHORTCUT] Meeting shortcut registered:", accelerator, "ok=", ok);
+  if (ok) registeredMeetingAccelerator = acc;
+  console.warn("[SHORTCUT] Meeting shortcut registered:", acc, "ok=", ok);
 };
 
 app.whenReady().then(async () => {
@@ -1158,30 +1195,30 @@ app.whenReady().then(async () => {
   // In packaged Electron builds the renderer loads from file://, which causes
   // cross-origin requests to the API to carry Origin: null (or no Origin at all).
   // Better Auth's CSRF middleware rejects that with MISSING_OR_NULL_ORIGIN before
-  // it ever reaches the trustedOrigins callback.  Fix: intercept outbound requests
-  // to the configured API host and replace a null/missing Origin with the actual
-  // API origin so the server-side CSRF check sees a legit, trusted value.
-  try {
-    const apiOrigin = new URL(API_URL).origin;
-    session.defaultSession.webRequest.onBeforeSendHeaders(
-      (details, callback) => {
-        const headers = { ...details.requestHeaders };
-        const origin = headers["Origin"] ?? headers["origin"];
-        if (!origin || origin === "null") {
-          try {
-            if (new URL(details.url).origin === apiOrigin) {
-              headers["Origin"] = apiOrigin;
-            }
-          } catch {
-            // ignore unparseable URLs
+  // it ever reaches the trustedOrigins callback.
+  // Fix: for any outbound request that has a null/missing Origin, inject the
+  // target URL's own origin.  We use the *target* origin rather than API_URL
+  // because API_URL is a runtime env var that may not be set in the installed
+  // app (VITE_API_URL is baked into the renderer at build time, but the main
+  // process can only read env vars present at launch).
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    (details, callback) => {
+      const headers = { ...details.requestHeaders };
+      const origin = headers["Origin"] ?? headers["origin"];
+      if (!origin || origin === "null") {
+        try {
+          const targetOrigin = new URL(details.url).origin;
+          // Only inject for http/https targets (skip file://, chrome-extension://, etc.)
+          if (targetOrigin.startsWith("http")) {
+            headers["Origin"] = targetOrigin;
           }
+        } catch {
+          // ignore unparseable URLs
         }
-        callback({ requestHeaders: headers });
-      },
-    );
-  } catch {
-    // ignore if API_URL is not a valid URL (e.g. relative path fallback)
-  }
+      }
+      callback({ requestHeaders: headers });
+    },
+  );
 
   // Auto-update (skip in dev)
   if (!is.dev) {
@@ -1346,18 +1383,30 @@ app.whenReady().then(async () => {
     ]);
     if (!MODIFIER_KEYCODES_SET.has(assistBinding.keyCode)) {
       try {
-        globalShortcut.register(settings.shortcuts.assistantToggle, () => {
-          /* suppressed — keyboard hook handles timing */
-        });
+        globalShortcut.register(
+          ensureValidAccelerator(
+            settings.shortcuts.assistantToggle,
+            OVERLAY_DEFAULTS.shortcuts.assistantToggle,
+          ),
+          () => {
+            /* suppressed — keyboard hook handles timing */
+          },
+        );
       } catch {
         /* ignore registration failure */
       }
     }
     if (!MODIFIER_KEYCODES_SET.has(meetBinding.keyCode)) {
       try {
-        globalShortcut.register(settings.shortcuts.meetingToggle, () => {
-          /* suppressed — keyboard hook handles it */
-        });
+        globalShortcut.register(
+          ensureValidAccelerator(
+            settings.shortcuts.meetingToggle,
+            OVERLAY_DEFAULTS.shortcuts.meetingToggle,
+          ),
+          () => {
+            /* suppressed — keyboard hook handles it */
+          },
+        );
       } catch {
         /* ignore */
       }
@@ -1394,7 +1443,10 @@ app.whenReady().then(async () => {
 
     holdDetector = createHoldKeyDetector(
       {
-        accelerator: settings.shortcuts.dictationHoldKey,
+        accelerator: ensureValidAccelerator(
+          settings.shortcuts.dictationHoldKey,
+          OVERLAY_DEFAULTS.shortcuts.dictationHoldKey,
+        ),
         holdThresholdMs: settings.behavior.holdThresholdMs,
       },
       {
@@ -1404,13 +1456,26 @@ app.whenReady().then(async () => {
     );
 
     shortcutMgr.registerAll(
-      settings.shortcuts.assistantToggle,
+      ensureValidAccelerator(
+        settings.shortcuts.assistantToggle,
+        OVERLAY_DEFAULTS.shortcuts.assistantToggle,
+      ),
       settings.behavior.doubleTapWindowMs,
     );
     holdDetector.start();
-    registerMeetingShortcut(settings.shortcuts.meetingToggle);
+    registerMeetingShortcut(
+      ensureValidAccelerator(
+        settings.shortcuts.meetingToggle,
+        OVERLAY_DEFAULTS.shortcuts.meetingToggle,
+      ),
+    );
 
-    globalShortcut.register(settings.shortcuts.dictationHoldKey, () => {
+    globalShortcut.register(
+      ensureValidAccelerator(
+        settings.shortcuts.dictationHoldKey,
+        OVERLAY_DEFAULTS.shortcuts.dictationHoldKey,
+      ),
+      () => {
       if (!overlayWindow) return;
       if (!dictationToggleActive) {
         startDictationOverlay();
@@ -1420,7 +1485,10 @@ app.whenReady().then(async () => {
         dictationToggleActive = false;
       }
     });
-    registeredDictationAccelerator = settings.shortcuts.dictationHoldKey;
+    registeredDictationAccelerator = ensureValidAccelerator(
+      settings.shortcuts.dictationHoldKey,
+      OVERLAY_DEFAULTS.shortcuts.dictationHoldKey,
+    );
 
     // IPC for shortcut recording (no-op on non-macOS; handlers must exist to avoid "No handler registered")
     ipcMain.handle("start-shortcut-recording", async () => null);

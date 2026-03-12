@@ -94,10 +94,10 @@ const KEY_DISPLAY: Record<string, string> = {
   Enter: "Enter",
   Esc: "Esc",
   Escape: "Esc",
-  Left: "Left",
-  Right: "Right",
-  Up: "Up",
-  Down: "Down",
+  Left: "←",
+  Right: "→",
+  Up: "↑",
+  Down: "↓",
   Plus: "+",
 };
 
@@ -136,6 +136,57 @@ const SPECIAL_KEY_TOKENS: Record<string, string> = {
   "]": "]",
   "\\": "\\",
   "`": "`",
+};
+
+const MODIFIER_KEYS = new Set(["Control", "Shift", "Alt", "Meta"]);
+
+const keyEventToAcceleratorToken = (event: KeyboardEvent): string | null => {
+  const key = event.key;
+
+  if (key === "Control") return "Control";
+  if (key === "Shift") return "Shift";
+  if (key === "Alt") return "Alt";
+  if (key === "Meta") return isMac() ? "Command" : "Super";
+
+  if (/^[a-z0-9]$/i.test(key)) return key.toUpperCase();
+  if (/^F\d{1,2}$/i.test(key)) return key.toUpperCase();
+
+  return SPECIAL_KEY_TOKENS[key] ?? null;
+};
+
+const keyEventToAccelerator = (event: KeyboardEvent): string | null => {
+  const token = keyEventToAcceleratorToken(event);
+  if (!token) return null;
+
+  const parts: string[] = [];
+  if (event.ctrlKey && token !== "Control") parts.push("Control");
+  if (event.altKey && token !== "Alt") parts.push("Alt");
+  if (event.shiftKey && token !== "Shift") parts.push("Shift");
+  if (event.metaKey && token !== "Command" && token !== "Super") {
+    parts.push(isMac() ? "Command" : "Super");
+  }
+  parts.push(token);
+
+  return parts.join("+");
+};
+
+/**
+ * Builds a human-readable display string for currently held keys.
+ * Shows modifier names + the non-modifier key (if any).
+ */
+const buildLiveDisplay = (event: KeyboardEvent): string => {
+  const parts: string[] = [];
+  if (event.ctrlKey) parts.push("Ctrl");
+  if (event.metaKey) parts.push(isMac() ? "Cmd" : "Win");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+
+  if (!MODIFIER_KEYS.has(event.key)) {
+    const token = keyEventToAcceleratorToken(event);
+    if (token) parts.push(KEY_DISPLAY[token] ?? token);
+  }
+
+  return parts.join("+");
 };
 
 const formatAccelerator = (accelerator?: string | null): string => {
@@ -182,48 +233,80 @@ const buildShortcutUpdate = (
   return { shortcuts };
 };
 
-const keyEventToAcceleratorToken = (event: KeyboardEvent): string | null => {
-  const key = event.key;
+/** Key badge pill — matches Discord's style. */
+function KeyBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center justify-center rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground shadow-[0_1px_0_0_rgba(0,0,0,0.3)] min-w-[1.4rem] leading-none">
+      {label}
+    </span>
+  );
+}
 
-  if (key === "Control") return "Control";
-  if (key === "Shift") return "Shift";
-  if (key === "Alt") return "Alt";
-  if (key === "Meta") return isMac() ? "Command" : "Super";
-
-  if (/^[a-z0-9]$/i.test(key)) return key.toUpperCase();
-  if (/^F\d{1,2}$/i.test(key)) return key.toUpperCase();
-
-  return SPECIAL_KEY_TOKENS[key] ?? null;
-};
-
-const keyEventToAccelerator = (event: KeyboardEvent): string | null => {
-  const token = keyEventToAcceleratorToken(event);
-  if (!token) return null;
-
-  const parts: string[] = [];
-  if (event.ctrlKey && token !== "Control") parts.push("Control");
-  if (event.altKey && token !== "Alt") parts.push("Alt");
-  if (event.shiftKey && token !== "Shift") parts.push("Shift");
-  if (event.metaKey && token !== "Command" && token !== "Super") {
-    parts.push(isMac() ? "Command" : "Super");
-  }
-  parts.push(token);
-
-  return parts.join("+");
-};
-
-/** Interactive shortcut row — click to record a new key binding. */
+/**
+ * Shortcut row with inline recording state.
+ * When recording, shows live key badges that update as keys are held.
+ * Commits on full key release (all keys up) — same feel as Discord keybinds.
+ */
 function ShortcutRow({
   label,
   description,
   value,
   onRecord,
+  isRecording,
+  liveKeys,
+  onCancel,
 }: {
   label: string;
   description: string;
   value: string;
   onRecord: () => void;
+  isRecording?: boolean;
+  liveKeys?: string;
+  onCancel?: () => void;
 }) {
+  if (isRecording) {
+    const keyParts = liveKeys ? liveKeys.split("+").filter(Boolean) : [];
+
+    return (
+      <li className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-sm font-medium">{label}</span>
+          <span className="text-xs text-muted-foreground">
+            Hold keys, then release to set. <kbd className="text-[10px] opacity-60">Esc</kbd> to cancel.
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-[140px] items-center gap-1 rounded-lg border border-primary bg-primary/5 px-2.5 py-1.5">
+            {keyParts.length > 0 ? (
+              keyParts.map((k, i) => (
+                <span key={i} className="flex items-center gap-1">
+                  {i > 0 && (
+                    <span className="text-[10px] text-muted-foreground">+</span>
+                  )}
+                  <KeyBadge label={k} />
+                </span>
+              ))
+            ) : (
+              <span className="text-xs text-primary/70 animate-pulse select-none">
+                Press keys…
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Cancel"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li className="flex items-center justify-between gap-4">
       <div className="flex flex-col gap-0.5 min-w-0">
@@ -233,7 +316,7 @@ function ShortcutRow({
       <button
         type="button"
         onClick={onRecord}
-        className="shrink-0 min-w-[100px] rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer text-center"
+        className="shrink-0 min-w-[100px] rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm font-mono font-medium text-foreground hover:bg-muted hover:border-primary/50 transition-colors cursor-pointer text-center"
         title="Click to change shortcut"
       >
         {value}
@@ -250,6 +333,11 @@ export function VoiceApp() {
   const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([]);
   const [recordingSlot, setRecordingSlot] = useState<ShortcutSlot | null>(null);
   const recordingRef = useRef(false);
+
+  // Discord-style recording state
+  const [liveKeys, setLiveKeys] = useState<string>("");
+  const heldCodes = useRef<Set<string>>(new Set());
+  const committableAccelerator = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isElectron()) return;
@@ -288,6 +376,16 @@ export function VoiceApp() {
     void load();
   }, []);
 
+  const cancelRecording = useCallback(() => {
+    heldCodes.current.clear();
+    committableAccelerator.current = null;
+    setLiveKeys("");
+    setRecordingSlot(null);
+    recordingRef.current = false;
+    const api = window.electronAPI as ElectronVoiceApi | undefined;
+    void api?.cancelShortcutRecording?.();
+  }, []);
+
   const handleMicChange = useCallback(
     (value: string) => {
       const api = window.electronAPI as ElectronVoiceApi | undefined;
@@ -311,9 +409,13 @@ export function VoiceApp() {
       if (!api?.updateOverlaySettings) return;
 
       if (recordingRef.current) {
-        // Cancel any existing recording
         await api.cancelShortcutRecording?.();
       }
+
+      // Reset Discord-style tracking state
+      heldCodes.current.clear();
+      committableAccelerator.current = null;
+      setLiveKeys("");
 
       setRecordingSlot(slot);
       recordingRef.current = true;
@@ -347,6 +449,12 @@ export function VoiceApp() {
     [overlaySettings],
   );
 
+  /**
+   * Discord-style recording for non-macOS:
+   * - keydown  → update live display; store accelerator only when a non-modifier is the final key
+   * - keyup    → when ALL keys are released, commit (if a non-modifier was held) or reset
+   * - Escape alone → cancel without saving
+   */
   useEffect(() => {
     if (!recordingSlot || isMac()) return;
     const api = window.electronAPI as ElectronVoiceApi | undefined;
@@ -357,43 +465,75 @@ export function VoiceApp() {
       return;
     }
 
+    // Fresh state for this recording session
+    heldCodes.current.clear();
+    committableAccelerator.current = null;
+    setLiveKeys("");
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
       event.preventDefault();
       event.stopPropagation();
 
-      if (event.key === "Escape") {
-        setRecordingSlot(null);
-        recordingRef.current = false;
+      heldCodes.current.add(event.code);
+
+      // Escape alone cancels without saving
+      if (event.key === "Escape" && heldCodes.current.size === 1) {
+        cancelRecording();
         return;
       }
 
-      const accelerator = keyEventToAccelerator(event);
-      if (!accelerator) return;
+      // Always update the live display so the user sees what they're holding
+      setLiveKeys(buildLiveDisplay(event));
 
-      void updateOverlaySettings(
-        buildShortcutUpdate(recordingSlot, overlaySettings, accelerator),
-      )
-        .then((updated) => {
-          setOverlaySettings(updated);
-          toast.success(
-            `${recordingSlot} shortcut set to ${formatAccelerator(accelerator)}`,
-          );
-        })
-        .catch(() => {
-          toast.error("Failed to update shortcut");
-        })
-        .finally(() => {
-          setRecordingSlot(null);
-          recordingRef.current = false;
-        });
+      // Only mark as committable when the triggering key is a real (non-modifier) key
+      if (!MODIFIER_KEYS.has(event.key)) {
+        const acc = keyEventToAccelerator(event);
+        if (acc) committableAccelerator.current = acc;
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      heldCodes.current.delete(event.code);
+
+      // All keys released → commit or reset
+      if (heldCodes.current.size === 0) {
+        const acc = committableAccelerator.current;
+        committableAccelerator.current = null;
+
+        if (acc) {
+          void updateOverlaySettings(
+            buildShortcutUpdate(recordingSlot, overlaySettings, acc),
+          )
+            .then((updated) => {
+              setOverlaySettings(updated);
+              toast.success(
+                `${recordingSlot} shortcut set to ${formatAccelerator(acc)}`,
+              );
+            })
+            .catch(() => toast.error("Failed to update shortcut"))
+            .finally(() => {
+              setRecordingSlot(null);
+              recordingRef.current = false;
+            });
+        } else {
+          // Only modifiers were pressed — stay in recording mode, reset display
+          setLiveKeys("");
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
+      heldCodes.current.clear();
     };
-  }, [overlaySettings, recordingSlot]);
+  }, [overlaySettings, recordingSlot, cancelRecording]);
 
   const handleOverlayToggle = useCallback(async () => {
     const api = window.electronAPI;
@@ -514,27 +654,9 @@ export function VoiceApp() {
             <div>
               <h3 className="text-[15px] font-semibold">Shortcuts</h3>
               <p className="text-[12px] text-muted-foreground">
-                Click a shortcut to change it. Press any key or key combo.
+                Click a shortcut, hold your keys, then release to save.
               </p>
             </div>
-
-            {recordingSlot && (
-              <div className="rounded-lg border border-primary/50 bg-primary/5 px-4 py-3 text-sm text-primary animate-pulse">
-                Press any key or key combo for{" "}
-                <strong>{recordingSlot}</strong>...
-                <button
-                  type="button"
-                  onClick={() => {
-                    void (window.electronAPI as { cancelShortcutRecording?: () => Promise<void> })?.cancelShortcutRecording?.();
-                    setRecordingSlot(null);
-                    recordingRef.current = false;
-                  }}
-                  className="ml-2 underline cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
 
             <ul className="space-y-3">
               <ShortcutRow
@@ -542,18 +664,27 @@ export function VoiceApp() {
                 description="Hold to dictate + paste. Double-tap for continuous."
                 value={getShortcutDisplayValue("dictation", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("dictation")}
+                isRecording={recordingSlot === "dictation"}
+                liveKeys={liveKeys}
+                onCancel={cancelRecording}
               />
               <ShortcutRow
                 label="AI Assistant"
                 description="Tap for AI. Hold for manual control. Double-tap for continuous."
                 value={getShortcutDisplayValue("assistant", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("assistant")}
+                isRecording={recordingSlot === "assistant"}
+                liveKeys={liveKeys}
+                onCancel={cancelRecording}
               />
               <ShortcutRow
                 label="Meeting"
                 description="Toggle meeting recording."
                 value={getShortcutDisplayValue("meeting", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("meeting")}
+                isRecording={recordingSlot === "meeting"}
+                liveKeys={liveKeys}
+                onCancel={cancelRecording}
               />
             </ul>
           </div>

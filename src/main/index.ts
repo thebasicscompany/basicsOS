@@ -80,8 +80,9 @@ const pendingDictationInsertRequests = new Map<
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
 const API_URL =
   process.env["BASICSOS_API_URL"] ??
-  process.env["VITE_API_URL"] ??
+  (import.meta.env.VITE_API_URL as string | undefined) ??
   "http://localhost:3001";
+console.log("[main] API_URL =", API_URL);
 const ALLOWED_PROXY_PATHS = new Set([
   "/v1/audio/transcriptions",
   "/v1/audio/speech",
@@ -256,6 +257,10 @@ function createMainWindow(): void {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.destroy();
+      overlayWindow = null;
+    }
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -366,8 +371,6 @@ function createOverlayWindow(): void {
   overlayWindow.webContents.on("did-finish-load", () => {
     overlayWindow?.webContents.send("notch-info", detectNotch());
   });
-
-  overlayWindow.showInactive();
 }
 
 ipcMain.handle("get-api-url", () => API_URL);
@@ -627,9 +630,14 @@ ipcMain.handle(
       };
     }
 
+    const allCookies = await session.defaultSession.cookies.get({});
+    const authCookies = allCookies.filter(c => c.name === "better-auth.session_token");
+    console.log("[proxy] total cookies in store:", allCookies.length, "better-auth cookies:", authCookies.map(c => ({ domain: c.domain, secure: c.secure, sameSite: c.sameSite })));
     const cookies = await session.defaultSession.cookies.get({
+      url: API_URL,
       name: "better-auth.session_token",
     });
+    console.log("[proxy] cookies found by URL filter:", cookies.length);
     const token = cookies[0]?.value;
     if (!token) {
       return {
@@ -750,6 +758,7 @@ ipcMain.handle("start-meeting", async () => {
   if (!meetingMgr) return;
   const apiUrl = process.env["BASICSOS_API_URL"] ?? "http://localhost:3001";
   const cookies = await session.defaultSession.cookies.get({
+    url: apiUrl,
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
@@ -796,6 +805,7 @@ ipcMain.handle("get-persisted-meeting", () => {
 ipcMain.handle("start-system-audio", async (_event, meetingId: string) => {
   console.warn(`[MEETING:MAIN:HN] start-system-audio entry meetingId=${meetingId} t=${Date.now()}`);
   const cookies = await session.defaultSession.cookies.get({
+    url: API_URL,
     name: "better-auth.session_token",
   });
   const token = cookies[0]?.value;
@@ -830,6 +840,7 @@ ipcMain.handle("prompt-screen-recording", () => {
 
 ipcMain.handle("get-session-token", async () => {
   const cookies = await session.defaultSession.cookies.get({
+    url: API_URL,
     name: "better-auth.session_token",
   });
   return cookies[0]?.value ?? "";
@@ -1146,7 +1157,6 @@ app.whenReady().then(async () => {
   }
 
   createMainWindow();
-  createOverlayWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

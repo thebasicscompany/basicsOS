@@ -1,9 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "node:url";
-import { config } from "dotenv";
-// Load .env from project root (Electron cwd can differ in dev/packaged)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-config({ path: path.resolve(__dirname, "..", "..", ".env") });
 import {
   app,
   BrowserWindow,
@@ -14,8 +11,6 @@ import {
   session,
   globalShortcut,
   shell,
-  systemPreferences,
-  dialog,
 } from "electron";
 
 if (process.env["REMOTE_DEBUGGING_PORT"]) {
@@ -472,6 +467,41 @@ function createMainWindow(): void {
     const allowed = resolveAllowedMainUrl(url);
     if (!allowed) {
       event.preventDefault();
+    }
+  });
+
+  // Fix 3: Crash recovery for the main window (overlay already has this)
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    console.warn(`[main] Main renderer crashed: reason=${details.reason} exitCode=${details.exitCode}`);
+    if (details.reason !== "killed" && details.reason !== "clean-exit") {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reload();
+        } else {
+          createMainWindow();
+        }
+      }, 1000);
+    }
+  });
+
+  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+    console.warn(`[main] Main window load failed: ${errorCode} ${errorDescription}`);
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+          mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+        } else {
+          mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+        }
+      }
+    }, 2000);
+  });
+
+  // Fix 5: macOS close-to-hide pattern — closing the window hides it, dock icon stays
+  mainWindow.on("close", (event) => {
+    if (process.platform === "darwin" && !(app as any).isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
     }
   });
 
@@ -1227,20 +1257,6 @@ app.whenReady().then(async () => {
     });
   }
 
-  // Ensure Accessibility permission (required for globalShortcut on macOS)
-  if (process.platform === "darwin") {
-    const trusted = systemPreferences.isTrustedAccessibilityClient(true);
-    if (!trusted) {
-      await dialog.showMessageBox({
-        type: "warning",
-        title: "Accessibility Permission Required",
-        message:
-          "BasicsOS needs Accessibility permission for keyboard shortcuts.\n\n" +
-          "Please grant access in System Settings → Privacy & Security → Accessibility, then restart the app.",
-      });
-    }
-  }
-
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
   });
@@ -1498,9 +1514,20 @@ app.whenReady().then(async () => {
   createMainWindow();
   createOverlayWindow();
 
+  // Fix 1: Force dock visibility — both windows start with show:false and the overlay
+  // uses skipTaskbar:true, so macOS may never set the activation policy to "regular".
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.show();
+  }
+
+  // Fix 2: Properly handle dock icon click — the overlay always exists so
+  // BrowserWindow.getAllWindows().length is never 0.
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createMainWindow();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
 });
@@ -1509,6 +1536,11 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+// Fix 5 (cont.): Track when the user actually wants to quit (Cmd+Q / app menu Quit)
+app.on("before-quit", () => {
+  (app as any).isQuitting = true;
 });
 
 app.on("will-quit", () => {

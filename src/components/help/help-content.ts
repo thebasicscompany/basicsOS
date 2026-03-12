@@ -42,20 +42,31 @@ const companiesRoute = "/objects/companies";
 const dealsRoute = "/objects/deals";
 
 export function getOnboardingChecklistItems({
-  isAdmin,
   hasApiKey,
+  isAdmin,
 }: HelpOptions): OnboardingChecklistItem[] {
   return [
     {
-      id: "try-voice",
-      title: "Try voice assistance",
+      id: "voice-setup",
+      title: "Open Voice and review pill setup",
       description: hasApiKey
-        ? "Open Voice and send your first spoken prompt so you can feel how the assistant fits into the workspace."
-        : "Open Voice and explore the assistant entry point. If sending messages is unavailable, you may still need API access configured.",
+        ? "Open the Voice page, try the pill, and review the shortcut. On macOS, this is also where you should approve Accessibility if the app prompts for it."
+        : "Open the Voice page to see how the pill works and where the shortcut is configured. If AI features are unavailable, shared API access may still need setup.",
       action: {
         label: "Open Voice",
-        description: "Try the voice assistant.",
+        description: "Review pill setup and shortcuts.",
         path: ROUTES.VOICE,
+      },
+    },
+    {
+      id: "connect-gmail",
+      title: "Try connecting Gmail",
+      description:
+        "Visit the Gmail connection setup so email sync and related workflows are easier to discover early.",
+      action: {
+        label: "Open Gmail setup",
+        description: "Go to the Gmail connection section.",
+        path: `${ROUTES.SETTINGS}#connections`,
       },
     },
     {
@@ -93,22 +104,22 @@ export function getOnboardingChecklistItems({
     },
     isAdmin
       ? {
-          id: "admin-setup",
-          title: "Finish workspace setup",
+          id: "admin-review-settings",
+          title: "Review shared settings",
           description:
-            "As an admin, review shared settings like organization info, AI/API access, and invites so your team has what it needs.",
+            "As an admin, make sure shared settings like organization setup, API access, and invites are where you want them. Members should not be responsible for this.",
           action: {
             label: "Open Settings",
-            description: "Review org setup, AI config, and invites.",
+            description: "Review org setup and team controls.",
             path: ROUTES.SETTINGS,
           },
         }
       : {
-          id: "member-setup",
-          title: "Review your setup",
+          id: "member-review-profile",
+          title: "Review your profile",
           description: hasApiKey
             ? "Check your personal settings and profile so you know where preferences and account details live."
-            : "Check your profile and settings, and ask an admin if AI access, organization settings, or invites still need to be configured.",
+            : "Check your profile and ask an admin if shared API access, organization settings, or invites still need to be configured.",
           action: {
             label: "Open Profile",
             description: "Review your personal account setup.",

@@ -21,6 +21,10 @@ type OverlaySettings = {
     dictation?: ShortcutBinding;
     assistant?: ShortcutBinding;
     meeting?: ShortcutBinding;
+    assistantToggle: string;
+    dictationToggle: string;
+    dictationHoldKey: string;
+    meetingToggle: string;
     [key: string]: unknown;
   };
   voice: {
@@ -42,16 +46,182 @@ const DEFAULT_MIC_VALUE = "__default__";
 
 type AudioDevice = { deviceId: string; label: string };
 
+type ShortcutSlot = "dictation" | "assistant" | "meeting";
+
+type ElectronVoiceApi = {
+  getOverlayStatus?: () => Promise<{ visible: boolean; active: boolean }>;
+  onOverlayStatusChanged?: (
+    cb: (status: { visible: boolean; active: boolean }) => void,
+  ) => void;
+  getOverlaySettings?: () => Promise<OverlaySettings>;
+  onSettingsChanged?: (cb: (s: OverlaySettings) => void) => void;
+  updateOverlaySettings?: (
+    partial: Partial<OverlaySettings>,
+  ) => Promise<OverlaySettings>;
+  startShortcutRecording?: () => Promise<ShortcutBinding | null>;
+  cancelShortcutRecording?: () => Promise<void>;
+  showOverlay?: () => Promise<void>;
+  hideOverlay?: () => Promise<void>;
+};
+
+const NON_MAC_SHORTCUT_FIELDS: Record<
+  ShortcutSlot,
+  "assistantToggle" | "dictationHoldKey" | "meetingToggle"
+> = {
+  dictation: "dictationHoldKey",
+  assistant: "assistantToggle",
+  meeting: "meetingToggle",
+};
+
+const isMac = () =>
+  typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent);
+
+const MODIFIER_DISPLAY: Record<string, string> = {
+  CommandOrControl: isWindows() ? "Ctrl" : "Cmd",
+  Control: "Ctrl",
+  Ctrl: "Ctrl",
+  Command: "Cmd",
+  Alt: "Alt",
+  Option: isWindows() ? "Alt" : "Option",
+  Shift: "Shift",
+  Super: isWindows() ? "Win" : "Super",
+  Meta: isWindows() ? "Win" : "Meta",
+};
+
+const KEY_DISPLAY: Record<string, string> = {
+  Space: "Space",
+  Return: "Enter",
+  Enter: "Enter",
+  Esc: "Esc",
+  Escape: "Esc",
+  Left: "Left",
+  Right: "Right",
+  Up: "Up",
+  Down: "Down",
+  Plus: "+",
+};
+
+const SPECIAL_KEY_TOKENS: Record<string, string> = {
+  " ": "Space",
+  Spacebar: "Space",
+  Escape: "Esc",
+  Esc: "Esc",
+  Enter: "Enter",
+  Tab: "Tab",
+  Backspace: "Backspace",
+  Delete: "Delete",
+  Insert: "Insert",
+  Home: "Home",
+  End: "End",
+  PageUp: "PageUp",
+  PageDown: "PageDown",
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+  CapsLock: "CapsLock",
+  NumLock: "Numlock",
+  ScrollLock: "ScrollLock",
+  PrintScreen: "PrintScreen",
+  Pause: "Pause",
+  ContextMenu: "Menu",
+  "-": "-",
+  "=": "=",
+  ",": ",",
+  ".": ".",
+  "/": "/",
+  ";": ";",
+  "'": "'",
+  "[": "[",
+  "]": "]",
+  "\\": "\\",
+  "`": "`",
+};
+
+const formatAccelerator = (accelerator?: string | null): string => {
+  if (!accelerator) return "Not set";
+  return accelerator
+    .split("+")
+    .filter(Boolean)
+    .map((part) => MODIFIER_DISPLAY[part] ?? KEY_DISPLAY[part] ?? part)
+    .join(" + ");
+};
+
+const getShortcutDisplayValue = (
+  slot: ShortcutSlot,
+  settings: OverlaySettings | null,
+): string => {
+  if (!settings) return "Not set";
+  if (isMac()) {
+    return settings.shortcuts[slot]?.label ?? "Not set";
+  }
+  const field = NON_MAC_SHORTCUT_FIELDS[slot];
+  return formatAccelerator(settings.shortcuts[field]);
+};
+
+const buildShortcutUpdate = (
+  slot: ShortcutSlot,
+  settings: OverlaySettings | null,
+  value: string,
+): Partial<OverlaySettings> => {
+  const shortcuts: OverlaySettings["shortcuts"] = {
+    assistantToggle: settings?.shortcuts.assistantToggle ?? "",
+    dictationToggle: settings?.shortcuts.dictationToggle ?? "",
+    dictationHoldKey: settings?.shortcuts.dictationHoldKey ?? "",
+    meetingToggle: settings?.shortcuts.meetingToggle ?? "",
+    ...(settings?.shortcuts ?? {}),
+  };
+  if (slot === "dictation") {
+    shortcuts.dictationHoldKey = value;
+    shortcuts.dictationToggle = value;
+  } else if (slot === "assistant") {
+    shortcuts.assistantToggle = value;
+  } else {
+    shortcuts.meetingToggle = value;
+  }
+  return { shortcuts };
+};
+
+const keyEventToAcceleratorToken = (event: KeyboardEvent): string | null => {
+  const key = event.key;
+
+  if (key === "Control") return "Control";
+  if (key === "Shift") return "Shift";
+  if (key === "Alt") return "Alt";
+  if (key === "Meta") return isMac() ? "Command" : "Super";
+
+  if (/^[a-z0-9]$/i.test(key)) return key.toUpperCase();
+  if (/^F\d{1,2}$/i.test(key)) return key.toUpperCase();
+
+  return SPECIAL_KEY_TOKENS[key] ?? null;
+};
+
+const keyEventToAccelerator = (event: KeyboardEvent): string | null => {
+  const token = keyEventToAcceleratorToken(event);
+  if (!token) return null;
+
+  const parts: string[] = [];
+  if (event.ctrlKey && token !== "Control") parts.push("Control");
+  if (event.altKey && token !== "Alt") parts.push("Alt");
+  if (event.shiftKey && token !== "Shift") parts.push("Shift");
+  if (event.metaKey && token !== "Command" && token !== "Super") {
+    parts.push(isMac() ? "Command" : "Super");
+  }
+  parts.push(token);
+
+  return parts.join("+");
+};
+
 /** Interactive shortcut row — click to record a new key binding. */
 function ShortcutRow({
   label,
   description,
-  binding,
+  value,
   onRecord,
 }: {
   label: string;
   description: string;
-  binding: ShortcutBinding | undefined;
+  value: string;
   onRecord: () => void;
 }) {
   return (
@@ -66,7 +236,7 @@ function ShortcutRow({
         className="shrink-0 min-w-[100px] rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer text-center"
         title="Click to change shortcut"
       >
-        {binding?.label ?? "Not set"}
+        {value}
       </button>
     </li>
   );
@@ -78,7 +248,7 @@ export function VoiceApp() {
   const [overlaySettings, setOverlaySettings] =
     useState<OverlaySettings | null>(null);
   const [audioInputs, setAudioInputs] = useState<AudioDevice[]>([]);
-  const [recordingSlot, setRecordingSlot] = useState<string | null>(null);
+  const [recordingSlot, setRecordingSlot] = useState<ShortcutSlot | null>(null);
   const recordingRef = useRef(false);
 
   useEffect(() => {
@@ -93,12 +263,7 @@ export function VoiceApp() {
 
   useEffect(() => {
     if (!isElectron()) return;
-    const api = window.electronAPI as
-      | {
-          getOverlaySettings?: () => Promise<OverlaySettings>;
-          onSettingsChanged?: (cb: (s: OverlaySettings) => void) => void;
-        }
-      | undefined;
+    const api = window.electronAPI as ElectronVoiceApi | undefined;
     if (!api?.getOverlaySettings) return;
     void api.getOverlaySettings().then(setOverlaySettings);
     api.onSettingsChanged?.(setOverlaySettings);
@@ -125,13 +290,7 @@ export function VoiceApp() {
 
   const handleMicChange = useCallback(
     (value: string) => {
-      const api = window.electronAPI as
-        | {
-            updateOverlaySettings?: (
-              partial: Partial<OverlaySettings>,
-            ) => Promise<OverlaySettings>;
-          }
-        | undefined;
+      const api = window.electronAPI as ElectronVoiceApi | undefined;
       if (!api?.updateOverlaySettings || !overlaySettings) return;
       const deviceId = value === DEFAULT_MIC_VALUE ? null : value;
       void api
@@ -147,17 +306,9 @@ export function VoiceApp() {
   );
 
   const handleRecordShortcut = useCallback(
-    async (slot: "dictation" | "assistant" | "meeting") => {
-      const api = window.electronAPI as
-        | {
-            startShortcutRecording?: () => Promise<ShortcutBinding | null>;
-            cancelShortcutRecording?: () => Promise<void>;
-            updateOverlaySettings?: (
-              partial: Partial<OverlaySettings>,
-            ) => Promise<OverlaySettings>;
-          }
-        | undefined;
-      if (!api?.startShortcutRecording || !api?.updateOverlaySettings) return;
+    async (slot: ShortcutSlot) => {
+      const api = window.electronAPI as ElectronVoiceApi | undefined;
+      if (!api?.updateOverlaySettings) return;
 
       if (recordingRef.current) {
         // Cancel any existing recording
@@ -166,6 +317,13 @@ export function VoiceApp() {
 
       setRecordingSlot(slot);
       recordingRef.current = true;
+
+      if (!isMac()) return;
+      if (!api.startShortcutRecording) {
+        setRecordingSlot(null);
+        recordingRef.current = false;
+        return;
+      }
 
       try {
         const binding = await api.startShortcutRecording();
@@ -188,6 +346,54 @@ export function VoiceApp() {
     },
     [overlaySettings],
   );
+
+  useEffect(() => {
+    if (!recordingSlot || isMac()) return;
+    const api = window.electronAPI as ElectronVoiceApi | undefined;
+    const updateOverlaySettings = api?.updateOverlaySettings;
+    if (!updateOverlaySettings) {
+      setRecordingSlot(null);
+      recordingRef.current = false;
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setRecordingSlot(null);
+        recordingRef.current = false;
+        return;
+      }
+
+      const accelerator = keyEventToAccelerator(event);
+      if (!accelerator) return;
+
+      void updateOverlaySettings(
+        buildShortcutUpdate(recordingSlot, overlaySettings, accelerator),
+      )
+        .then((updated) => {
+          setOverlaySettings(updated);
+          toast.success(
+            `${recordingSlot} shortcut set to ${formatAccelerator(accelerator)}`,
+          );
+        })
+        .catch(() => {
+          toast.error("Failed to update shortcut");
+        })
+        .finally(() => {
+          setRecordingSlot(null);
+          recordingRef.current = false;
+        });
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [overlaySettings, recordingSlot]);
 
   const handleOverlayToggle = useCallback(async () => {
     const api = window.electronAPI;
@@ -334,19 +540,19 @@ export function VoiceApp() {
               <ShortcutRow
                 label="Dictation"
                 description="Hold to dictate + paste. Double-tap for continuous."
-                binding={overlaySettings?.shortcuts?.dictation as ShortcutBinding | undefined}
+                value={getShortcutDisplayValue("dictation", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("dictation")}
               />
               <ShortcutRow
                 label="AI Assistant"
                 description="Tap for AI. Hold for manual control. Double-tap for continuous."
-                binding={overlaySettings?.shortcuts?.assistant as ShortcutBinding | undefined}
+                value={getShortcutDisplayValue("assistant", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("assistant")}
               />
               <ShortcutRow
                 label="Meeting"
                 description="Toggle meeting recording."
-                binding={overlaySettings?.shortcuts?.meeting as ShortcutBinding | undefined}
+                value={getShortcutDisplayValue("meeting", overlaySettings)}
                 onRecord={() => void handleRecordShortcut("meeting")}
               />
             </ul>

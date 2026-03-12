@@ -118,12 +118,6 @@ export function HomePage() {
         {/* Greeting */}
         <h1 className="text-2xl font-semibold tracking-tight">{greeting}</h1>
 
-        <HomeOnboardingChecklist
-          userId={me?.id}
-          isAdmin={Boolean(me?.administrator)}
-          hasApiKey={hasKey || Boolean(me?.hasApiKey)}
-        />
-
         {/* Chat section */}
         <div className="mt-5">
           {/* Recent chat strip */}
@@ -166,6 +160,14 @@ export function HomePage() {
               <PromptInputSubmit />
             </PromptInputFooter>
           </PromptInput>
+        </div>
+
+        <div className="mt-6">
+          <HomeOnboardingChecklist
+            userId={me?.id}
+            isAdmin={Boolean(me?.administrator)}
+            hasApiKey={hasKey || Boolean(me?.hasApiKey)}
+          />
         </div>
 
         {/* Dynamic sections */}

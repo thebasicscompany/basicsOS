@@ -317,10 +317,14 @@ export function HelpCenterDialog({
     }
   }, [completeOnboarding, onOpenChange]);
 
+  const handleOpenChecklistTab = useCallback(() => {
+    setActiveTab("checklist");
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-5xl">
-        <div className="flex h-full flex-col">
+      <DialogContent className="h-[90vh] overflow-hidden p-0 sm:max-w-5xl">
+        <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="border-b px-6 pt-6 pb-5 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">Help Center</Badge>
@@ -338,30 +342,38 @@ export function HelpCenterDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-6 px-6 py-6">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl p-1 lg:w-auto">
-                    <TabsTrigger value="checklist" className="min-w-fit px-3">
-                      Checklist
-                    </TabsTrigger>
-                    {helpTabs.map((tab) => (
-                      <TabsTrigger
-                        key={tab.id}
-                        value={tab.id}
-                        className="min-w-fit px-3"
-                      >
-                        {tab.label}
+                  <div className="w-full overflow-x-auto lg:w-auto">
+                    <TabsList className="h-auto w-max min-w-full justify-start rounded-xl p-1 lg:min-w-0">
+                      <TabsTrigger value="checklist" className="min-w-fit px-3">
+                        Checklist
                       </TabsTrigger>
-                    ))}
-                    <TabsTrigger value="shortcuts" className="min-w-fit px-3">
-                      Shortcuts
-                    </TabsTrigger>
-                  </TabsList>
+                      {helpTabs.map((tab) => (
+                        <TabsTrigger
+                          key={tab.id}
+                          value={tab.id}
+                          className="min-w-fit px-3"
+                        >
+                          {tab.label}
+                        </TabsTrigger>
+                      ))}
+                      <TabsTrigger value="shortcuts" className="min-w-fit px-3">
+                        Shortcuts
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" onClick={onReplayOnboarding}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        handleOpenChecklistTab();
+                        onReplayOnboarding();
+                      }}
+                    >
                       Open checklist
                     </Button>
                   </div>

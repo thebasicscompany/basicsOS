@@ -7,7 +7,7 @@
   "homepage": "https://www.basicsos.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thebasicscompany/basicsOSnew"
+    "url": "https://github.com/thebasicscompany/basicsOS"
   },
   "packageManager": "pnpm@10.30.2",
   "type": "module",

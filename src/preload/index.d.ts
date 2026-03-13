@@ -67,6 +67,14 @@ export type OverlayElectronAPI = {
   stopSystemAudio?: () => Promise<Array<{ speaker: string; text: string; timestamp: number }>>;
   removeAllListeners?: () => void;
   resizeOverlay?: (height: number) => Promise<void>;
+  updater?: {
+    onUpdateAvailable: (cb: (info: { version: string; releaseDate?: string }) => void) => void;
+    onUpdateProgress: (
+      cb: (progress: { percent: number; bytesPerSecond?: number; transferred?: number; total?: number }) => void,
+    ) => void;
+    onUpdateDownloaded: (cb: () => void) => void;
+    installUpdate: () => Promise<void>;
+  };
 };
 
 declare global {

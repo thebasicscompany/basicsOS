@@ -1250,8 +1250,28 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Auto-update (skip in dev)
+  // Auto-update (skip in dev): notify renderer for Discord-style UI, install on user action
   if (!is.dev) {
+    autoUpdater.on("update-available", (info) => {
+      mainWindow?.webContents.send("app-update-available", {
+        version: info.version,
+        releaseDate: info.releaseDate,
+      });
+    });
+    autoUpdater.on("download-progress", (progress) => {
+      mainWindow?.webContents.send("app-update-progress", {
+        percent: progress.percent,
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total,
+      });
+    });
+    autoUpdater.on("update-downloaded", () => {
+      mainWindow?.webContents.send("app-update-downloaded");
+    });
+    ipcMain.handle("install-app-update", () => {
+      autoUpdater.quitAndInstall(false, true);
+    });
     autoUpdater.checkForUpdatesAndNotify().catch(() => {
       // Ignore update errors (e.g. no network, no publish configured)
     });

@@ -168,6 +168,22 @@ const overlayAPI = {
     ];
     for (const ch of channels) ipcRenderer.removeAllListeners(ch);
   },
+
+  // App update (Discord-style): used by main window for update banner + progress
+  updater: {
+    onUpdateAvailable: (cb: (info: { version: string; releaseDate?: string }) => void) => {
+      ipcRenderer.on("app-update-available", (_e, info) => cb(info));
+    },
+    onUpdateProgress: (
+      cb: (progress: { percent: number; bytesPerSecond?: number; transferred?: number; total?: number }) => void,
+    ) => {
+      ipcRenderer.on("app-update-progress", (_e, progress) => cb(progress));
+    },
+    onUpdateDownloaded: (cb: () => void) => {
+      ipcRenderer.on("app-update-downloaded", () => cb());
+    },
+    installUpdate: () => ipcRenderer.invoke("install-app-update") as Promise<void>,
+  },
 };
 
 if (process.contextIsolated) {

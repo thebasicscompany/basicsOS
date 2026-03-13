@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_URL = getRuntimeApiUrl();
 
 /**
  * Better Auth client — single instance shared across the app.

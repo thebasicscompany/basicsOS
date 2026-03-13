@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write  # required for electron-builder to create GitHub releases and upload assets
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          # Set the default production API URL baked into the public release.
+          # Per-org installers are built locally with their own VITE_API_URL and
+          # the app persists that URL in userData so auto-updates never overwrite it.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: |
+          pnpm build:electron
+          npx electron-builder --publish always

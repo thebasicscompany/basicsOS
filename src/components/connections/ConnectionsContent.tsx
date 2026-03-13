@@ -8,7 +8,8 @@ import { showError } from "@/lib/show-error";
 import { Button } from "@/components/ui/button";
 import { useGateway } from "@/hooks/useGateway";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 interface Connection {
   provider: string;

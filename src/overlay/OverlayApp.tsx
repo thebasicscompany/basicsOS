@@ -8,11 +8,7 @@ import {
   useSpeechRecognition,
   type SpeechRecognitionState,
 } from "./lib/whisper";
-import {
-  pillReducer,
-  initialPillContext,
-  type InteractionMode,
-} from "./lib/notch-pill-state";
+import { pillReducer, initialPillContext } from "./lib/notch-pill-state";
 import { useMeetingRecorder } from "./meeting-recorder";
 import { useFlashMessage } from "./lib/use-flash-message";
 import { useAIResponse } from "./lib/use-ai-response";

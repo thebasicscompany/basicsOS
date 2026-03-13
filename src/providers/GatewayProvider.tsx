@@ -4,8 +4,8 @@ import { authClient } from "@/lib/auth-client";
 import { createManageClient } from "@/lib/gateway";
 import { GatewayContext, type GatewayContextValue } from "./gateway-context";
 import { useMe } from "@/hooks/use-me";
-
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 const GATEWAY_URL =
   import.meta.env.VITE_GATEWAY_URL ?? "https://api.basicsos.com";
 

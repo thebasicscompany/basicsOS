@@ -69,6 +69,14 @@ export type OverlayElectronAPI = {
   stopSystemAudio?: () => Promise<Array<{ speaker: string; text: string; timestamp: number }>>;
   removeAllListeners?: () => void;
   resizeOverlay?: (height: number) => Promise<void>;
+  updater?: {
+    onUpdateAvailable: (cb: (info: { version: string; releaseDate?: string }) => void) => void;
+    onUpdateProgress: (
+      cb: (progress: { percent: number; bytesPerSecond?: number; transferred?: number; total?: number }) => void,
+    ) => void;
+    onUpdateDownloaded: (cb: () => void) => void;
+    installUpdate: () => Promise<void>;
+  };
 };
 
 declare global {
@@ -76,5 +84,8 @@ declare global {
     electron: ElectronAPI;
     api: unknown;
     electronAPI?: OverlayElectronAPI;
+    /** Runtime API URL injected by the preload before React mounts.
+     *  Set from userData/org-config.json so it survives auto-updates. */
+    __runtimeApiUrl__?: string;
   }
 }

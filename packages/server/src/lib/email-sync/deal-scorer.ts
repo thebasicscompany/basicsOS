@@ -1,4 +1,4 @@
-import { eq, and, sql, notInArray } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import * as schema from "@/db/schema/index.js";

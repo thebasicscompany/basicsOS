@@ -19,7 +19,8 @@ node_modules/
 # Build & output
 # =============================================================================
 dist/
-build/
+build/*
+!build/entitlements.mac.plist
 out/
 /lib/
 *.tsbuildinfo

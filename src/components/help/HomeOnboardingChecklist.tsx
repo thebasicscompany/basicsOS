@@ -26,7 +26,8 @@ import { useHelpCenter } from "@/hooks/use-help-center";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { cn } from "@/lib/utils";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 type Connection = {
   provider: string;

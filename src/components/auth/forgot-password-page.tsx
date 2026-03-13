@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
 import basicsIcon from "@/assets/basicos-icon.png";
 
 interface ForgotPasswordForm {
@@ -23,7 +24,7 @@ export function ForgotPasswordPage() {
   const onSubmit = async ({ email }: ForgotPasswordForm) => {
     setError(null);
     // Use API URL when origin is file:// (Electron) or otherwise invalid for web redirects
-    const apiBase = import.meta.env.VITE_API_URL ?? "";
+    const apiBase = getRuntimeApiUrl();
     const origin =
       window.location.origin?.startsWith("http") && !window.location.origin?.startsWith("file")
         ? window.location.origin

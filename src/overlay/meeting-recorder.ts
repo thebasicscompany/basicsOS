@@ -82,7 +82,7 @@ export const useMeetingRecorder = (
   /** AbortController for cancelling in-progress setup on rapid stop */
   const setupAbortRef = useRef<AbortController | null>(null);
   /** Serializes start/stop to prevent concurrent setup races */
-  const setupLockRef = useRef<Promise<unknown>>(Promise.resolve());
+  const _setupLockRef = useRef<Promise<unknown>>(Promise.resolve());
   const micOnlyRef = useRef<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
   const segmentsRef = useRef<TranscriptSegment[]>([]);

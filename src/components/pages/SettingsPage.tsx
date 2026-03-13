@@ -64,7 +64,8 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: SunIcon },

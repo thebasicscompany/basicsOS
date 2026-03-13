@@ -1,19 +1,19 @@
 {
   "name": "basics-os",
-  "version": "0.1.0",
+  "version": "0.1.12",
   "description": "Open-source CRM with AI chat, automations, and configurable objects.",
   "author": "The Basics Company <admin@basicsos.com> (https://basicsos.com)",
   "license": "AGPL-3.0",
   "homepage": "https://www.basicsos.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thebasicscompany/basicsOSnew"
+    "url": "https://github.com/thebasicscompany/basicsOS"
   },
   "packageManager": "pnpm@10.30.2",
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev:server": "cd packages/server && pnpm run dev",
+    "dev:server": "pnpm --filter @basics-os/shared build && cd packages/server && pnpm run dev",
     "dev:rest": "concurrently -n server,app -c blue,green \"pnpm run dev:server\" \"cross-env VITE_USE_REST=true pnpm run dev\"",
     "test": "vitest",
     "dev": "vite --force",

@@ -25,8 +25,9 @@ import { HomeOnboardingChecklist } from "@/components/help/HomeOnboardingCheckli
 import { FullScreenOnboarding } from "@/components/onboarding/FullScreenOnboarding";
 import { InteractiveWalkthrough } from "@/components/onboarding/InteractiveWalkthrough";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_URL = getRuntimeApiUrl();
 
 /* ------------------------------------------------------------------ */
 /*  Greeting                                                          */

@@ -9,7 +9,8 @@ import { authClient } from "@/lib/auth-client";
 import { ROUTES } from "@basics-os/hub";
 import basicsIcon from "@/assets/basicos-icon.png";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 interface SignupForm {
   first_name: string;

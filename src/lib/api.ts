@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 /** Standard API error shape returned by the server. */
 export interface ApiErrorBody {

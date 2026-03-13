@@ -3,7 +3,8 @@ import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 const TOOL_TO_QUERY_KEYS: Record<string, string[]> = {
   search_contacts: ["contacts_summary"],

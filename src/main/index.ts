@@ -103,10 +103,39 @@ const pendingDictationInsertRequests = new Map<
 >();
 
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
-const API_URL =
-  process.env["BASICSOS_API_URL"] ||
-  process.env["VITE_API_URL"] ||
-  "http://localhost:3001";
+
+/**
+ * Resolve the API URL with per-org persistence across auto-updates.
+ *
+ * On first launch the baked-in URL (set at build time via VITE_API_URL) is
+ * written to userData/org-config.json.  Auto-updates from GitHub replace the
+ * app bundle but never touch userData, so the org-specific URL survives.
+ */
+const resolveApiUrl = (): string => {
+  const bakedUrl =
+    process.env["BASICSOS_API_URL"] ??
+    process.env["VITE_API_URL"] ??
+    "http://localhost:3001";
+
+  try {
+    const configPath = path.join(app.getPath("userData"), "org-config.json");
+    if (fs.existsSync(configPath)) {
+      const saved = JSON.parse(fs.readFileSync(configPath, "utf8")) as {
+        apiUrl?: string;
+      };
+      if (saved.apiUrl) return saved.apiUrl;
+    }
+    // First install: persist the baked-in URL so it survives future updates.
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, JSON.stringify({ apiUrl: bakedUrl }));
+  } catch {
+    // If userData isn't accessible yet (very early init) fall through to baked URL.
+  }
+
+  return bakedUrl;
+};
+
+const API_URL = resolveApiUrl();
 const ALLOWED_PROXY_PATHS = new Set([
   "/v1/audio/transcriptions",
   "/v1/audio/speech",
@@ -614,6 +643,10 @@ function createOverlayWindow(): void {
 }
 
 ipcMain.handle("get-api-url", () => API_URL);
+// Synchronous variant used by the preload to inject the URL before React mounts.
+ipcMain.on("get-api-url-sync", (event) => {
+  event.returnValue = API_URL;
+});
 
 ipcMain.handle("get-overlay-settings", () => getOverlaySettings());
 
@@ -1193,8 +1226,39 @@ const registerMeetingShortcut = (accelerator: string): void => {
   console.warn("[SHORTCUT] Meeting shortcut registered:", acc, "ok=", ok);
 };
 
+/** Clear session cache when app version changes (e.g. after auto-update).
+ * Stale cached renderer assets can cause a white screen on first launch post-update. */
+async function clearCacheIfVersionChanged(): Promise<void> {
+  if (is.dev) return;
+  const versionFile = path.join(app.getPath("userData"), "last-app-version");
+  const currentVersion = app.getVersion();
+  let lastVersion: string | null = null;
+  try {
+    if (fs.existsSync(versionFile)) {
+      lastVersion = fs.readFileSync(versionFile, "utf-8").trim();
+    }
+  } catch {
+    // ignore read errors
+  }
+  if (lastVersion !== null && lastVersion !== currentVersion) {
+    try {
+      await session.defaultSession.clearCache();
+    } catch (e) {
+      console.warn("[main] clearCache after version change failed:", e);
+    }
+  }
+  try {
+    fs.mkdirSync(path.dirname(versionFile), { recursive: true });
+    fs.writeFileSync(versionFile, currentVersion, "utf-8");
+  } catch {
+    // ignore write errors
+  }
+}
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");
+
+  await clearCacheIfVersionChanged();
 
   // Allow microphone, camera, and display-capture for voice overlay and main window
   session.defaultSession.setPermissionRequestHandler(
@@ -1253,11 +1317,57 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Auto-update (skip in dev)
+  // Auto-update (skip in dev): notify renderer for Discord-style UI, install on user action
   if (!is.dev) {
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {
-      // Ignore update errors (e.g. no network, no publish configured)
+    autoUpdater.on("update-available", (info) => {
+      mainWindow?.webContents.send("app-update-available", {
+        version: info.version,
+        releaseDate: info.releaseDate,
+      });
     });
+    autoUpdater.on("download-progress", (progress) => {
+      mainWindow?.webContents.send("app-update-progress", {
+        percent: progress.percent,
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total,
+      });
+    });
+    autoUpdater.on("update-downloaded", () => {
+      mainWindow?.webContents.send("app-update-downloaded");
+    });
+    ipcMain.handle("install-app-update", async () => {
+      try {
+        await session.defaultSession.clearCache();
+      } catch (e) {
+        console.warn("[main] clearCache before update install failed:", e);
+      }
+      autoUpdater.quitAndInstall(false, true);
+    });
+    const updaterLogPath = path.join(app.getPath("userData"), "logs", "updater.log");
+    const writeUpdaterLog = (msg: string) => {
+      try {
+        const dir = path.dirname(updaterLogPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.appendFileSync(
+          updaterLogPath,
+          `${new Date().toISOString()} [updater] ${msg}\n`,
+        );
+      } catch {
+        // ignore
+      }
+    };
+    autoUpdater.on("error", (err) => {
+      const msg = String(err?.message ?? err);
+      writeUpdaterLog(`error: ${msg}`);
+      console.warn("[updater] error:", msg);
+    });
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      const msg = String(err?.message ?? err);
+      writeUpdaterLog(`check failed: ${msg}`);
+      console.warn("[updater] checkForUpdatesAndNotify failed:", msg);
+    });
+    writeUpdaterLog(`Log file: ${updaterLogPath}`);
   }
 
   app.on("browser-window-created", (_, window) => {

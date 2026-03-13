@@ -3,7 +3,8 @@ import { Navigate } from "react-router";
 import { authClient } from "@/lib/auth-client";
 import { LoginPage } from "./login-page";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+const API_URL = getRuntimeApiUrl();
 
 /**
  * Entry point for the app. Handles three cases:

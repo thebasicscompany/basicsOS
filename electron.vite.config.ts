@@ -49,6 +49,10 @@ export default defineConfig(({ mode }) => {
       base: "./",
       define: {
         "import.meta.env.VITE_IS_ELECTRON": JSON.stringify("true"),
+        // Bake the API URL into the renderer bundle so packaged builds have a
+        // working default. In per-org installers the main process will override
+        // this at runtime via userData/org-config.json (persisted across updates).
+        "import.meta.env.VITE_API_URL": JSON.stringify(builtInApiUrl),
       },
       build: {
         rollupOptions: {

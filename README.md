@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="./public/logos/basicsos-wordmark-basics-white.png" width="220" alt="BasicsOS" />
-</p>
+
 
 <h3 align="center">Open-Source CRM Desktop App for Modern Teams</h3>
 

@@ -13,7 +13,7 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev:server": "cd packages/server && pnpm run dev",
+    "dev:server": "pnpm --filter @basics-os/shared build && cd packages/server && pnpm run dev",
     "dev:rest": "concurrently -n server,app -c blue,green \"pnpm run dev:server\" \"cross-env VITE_USE_REST=true pnpm run dev\"",
     "test": "vitest",
     "dev": "vite --force",

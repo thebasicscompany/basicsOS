@@ -7,7 +7,7 @@
   "deploy": {
     "startCommand": null,
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 10,
+    "healthcheckTimeout": 90,
     "restartPolicyType": "ON_FAILURE",
     "port": 8080
   }

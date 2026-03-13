@@ -311,6 +311,7 @@ export const NotificationPill = ({
   body,
   actions,
   assistantShortcutLabel,
+  onRespondWithVoice,
   onRespondInChat,
   onDismiss,
 }: {
@@ -318,6 +319,7 @@ export const NotificationPill = ({
   body: string;
   actions?: Array<{ id: string; label: string; url?: string }>;
   assistantShortcutLabel?: string;
+  onRespondWithVoice?: () => void;
   onRespondInChat: (context?: string) => void;
   onDismiss: () => void;
 }) => {
@@ -358,18 +360,41 @@ export const NotificationPill = ({
           marginTop: 4,
         }}
       >
+        {onRespondWithVoice && assistantShortcutLabel && (
+          <button
+            type="button"
+            onClick={onRespondWithVoice}
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: 6,
+              padding: "8px 14px",
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <MicrophoneIcon size={14} weight="fill" />
+            Respond with voice ({assistantShortcutLabel})
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onRespondInChat(respondAction?.url)}
           style={{
-            background: "rgba(255,255,255,0.15)",
-            color: "#fff",
+            background: "transparent",
+            color: "rgba(255,255,255,0.55)",
             border: "none",
-            borderRadius: 6,
-            padding: "6px 12px",
-            fontSize: 12,
+            padding: "4px 8px",
+            fontSize: 11.5,
             fontWeight: 500,
             cursor: "pointer",
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
           }}
         >
           {respondAction?.label ?? "Respond in chat"}
@@ -391,16 +416,6 @@ export const NotificationPill = ({
           >
             {viewDealAction.label}
           </button>
-        )}
-        {assistantShortcutLabel && (
-          <span
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              fontSize: 11,
-            }}
-          >
-            Press {assistantShortcutLabel} to respond
-          </span>
         )}
         <button
           type="button"

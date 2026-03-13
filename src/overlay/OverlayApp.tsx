@@ -120,9 +120,11 @@ export const OverlayApp = () => {
 
   const handleRespondInChat = useCallback(
     (context?: string) => {
+      const tid = pillRef.current.threadId;
+      const base = tid ? `/chat/${tid}` : "/chat";
       const path = context
-        ? `/chat?context=${encodeURIComponent(context)}`
-        : "/chat";
+        ? `${base}?context=${encodeURIComponent(context)}`
+        : base;
       navigateMain(path);
       dispatch({ type: "NOTIFICATION_DISMISS" });
     },
@@ -171,6 +173,7 @@ export const OverlayApp = () => {
     pill.state,
     pill.transcript,
     pill.conversationHistory,
+    pill.pendingVoiceContext,
     dispatch,
     streamAbortRef,
   );
@@ -885,6 +888,9 @@ export const OverlayApp = () => {
                   actions={pill.notificationActions}
                   assistantShortcutLabel={
                     settings.shortcuts?.assistant?.label ?? "⌘Space"
+                  }
+                  onRespondWithVoice={() =>
+                    activation.handleActivate("assistant")
                   }
                   onRespondInChat={() =>
                     handleRespondInChat(pill.notificationContext || undefined)

@@ -230,14 +230,30 @@ function useMeetingSync() {
       }
     ).electron?.ipcRenderer;
     if (!ipc) return;
-    const handler = (_e: unknown, queryKeys: string[]) => {
+
+    const dataChangedHandler = (_e: unknown, queryKeys: string[]) => {
       for (const key of queryKeys) {
         void qc.invalidateQueries({ queryKey: [key] });
       }
     };
-    ipc.on("data-changed", handler);
+
+    const notificationHandler = (
+      _e: unknown,
+      payload: { title?: string },
+    ) => {
+      if (
+        typeof payload?.title === "string" &&
+        payload.title.toLowerCase().includes("meeting")
+      ) {
+        void qc.invalidateQueries({ queryKey: ["meetings"] });
+      }
+    };
+
+    ipc.on("data-changed", dataChangedHandler);
+    ipc.on("push-notification", notificationHandler);
     return () => {
-      ipc.removeListener("data-changed", handler);
+      ipc.removeListener("data-changed", dataChangedHandler);
+      ipc.removeListener("push-notification", notificationHandler);
     };
   }, [qc]);
 }

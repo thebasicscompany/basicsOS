@@ -62,7 +62,7 @@ function AllChatsPopover({
   open,
   onOpenChange,
 }: {
-  threads: Array<{ id: string; title: string | null }>;
+  threads: Array<{ id: string; title: string | null; channel: string }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -107,6 +107,7 @@ function AllChatsPopover({
           {threads.map((thread) => {
             const threadPath = `/chat/${thread.id}`;
             const isActive = pathname === threadPath;
+            const isVoice = thread.channel === "voice";
             return (
               <Link
                 key={thread.id}
@@ -118,7 +119,11 @@ function AllChatsPopover({
                     : "text-foreground/80"
                 }`}
               >
-                <ChatCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                {isVoice ? (
+                  <MicrophoneIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChatCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                )}
                 <span className="truncate min-w-0 flex-1">
                   {thread.title ?? "Untitled"}
                 </span>
@@ -134,7 +139,9 @@ function AllChatsPopover({
 function ChatThreadsNav() {
   const { pathname } = useLocation();
   const { data: threads } = useThreads(50);
-  const allThreads = (threads ?? []).filter((t) => t.channel === "chat");
+  const allThreads = (threads ?? []).filter(
+    (t) => t.channel === "chat" || t.channel === "voice",
+  );
   const previewThreads = allThreads.slice(0, CHAT_PREVIEW_COUNT);
   const overflowThreads = allThreads.slice(CHAT_PREVIEW_COUNT);
   const hasMore = overflowThreads.length > 0;
@@ -178,6 +185,7 @@ function ChatThreadsNav() {
             <>
               {previewThreads.map((thread) => {
                 const threadPath = `/chat/${thread.id}`;
+                const isVoice = thread.channel === "voice";
                 return (
                   <SidebarMenuItem key={thread.id}>
                     <SidebarMenuButton
@@ -186,7 +194,11 @@ function ChatThreadsNav() {
                       tooltip={thread.title ?? "Untitled"}
                     >
                       <Link to={threadPath}>
-                        <ChatCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                        {isVoice ? (
+                          <MicrophoneIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                        ) : (
+                          <ChatCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                        )}
                         <span className="truncate text-xs">
                           {thread.title ?? "Untitled"}
                         </span>

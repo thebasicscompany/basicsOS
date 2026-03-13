@@ -29,6 +29,13 @@ export type PillAction =
   | { type: "TRANSCRIBING_COMPLETE"; transcript: string }
   | { type: "TRANSCRIBING_ERROR"; message: string }
   | { type: "SET_FOLLOW_UP"; needsFollowUp: boolean }
+  | { type: "SET_THREAD_ID"; threadId: string | null }
+  | {
+      type: "ACTIVATE_FROM_NOTIFICATION";
+      mode: InteractionMode;
+      context: string;
+    }
+  | { type: "CLEAR_PENDING_VOICE_CONTEXT" }
   | {
       type: "NOTIFICATION";
       title: string;
@@ -59,6 +66,8 @@ export type PillContext = {
   notificationBody: string;
   notificationActions: Array<{ id: string; label: string; url?: string }>;
   notificationContext: string;
+  threadId: string | null;
+  pendingVoiceContext: string;
 };
 
 const MAX_HISTORY_ENTRIES = 20;
@@ -82,6 +91,8 @@ export const initialPillContext: PillContext = {
   notificationBody: "",
   notificationActions: [],
   notificationContext: "",
+  threadId: null,
+  pendingVoiceContext: "",
 };
 
 export const pillReducer = (
@@ -98,6 +109,7 @@ export const pillReducer = (
           meetingId: ctx.meetingId,
           meetingStartedAt: ctx.meetingStartedAt,
           conversationHistory: ctx.conversationHistory,
+          threadId: ctx.threadId,
         };
       return {
         ...ctx,
@@ -234,6 +246,37 @@ export const pillReducer = (
         notificationActions: [],
         notificationContext: "",
       };
+
+    case "SET_THREAD_ID":
+      return { ...ctx, threadId: action.threadId };
+
+    case "ACTIVATE_FROM_NOTIFICATION":
+      return {
+        ...ctx,
+        state: "listening",
+        interactionMode: action.mode,
+        transcript: "",
+        responseTitle: "",
+        responseLines: [],
+        streamingText: "",
+        lastResponseTitle: "",
+        lastResponseLines: [],
+        needsFollowUp: false,
+        toolsUsed: [],
+        notificationTitle: "",
+        notificationBody: "",
+        notificationActions: [],
+        notificationContext: "",
+        pendingVoiceContext: action.context,
+        meetingActive: ctx.meetingActive,
+        meetingId: ctx.meetingId,
+        meetingStartedAt: ctx.meetingStartedAt,
+        conversationHistory: ctx.conversationHistory,
+        threadId: ctx.threadId,
+      };
+
+    case "CLEAR_PENDING_VOICE_CONTEXT":
+      return { ...ctx, pendingVoiceContext: "" };
 
     default:
       return ctx;

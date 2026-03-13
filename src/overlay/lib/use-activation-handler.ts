@@ -39,6 +39,16 @@ export const useActivationHandler = (deps: {
       if (!s) return;
       const cur = pillRef.current;
 
+      if (cur.state === "notification" && mode === "assistant") {
+        dispatch({
+          type: "ACTIVATE_FROM_NOTIFICATION",
+          mode: "assistant",
+          context: cur.notificationContext,
+        });
+        s.startListening();
+        return;
+      }
+
       if (cur.state !== "idle") {
         if (cur.interactionMode === "dictation" && mode === "dictation") {
           dispatch({ type: "TRANSCRIBING_START" });

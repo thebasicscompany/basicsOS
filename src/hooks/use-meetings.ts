@@ -59,7 +59,14 @@ export function useMeetings(params?: { page?: number; perPage?: number }) {
     queryKey: ["meetings", { page, perPage }],
     queryFn: () =>
       fetchApi<Meeting[]>(`/api/meetings?page=${page}&perPage=${perPage}`),
-    // List is invalidated via IPC when overlay saves a meeting
+    refetchInterval: (query) => {
+      const list = query.state.data;
+      if (!list) return false;
+      const hasActive = list.some(
+        (m) => m.status === "recording" || m.status === "processing",
+      );
+      return hasActive ? 5_000 : false;
+    },
   });
 }
 

@@ -5,6 +5,7 @@ type GetTokenFn = () => Promise<string | null>;
 let abortController: AbortController | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let overlayRef: BrowserWindow | null = null;
+let mainWindowRef: BrowserWindow | null = null;
 
 const RECONNECT_DELAY_MS = 5000;
 const MAX_RECONNECT_DELAY_MS = 60_000;
@@ -30,8 +31,10 @@ export function connectNotificationStream(
   getToken: GetTokenFn,
   apiUrl: string,
   overlay: BrowserWindow | null,
+  mainWindow?: BrowserWindow | null,
 ): void {
   overlayRef = overlay;
+  mainWindowRef = mainWindow ?? null;
   connect(getToken, apiUrl);
 }
 
@@ -49,6 +52,10 @@ export function disconnectNotificationStream(): void {
 
 export function setNotificationStreamOverlay(overlay: BrowserWindow | null): void {
   overlayRef = overlay;
+}
+
+export function setNotificationStreamMainWindow(mainWindow: BrowserWindow | null): void {
+  mainWindowRef = mainWindow;
 }
 
 async function connect(getToken: GetTokenFn, apiUrl: string): Promise<void> {
@@ -105,6 +112,7 @@ async function connect(getToken: GetTokenFn, apiUrl: string): Promise<void> {
                 context?: string;
               };
               overlayRef?.webContents.send("push-notification", payload);
+              mainWindowRef?.webContents.send("push-notification", payload);
             } catch {
               // ignore parse errors
             }

@@ -32,8 +32,9 @@ async function onMeetingCompleted(
   if (orgId && crmUser.userId) {
     sendNotification(orgId, crmUser.userId, {
       title: "Meeting just ended",
-      body: "Was this meeting with anyone in your contacts or related to a deal?",
-      context: "Meeting just ended. Was this meeting with anyone in your contacts or related to a deal?",
+      body: "Who was it with? Which company? Any follow-ups or action items? Press the assistant key to respond with voice, or open chat to type.",
+      context:
+        "Meeting just ended. Please capture: who was the meeting with (contact name), which company, and any follow-ups or action items to create.",
       actions: [
         { id: "respond_in_chat", label: "Respond in chat" },
         { id: "dismiss", label: "Dismiss" },

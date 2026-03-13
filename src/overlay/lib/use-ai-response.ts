@@ -7,6 +7,19 @@ import type { PillAction, PillState, ConversationEntry } from "./notch-pill-stat
 
 const log = createOverlayLogger("ai-response");
 
+const PILL_THREAD_KEY = "basicsos-pill-thread-id";
+const PILL_LAST_MESSAGE_KEY = "basicsos-pill-last-message-ms";
+const IDLE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+function getStoredThreadId(): string | undefined {
+  try {
+    const s = localStorage.getItem(PILL_THREAD_KEY);
+    return s?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function isFollowUpQuestion(text: string): boolean {
   if (text.length > 300) return false;
   const trimmed = text.trim();
@@ -127,6 +140,7 @@ export const useAIResponse = (
   pillState: PillState,
   transcript: string,
   conversationHistory: ConversationEntry[],
+  pendingVoiceContext: string,
   dispatch: (a: PillAction) => void,
   streamAbortRef: { current: boolean }
 ): void => {
@@ -134,7 +148,16 @@ export const useAIResponse = (
   // needing it as a dependency (history changes don't need to re-trigger calls).
   const historyRef = useRef(conversationHistory);
   historyRef.current = conversationHistory;
-  const threadIdRef = useRef<string | undefined>(undefined);
+  const threadIdRef = useRef<string | undefined>(getStoredThreadId());
+  const lastMessageAtRef = useRef<number | null>(null);
+  const lastMessageLoadedRef = useRef(false);
+
+  useEffect(() => {
+    const stored = threadIdRef.current;
+    if (stored) {
+      dispatch({ type: "SET_THREAD_ID", threadId: stored });
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     if (pillState !== "thinking" || !transcript) return;
@@ -142,6 +165,38 @@ export const useAIResponse = (
     // cancelled flag prevents a stale or duplicate call (e.g. from an
     // interrupted effect) from dispatching after it has been superseded.
     let cancelled = false;
+
+    if (!lastMessageLoadedRef.current) {
+      lastMessageLoadedRef.current = true;
+      try {
+        const s = localStorage.getItem(PILL_LAST_MESSAGE_KEY);
+        lastMessageAtRef.current = s ? parseInt(s, 10) : null;
+      } catch {
+        lastMessageAtRef.current = null;
+      }
+    }
+
+    const now = Date.now();
+    if (threadIdRef.current) {
+      const lastMs = lastMessageAtRef.current;
+      if (lastMs != null && now - lastMs > IDLE_THRESHOLD_MS) {
+        threadIdRef.current = undefined;
+        dispatch({ type: "SET_THREAD_ID", threadId: null });
+        try {
+          localStorage.removeItem(PILL_THREAD_KEY);
+          localStorage.removeItem(PILL_LAST_MESSAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    try {
+      localStorage.setItem(PILL_LAST_MESSAGE_KEY, String(now));
+    } catch {
+      /* ignore */
+    }
+    lastMessageAtRef.current = now;
 
     const cmd = detectCommand(transcript);
     if (cmd) {
@@ -171,13 +226,24 @@ export const useAIResponse = (
     // included as `message` by the server) so the AI has multi-turn context.
     const priorHistory = historyRef.current.slice(0, -1);
 
+    const message =
+      pendingVoiceContext.trim().length > 0
+        ? `${pendingVoiceContext.trim()}\n\nUser said: ${transcript}`
+        : transcript;
+
     streamAbortRef.current = false;
     void streamAssistantAPI(
-      transcript,
+      message,
       priorHistory,
       threadIdRef.current,
       (nextThreadId) => {
         threadIdRef.current = nextThreadId;
+        dispatch({ type: "SET_THREAD_ID", threadId: nextThreadId });
+        try {
+          localStorage.setItem(PILL_THREAD_KEY, nextThreadId);
+        } catch {
+          /* ignore */
+        }
       },
       (token) => {
         if (cancelled || streamAbortRef.current) return;
@@ -185,6 +251,7 @@ export const useAIResponse = (
       },
       (title, lines, toolsUsed) => {
         if (cancelled || streamAbortRef.current) return;
+        if (pendingVoiceContext) dispatch({ type: "CLEAR_PENDING_VOICE_CONTEXT" });
         dispatch({ type: "AI_COMPLETE", title, lines, toolsUsed });
         const fullText = lines.join("\n");
         if (toolsUsed.length === 0 && isFollowUpQuestion(fullText)) {
@@ -218,5 +285,5 @@ export const useAIResponse = (
   // conversationHistory intentionally omitted: history updates (e.g. appending
   // the assistant reply) must not re-trigger a new API call. We read it via
   // historyRef instead.
-  }, [pillState, transcript, dispatch, streamAbortRef]);
+  }, [pillState, transcript, pendingVoiceContext, dispatch, streamAbortRef]);
 };

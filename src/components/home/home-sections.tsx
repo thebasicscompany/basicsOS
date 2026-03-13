@@ -260,14 +260,14 @@ function useActivityFeed(): { items: ActivityItem[]; isLoading: boolean } {
     if (USE_MOCK_ACTIVITY) return MOCK_ACTIVITY;
     const feed: ActivityItem[] = [];
 
-    // AI chat threads → agent_chat
+    // AI chat threads (chat + voice) → agent_chat
     for (const t of threads ?? []) {
-      if (t.channel !== "chat") continue;
+      if (t.channel !== "chat" && t.channel !== "voice") continue;
       feed.push({
         id: `thread-${t.id}`,
         kind: "agent_chat",
         title: t.title ?? "AI conversation",
-        detail: "AI Chat",
+        detail: t.channel === "voice" ? "Voice" : "AI Chat",
         timestamp: t.updatedAt,
         href: `/chat/${t.id}`,
       });

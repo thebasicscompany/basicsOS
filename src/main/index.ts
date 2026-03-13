@@ -1522,11 +1522,11 @@ app.whenReady().then(async () => {
   createMainWindow();
   createOverlayWindow();
 
-  // Connect to notifications SSE stream — forwards push notifications to overlay pill
   connectNotificationStream(
     async () => (await getSessionTokenForApi(API_URL)).token,
     API_URL,
     overlayWindow,
+    mainWindow,
   );
 
   // Fix 1: Force dock visibility — both windows start with show:false and the overlay

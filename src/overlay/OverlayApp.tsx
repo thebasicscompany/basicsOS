@@ -443,7 +443,7 @@ export const OverlayApp = () => {
   } else if (pill.state === "idle") {
     pillHeight = menuBarHeight;
   } else if (pill.state === "notification") {
-    pillHeight = topPad + 120;
+    pillHeight = topPad + 200;
   } else if (pill.state === "response") {
     pillHeight = topPad + RESPONSE_EXTRA_H + responseContentH;
   } else {
@@ -881,6 +881,7 @@ export const OverlayApp = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={CONTENT_ENTER}
+                style={{ paddingBottom: 16, paddingLeft: 6, paddingRight: 6 }}
               >
                 <NotificationPill
                   title={pill.notificationTitle}
@@ -990,8 +991,9 @@ export const OverlayApp = () => {
                     }}
                     style={{
                       textAlign: "right",
-                      marginTop: 4,
-                      paddingRight: 4,
+                      marginTop: 8,
+                      marginBottom: 12,
+                      paddingRight: 22,
                       fontSize: 11,
                       color: "rgba(255,255,255,0.4)",
                       display: "flex",

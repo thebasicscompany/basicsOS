@@ -357,7 +357,8 @@ export const NotificationPill = ({
           flexWrap: "wrap",
           gap: 8,
           alignItems: "center",
-          marginTop: 4,
+          marginTop: 6,
+          paddingBottom: 4,
         }}
       >
         {onRespondWithVoice && assistantShortcutLabel && (

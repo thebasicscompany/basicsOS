@@ -27,6 +27,7 @@ export type OverlaySettings = {
     dictationToggle: string;
     dictationHoldKey: string;
     meetingToggle: string;
+    recordScreenToggle: string;
   };
   voice: {
     language: string;

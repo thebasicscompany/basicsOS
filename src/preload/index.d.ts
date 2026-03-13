@@ -40,6 +40,9 @@ export type OverlayElectronAPI = {
   onHoldStart?: (cb: () => void) => void;
   onHoldEnd?: (cb: () => void) => void;
   onMeetingToggle?: (cb: () => void) => void;
+  onRecordScreenToggle?: (cb: () => void) => void;
+  notifyRecordScreenStopped?: () => void;
+  onRecordScreenStopped?: (cb: () => void) => void;
   onMeetingStarted?: (cb: (id: string) => void) => void;
   onMeetingStopped?: (cb: (id: string) => void) => void;
   startMeeting?: () => Promise<void>;

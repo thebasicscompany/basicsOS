@@ -1,8 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "react-error-boundary";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   SidebarInset,
   SidebarProvider,
@@ -216,6 +224,15 @@ function useTrackPageVisits() {
   }, [pathname, objects, addRecentPage]);
 }
 
+function useRecordScreenStopped(onStopped: () => void) {
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onRecordScreenStopped) return;
+    api.onRecordScreenStopped(onStopped);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 function useMeetingSync() {
   const qc = useQueryClient();
   useEffect(() => {
@@ -231,6 +248,9 @@ export function AppLayout() {
   useTrackPageVisits();
   useMeetingSync();
 
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  useRecordScreenStopped(() => setSaveModalOpen(true));
+
   return (
     <SidebarProvider>
       <PageHeaderProvider>
@@ -245,6 +265,30 @@ export function AppLayout() {
             </SidebarInset>
           </div>
         </div>
+
+        {/* Save automation modal — triggered when screen recording stops via shortcut */}
+        <Dialog open={saveModalOpen} onOpenChange={setSaveModalOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Recording complete</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Saving your automation, check back in the automations hub!
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSaveModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setSaveModalOpen(false);
+                }}
+              >
+                Save to automations
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageHeaderProvider>
     </SidebarProvider>
   );

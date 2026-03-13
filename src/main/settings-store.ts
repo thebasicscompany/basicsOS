@@ -23,6 +23,7 @@ const DEFAULT_SHORTCUTS: OverlaySettings["shortcuts"] = {
   dictationToggle: "CommandOrControl+Shift+Space",
   dictationHoldKey: "CommandOrControl+Shift+Space",
   meetingToggle: "CommandOrControl+Alt+Space",
+  recordScreenToggle: "CommandOrControl+Alt+R",
 };
 
 export const OVERLAY_DEFAULTS: OverlaySettings = {
@@ -99,7 +100,14 @@ export const setOverlaySettings = (
 ): OverlaySettings => {
   const current = getOverlaySettings();
   const merged: OverlaySettings = {
-    shortcuts: { ...current.shortcuts, ...partial.shortcuts },
+    shortcuts: {
+      ...current.shortcuts,
+      ...partial.shortcuts,
+      recordScreenToggle:
+        partial.shortcuts?.recordScreenToggle ??
+        current.shortcuts.recordScreenToggle ??
+        DEFAULT_SHORTCUTS.recordScreenToggle,
+    },
     voice: { ...current.voice, ...partial.voice },
     behavior: { ...current.behavior, ...partial.behavior },
     meeting: { ...current.meeting, ...partial.meeting },

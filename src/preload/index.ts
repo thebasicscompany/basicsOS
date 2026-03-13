@@ -77,6 +77,13 @@ const overlayAPI = {
   onMeetingToggle: (cb: () => void) => {
     ipcRenderer.on("meeting-toggle", cb);
   },
+  onRecordScreenToggle: (cb: () => void) => {
+    ipcRenderer.on("record-screen-toggle", cb);
+  },
+  notifyRecordScreenStopped: () => ipcRenderer.send("record-screen-stopped"),
+  onRecordScreenStopped: (cb: () => void) => {
+    ipcRenderer.on("record-screen-stopped", cb);
+  },
   onMeetingStarted: (cb: (id: string) => void) => {
     ipcRenderer.on("meeting-started", (_e, id: string) => cb(id));
   },
@@ -159,6 +166,8 @@ const overlayAPI = {
       "branding-info",
       "settings-changed",
       "meeting-toggle",
+      "record-screen-toggle",
+      "record-screen-stopped",
       "meeting-started",
       "meeting-stopped",
       "overlay-visibility-changed",

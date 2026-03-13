@@ -227,6 +227,22 @@ export const processMeeting = async (meetingId: string): Promise<void> => {
   );
 };
 
+/** Create empty "Screen recording" automation (demo mock — nodes to be added later). */
+export const createScreenRecordingAutomation = async (): Promise<void> => {
+  await fetchWithSession(
+    "/api/automation_rules",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Screen recording",
+        workflowDefinition: { nodes: [], edges: [] },
+      }),
+    },
+    { retries: 1 },
+  );
+};
+
 export async function* streamAssistant(
   message: string,
   history: Array<{ role: string; content: string }>,

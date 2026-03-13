@@ -80,6 +80,7 @@ let holdDetector: ReturnType<typeof createHoldKeyDetector> | null = null;
 let meetingMgr: ReturnType<typeof createMeetingManager> | null = null;
 let keyboardHook: KeyboardHook | null = null;
 let registeredMeetingAccelerator: string | null = null;
+let registeredRecordScreenAccelerator: string | null = null;
 let registeredDictationAccelerator: string | null = null;
 let dictationToggleActive = false;
 /** Tracks the current session type for the keyboard hook */
@@ -608,6 +609,11 @@ function createOverlayWindow(): void {
 
 ipcMain.handle("get-api-url", () => API_URL);
 
+// Overlay signals that screen recording stopped → forward to main window to show save modal
+ipcMain.on("record-screen-stopped", () => {
+  mainWindow?.webContents.send("record-screen-stopped");
+});
+
 ipcMain.handle("get-overlay-settings", () => getOverlaySettings());
 
 ipcMain.handle(
@@ -705,6 +711,12 @@ ipcMain.handle(
           },
         },
       ]);
+      registerRecordScreenShortcut(
+        ensureValidAccelerator(
+          updated.shortcuts.recordScreenToggle,
+          OVERLAY_DEFAULTS.shortcuts.recordScreenToggle,
+        ),
+      );
     } else {
       // Legacy fallback for non-macOS
       if (shortcutMgr) {
@@ -728,6 +740,12 @@ ipcMain.handle(
         overlayWindow?.webContents.send("meeting-toggle"),
       );
       registeredMeetingAccelerator = meetingAcc;
+      registerRecordScreenShortcut(
+        ensureValidAccelerator(
+          updated.shortcuts.recordScreenToggle,
+          OVERLAY_DEFAULTS.shortcuts.recordScreenToggle,
+        ),
+      );
       if (holdDetector) {
         holdDetector.updateConfig({
           accelerator: ensureValidAccelerator(
@@ -1190,6 +1208,31 @@ const registerMeetingShortcut = (accelerator: string): void => {
   console.warn("[SHORTCUT] Meeting shortcut registered:", acc, "ok=", ok);
 };
 
+const registerRecordScreenShortcut = (accelerator: string): void => {
+  const acc = ensureValidAccelerator(
+    accelerator,
+    OVERLAY_DEFAULTS.shortcuts.recordScreenToggle,
+  );
+  if (registeredRecordScreenAccelerator) {
+    globalShortcut.unregister(registeredRecordScreenAccelerator);
+    registeredRecordScreenAccelerator = null;
+  }
+  const ok = globalShortcut.register(acc, () => {
+    if (!overlayWindow) return;
+    // Show the overlay if it's hidden so the user can see the recording dot / save modal
+    if (!overlayWindow.isVisible()) {
+      presentOverlayWindow(false);
+    }
+    overlayWindow.webContents.send("record-screen-toggle");
+  });
+  if (ok) {
+    registeredRecordScreenAccelerator = acc;
+    console.warn("[SHORTCUT] Record screen shortcut registered:", acc);
+  } else {
+    console.warn("[SHORTCUT] FAILED to register record screen shortcut:", acc, "— shortcut may already be in use by another app");
+  }
+};
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");
 
@@ -1252,9 +1295,27 @@ app.whenReady().then(async () => {
 
   // Auto-update (skip in dev)
   if (!is.dev) {
-    autoUpdater.checkForUpdatesAndNotify().catch(() => {
-      // Ignore update errors (e.g. no network, no publish configured)
-    });
+    // Log updater events for debugging when updates don't appear
+    const logUpdater = (msg: string, ...args: unknown[]) =>
+      console.warn(`[auto-updater] ${msg}`, ...args);
+    autoUpdater.on("checking-for-update", () => logUpdater("Checking for updates..."));
+    autoUpdater.on("update-available", (info) =>
+      logUpdater("Update available:", info.version),
+    );
+    autoUpdater.on("update-not-available", (info) =>
+      logUpdater("No update available.", "current:", info?.version),
+    );
+    autoUpdater.on("update-downloaded", (info) =>
+      logUpdater("Update downloaded, will install on quit:", info.version),
+    );
+    autoUpdater.on("error", (err) =>
+      logUpdater("Error:", err?.message ?? err),
+    );
+    autoUpdater
+      .checkForUpdatesAndNotify()
+      .catch((err) =>
+        logUpdater("checkForUpdatesAndNotify failed:", err?.message ?? err),
+      );
   }
 
   app.on("browser-window-created", (_, window) => {
@@ -1512,6 +1573,14 @@ app.whenReady().then(async () => {
     ipcMain.handle("cancel-shortcut-recording", () => {});
   }
 
+  // Record screen shortcut (both platforms — uses accelerator string)
+  registerRecordScreenShortcut(
+    ensureValidAccelerator(
+      settings.shortcuts.recordScreenToggle,
+      OVERLAY_DEFAULTS.shortcuts.recordScreenToggle,
+    ),
+  );
+
   createMainWindow();
   createOverlayWindow();
 
@@ -1551,5 +1620,13 @@ app.on("will-quit", () => {
   if (registeredDictationAccelerator) {
     globalShortcut.unregister(registeredDictationAccelerator);
     registeredDictationAccelerator = null;
+  }
+  if (registeredMeetingAccelerator) {
+    globalShortcut.unregister(registeredMeetingAccelerator);
+    registeredMeetingAccelerator = null;
+  }
+  if (registeredRecordScreenAccelerator) {
+    globalShortcut.unregister(registeredRecordScreenAccelerator);
+    registeredRecordScreenAccelerator = null;
   }
 });

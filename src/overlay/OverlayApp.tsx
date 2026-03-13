@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
     dictationToggle: "CommandOrControl+Shift+Space",
     dictationHoldKey: "CommandOrControl+Shift+Space",
     meetingToggle: "CommandOrControl+Alt+Space",
+    recordScreenToggle: "CommandOrControl+Alt+R",
   },
   voice: {
     language: "en-US",
@@ -80,6 +81,12 @@ export const OverlayApp = () => {
   const [notepadOpen, setNotepadOpen] = useState(false);
   const [notepadLocked, setNotepadLocked] = useState(false);
   const [meetingNotes, setMeetingNotes] = useState("");
+
+  // Mock: screen recording for demo — shortcut toggles; red dot only when recording
+  const [mockScreenRecording, setMockScreenRecording] = useState(false);
+  const mockScreenRecordingRef = useRef(false);
+  mockScreenRecordingRef.current = mockScreenRecording;
+
   const notesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const meetingNotesRef = useRef(meetingNotes);
   meetingNotesRef.current = meetingNotes;
@@ -228,6 +235,15 @@ export const OverlayApp = () => {
     api.onMeetingStarted?.(meeting.handleMeetingStarted);
     api.onMeetingStopped?.(meeting.handleMeetingStopped);
     api.onSystemAudioTranscript?.(meeting.handleSystemAudioTranscript);
+    api.onRecordScreenToggle?.(() => {
+      const recording = mockScreenRecordingRef.current;
+      if (recording) {
+        setMockScreenRecording(false);
+        window.electronAPI?.notifyRecordScreenStopped?.();
+      } else {
+        setMockScreenRecording(true);
+      }
+    });
 
     meeting.restoreMeetingState();
     meeting.restorePersistedMeeting();
@@ -573,6 +589,24 @@ export const OverlayApp = () => {
                 }}
               >
                 <CompanyLogo />
+                {/* Mock: Record screen — shortcut only; red dot only when recording */}
+                {mockScreenRecording && (
+                  <motion.div
+                    animate={{ opacity: [1, 0.4, 1] }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#ef4444",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
                 {pill.meetingActive && (
                   <>
                     <motion.div
@@ -1008,6 +1042,7 @@ export const OverlayApp = () => {
           }}
         />
       </motion.div>
+
     </div>
   );
 };

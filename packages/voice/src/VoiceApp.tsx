@@ -595,12 +595,13 @@ export function VoiceApp() {
                 Download and run the desktop app to use voice commands,
                 dictation, and the AI assistant overlay.
               </p>
-            </div>
           </div>
         </div>
-      </>
-    );
-  }
+      </div>
+
+    </>
+  );
+}
 
   return (
     <>
@@ -697,6 +698,27 @@ export function VoiceApp() {
             </ul>
           </div>
 
+          {/* Record screen (demo — mock UI for demo video) */}
+          <div className="rounded-xl bg-card p-6 space-y-3">
+            <div>
+              <h3 className="text-[15px] font-semibold">Record screen</h3>
+              <p className="text-[12px] text-muted-foreground">
+                Record your screen from the overlay. Turn it into an automation.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-medium">Record screen</span>
+                <span className="text-xs text-muted-foreground">
+                  Start or stop screen recording from the pill.
+                </span>
+              </div>
+              <span className="shrink-0 min-w-[100px] rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-sm font-mono font-medium text-foreground text-center">
+                {isWindows() ? "Ctrl + Alt + R" : "⌘ + ⌥ + R"}
+              </span>
+            </div>
+          </div>
+
           {/* Capabilities */}
           <div className="rounded-xl bg-card p-6 space-y-3">
             <div>
@@ -739,6 +761,7 @@ export function VoiceApp() {
           </div>
         </div>
       </div>
+
     </>
   );
 }

@@ -3,7 +3,7 @@ productName: Basics Hub
 publish:
   provider: github
   owner: thebasicscompany
-  repo: basicsOSnew
+  repo: basicsOS
 directories:
   buildResources: build
 icon: public/favicon.png

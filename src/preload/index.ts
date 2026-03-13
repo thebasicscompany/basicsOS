@@ -87,6 +87,9 @@ const overlayAPI = {
   onNotification: (cb: (payload: PushNotificationPayload) => void) => {
     ipcRenderer.on("push-notification", (_e, payload: PushNotificationPayload) => cb(payload));
   },
+  onNavigateInApp: (cb: (path: string) => void) => {
+    ipcRenderer.on("navigate-in-app", (_e, path: string) => cb(path));
+  },
   notifyDataChanged: (queryKeys: string[]) =>
     ipcRenderer.send("data-changed", queryKeys),
   startMeeting: () => ipcRenderer.invoke("start-meeting"),
@@ -168,6 +171,7 @@ const overlayAPI = {
       "meeting-started",
       "meeting-stopped",
       "push-notification",
+      "navigate-in-app",
       "data-changed",
       "overlay-visibility-changed",
       "system-audio-silent",

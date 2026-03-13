@@ -829,25 +829,21 @@ ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
   if (!urlOrPath || typeof urlOrPath !== "string") return;
   const trimmed = urlOrPath.trim();
 
-  // External URLs → open in system browser
+  // External URLs → always open in the system browser.
+  // Loading an external URL via mainWindow.loadURL would replace the Electron
+  // app renderer with the web page, which is never the right behaviour.
   if (/^https?:\/\//i.test(trimmed)) {
-    const fullUrl = resolveAllowedMainUrl(trimmed);
-    if (fullUrl && mainWindow) {
-      mainWindow.show();
-      mainWindow.loadURL(fullUrl).catch(() => undefined);
-    } else {
-      shell.openExternal(trimmed).catch(() => undefined);
-    }
+    shell.openExternal(trimmed).catch(() => undefined);
     return;
   }
 
-  // Internal paths → navigate main window
-  if (mainWindow) {
+  // Internal paths → navigate via React Router inside the main window.
+  // The main window uses HashRouter, so we must NOT call loadURL with the
+  // bare path (that would strip the hash and render the wrong route).
+  // Instead, send an IPC to the renderer which calls navigate() in-app.
+  if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
-    const fullUrl = resolveAllowedMainUrl(trimmed);
-    if (fullUrl) {
-      mainWindow.loadURL(fullUrl).catch(() => undefined);
-    }
+    mainWindow.webContents.send("navigate-in-app", trimmed);
   }
 });
 

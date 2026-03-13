@@ -65,6 +65,41 @@ const DEFAULT_SETTINGS: OverlaySettings = {
 // Module-level cache survives Vite HMR remounts so notch info isn't lost
 let _cachedNotchInfo: NotchInfo | null = null;
 
+const isOverlayMac =
+  typeof navigator !== "undefined" &&
+  /(Mac|iPhone|iPad|iPod)/i.test(navigator.platform);
+
+/** Convert an Electron accelerator string (e.g. "CommandOrControl+Space") to
+ *  a human-readable label for the current platform. */
+function acceleratorToLabel(acc: string): string {
+  return acc
+    .split("+")
+    .map((part) => {
+      switch (part.toLowerCase()) {
+        case "commandorcontrol":
+        case "cmdorctrl":
+          return "Ctrl";
+        case "command":
+        case "cmd":
+          return "⌘";
+        case "control":
+        case "ctrl":
+          return "Ctrl";
+        case "alt":
+        case "option":
+          return "Alt";
+        case "shift":
+          return "⇧";
+        case "space":
+          return "Space";
+        default:
+          // Uppercase single letters, pass the rest through
+          return part.length === 1 ? part.toUpperCase() : part;
+      }
+    })
+    .join("+");
+}
+
 export const OverlayApp = () => {
   const [config, setConfig] = useState<NotchInfo | null>(_cachedNotchInfo);
   const [pill, dispatch] = useReducer(pillReducer, initialPillContext);
@@ -888,7 +923,10 @@ export const OverlayApp = () => {
                   body={pill.notificationBody}
                   actions={pill.notificationActions}
                   assistantShortcutLabel={
-                    settings.shortcuts?.assistant?.label ?? "⌘Space"
+                    (isOverlayMac ? settings.shortcuts?.assistant?.label : undefined) ??
+                    acceleratorToLabel(
+                      settings.shortcuts?.assistantToggle ?? "CommandOrControl+Space",
+                    )
                   }
                   onRespondWithVoice={() =>
                     activation.handleActivate("assistant")
@@ -1010,7 +1048,7 @@ export const OverlayApp = () => {
                         ease: "easeInOut",
                       }}
                     >
-                      Listening soon...
+                      Press the assistant key to reply with voice, or open chat to continue.
                     </motion.span>
                   </motion.div>
                 )}

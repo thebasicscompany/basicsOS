@@ -236,7 +236,11 @@ type WorkflowHints = {
   nextHintByTool: Record<string, string>;
 };
 
-function inferWorkflowHints(queryText: string): WorkflowHints {
+function inferWorkflowHints(
+  queryText: string,
+  /** Full conversation text used only for meeting_id detection so follow-up replies still get hints */
+  fullConversationText?: string,
+): WorkflowHints {
   const trimmed = queryText.trim();
   const lower = trimmed.toLowerCase();
   const nextHintByTool: Record<string, string> = {};
@@ -247,6 +251,22 @@ function inferWorkflowHints(queryText: string): WorkflowHints {
     "If a lookup is only preparation for another action, do not stop after the lookup.",
     "Only reply after all required tool calls are complete, or after a required next step is genuinely blocked.",
   ];
+
+  // Detect post-meeting follow-up: check full conversation so follow-up replies (e.g. "john@acme.com")
+  // still get meeting hints when an earlier message contained meeting_id.
+  const textForMeetingMatch = (fullConversationText ?? trimmed).trim();
+  const meetingIdMatch = textForMeetingMatch.match(/meeting[_\s]id[:\s]+(\d+)/i);
+  const isMeetingFollowUp = meetingIdMatch != null;
+  if (isMeetingFollowUp) {
+    const mid = meetingIdMatch[1];
+    planLines.push(
+      `This is a post-meeting follow-up for meeting_id ${mid}. Required sequence:`,
+      `1. Call \`link_meeting_to_contact\` with meeting_id=${mid} and the contact name/id the user provides — pass contact_name directly, no search needed first.`,
+      `2. If the user mentions action items or tasks, call \`create_task\` for each one.`,
+      `3. Confirm everything was saved. Do not reply before completing all tool calls.`,
+    );
+    nextHintByTool.search_contacts = `Next required step: call \`link_meeting_to_contact\` now with meeting_id=${mid} and the contact id from the lookup. Then create any mentioned tasks. Do not reply yet.`;
+  }
 
   const isUpdate = /\b(update|rename|change|edit|set|move|bump|mark)\b/.test(lower);
   const isTask = /\b(task|reminder|follow-up|follow up|todo)\b/.test(lower);
@@ -520,6 +540,10 @@ export async function processChatTurn(
     ...priorConversationMessages,
     { role: "user", content: queryText },
   ]);
+  const fullConversationText = [
+    ...priorConversationMessages.map((m) => m.content),
+    queryText,
+  ].join("\n\n");
   const routingDecision = (await routeChatRequest({
     gatewayUrl,
     gatewayHeaders,
@@ -600,7 +624,7 @@ export async function processChatTurn(
   ) {
     systemPrompt += `\n\n${buildResolvedRecordContext(resolvedRecentRecord.record)}`;
   }
-  const workflowHints = inferWorkflowHints(queryText);
+  const workflowHints = inferWorkflowHints(queryText, fullConversationText);
   if (routingDecision.mode === "tool_call") {
     systemPrompt += `\n\n${workflowHints.planText}`;
   } else if (routingDecision.mode === "crm_context") {

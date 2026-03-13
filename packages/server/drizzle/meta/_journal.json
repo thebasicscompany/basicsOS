@@ -232,6 +232,13 @@
       "when": 1773270000000,
       "tag": "0032_onboarding_help_state",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1773271000000,
+      "tag": "0033_slack_bot_config",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
   useSearchParams,
 } from "react-router";
 import { useEffect } from "react";
@@ -69,10 +70,23 @@ const queryClient = new QueryClient({
  */
 function AppRoutes() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     installDictationTargetBridge();
   }, []);
+
+  // Handle in-app navigation requests from the Electron main process.
+  // The overlay calls navigateMain(path) → main sends "navigate-in-app" IPC
+  // to this renderer → we call navigate() so React Router handles it without
+  // a full page reload (which would break HashRouter hash-based routing).
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onNavigateInApp) return;
+    api.onNavigateInApp((path) => {
+      navigate(path);
+    });
+  }, [navigate]);
 
   return (
     <ErrorBoundary

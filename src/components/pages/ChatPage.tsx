@@ -237,13 +237,16 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
     initialMessages,
   });
 
-  const appendedFromHomeRef = useRef(false);
+  // Tracks the last context string that was auto-sent to prevent double-sends
+  // on re-renders, while still allowing NEW context strings (e.g. a second
+  // meeting follow-up) to trigger a fresh send even if we're already on /chat.
+  const lastAppendedContextRef = useRef<string | null>(null);
   useEffect(() => {
     const state = location.state as { initialText?: string } | null;
     const contextFromUrl = searchParams.get("context")?.trim();
     const text = (state?.initialText ?? contextFromUrl)?.trim();
-    if (!text || appendedFromHomeRef.current) return;
-    appendedFromHomeRef.current = true;
+    if (!text || text === lastAppendedContextRef.current) return;
+    lastAppendedContextRef.current = text;
     if (contextFromUrl) {
       setSearchParams({}, { replace: true });
     } else {

@@ -237,12 +237,13 @@ export async function deleteMeetingEmbeddings(
 
     if (entityIds.length === 0) return;
 
-    // Delete all matching embeddings
+    // Delete all matching embeddings (use IN list to avoid driver casting record to bigint[])
+    const idList = sql.join(entityIds.map((id) => sql`${id}`), sql`, `);
     await db.execute(sql`
       DELETE FROM context_embeddings
       WHERE organization_id = ${organizationId}
         AND entity_type IN ('meeting_chunk', 'meeting_summary')
-        AND entity_id = ANY(${entityIds}::bigint[])
+        AND entity_id IN (${idList})
     `);
   } catch (err) {
     console.error("[meeting-embeddings] deleteMeetingEmbeddings failed:", err);

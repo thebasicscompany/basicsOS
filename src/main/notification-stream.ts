@@ -111,6 +111,16 @@ async function connect(getToken: GetTokenFn, apiUrl: string): Promise<void> {
                 actions?: Array<{ id: string; label: string; url?: string }>;
                 context?: string;
               };
+              // On Windows the overlay starts hidden and has no notch to hide
+              // behind when idle. Show it without stealing focus so the
+              // notification pill is actually visible to the user.
+              if (
+                overlayRef &&
+                !overlayRef.isDestroyed() &&
+                !overlayRef.isVisible()
+              ) {
+                overlayRef.showInactive();
+              }
               overlayRef?.webContents.send("push-notification", payload);
               mainWindowRef?.webContents.send("push-notification", payload);
             } catch {

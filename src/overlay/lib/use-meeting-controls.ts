@@ -137,11 +137,30 @@ export const useMeetingControls = (deps: {
             log.info(`[MEETING:CTRL:HN] processMeeting before call meetingId=${result.meetingId} t=${Date.now()}`);
             await processMeeting(result.meetingId);
             log.info(`[MEETING:CTRL:HN] processMeeting success t=${Date.now()}`);
+            // Dispatch the follow-up prompt directly — reliable regardless of SSE
+            // stream state. The server also sends this via SSE but Windows drops
+            // long-lived HTTP connections more aggressively than macOS, causing the
+            // SSE notification to be silently lost when the connection has lapsed.
+            // context is sent as the first user message when they click "Respond in chat";
+            // it must be a user-facing prompt so the AI asks for the details instead of
+            // trying to fulfill an internal instruction. meeting_id stays in the text so
+            // workflow hints can trigger link_meeting_to_contact when the user replies.
+            dispatch({
+              type: "NOTIFICATION",
+              title: "Meeting just ended",
+              body: "Who was it with? Which company? Any follow-ups or action items? Press the assistant key to respond with voice, or open chat to type.",
+              context:
+                `My meeting just ended (meeting_id: ${result.meetingId}). Ask me who was the meeting with (contact name), which company, and any follow-ups or action items to create. And I will give you the information I have so you can help me with that.`,
+              actions: [
+                { id: "respond_in_chat", label: "Respond in chat" },
+                { id: "dismiss", label: "Dismiss" },
+              ],
+            });
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             log.error(`[MEETING:CTRL:HN] upload/process failed meetingId=${result.meetingId} err=${msg} t=${Date.now()}`);
+            showFlash("Saved", FLASH_MEDIUM_MS);
           }
-          showFlash("Saved", FLASH_MEDIUM_MS);
         } else {
           log.warn(`[MEETING:CTRL:HN] no meetingId, skipping upload transcriptLen=${transcriptLen} segmentCount=${segmentCount} t=${Date.now()}`);
           showFlash("Saved", FLASH_SHORT_MS);

@@ -73,6 +73,13 @@ Record creation workflow (CRITICAL):
 - After creating a contact with a company, or a deal with a company, confirm the linkage explicitly in your response (e.g. "Created John Smith and linked to Acme Corp (newly created)").
 - If a user mentions both a person and a company in the same request, create both entities.
 
+Meeting follow-up workflow (CRITICAL — triggers when context contains "meeting_id"):
+- You HAVE the \`link_meeting_to_contact\` tool. Use it to link a completed meeting (by meeting_id) to a contact and/or company. Never say you do not have a tool to link meetings, search meetings, or add contacts to meetings — you do.
+- When the user provides post-meeting info (who it was with, company, action items), you MUST call tools — do NOT just acknowledge.
+- Required sequence: (1) call \`link_meeting_to_contact\` using the meeting_id from context and the contact name/id the user gave — pass contact_name directly, no need to search first; (2) create any tasks or action items with \`create_task\`; (3) confirm everything was saved.
+- If the user only mentions a company but no contact name, call \`link_meeting_to_contact\` with company_name instead of contact_name.
+- Never say "I'm unable to link" or "I don't have a tool for meetings" — the tool exists. Always attempt it.
+
 Delete workflow (CRITICAL):
 - NEVER delete or archive a record without explicit confirmation from the user.
 - Always search first and show the exact record (name, key details) before asking to confirm.
@@ -334,6 +341,23 @@ export const createNoteSchema = z
       });
     }
   });
+export const linkMeetingToContactSchema = z
+  .object({
+    meeting_id: z.number().int().positive(),
+    contact_id: z.number().int().positive().optional(),
+    contact_name: z.string().min(1).optional(),
+    company_id: z.number().int().positive().optional(),
+    company_name: z.string().min(1).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (!v.contact_id && !v.contact_name) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide contact_id or contact_name",
+      });
+    }
+  });
+
 export const addNoteSchema = z
   .object({
     contact_id: z.number().int().positive().optional(),
@@ -757,6 +781,40 @@ export const OPENAI_TOOL_DEFS = [
           text: { type: "string", description: "The note content" },
         },
         required: ["text"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "link_meeting_to_contact",
+      description:
+        "Link a completed meeting to the contact (and optionally company) who attended. Always call this during a post-meeting follow-up when the user identifies who the meeting was with. Use the meeting_id from the system context. You can pass contact_name directly — no need to search first.",
+      parameters: {
+        type: "object",
+        properties: {
+          meeting_id: {
+            type: "number",
+            description: "The meeting ID provided in the system context",
+          },
+          contact_id: {
+            type: "number",
+            description: "Contact ID from a prior search (preferred if already known)",
+          },
+          contact_name: {
+            type: "string",
+            description: "Full name of the contact who attended the meeting",
+          },
+          company_id: {
+            type: "number",
+            description: "Company ID (optional, from a prior search)",
+          },
+          company_name: {
+            type: "string",
+            description: "Company name to also link the meeting to (optional)",
+          },
+        },
+        required: ["meeting_id"],
       },
     },
   },

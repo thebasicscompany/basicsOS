@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import {
   DragDropContext,
@@ -43,6 +44,7 @@ function formatCurrency(n: number): string {
 
 export function DealsKanbanBoard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isPending } = useRecords("deals", {
     perPage: 200,
     page: 1,
@@ -118,6 +120,11 @@ export function DealsKanbanBoard() {
 
   const [localStageOrder, setLocalStageOrder] = useState<string[] | null>(null);
   const displayStageIds = localStageOrder ?? allStageIds;
+
+  // Refetch pipeline config when board mounts so other members see new stages
+  useEffect(() => {
+    queryClient.refetchQueries({ queryKey: ["object-config"] });
+  }, [queryClient]);
 
   useEffect(() => {
     setLocalStageOrder(null);
@@ -363,10 +370,34 @@ export function DealsKanbanBoard() {
 
   const handleEditPipelineSave = useCallback(
     (updatedStages: StageOption[]) => {
+      // Normalize temp ids (stage-123...) to slug from label so column headers show correctly
+      const slug = (s: string) =>
+        s
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "");
+      const seen = new Set<string>();
+      const normalized = updatedStages.map((s) => {
+        let id = s.id;
+        if (id.startsWith("stage-")) {
+          let base = slug(s.label) || "stage";
+          id = base;
+          let n = 1;
+          while (seen.has(id)) {
+            id = `${base}-${n}`;
+            n += 1;
+          }
+          seen.add(id);
+        } else {
+          seen.add(id);
+        }
+        return { ...s, id, order: s.order };
+      });
       upsertOverride.mutate(
         {
           columnName: "status",
-          config: { ...stageAttr?.config, options: updatedStages },
+          config: { ...stageAttr?.config, options: normalized },
         },
         {
           onSuccess: () => {
@@ -448,7 +479,7 @@ export function DealsKanbanBoard() {
                             {...colProvided.dragHandleProps}
                             className="flex cursor-grab items-center gap-2 px-3 py-2 active:cursor-grabbing"
                           >
-                            <DealStageBadge stage={stageId} />
+                            <DealStageBadge stage={stageId} options={stageOptions} />
                             <span className="text-xs text-muted-foreground">
                               {(
                                 localColumns?.[stageId] ||

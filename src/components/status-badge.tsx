@@ -47,6 +47,11 @@ export function ContactStatusBadge({ status }: { status: string | null }) {
   return <SelectBadge value={status} />;
 }
 
-export function DealStageBadge({ stage }: { stage: string | null }) {
-  return <SelectBadge value={stage} />;
+export interface DealStageBadgeProps {
+  stage: string | null;
+  options?: Array<{ id?: string; label?: string; color?: string }>;
+}
+
+export function DealStageBadge({ stage, options = [] }: DealStageBadgeProps) {
+  return <SelectBadge value={stage} options={options} />;
 }

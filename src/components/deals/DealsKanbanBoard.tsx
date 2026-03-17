@@ -121,9 +121,13 @@ export function DealsKanbanBoard() {
   const [localStageOrder, setLocalStageOrder] = useState<string[] | null>(null);
   const displayStageIds = localStageOrder ?? allStageIds;
 
-  // Refetch pipeline config when board mounts so other members see new stages
+  // Poll pipeline config while board is open so other members see add/delete/reorder without restart
   useEffect(() => {
     queryClient.refetchQueries({ queryKey: ["object-config"] });
+    const interval = setInterval(() => {
+      queryClient.refetchQueries({ queryKey: ["object-config"] });
+    }, 8000);
+    return () => clearInterval(interval);
   }, [queryClient]);
 
   useEffect(() => {

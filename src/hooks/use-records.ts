@@ -126,7 +126,9 @@ export function useUpdateRecord<T = Record<string, unknown>>(
         return next;
       };
 
-      qc.setQueriesData({ queryKey: ["records", objectSlug] }, (current) => {
+      qc.setQueriesData(
+        { queryKey: ["records", objectSlug] },
+        (current: unknown) => {
         if (!current || typeof current !== "object") return current;
 
         if (
@@ -160,7 +162,8 @@ export function useUpdateRecord<T = Record<string, unknown>>(
         }
 
         return current;
-      });
+        },
+      );
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["records", objectSlug] });
@@ -192,8 +195,8 @@ export function useDeleteRecord<T = Record<string, unknown>>(
 }
 
 /**
- * Invalidate all CRM data for an object (records and views) so the UI refetches.
- * Use when you need to manually refresh to see external updates (e.g. AI tools, imports).
+ * Invalidate all CRM data for an object (records, views, and object config) so the UI refetches.
+ * Use when you need to manually refresh to see external updates (e.g. AI tools, imports, pipeline changes).
  */
 export function useRefreshCrm(objectSlug: string) {
   const qc = useQueryClient();
@@ -201,5 +204,6 @@ export function useRefreshCrm(objectSlug: string) {
   return () => {
     qc.invalidateQueries({ queryKey: ["records", objectSlug] });
     qc.invalidateQueries({ queryKey: ["views", objectSlug] });
+    qc.invalidateQueries({ queryKey: ["object-config"] });
   };
 }

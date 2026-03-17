@@ -36,6 +36,12 @@ jobs:
           # Per-org installers are built locally with their own VITE_API_URL and
           # the app persists that URL in userData so auto-updates never overwrite it.
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # macOS code signing & notarization (required for signed Mac builds)
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm build:electron
           npx electron-builder --publish always

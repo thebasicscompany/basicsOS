@@ -22,11 +22,11 @@ import {
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { FullScreenOnboarding } from "@/components/onboarding/FullScreenOnboarding";
+import { InteractiveWalkthrough } from "@/components/onboarding/InteractiveWalkthrough";
 import {
-  InteractiveWalkthrough,
   hasWalkthroughResumePending,
   clearWalkthroughResume,
-} from "@/components/onboarding/InteractiveWalkthrough";
+} from "@/components/onboarding/walkthrough-resume";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { getRuntimeApiUrl } from "@/lib/runtime-config";
 

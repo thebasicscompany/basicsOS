@@ -14,11 +14,12 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { ConnectionsContent } from "@/components/connections/ConnectionsContent";
+import { ShortcutRow } from "@/components/shortcuts/ShortcutRecorder";
 import {
-  ShortcutRow,
   useShortcutRecording,
   getShortcutDisplayValue,
-} from "@/components/shortcuts/ShortcutRecorder";
+} from "@/components/shortcuts/shortcut-recorder-utils";
+import { setWalkthroughResume } from "@/components/onboarding/walkthrough-resume";
 import { saveWizardCompletedSteps, readWizardCompletedSteps } from "@/lib/wizard-storage";
 import { useQuery } from "@tanstack/react-query";
 import { getRuntimeApiUrl } from "@/lib/runtime-config";
@@ -67,35 +68,6 @@ const isElectron = typeof window !== "undefined" && "electronAPI" in window;
 function getElectronAPI() {
   if (!isElectron) return null;
   return (window as any).electronAPI as Record<string, (...args: any[]) => any> | undefined;
-}
-
-/* ── Walkthrough resume key (survives restart) ───────────────────────────── */
-
-const WALKTHROUGH_RESUME_KEY = (userId: number | string) =>
-  `crm:walkthrough-resume:${userId}`;
-
-export function hasWalkthroughResumePending(userId: number | string): boolean {
-  try {
-    return localStorage.getItem(WALKTHROUGH_RESUME_KEY(userId)) === "true";
-  } catch {
-    return false;
-  }
-}
-
-export function clearWalkthroughResume(userId: number | string) {
-  try {
-    localStorage.removeItem(WALKTHROUGH_RESUME_KEY(userId));
-  } catch {
-    // ignore
-  }
-}
-
-function setWalkthroughResume(userId: number | string) {
-  try {
-    localStorage.setItem(WALKTHROUGH_RESUME_KEY(userId), "true");
-  } catch {
-    // ignore
-  }
 }
 
 /* ── Step: Enable permissions ────────────────────────────────────────────── */
@@ -340,9 +312,9 @@ function ShortcutsStep({ onAdvance }: { onAdvance: () => void }) {
           </p>
         </div>
         <div className="w-full max-w-sm rounded-xl border bg-muted/30 p-4 text-left space-y-2">
-          <ShortcutRow label="Voice assistant" description="Open the floating pill" value="Shift+Fn" onRecord={() => {}} isRecording={false} liveKeys={[]} onCancel={() => {}} />
-          <ShortcutRow label="Dictation" description="Hold to inject speech" value="Fn" onRecord={() => {}} isRecording={false} liveKeys={[]} onCancel={() => {}} />
-          <ShortcutRow label="Meeting recording" description="Toggle meeting recording" value="Shift+M" onRecord={() => {}} isRecording={false} liveKeys={[]} onCancel={() => {}} />
+          <ShortcutRow label="Voice assistant" description="Open the floating pill" value="Shift+Fn" onRecord={() => {}} isRecording={false} liveKeys="" onCancel={() => {}} />
+          <ShortcutRow label="Dictation" description="Hold to inject speech" value="Fn" onRecord={() => {}} isRecording={false} liveKeys="" onCancel={() => {}} />
+          <ShortcutRow label="Meeting recording" description="Toggle meeting recording" value="Shift+M" onRecord={() => {}} isRecording={false} liveKeys="" onCancel={() => {}} />
         </div>
         <Button onClick={onAdvance} className="gap-1.5">
           Looks good — continue

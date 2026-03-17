@@ -13,11 +13,11 @@ import {
 } from "basics-os/src/components/ui/select";
 import { Label } from "basics-os/src/components/ui/label";
 import { toast } from "sonner";
+import { ShortcutRow } from "basics-os/src/components/shortcuts/ShortcutRecorder";
 import {
-  ShortcutRow,
   useShortcutRecording,
   getShortcutDisplayValue,
-} from "basics-os/src/components/shortcuts/ShortcutRecorder";
+} from "basics-os/src/components/shortcuts/shortcut-recorder-utils";
 
 /** Shape of overlay settings used for microphone selection (matches shared-overlay types). */
 type OverlaySettings = {

@@ -385,7 +385,7 @@ export function DealsKanbanBoard() {
       const normalized = updatedStages.map((s) => {
         let id = s.id;
         if (id.startsWith("stage-")) {
-          let base = slug(s.label) || "stage";
+          const base = slug(s.label) || "stage";
           id = base;
           let n = 1;
           while (seen.has(id)) {

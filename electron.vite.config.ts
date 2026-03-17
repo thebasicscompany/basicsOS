@@ -20,6 +20,12 @@ export default defineConfig(({ mode }) => {
         alias: { "@": path.resolve(__dirname, "src") },
       },
       build: {
+        // Bundle electron-updater so it is inside app.asar (electron-builder does
+        // not ship externalized main deps; without this, Mac DMG fails with
+        // ERR_MODULE_NOT_FOUND for 'electron-updater').
+        externalizeDeps: {
+          exclude: ["electron-updater"],
+        },
         rollupOptions: {
           external: ["screencapturekit-audio-capture"],
         },

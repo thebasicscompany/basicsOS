@@ -20,13 +20,12 @@ export default defineConfig(({ mode }) => {
         alias: { "@": path.resolve(__dirname, "src") },
       },
       build: {
-        // Bundle electron-updater so it is inside app.asar (electron-builder does
-        // not ship externalized main deps; without this, Mac DMG fails with
-        // ERR_MODULE_NOT_FOUND for 'electron-updater').
-        externalizeDeps: {
-          exclude: ["electron-updater"],
-        },
+        // Bundle all main-process deps into app.asar. If we externalize (default),
+        // electron-builder does not ship node_modules for the main process, so
+        // packaged Mac DMG fails with ERR_MODULE_NOT_FOUND (e.g. 'ms', 'electron-updater').
+        externalizeDeps: false,
         rollupOptions: {
+          // Native addon; cannot be bundled.
           external: ["screencapturekit-audio-capture"],
         },
       },

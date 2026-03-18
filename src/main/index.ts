@@ -488,7 +488,9 @@ function createMainWindow(): void {
     mainWindow = null;
   });
 
-  // Re-pin overlay position after main window is dragged (stops drift/jitter when dragging near the pill)
+  // Re-pin overlay position after main window is dragged (stops drift/jitter when dragging near the pill).
+  // Only call setBounds when the overlay has actually drifted from its anchor to avoid
+  // perturbing the z-order / interrupting active tab drags on Windows.
   let mainMoveDebounce: ReturnType<typeof setTimeout> | null = null;
   mainWindow.on("moved", () => {
     if (mainMoveDebounce) clearTimeout(mainMoveDebounce);
@@ -496,12 +498,14 @@ function createMainWindow(): void {
       mainMoveDebounce = null;
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         const b = overlayWindow.getBounds();
-        overlayWindow.setBounds({
-          x: overlayAnchorX,
-          y: overlayAnchorY,
-          width: b.width,
-          height: b.height,
-        });
+        if (b.x !== overlayAnchorX || b.y !== overlayAnchorY) {
+          overlayWindow.setBounds({
+            x: overlayAnchorX,
+            y: overlayAnchorY,
+            width: b.width,
+            height: b.height,
+          });
+        }
       }
     }, 150);
   });
@@ -827,8 +831,8 @@ ipcMain.handle("resize-overlay", (_event, height: number) => {
   if (!overlayWindow) return;
   const { height: screenH } = screen.getPrimaryDisplay().workAreaSize;
   const maxH = Math.round(screenH * 0.4);
-  const clampedH = Math.max(PILL_HEIGHT, Math.min(maxH, Math.round(height)));
-  // Temporarily enable resizable — macOS can ignore setBounds on non-resizable windows
+  const minH = 1;
+  const clampedH = Math.max(minH, Math.min(maxH, Math.round(height)));
   overlayWindow.setResizable(true);
   overlayWindow.setBounds({
     x: overlayAnchorX,

@@ -532,20 +532,22 @@ export const OverlayApp = () => {
   };
 
   const handleMouseEnter = useCallback(() => {
+    const p = pillRef.current;
+    const hasInteractiveContent =
+      p.state !== "idle" ||
+      !!p.lastResponseTitle ||
+      !!p.meetingActive;
+
+    if (!hasInteractiveContent) return;
+
     setIgnoreMouse(false);
-    // Pause dismiss timer when hovering over response
-    if (pillRef.current.state === "response") {
+    if (p.state === "response") {
       clearDismissTimer();
     }
-    // Show last response on hover when idle
-    if (pillRef.current.state === "idle" && pillRef.current.lastResponseTitle) {
+    if (p.state === "idle" && p.lastResponseTitle) {
       setShowLastResponse(true);
     }
-    // Expand notepad on hover during meeting
-    if (
-      pillRef.current.state === "idle" &&
-      pillRef.current.meetingActive
-    ) {
+    if (p.state === "idle" && p.meetingActive) {
       setNotepadOpen(true);
     }
   }, [clearDismissTimer]);

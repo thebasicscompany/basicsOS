@@ -33,7 +33,10 @@
     "dev:electron": "pnpm --filter @basics-os/shared build && cross-env VITE_USE_REST=true electron-vite dev",
     "dev:all": "concurrently -n server,electron -c blue,green \"turbo run dev --filter=@basics-os/server\" \"pnpm run dev:electron\"",
     "build:electron": "pnpm --filter @basics-os/shared build && electron-vite build",
-    "start:electron": "electron-vite preview"
+    "start:electron": "electron-vite preview",
+    "build:mac:client": "pnpm build:electron && electron-builder --mac --arm64 -c electron-builder.client.yml --publish never",
+    "build:mac:team": "pnpm build:electron && electron-builder --mac --arm64 -c electron-builder.team.yml --publish never",
+    "build:mac:both": "pnpm build:electron && electron-builder --mac --arm64 -c electron-builder.client.yml --publish never && electron-builder --mac --arm64 -c electron-builder.team.yml --publish never"
   },
   "dependencies": {
     "@ai-sdk/react": "^1.2.12",

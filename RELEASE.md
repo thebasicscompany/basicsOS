@@ -68,6 +68,83 @@ git push origin v0.1.5
 
 The **Release** workflow is triggered only by **pushing a tag** (`v*`), not by pushing a normal commit.
 
+## Signed deployment for Apple (macOS)
+
+To get **signed and notarized** macOS builds from GitHub Actions, add these repository secrets. Without them, the macOS build still runs but the app will be unsigned and Gatekeeper may block it.
+
+### Required GitHub secrets
+
+| Secret | Description | Required for |
+|--------|-------------|--------------|
+| `CSC_LINK` | Base64-encoded Developer ID Application certificate (`.p12`) | Code signing |
+| `CSC_KEY_PASSWORD` | Password used when exporting the `.p12` | Code signing |
+| `APPLE_ID` | Apple ID email (e.g. your@email.com) | Notarization |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password from appleid.apple.com | Notarization |
+| `APPLE_TEAM_ID` | 10-character Team ID (Settings → Membership) — only if using an Apple Developer **team** | Notarization (team accounts) |
+
+### 1. Create and export the code-signing certificate
+
+1. In [Apple Developer](https://developer.apple.com/account) go to **Certificates, Identifiers & Profiles** → **Certificates**.
+2. Create a **Developer ID Application** certificate (for distribution outside the App Store).
+3. Download and install it (double-click), then open **Keychain Access**.
+4. Find the certificate (e.g. "Developer ID Application: Your Name (TEAM_ID)").
+5. Right‑click → **Export** → save as `.p12`, set a **strong password** (this becomes `CSC_KEY_PASSWORD`).
+
+### 2. Add the certificate to GitHub as base64
+
+From the repo root, run (use your actual `.p12` path):
+
+```bash
+./scripts/prepare-apple-secrets.sh /path/to/YourCertificate.p12
+```
+
+This prints the base64 for `CSC_LINK` (and copies it to the clipboard on macOS), then reminds you which secrets to add.
+
+Or encode manually:
+
+```bash
+base64 -i YourCertificate.p12 | tr -d '\n' | pbcopy
+```
+
+- In the repo: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+- Name: `CSC_LINK`, Value: paste the base64 string.
+- Create another secret: `CSC_KEY_PASSWORD` = the password you set when exporting the `.p12`.
+
+### 3. Add notarization secrets
+
+1. **App-specific password**
+   - Go to [appleid.apple.com](https://appleid.apple.com) → **Sign-In and Security** → **App-Specific Passwords**.
+   - Generate a new password; use it as `APPLE_APP_SPECIFIC_PASSWORD`.
+
+2. **GitHub secrets**
+   - `APPLE_ID`: the Apple ID email you use for the developer account.
+   - `APPLE_APP_SPECIFIC_PASSWORD`: the app-specific password from step 1.
+   - `APPLE_TEAM_ID`: only if the certificate is under a **team** — find it in [Apple Developer](https://developer.apple.com/account) → **Membership details** (10-character ID).
+
+After saving these secrets, the next release (tag push) will produce a signed and notarized macOS build on the `macos-latest` runner.
+
+## Electron dependency bundling (important)
+
+The `electron.vite.config.ts` file has `externalizeDeps: false` for the main process. **Do not change this.** electron-builder does not ship `node_modules` inside `app.asar` for the main process, so every dependency must be bundled by Vite/Rollup at build time. If you set `externalizeDeps: true` (or use a partial exclude list), the packaged app will crash on launch with:
+
+```
+ERR_MODULE_NOT_FOUND: Cannot find package 'X' imported from .../app.asar/out/main/index.js
+```
+
+Only native addons that Rollup cannot bundle (like `screencapturekit-audio-capture`) should be in `rollupOptions.external`.
+
+### Building variant DMGs locally
+
+To build separate "Client" and "Team" DMGs (distinct names so they install side-by-side):
+
+```bash
+pnpm build:mac:client   # → dist/Basics-Hub-Client-{version}.dmg
+pnpm build:mac:team     # → dist/Basics-Hub-Team-{version}.dmg
+pnpm build:mac:both     # → builds both sequentially
+```
+
+These use `electron-builder.client.yml` and `electron-builder.team.yml` which override `appId`, `productName`, and `artifactName`.
+
 ## Where to find logs (installed app)
 
 The desktop app writes **updater** logs to a file so you can debug update checks:

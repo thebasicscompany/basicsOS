@@ -133,6 +133,16 @@ Views, columns, sorts, and filters are persisted via `/api/views/*` and used by 
 - Forkers can override it to point at their own gateway. No UI changes; users still add their API key in Settings.
 - Key format validation is in `GatewayProvider.tsx` (line 11) and `SettingsPage.tsx` (line 58). Different gateways may need different prefixes.
 
+#### Electron Packaging (CRITICAL)
+
+`electron.vite.config.ts` → `main.build.externalizeDeps` **must be `false`**. electron-builder does NOT copy `node_modules` for the main process into `app.asar`. If any dependency is externalized, the packaged macOS DMG (and Windows installer) will crash on launch with `ERR_MODULE_NOT_FOUND`. Only native addons that cannot be bundled by Rollup (like `screencapturekit-audio-capture`) go in `rollupOptions.external`.
+
+**Do NOT:**
+- Set `externalizeDeps: true` or use `externalizeDeps: { exclude: [...] }` — the exclude-list approach leads to whack-a-mole with transitive deps (`ms`, `debug`, `@electron-toolkit/utils`, etc.).
+- Move dependencies to `devDependencies` thinking electron-builder will skip them — it doesn't matter because we bundle everything via Vite anyway.
+
+**Variant builds:** `electron-builder.client.yml` and `electron-builder.team.yml` produce separate DMGs with distinct `appId`/`productName` so they install side-by-side. Build with `pnpm build:mac:client`, `pnpm build:mac:team`, or `pnpm build:mac:both`.
+
 ### Adding Custom Fields
 
 1. Add migration for `custom_field_defs` or schema changes in `packages/server`

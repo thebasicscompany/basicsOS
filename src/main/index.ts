@@ -105,6 +105,17 @@ const pendingDictationInsertRequests = new Map<
 
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
 
+/** Write a line to userData/error.log for debugging (e.g. Team app JS errors). */
+function writeErrorLog(line: string): void {
+  try {
+    const dir = app.getPath("userData");
+    const logPath = path.join(dir, "error.log");
+    fs.appendFileSync(logPath, `${new Date().toISOString()} ${line}\n`);
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Resolve the API URL with per-org persistence across auto-updates.
  *
@@ -521,7 +532,11 @@ function createMainWindow(): void {
     }
   });
 
+  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    if (level >= 3) writeErrorLog(`renderer [${level}] ${message} (${sourceId}:${line})`);
+  });
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+    writeErrorLog(`did-fail-load: ${errorCode} ${errorDescription}`);
     console.warn(`[main] Main window load failed: ${errorCode} ${errorDescription}`);
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -1309,6 +1324,13 @@ async function clearCacheIfVersionChanged(): Promise<void> {
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");
+
+  process.on("uncaughtException", (err) => {
+    writeErrorLog(`uncaughtException: ${err.message}\n${err.stack ?? ""}`);
+  });
+  process.on("unhandledRejection", (reason, promise) => {
+    writeErrorLog(`unhandledRejection: ${String(reason)}`);
+  });
 
   await clearCacheIfVersionChanged();
 

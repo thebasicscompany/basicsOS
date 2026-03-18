@@ -1,5 +1,7 @@
-appId: com.basics-hub
-productName: Basics Hub
+# Team edition: same app, different product name and appId so Client and Team can both be installed.
+# Build with: pnpm build:mac:team  (or build:mac:both for both DMGs)
+appId: com.basics-hub.team
+productName: Basics Hub Team
 publish:
   provider: github
   owner: thebasicscompany
@@ -9,7 +11,7 @@ directories:
 icon: public/favicon.png
 win:
   icon: public/favicon.png
-  executableName: basics-hub
+  executableName: basics-hub-team
 files:
   - '!**/node_modules/**'
   - '!**/.vscode/*'
@@ -26,7 +28,7 @@ extraResources:
 asarUnpack:
   - resources/**
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: Basics-Hub-Team-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -41,7 +43,7 @@ mac:
     NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: Basics-Hub-Team-${version}.${ext}
 linux:
   target:
     - AppImage
@@ -50,5 +52,5 @@ linux:
   maintainer: basics-hub
   category: Utility
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: Basics-Hub-Team-${version}.${ext}
 npmRebuild: false

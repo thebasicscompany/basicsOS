@@ -1332,7 +1332,7 @@ app.whenReady().then(async () => {
   process.on("uncaughtException", (err) => {
     writeErrorLog(`uncaughtException: ${err.message}\n${err.stack ?? ""}`);
   });
-  process.on("unhandledRejection", (reason, promise) => {
+  process.on("unhandledRejection", (reason) => {
     writeErrorLog(`unhandledRejection: ${String(reason)}`);
   });
 

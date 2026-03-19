@@ -304,7 +304,16 @@ export function VoiceApp() {
           <div className="rounded-xl bg-card p-6 space-y-3">
             <h3 className="text-[15px] font-semibold">Requirements</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Add your <strong>Basics API Key</strong> in Settings for Voice Pill to work.
+              Add your <strong>Basics API Key</strong> from the{' '}
+              <a
+                href="https://basicsos.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
+                basicsos.com/dashboard
+              </a>{' '}
+              in Settings for Voice Pill to work.
               This will give you transcription, STT, and AI features. Optionally instead, you can
               configure a custom <strong>Deepgram key</strong> (Settings → AI
               Configuration → Transcription BYOK) to use your own API key for

@@ -1396,105 +1396,82 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Auto-update: notify renderer for Discord-style UI, install on user action.
-  // In dev we still run the updater so you can test the flow without packaging;
-  // "Restart now" is no-op in dev to avoid quitting the app.
-  let squirrelReady = false;
-  if (process.platform === "darwin") {
-    nativeAutoUpdater.on("update-downloaded", () => {
-      squirrelReady = true;
-      mainWindow?.webContents.send("app-squirrel-ready");
-    });
-  }
-
-  autoUpdater.on("update-available", (info) => {
-    mainWindow?.webContents.send("app-update-available", {
-      version: info.version,
-      releaseDate: info.releaseDate,
-    });
-  });
-  autoUpdater.on("download-progress", (progress) => {
-    mainWindow?.webContents.send("app-update-progress", {
-      percent: progress.percent,
-      bytesPerSecond: progress.bytesPerSecond,
-      transferred: progress.transferred,
-      total: progress.total,
-    });
-  });
-  autoUpdater.on("update-downloaded", () => {
-    mainWindow?.webContents.send("app-update-downloaded", { squirrelReady });
-  });
-  ipcMain.handle("install-app-update", async () => {
-    if (is.dev) {
-      console.warn("[updater] In dev, install skipped. Package the app to test real install.");
-      return;
-    }
-    // quitAndInstall() closes windows before emitting before-quit, so on macOS our
-    // main window "close" handler would see isQuitting false and preventDefault/hide.
-    // Set isQuitting so the window is allowed to close and the app can quit.
-    (app as any).isQuitting = true;
-    try {
-      await session.defaultSession.clearCache();
-    } catch (e) {
-      console.warn("[main] clearCache before update install failed:", e);
-    }
-    // On macOS, MacUpdater.quitAndInstall() delegates to Electron's native
-    // Squirrel.Mac (nativeUpdater.quitAndInstall). Squirrel tries to close all
-    // windows via macOS NSApp terminate. The overlay window sits at the
-    // "screen-saver" alwaysOnTop level with visibleOnAllWorkspaces — on macOS this
-    // window level can prevent NSApp terminate from completing. Destroy it first.
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.destroy();
-      overlayWindow = null;
-    }
-    autoUpdater.quitAndInstall(false, true);
-  });
-  const updaterLogPath = path.join(app.getPath("userData"), "logs", "updater.log");
-  const writeUpdaterLog = (msg: string) => {
-    try {
-      const dir = path.dirname(updaterLogPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.appendFileSync(
-        updaterLogPath,
-        `${new Date().toISOString()} [updater] ${msg}\n`,
-      );
-    } catch {
-      // ignore
-    }
-  };
-  autoUpdater.on("error", (err) => {
-    const msg = String(err?.message ?? err);
-    writeUpdaterLog(`error: ${msg}`);
-    console.warn("[updater] error:", msg);
-  });
-  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-    const msg = String(err?.message ?? err);
-    writeUpdaterLog(`check failed: ${msg}`);
-    console.warn("[updater] checkForUpdatesAndNotify failed:", msg);
-  });
-  writeUpdaterLog(`Log file: ${updaterLogPath}`);
-
-  // In dev, simulate an update after a delay so the banner shows without packaging.
-  if (is.dev) {
-    const devFakeVersion = "0.0.0-dev";
-    setTimeout(() => {
-      if (!mainWindow?.webContents || mainWindow.isDestroyed()) return;
-      mainWindow.webContents.send("app-update-available", {
-        version: devFakeVersion,
-        releaseDate: new Date().toISOString(),
+  // Auto-update (skip in dev): notify renderer for Discord-style UI, install on user action
+  if (!is.dev) {
+    // On macOS, MacUpdater pipes the zip through a local Squirrel.Mac proxy. Squirrel
+    // fires its own "update-downloaded" once it has finished that secondary download —
+    // only at that point is quitAndInstall() safe to call immediately. We track this
+    // and pass it to the renderer so the banner can show a "Preparing…" state.
+    let squirrelReady = false;
+    if (process.platform === "darwin") {
+      nativeAutoUpdater.on("update-downloaded", () => {
+        squirrelReady = true;
+        mainWindow?.webContents.send("app-squirrel-ready");
       });
-      setTimeout(() => {
-        if (!mainWindow?.webContents || mainWindow.isDestroyed()) return;
-        mainWindow.webContents.send("app-update-downloaded", {
-          squirrelReady: process.platform !== "darwin",
-        });
-        if (process.platform === "darwin") {
-          setTimeout(() => {
-            mainWindow?.webContents.send("app-squirrel-ready");
-          }, 1500);
-        }
-      }, 1500);
-    }, 3000);
+    }
+
+    autoUpdater.on("update-available", (info) => {
+      mainWindow?.webContents.send("app-update-available", {
+        version: info.version,
+        releaseDate: info.releaseDate,
+      });
+    });
+    autoUpdater.on("download-progress", (progress) => {
+      mainWindow?.webContents.send("app-update-progress", {
+        percent: progress.percent,
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total,
+      });
+    });
+    autoUpdater.on("update-downloaded", () => {
+      mainWindow?.webContents.send("app-update-downloaded", { squirrelReady });
+    });
+    ipcMain.handle("install-app-update", async () => {
+      // quitAndInstall() closes windows before emitting before-quit, so on macOS our
+      // main window "close" handler would see isQuitting false and preventDefault/hide.
+      // Set isQuitting so the window is allowed to close and the app can quit.
+      (app as any).isQuitting = true;
+      try {
+        await session.defaultSession.clearCache();
+      } catch (e) {
+        console.warn("[main] clearCache before update install failed:", e);
+      }
+      // On macOS, MacUpdater.quitAndInstall() delegates to Electron's native
+      // Squirrel.Mac (nativeUpdater.quitAndInstall). Squirrel tries to close all
+      // windows via macOS NSApp terminate. The overlay window sits at the
+      // "screen-saver" alwaysOnTop level with visibleOnAllWorkspaces — on macOS this
+      // window level can prevent NSApp terminate from completing. Destroy it first.
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        overlayWindow.destroy();
+        overlayWindow = null;
+      }
+      autoUpdater.quitAndInstall(false, true);
+    });
+    const updaterLogPath = path.join(app.getPath("userData"), "logs", "updater.log");
+    const writeUpdaterLog = (msg: string) => {
+      try {
+        const dir = path.dirname(updaterLogPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.appendFileSync(
+          updaterLogPath,
+          `${new Date().toISOString()} [updater] ${msg}\n`,
+        );
+      } catch {
+        // ignore
+      }
+    };
+    autoUpdater.on("error", (err) => {
+      const msg = String(err?.message ?? err);
+      writeUpdaterLog(`error: ${msg}`);
+      console.warn("[updater] error:", msg);
+    });
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      const msg = String(err?.message ?? err);
+      writeUpdaterLog(`check failed: ${msg}`);
+      console.warn("[updater] checkForUpdatesAndNotify failed:", msg);
+    });
+    writeUpdaterLog(`Log file: ${updaterLogPath}`);
   }
 
   app.on("browser-window-created", (_, window) => {

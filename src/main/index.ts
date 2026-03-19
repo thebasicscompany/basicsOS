@@ -1396,7 +1396,7 @@ app.whenReady().then(async () => {
   );
 
   // Auto-update (skip in dev): notify renderer for Discord-style UI, install on user action
-  if (!is.dev) {
+  if (!is.dev || true) {
     autoUpdater.on("update-available", (info) => {
       mainWindow?.webContents.send("app-update-available", {
         version: info.version,
@@ -1424,18 +1424,23 @@ app.whenReady().then(async () => {
       } catch (e) {
         console.warn("[main] clearCache before update install failed:", e);
       }
-      // On macOS the overlay window sits at "screen-saver" alwaysOnTop level with
-      // visibleOnAllWorkspaces, which can block app.quit() called internally by
-      // quitAndInstall via setImmediate. Destroy it first so the quit goes through.
+      // On macOS, MacUpdater.quitAndInstall() delegates to Electron's native
+      // Squirrel.Mac (nativeUpdater.quitAndInstall). Squirrel tries to close all
+      // windows via macOS NSApp terminate. The overlay window sits at the
+      // "screen-saver" alwaysOnTop level with visibleOnAllWorkspaces — on macOS this
+      // window level can prevent NSApp terminate from completing. Destroy it first.
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         overlayWindow.destroy();
         overlayWindow = null;
       }
       autoUpdater.quitAndInstall(false, true);
-      // macOS fallback: quitAndInstall uses setImmediate(() => app.quit()) internally.
-      // If the quit is still swallowed for any reason, force-exit after a short delay.
+      // MacUpdater.quitAndInstall() is async on macOS: it waits for Squirrel.Mac to
+      // finish downloading the update from its local proxy server before quitting.
+      // That download can take several seconds. Only force-exit as a last resort
+      // (60 s) — a short timeout would kill the process mid-download, preventing
+      // the restart entirely.
       if (process.platform === "darwin") {
-        setTimeout(() => app.exit(0), 1500);
+        setTimeout(() => app.exit(0), 60_000);
       }
     });
     const updaterLogPath = path.join(app.getPath("userData"), "logs", "updater.log");

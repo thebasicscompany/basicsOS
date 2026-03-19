@@ -1396,7 +1396,7 @@ app.whenReady().then(async () => {
   );
 
   // Auto-update (skip in dev): notify renderer for Discord-style UI, install on user action
-  if (!is.dev || true) {
+  if (!is.dev) {
     autoUpdater.on("update-available", (info) => {
       mainWindow?.webContents.send("app-update-available", {
         version: info.version,

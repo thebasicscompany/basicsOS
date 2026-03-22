@@ -33,7 +33,7 @@ export const list_tasks: CrmTool<
 
 export const create_task: CrmTool<
   {
-    contact_id: number;
+    contact_id?: number;
     text: string;
     type?: string;
     due_date?: string;
@@ -42,13 +42,13 @@ export const create_task: CrmTool<
 > = {
   name: "create_task",
   description:
-    "Create a task linked to a contact. Use when the user wants to add a follow-up, to-do, or reminder for someone.",
+    "Create a task. Text is required; contact_id is optional — use for standalone to-dos or when linking to a contact.",
   parameters: {
     type: "object",
     properties: {
       contact_id: {
         type: "number",
-        description: "Contact ID to attach the task to",
+        description: "Optional contact ID to attach the task to",
       },
       text: {
         type: "string",
@@ -63,11 +63,13 @@ export const create_task: CrmTool<
         description: "Due date in ISO format (e.g. 2025-03-01)",
       },
     },
-    required: ["contact_id", "text"],
+    required: ["text"],
   },
   async execute(params) {
     const data = await create("tasks", {
-      contact_id: params.contact_id,
+      ...(params.contact_id != null
+        ? { contact_id: params.contact_id }
+        : {}),
       text: params.text,
       type: params.type,
       due_date: params.due_date,

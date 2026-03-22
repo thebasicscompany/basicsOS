@@ -210,13 +210,17 @@ const CRM_TOOL_SCHEMAS = [
   {
     name: "create_task",
     description:
-      "Create a task linked to a contact. Use when the user wants to add a follow-up, to-do, or reminder for someone.",
+      "Create a task. Only text is required; contact_id is optional for standalone to-dos. Optionally use company_id/company_name when linking to a company (not both contact and company).",
     parameters: {
       type: "object" as const,
       properties: {
         contact_id: {
           type: "number" as const,
-          description: "Contact ID to attach the task to",
+          description: "Optional. Contact ID to attach the task to",
+        },
+        company_id: {
+          type: "number" as const,
+          description: "Optional. Company ID to attach the task to",
         },
         text: {
           type: "string" as const,
@@ -231,7 +235,7 @@ const CRM_TOOL_SCHEMAS = [
           description: "Due date in ISO format (e.g. 2025-03-01)",
         },
       },
-      required: ["contact_id", "text"] as string[],
+      required: ["text"] as string[],
     },
   },
   {

@@ -222,11 +222,16 @@ export function registerInitSignupInviteRoutes(
       },
     });
 
+    const baseUrl = (env.INVITE_LINK_BASE_URL ?? "https://basicsos.com").replace(/\/$/, "");
+    const apiOrigin = new URL(env.BETTER_AUTH_URL).origin;
+    const isHostedAuth = baseUrl.includes("basicsos.com");
+    const signupLink = isHostedAuth
+      ? `${baseUrl}/auth/signup?invite=${token}&apiUrl=${encodeURIComponent(apiOrigin)}`
+      : `${baseUrl}/sign-up?invite=${token}`;
+
     let emailSent = false;
     let emailError: string | undefined;
     if (sendEmail && emailNormalized) {
-      const baseUrl = c.req.header("origin") ?? env.BETTER_AUTH_URL ?? "http://localhost:5173";
-      const signupLink = `${baseUrl.replace(/\/$/, "")}/sign-up?invite=${token}`;
       const result = await sendOrgEmail(db, env, crmUser.organizationId, {
         to: emailNormalized,
         subject: "You're invited to join",
@@ -238,6 +243,7 @@ export function registerInitSignupInviteRoutes(
 
     return c.json({
       token: invite.token,
+      signupLink,
       email: invite.email,
       expiresAt: invite.expiresAt,
       emailSent: sendEmail ? emailSent : undefined,

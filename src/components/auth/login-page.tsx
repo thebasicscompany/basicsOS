@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
 import { ROUTES } from "@basics-os/hub";
 import basicsIcon from "@/assets/basicos-icon.png";
 
@@ -13,9 +15,13 @@ interface LoginForm {
   password: string;
 }
 
+const isElectron = typeof window !== "undefined" && !!window.electronAPI?.openAuthBrowser;
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [webAuthPending, setWebAuthPending] = useState(false);
   const {
     register,
     handleSubmit,
@@ -36,6 +42,13 @@ export function LoginPage() {
     }
   };
 
+  const openHostedLogin = async () => {
+    setWebAuthPending(true);
+    const apiUrl = getRuntimeApiUrl();
+    await window.electronAPI!.openAuthBrowser!("login", apiUrl);
+    setWebAuthPending(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-8">
@@ -50,6 +63,22 @@ export function LoginPage() {
             <p className="text-sm text-muted-foreground">Basics OS</p>
           </div>
         </div>
+        {isElectron && (
+          <>
+            <Button
+              className="w-full"
+              onClick={() => void openHostedLogin()}
+              disabled={webAuthPending}
+            >
+              {webAuthPending ? "Opening browser..." : "Sign in via BasicOS"}
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="flex-1 border-t" />
+            </div>
+          </>
+        )}
         {error && (
           <p className="text-destructive text-sm text-center rounded-md bg-destructive/10 p-2">
             {error}
@@ -75,12 +104,29 @@ export function LoginPage() {
                 Forgot password?
               </Link>
             </div>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              {...register("password", { required: true })}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                className="pr-9"
+                {...register("password", { required: true })}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
+                onClick={() => setShowPassword((p) => !p)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="size-3.5" />
+                ) : (
+                  <EyeIcon className="size-3.5" />
+                )}
+              </Button>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign in"}

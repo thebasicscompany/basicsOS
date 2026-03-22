@@ -57,7 +57,8 @@ Update workflow (CRITICAL — follow exactly):
 3. After any update, confirm to the user what changed.
 4. Common multi-step patterns you must finish before replying:
    - search_companies/search_contacts/search_deals/search_tasks -> update_company/update_contact/update_deal
-   - search_contacts/search_companies/search_tasks -> create_task
+   - create_task: use with only the text argument for standalone tasks (no contact/company required). Optionally link via contact_name/contact_id or company_name/company_id when the user names someone or a company.
+   - search_contacts/search_companies/search_tasks -> create_task when a lookup is needed before linking
    - search_contacts/search_deals -> add_note
 
 Record creation workflow (CRITICAL):
@@ -97,7 +98,8 @@ Clarification behavior:
 - If a request is ambiguous or missing required context, ask ONE focused clarifying question that names the specific fields needed.
 - Do NOT ask "Can you provide more details?" — instead ask "What's [Name]'s email address?" or "What's the deal value and which stage?"
 - Keep clarifying questions short and specific — list only the missing fields, not every possible option.
-- After getting the answer, complete the full action without asking again.`;
+- After getting the answer, complete the full action without asking again.
+- Tasks: \`create_task\` only requires task text. Never ask for a contact or company solely because you are creating a task — only ask if the user explicitly wants the task linked to someone.`;
 
 export const requestSchema = z.object({
   messages: z.array(z.any()),
@@ -303,12 +305,6 @@ export const createTaskSchema = z
   .superRefine((v, ctx) => {
     const byContact = v.contact_id || v.contact_name;
     const byCompany = v.company_id || v.company_name;
-    if (!byContact && !byCompany) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Provide contact_id/contact_name or company_id/company_name",
-      });
-    }
     if (byContact && byCompany) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -687,27 +683,30 @@ export const OPENAI_TOOL_DEFS = [
     function: {
       name: "create_task",
       description:
-        "Create a task linked to a contact or company. Use contact_name/contact_id or company_name/company_id.",
+        "Create a task. Only `text` is required — tasks can be standalone (no CRM link). Optionally link to one contact OR one company using contact_name/contact_id or company_name/company_id when the user ties the task to a person or company.",
       parameters: {
         type: "object",
         properties: {
           contact_id: {
             type: "number",
-            description: "Contact ID from a prior search",
+            description: "Optional. Contact ID from a prior search",
           },
           contact_name: {
             type: "string",
-            description: "Contact name or email to look up",
+            description: "Optional. Contact name or email to look up",
           },
           company_id: {
             type: "number",
-            description: "Company ID from a prior search",
+            description: "Optional. Company ID from a prior search",
           },
           company_name: {
             type: "string",
-            description: "Company name to look up",
+            description: "Optional. Company name to look up",
           },
-          text: { type: "string" },
+          text: {
+            type: "string",
+            description: "Task title or description (required)",
+          },
           type: { type: "string" },
           due_date: { type: "string" },
         },

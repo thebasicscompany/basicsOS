@@ -7,6 +7,7 @@ import {
   bigint,
   uuid,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { contacts } from "@/db/schema/contacts.js";
 import { companies } from "@/db/schema/companies.js";
@@ -18,6 +19,10 @@ export const tasks = pgTable(
   "tasks",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
+    parentTaskId: bigint("parent_task_id", { mode: "number" }).references(
+      (): AnyPgColumn => tasks.id,
+      { onDelete: "cascade" },
+    ),
     contactId: bigint("contact_id", { mode: "number" }).references(
       () => contacts.id,
       { onDelete: "cascade" },
@@ -46,6 +51,7 @@ export const tasks = pgTable(
     doneDate: timestamp("done_date", { withTimezone: true }),
   },
   (t) => [
+    index("tasks_parent_task_id_idx").on(t.parentTaskId),
     index("tasks_contact_id_idx").on(t.contactId),
     index("tasks_company_id_idx").on(t.companyId),
     index("tasks_deal_id_idx").on(t.dealId),

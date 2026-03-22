@@ -298,10 +298,10 @@ function inferWorkflowHints(
 
   if (isTask) {
     planLines.push(
-      "For task requests, the usual sequence is: identify the contact or company first if needed, then call `create_task`, then confirm the task was created.",
+      "For task requests: call `create_task` with the task text. Standalone tasks do NOT require a contact or company. Search for a contact or company only when the user clearly ties the task to a specific person or company.",
     );
-    nextHintByTool.search_contacts = `Next required step for this request: call \`create_task\` now using the matching contact id or exact contact name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
-    nextHintByTool.search_companies = `Next required step for this request: call \`create_task\` now using the matching company id or exact company name from the lookup result. Apply the user's original request exactly: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_contacts = `If the user linked this task to a contact, next: call \`create_task\` with contact id or contact_name from the lookup. If tasks are standalone (no person named), call \`create_task\` with only \`text\` (and optional due_date). Original request: "${trimmed}". Do not reply yet.`;
+    nextHintByTool.search_companies = `If the user linked this task to a company, next: call \`create_task\` with company id or company_name from the lookup. If tasks are standalone, call \`create_task\` with only \`text\`. Original request: "${trimmed}". Do not reply yet.`;
   }
 
   if (isNote && /\bdeal|deals|opportunity|opportunities\b/.test(lower)) {

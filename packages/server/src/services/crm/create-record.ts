@@ -13,6 +13,7 @@ import { insertRecord } from "@/data-access/crm/create.js";
 import { getWriteAllowlist } from "@/routes/crm/handlers/field-allowlists.js";
 import { validateWritePayload } from "@/schemas/crm/write-payloads.js";
 import type { Resource } from "@/routes/crm/constants.js";
+import { validateTaskParentAssignment } from "@/services/crm/validate-task-parent.js";
 
 async function resolveOrgApiKey(
   db: Db,
@@ -64,6 +65,18 @@ export async function createRecord(
   }
   if (Object.keys(filteredBody).length === 0) {
     return { success: false, error: "No writable fields provided" };
+  }
+
+  if (
+    resource === "tasks" &&
+    typeof filteredBody.parentTaskId === "number"
+  ) {
+    const v = await validateTaskParentAssignment(
+      db,
+      orgId,
+      filteredBody.parentTaskId,
+    );
+    if (!v.ok) return { success: false, error: v.error };
   }
 
   const inserted = await insertRecord(db, {

@@ -12,9 +12,12 @@ interface ForgotPasswordForm {
   email: string;
 }
 
+const isElectron = typeof window !== "undefined" && !!window.electronAPI?.openAuthBrowser;
+
 export function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [webAuthPending, setWebAuthPending] = useState(false);
   const {
     register,
     handleSubmit,
@@ -39,6 +42,13 @@ export function ForgotPasswordPage() {
     } else {
       setSent(true);
     }
+  };
+
+  const openHostedForgotPassword = async () => {
+    setWebAuthPending(true);
+    const apiUrl = getRuntimeApiUrl();
+    await window.electronAPI!.openAuthBrowser!("forgot-password", apiUrl);
+    setWebAuthPending(false);
   };
 
   return (
@@ -73,6 +83,22 @@ export function ForgotPasswordPage() {
           </div>
         ) : (
           <>
+            {isElectron && (
+              <>
+                <Button
+                  className="w-full"
+                  onClick={() => void openHostedForgotPassword()}
+                  disabled={webAuthPending}
+                >
+                  {webAuthPending ? "Opening browser..." : "Reset password via BasicOS"}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 border-t" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="flex-1 border-t" />
+                </div>
+              </>
+            )}
             {error && (
               <p className="text-destructive text-sm text-center rounded-md bg-destructive/10 p-2">
                 {error}

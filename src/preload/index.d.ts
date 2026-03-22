@@ -79,6 +79,10 @@ export type OverlayElectronAPI = {
     onUpdateError: (cb: (data: { message: string }) => void) => void;
     installUpdate: () => Promise<void>;
   };
+  openAuthBrowser?: (
+    action: "login" | "signup" | "forgot-password",
+    apiUrl: string,
+  ) => Promise<void>;
 };
 
 declare global {

@@ -4,6 +4,8 @@ import { mapRecords, unmapRecord } from "@/lib/crm/field-mapper";
 
 export interface Task {
   id: number;
+  /** Present after DB migration; absent/null = top-level task */
+  parentTaskId?: number | null;
   contactId: number | null;
   companyId: number | null;
   dealId: number | null;
@@ -17,14 +19,15 @@ export interface Task {
 }
 
 export interface CreateTaskData {
-  contactId?: number;
-  companyId?: number;
-  dealId?: number;
-  assigneeId?: number;
+  parentTaskId?: number | null;
+  contactId?: number | null;
+  companyId?: number | null;
+  dealId?: number | null;
+  assigneeId?: number | null;
   type?: string;
   text: string;
   description?: string;
-  dueDate?: string;
+  dueDate?: string | null;
 }
 
 export function useTasks() {

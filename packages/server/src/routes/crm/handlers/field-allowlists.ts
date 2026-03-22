@@ -29,6 +29,7 @@ const WRITE_ALLOWLISTS: Record<Resource, readonly string[]> = {
     "attachments",
   ],
   tasks: [
+    "parentTaskId",
     "contactId",
     "companyId",
     "dealId",

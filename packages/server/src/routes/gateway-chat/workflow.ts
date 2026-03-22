@@ -83,6 +83,8 @@ export type ResolvedWorkflowStep =
 type LookupCandidate = {
   id: number;
   name: string;
+  /** Parsed from [[contacts/1|...]] / [[companies/2|...]] etc. */
+  resource?: "contacts" | "companies" | "deals" | "tasks";
 };
 
 function extractStructuredText(text: string): string {
@@ -225,14 +227,24 @@ function normalizeLookupStepArgs(
 function extractLookupCandidates(result: string): LookupCandidate[] {
   const candidates: LookupCandidate[] = [];
   const wikiMatches = result.matchAll(
-    /\[\[[a-z][a-z0-9-]*\/(\d+)\|([^\]]+)\]\]/gi,
+    /\[\[([a-z][a-z0-9-]*)\/(\d+)(?:#[^\]|]+)?\|([^\]]+)\]\]/gi,
   );
   for (const match of wikiMatches) {
-    const id = Number(match[1]);
-    const name = match[2]?.trim();
-    if (Number.isFinite(id) && name) {
-      candidates.push({ id, name });
-    }
+    const slug = match[1]?.toLowerCase();
+    const id = Number(match[2]);
+    const name = match[3]?.trim();
+    if (!Number.isFinite(id) || !name) continue;
+    const resource =
+      slug === "contacts"
+        ? "contacts"
+        : slug === "companies"
+          ? "companies"
+          : slug === "deals"
+            ? "deals"
+            : slug === "tasks"
+              ? "tasks"
+              : undefined;
+    candidates.push({ id, name, resource });
   }
   return candidates;
 }
@@ -272,8 +284,15 @@ function normalizeResolvedArgs(
     }
   }
   if (expectedTool === "create_task") {
-    if (args.contact_id === undefined && args.contact_name === undefined && args.company_id === undefined && args.company_name === undefined) {
+    const missingLink =
+      args.contact_id === undefined &&
+      args.contact_name === undefined &&
+      args.company_id === undefined &&
+      args.company_name === undefined;
+    if (missingLink && first.resource === "contacts") {
       args.contact_id = first.id;
+    } else if (missingLink && first.resource === "companies") {
+      args.company_id = first.id;
     }
   }
 
@@ -309,6 +328,7 @@ export async function planToolWorkflow(args: {
     "- IMPORTANT: Only plan create_contact or create_deal if the user has provided the company name in the request. If no company is mentioned for a contact or deal, return mode=none so the main assistant can ask for missing details.",
     "- IMPORTANT: For 'move/mark/bump [deal] to [stage]', plan search_deals then update_deal with status (deferred=true).",
     "- IMPORTANT: For 'add a task for [person name]', plan search_contacts then create_task (deferred=true). The task text comes from what follows the colon.",
+    "- IMPORTANT: Standalone tasks need NO contact or company. For requests like 'add these as tasks', 'create tasks from this list', or bullet to-dos with no person/company, plan one create_task step per item with only text (and optional due_date). Do NOT add search_contacts unless the user ties tasks to someone.",
     "- IMPORTANT: For 'add a note to [person name]', plan search_contacts then create_note (deferred=true). Always generate a title.",
     "- IMPORTANT: For 'add a note to [deal name] deal', plan search_deals then add_note (deferred=true).",
     "- IMPORTANT: For bulk notes ('add notes: for X — ... for Y — ...'), emit search+note pairs for each person/deal.",
@@ -340,6 +360,8 @@ export async function planToolWorkflow(args: {
     'JSON: {"mode":"none","steps":[]}',
     "User: add a task for Lena Park: send onboarding docs by Friday",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_contacts","args":{"query":"Lena Park"}},{"tool":"create_task","args":{"text":"send onboarding docs","due_date":"Friday"},"deferred":true}]}',
+    "User: add each of these as tasks: order supplies, schedule standup, review Q3 deck",
+    'JSON: {"mode":"multi_tool","steps":[{"tool":"create_task","args":{"text":"order supplies"}},{"tool":"create_task","args":{"text":"schedule standup"}},{"tool":"create_task","args":{"text":"review Q3 deck"}}]}',
     "User: move QA Deal Gamma to closed won",
     'JSON: {"mode":"multi_tool","steps":[{"tool":"search_deals","args":{"query":"QA Deal Gamma"}},{"tool":"update_deal","args":{"status":"closed-won"},"deferred":true}]}',
     "User: add a note to Lena Park: discussed enterprise pricing",

@@ -284,17 +284,25 @@ export const ASSISTANT_TOOLS = [
     function: {
       name: "create_task",
       description:
-        "Create a new task for a contact. Use when the user wants to add a follow-up task, reminder, or to-do for a contact.",
+        "Create a task. Only text is required — tasks can be standalone. Optionally link to a contact (contact_id/contact_name) OR a company (company_id/company_name), not both.",
       parameters: {
         type: "object",
         properties: {
           contact_id: {
             type: "number",
-            description: "Contact ID from a prior search",
+            description: "Optional. Contact ID from a prior search",
           },
           contact_name: {
             type: "string",
-            description: "Contact name or email to look up",
+            description: "Optional. Contact name or email to look up",
+          },
+          company_id: {
+            type: "number",
+            description: "Optional. Company ID from a prior search",
+          },
+          company_name: {
+            type: "string",
+            description: "Optional. Company name to look up",
           },
           text: {
             type: "string",
@@ -620,40 +628,82 @@ export async function executeAssistantToolDrizzle(
     }
 
     if (toolName === "create_task") {
-      let contactId = args.contact_id as number | undefined;
-      if (contactId == null && args.contact_name) {
-        contactId =
-          (await resolveContactByName(
-            db,
-            organizationId,
-            String(args.contact_name),
-            searchContext,
-          )) ?? undefined;
-        if (contactId == null) return "No contact found matching that name.";
-      }
-      if (contactId == null) return "Error: Provide contact_id or contact_name";
       const text = args.text as string;
       const type = (args.type as string) ?? "call";
       const dueDate =
         (args.due_date as string) ??
         new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [contact] = await db
-        .select({ id: schema.contacts.id })
-        .from(schema.contacts)
-        .where(
-          and(
-            eq(schema.contacts.id, contactId),
-            eq(schema.contacts.organizationId, organizationId),
-          ),
-        )
-        .limit(1);
-      if (!contact) return "Error: Contact not found";
+      const byContact =
+        args.contact_id != null || typeof args.contact_name === "string";
+      const byCompany =
+        args.company_id != null || typeof args.company_name === "string";
+      if (byContact && byCompany) {
+        return "Error: Provide only contact OR company for a task link, not both";
+      }
+
+      let contactId: number | null = null;
+      let companyId: number | null = null;
+
+      if (byContact) {
+        let cid = args.contact_id as number | undefined;
+        if (cid == null && args.contact_name) {
+          cid =
+            (await resolveContactByName(
+              db,
+              organizationId,
+              String(args.contact_name),
+              searchContext,
+            )) ?? undefined;
+          if (cid == null) return "No contact found matching that name.";
+        }
+        if (cid == null) return "Error: Provide contact_id or contact_name";
+        const [contact] = await db
+          .select({ id: schema.contacts.id })
+          .from(schema.contacts)
+          .where(
+            and(
+              eq(schema.contacts.id, cid),
+              eq(schema.contacts.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+        if (!contact) return "Error: Contact not found";
+        contactId = cid;
+      }
+
+      if (byCompany) {
+        let cid = args.company_id as number | undefined;
+        if (cid == null && args.company_name) {
+          cid =
+            (await resolveCompanyByName(
+              db,
+              organizationId,
+              String(args.company_name),
+              searchContext,
+            )) ?? undefined;
+          if (cid == null) return "No company found matching that name.";
+        }
+        if (cid == null) return "Error: Provide company_id or company_name";
+        const [company] = await db
+          .select({ id: schema.companies.id })
+          .from(schema.companies)
+          .where(
+            and(
+              eq(schema.companies.id, cid),
+              eq(schema.companies.organizationId, organizationId),
+            ),
+          )
+          .limit(1);
+        if (!company) return "Error: Company not found";
+        companyId = cid;
+      }
 
       const [data] = await db
         .insert(schema.tasks)
         .values({
           contactId,
+          companyId,
           crmUserId,
           organizationId,
           type,

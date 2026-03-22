@@ -13,6 +13,7 @@ import { updateRecord } from "@/data-access/crm/update.js";
 import { getWriteAllowlist } from "@/routes/crm/handlers/field-allowlists.js";
 import { validateWritePayload } from "@/schemas/crm/write-payloads.js";
 import type { Resource } from "@/routes/crm/constants.js";
+import { validateTaskParentAssignment } from "@/services/crm/validate-task-parent.js";
 
 async function resolveOrgApiKey(
   db: Db,
@@ -72,6 +73,15 @@ export async function updateRecordService(
   }
   if (Object.keys(filteredBody).length === 0) {
     return { success: false, error: "No writable fields to update" };
+  }
+
+  if (resource === "tasks" && "parentTaskId" in filteredBody) {
+    const pid = filteredBody.parentTaskId;
+    const parentId = typeof pid === "number" ? pid : null;
+    const v = await validateTaskParentAssignment(db, orgId, parentId, {
+      taskId: id,
+    });
+    if (!v.ok) return { success: false, error: v.error };
   }
 
   // Fetch old deal record before update to detect stage changes

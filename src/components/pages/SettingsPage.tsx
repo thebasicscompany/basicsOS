@@ -161,6 +161,7 @@ export function SettingsPage() {
   const [inviteExpiresInHours, setInviteExpiresInHours] = useState("168");
   const [inviteSendEmail, setInviteSendEmail] = useState(true);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteSignupLink, setInviteSignupLink] = useState<string | null>(null);
   const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [roleDrafts, setRoleDrafts] = useState<Record<number, string>>({});
@@ -254,6 +255,7 @@ export function SettingsPage() {
         throw new Error(json.error ?? "Failed to create invite");
       }
       setInviteToken(json.token);
+      setInviteSignupLink((json as { signupLink?: string }).signupLink ?? null);
       setInviteExpiresAt(json.expiresAt ?? null);
       if (json.emailSent) {
         toast.success("Invite created and email sent");
@@ -272,9 +274,9 @@ export function SettingsPage() {
     }
   }, [inviteEmail, inviteExpiresInHours, inviteSendEmail]);
 
-  const signupLink = inviteToken
-    ? `${window.location.origin}/sign-up?invite=${inviteToken}`
-    : "";
+  const signupLink =
+    inviteSignupLink ??
+    (inviteToken ? `${window.location.origin}/sign-up?invite=${inviteToken}` : "");
 
   const copyText = useCallback(
     async (value: string, successMessage: string) => {

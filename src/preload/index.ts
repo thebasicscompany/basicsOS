@@ -216,6 +216,14 @@ const overlayAPI = {
     },
     installUpdate: () => ipcRenderer.invoke("install-app-update") as Promise<void>,
   },
+
+  /** Open the basicsos.com hosted auth page in the system browser and begin
+   *  the deep-link sign-in / sign-up / password-reset flow. */
+  openAuthBrowser: (
+    action: "login" | "signup" | "forgot-password",
+    apiUrl: string,
+  ) =>
+    ipcRenderer.invoke("open-auth-browser", action, apiUrl) as Promise<void>,
 };
 
 // Fetch the resolved API URL synchronously (main process reads userData/org-config.json).

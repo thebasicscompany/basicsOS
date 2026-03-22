@@ -47,6 +47,15 @@ const envSchema = z.object({
   SERVER_TRANSCRIPTION_BYOK_API_KEY: z.string().optional(),
   // Path to built frontend static files (e.g. /app/dist). When set, server serves web app + API from same origin.
   STATIC_DIR: z.string().optional(),
+  // Base URL for invite links. Default: https://basicsos.com — invitees sign up via the hosted auth flow.
+  // Set to your app URL (e.g. https://app.example.com) to use in-app sign-up instead.
+  INVITE_LINK_BASE_URL: z.preprocess(
+    (val) => {
+      const s = typeof val === "string" ? val.trim() : val;
+      return s === "" || s == null ? undefined : s;
+    },
+    z.string().url().default("https://basicsos.com"),
+  ),
   // Optional SMTP for password reset emails (when not using BasicsOS key). If both SMTP and SERVER_BASICS_API_KEY are set, SMTP takes precedence.
   MAIL_HOST: z.string().optional(),
   MAIL_PORT: z.coerce.number().optional(),

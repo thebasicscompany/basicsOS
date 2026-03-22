@@ -102,6 +102,7 @@ const companyNotesWriteSchema = z
 
 const tasksWriteSchema = z
   .object({
+    parentTaskId: z.number().int().positive().nullable().optional(),
     contactId: z.number().int().positive().nullable().optional(),
     companyId: z.number().int().positive().nullable().optional(),
     dealId: z.number().int().positive().nullable().optional(),

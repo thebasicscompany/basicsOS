@@ -1,5 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import {
   app,
@@ -105,6 +106,10 @@ const pendingDictationInsertRequests = new Map<
 >();
 
 const WEB_URL = process.env["BASICSOS_URL"] ?? "http://localhost:5173";
+
+/** Short-lived nonces for the basicsos.com hosted auth deep-link flow.
+ *  key = state param, value = { action, expires (ms timestamp) } */
+const pendingAuthNonces = new Map<string, { action: string; expires: number }>();
 
 /** Write a line to userData/error.log for debugging (e.g. Team app JS errors). */
 function writeErrorLog(line: string): void {
@@ -882,6 +887,28 @@ ipcMain.on("data-changed", (_event, queryKeys: string[]) => {
   mainWindow?.webContents.send("data-changed", queryKeys);
 });
 
+// Open the hosted basicsos.com auth page in the system browser and begin
+// the deep-link auth flow. A short-lived state nonce prevents CSRF replay.
+ipcMain.handle(
+  "open-auth-browser",
+  (_event, action: string, apiUrl: string) => {
+    const validActions = new Set(["login", "signup", "forgot-password"]);
+    const safeAction = validActions.has(action) ? action : "login";
+    const state = randomUUID();
+    pendingAuthNonces.set(state, {
+      action: safeAction,
+      expires: Date.now() + 10 * 60 * 1000, // 10-minute window
+    });
+    const params = new URLSearchParams({
+      apiUrl,
+      state,
+      redirect: "basicsos://auth/callback",
+    });
+    const url = `https://basicsos.com/auth/${safeAction}?${params.toString()}`;
+    shell.openExternal(url).catch(() => undefined);
+  },
+);
+
 ipcMain.on("navigate-main", (_event, urlOrPath: string) => {
   if (!urlOrPath || typeof urlOrPath !== "string") return;
   const trimmed = urlOrPath.trim();
@@ -1326,6 +1353,113 @@ async function clearCacheIfVersionChanged(): Promise<void> {
     // ignore write errors
   }
 }
+
+/**
+ * Handle a `basicsos://auth/callback?token=X&apiUrl=Y&state=S` deep link.
+ * Validates the state nonce, injects the Better Auth session token into
+ * Electron's cookie store for the client's API origin, then navigates home.
+ */
+async function handleDeepLink(url: string): Promise<void> {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "basicsos:") return;
+    if (parsed.hostname !== "auth" || parsed.pathname !== "/callback") return;
+
+    const token = parsed.searchParams.get("token");
+    const apiUrl = parsed.searchParams.get("apiUrl");
+    const state = parsed.searchParams.get("state");
+
+    if (!token || !apiUrl || !state) {
+      console.warn("[deep-link] missing required params (token/apiUrl/state)");
+      return;
+    }
+
+    // Validate and consume the state nonce
+    const nonce = pendingAuthNonces.get(state);
+    if (!nonce) {
+      console.warn("[deep-link] unknown or already-used state nonce — ignoring");
+      return;
+    }
+    if (Date.now() > nonce.expires) {
+      pendingAuthNonces.delete(state);
+      console.warn("[deep-link] expired state nonce — ignoring");
+      return;
+    }
+    pendingAuthNonces.delete(state);
+
+    // Validate apiUrl is a legitimate http(s) URL and matches this app's configured API
+    let parsedApiUrl: URL;
+    try {
+      parsedApiUrl = new URL(apiUrl);
+      if (!["http:", "https:"].includes(parsedApiUrl.protocol)) {
+        console.warn("[deep-link] invalid apiUrl protocol");
+        return;
+      }
+      // Only accept callbacks for this app's configured backend — prevents a malicious
+      // basicsos.com from redirecting the token to an attacker-controlled domain.
+      const expectedOrigin = new URL(API_URL).origin;
+      if (parsedApiUrl.origin !== expectedOrigin) {
+        console.warn("[deep-link] apiUrl origin mismatch — ignoring");
+        return;
+      }
+    } catch {
+      console.warn("[deep-link] invalid apiUrl");
+      return;
+    }
+
+    // Inject the Better Auth session cookie into Electron's session.
+    // Better Auth uses __Secure- prefix on HTTPS and plain name on HTTP.
+    const isHttps = parsedApiUrl.protocol === "https:";
+    const cookieName = isHttps
+      ? "__Secure-better-auth.session_token"
+      : "better-auth.session_token";
+    await session.defaultSession.cookies.set({
+      url: parsedApiUrl.origin,
+      name: cookieName,
+      value: token,
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: isHttps ? "no_restriction" : "lax",
+      expirationDate: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+    });
+
+    // Show and focus the main window, then navigate to the app root
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.webContents.send("navigate-in-app", "/");
+    }
+  } catch (err) {
+    console.warn("[deep-link] error handling deep link:", err);
+  }
+}
+
+// Register the custom URL scheme so the OS routes basicsos:// links here.
+app.setAsDefaultProtocolClient("basicsos");
+
+// Single-instance lock — on Windows, a second instance passes the URL as argv.
+// On macOS the open-url event below handles it instead.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    const deepLinkUrl = argv.find((arg) => arg.startsWith("basicsos://"));
+    if (deepLinkUrl) void handleDeepLink(deepLinkUrl);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// macOS: protocol URL is delivered via the open-url app event.
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  void handleDeepLink(url);
+});
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId("com.basics-hub");

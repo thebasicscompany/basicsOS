@@ -675,10 +675,6 @@ export async function executeValidatedTool(
       if (!(await companyExists(companyId!)))
         return { error: "company not found" };
     }
-    if (!contactId && !companyId)
-      return {
-        error: "Provide contact_id/contact_name or company_id/company_name",
-      };
 
     let dueDate: Date | null = null;
     if (args.due_date) {

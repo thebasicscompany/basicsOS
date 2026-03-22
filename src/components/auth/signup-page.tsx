@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,11 +21,15 @@ interface SignupForm {
   invite_token?: string;
 }
 
+const isElectron = typeof window !== "undefined" && !!window.electronAPI?.openAuthBrowser;
+
 export function SignupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteFromUrl = searchParams.get("invite") ?? "";
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [webAuthPending, setWebAuthPending] = useState(false);
   const { data: isInitialized } = useQuery({
     queryKey: ["init"],
     queryFn: async () => {
@@ -78,6 +83,13 @@ export function SignupPage() {
     }
   };
 
+  const openHostedSignup = async () => {
+    setWebAuthPending(true);
+    const apiUrl = getRuntimeApiUrl();
+    await window.electronAPI!.openAuthBrowser!("signup", apiUrl);
+    setWebAuthPending(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-sm space-y-6">
@@ -100,6 +112,22 @@ export function SignupPage() {
             </p>
           </div>
         </div>
+        {isElectron && (
+          <>
+            <Button
+              className="w-full"
+              onClick={() => void openHostedSignup()}
+              disabled={webAuthPending}
+            >
+              {webAuthPending ? "Opening browser..." : "Create account via BasicOS"}
+            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="flex-1 border-t" />
+            </div>
+          </>
+        )}
         {error && (
           <p className="text-destructive text-sm rounded-md bg-destructive/10 p-2">
             {error}
@@ -133,12 +161,29 @@ export function SignupPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              {...register("password", { required: true, minLength: 8 })}
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                {...register("password", { required: true, minLength: 8 })}
+                autoComplete="new-password"
+                className="pr-9"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0.5 top-1/2 size-7 -translate-y-1/2"
+                onClick={() => setShowPassword((p) => !p)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="size-3.5" />
+                ) : (
+                  <EyeIcon className="size-3.5" />
+                )}
+              </Button>
+            </div>
           </div>
           {isInitialized && (
             <div className="space-y-2">

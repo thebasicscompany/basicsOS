@@ -1,4 +1,6 @@
 import path from "path";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -94,6 +96,9 @@ let keyboardHook: KeyboardHook | null = null;
 let registeredMeetingAccelerator: string | null = null;
 let registeredDictationAccelerator: string | null = null;
 let dictationToggleActive = false;
+let pendingHostedAuthRevealTimeout: ReturnType<typeof setTimeout> | null = null;
+let hostedAuthLoopbackServer: Server | null = null;
+let hostedAuthLoopbackCloseTimeout: ReturnType<typeof setTimeout> | null = null;
 /** Tracks the current session type for the keyboard hook */
 let hookSessionType:
   | "idle"
@@ -534,8 +539,11 @@ function createMainWindow(): void {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
     },
   });
+
+  mainWindow.webContents.setBackgroundThrottling(false);
 
   mainWindow.on("ready-to-show", () => {
     mainWindow?.maximize();
@@ -1038,10 +1046,10 @@ ipcMain.on("data-changed", (_event, queryKeys: string[]) => {
 });
 
 // Open the hosted basicsos.com auth page in the system browser and begin
-// the deep-link auth flow. A short-lived state nonce prevents CSRF replay.
+// the hosted auth flow. A short-lived state nonce prevents CSRF replay.
 ipcMain.handle(
   "open-auth-browser",
-  (
+  async (
     _event,
     action: string,
     apiUrl: string,
@@ -1055,10 +1063,16 @@ ipcMain.handle(
       action: safeAction,
       expires: Date.now() + 10 * 60 * 1000, // 10-minute window
     });
+    let redirect = "basicsos://auth/callback";
+    try {
+      redirect = await startHostedAuthLoopbackServer();
+    } catch (err) {
+      console.warn("[hosted-auth] failed to start loopback callback server, falling back to protocol redirect:", err);
+    }
     const params = new URLSearchParams({
       apiUrl,
       state,
-      redirect: "basicsos://auth/callback",
+      redirect,
     });
     if (orgName?.trim()) params.set("orgName", orgName.trim());
     if (safeAction === "signup" && invite?.trim())
@@ -1467,6 +1481,10 @@ ipcMain.handle("get-overlay-status", () => {
   return getOverlayStatus();
 });
 
+ipcMain.on("hosted-auth-render-ready", () => {
+  revealMainWindowAfterHostedAuth();
+});
+
 const registerMeetingShortcut = (accelerator: string): void => {
   const acc = ensureValidAccelerator(
     accelerator,
@@ -1524,8 +1542,130 @@ function notifyDeepLinkAuthError(message: string): void {
   }
 }
 
+function clearPendingHostedAuthReveal(): void {
+  if (pendingHostedAuthRevealTimeout) {
+    clearTimeout(pendingHostedAuthRevealTimeout);
+    pendingHostedAuthRevealTimeout = null;
+  }
+}
+
+function revealMainWindowAfterHostedAuth(): void {
+  clearPendingHostedAuthReveal();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.showInactive();
+  }
+}
+
+function clearHostedAuthLoopbackCloseTimeout(): void {
+  if (hostedAuthLoopbackCloseTimeout) {
+    clearTimeout(hostedAuthLoopbackCloseTimeout);
+    hostedAuthLoopbackCloseTimeout = null;
+  }
+}
+
+function scheduleHostedAuthLoopbackClose(delayMs = 1000): void {
+  clearHostedAuthLoopbackCloseTimeout();
+  hostedAuthLoopbackCloseTimeout = setTimeout(() => {
+    clearHostedAuthLoopbackCloseTimeout();
+    if (hostedAuthLoopbackServer) {
+      hostedAuthLoopbackServer.close();
+      hostedAuthLoopbackServer = null;
+    }
+  }, delayMs);
+}
+
+function stopHostedAuthLoopbackServer(): void {
+  clearHostedAuthLoopbackCloseTimeout();
+  if (hostedAuthLoopbackServer) {
+    hostedAuthLoopbackServer.close();
+    hostedAuthLoopbackServer = null;
+  }
+}
+
+const HOSTED_AUTH_COMPLETE_URL = "https://basicsos.com/auth/complete";
+
+async function startHostedAuthLoopbackServer(): Promise<string> {
+  stopHostedAuthLoopbackServer();
+
+  return await new Promise((resolve, reject) => {
+    const server = createServer((req, res) => {
+      const requestUrl = req.url ?? "/";
+      let parsed: URL;
+      try {
+        parsed = new URL(requestUrl, "http://127.0.0.1");
+      } catch {
+        res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Invalid request");
+        return;
+      }
+
+      if (parsed.pathname !== "/auth/callback") {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Not found");
+        return;
+      }
+
+      const code = parsed.searchParams.get("code");
+      const apiUrl = parsed.searchParams.get("apiUrl");
+      const state = parsed.searchParams.get("state");
+
+      if (!code || !apiUrl || !state) {
+        res.writeHead(302, {
+          Location: HOSTED_AUTH_COMPLETE_URL,
+          "Cache-Control": "no-store",
+        });
+        res.end("");
+        scheduleHostedAuthLoopbackClose();
+        return;
+      }
+
+      res.writeHead(302, {
+        Location: HOSTED_AUTH_COMPLETE_URL,
+        "Cache-Control": "no-store",
+      });
+      res.end("");
+
+      void handleHostedAuthCallback({
+        code,
+        apiUrl,
+        state,
+        source: "loopback",
+      });
+      scheduleHostedAuthLoopbackClose();
+    });
+
+    server.once("error", (err) => {
+      if (hostedAuthLoopbackServer === server) {
+        hostedAuthLoopbackServer = null;
+      }
+      reject(err);
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      hostedAuthLoopbackServer = server;
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        stopHostedAuthLoopbackServer();
+        reject(new Error("Loopback server did not expose a TCP port"));
+        return;
+      }
+      const { port } = address as AddressInfo;
+      resolve(`http://127.0.0.1:${port}/auth/callback`);
+    });
+  });
+}
+
+type HostedAuthCallbackPayload = {
+  code: string;
+  apiUrl: string;
+  state: string;
+  source: "deep-link" | "loopback";
+};
+
 /**
- * Handle a `basicsos://auth/callback?code=X&apiUrl=Y&state=S` deep link.
+ * Handle a hosted auth callback delivered either by protocol deep link or a
+ * localhost loopback redirect.
  *
  * Better Auth **signs** session cookies with the server secret. The raw
  * `response.token` from a sign-in request is NOT the cookie value — the cookie
@@ -1536,30 +1676,22 @@ function notifyDeepLinkAuthError(message: string): void {
  *     on the browser via Set-Cookie).
  *  2. basicsos.com calls `POST {apiUrl}/api/auth-code` with that cookie →
  *     receives a one-time `code`.
- *  3. basicsos.com passes the code via deep link.
+ *  3. basicsos.com passes the code back to Electron via a loopback callback or deep link.
  *  4. Electron exchanges the code for the actual signed cookie value via
  *     `POST {apiUrl}/api/auth-code/exchange`.
  *  5. Electron injects the signed cookie into Electron's cookie store and
  *     reloads.
  */
-async function handleDeepLink(url: string): Promise<void> {
+async function handleHostedAuthCallback({
+  code,
+  apiUrl,
+  state,
+  source,
+}: HostedAuthCallbackPayload): Promise<void> {
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "basicsos:") return;
-    if (parsed.hostname !== "auth" || parsed.pathname !== "/callback") return;
-
-    const code = parsed.searchParams.get("code");
-    const apiUrl = parsed.searchParams.get("apiUrl");
-    const state = parsed.searchParams.get("state");
-
-    if (!code || !apiUrl || !state) {
-      console.warn("[deep-link] missing required params (code/apiUrl/state)");
-      return;
-    }
-
     const nonce = pendingAuthNonces.get(state);
     if (!nonce) {
-      console.warn("[deep-link] unknown or already-used state nonce — ignoring");
+      console.warn(`[hosted-auth:${source}] unknown or already-used state nonce — ignoring`);
       notifyDeepLinkAuthError(
         "This sign-in link has already been used or has expired. Please request a new one.",
       );
@@ -1567,7 +1699,7 @@ async function handleDeepLink(url: string): Promise<void> {
     }
     if (Date.now() > nonce.expires) {
       pendingAuthNonces.delete(state);
-      console.warn("[deep-link] expired state nonce — ignoring");
+      console.warn(`[hosted-auth:${source}] expired state nonce — ignoring`);
       notifyDeepLinkAuthError(
         "This sign-in link has expired. Please request a new one.",
       );
@@ -1578,11 +1710,11 @@ async function handleDeepLink(url: string): Promise<void> {
     try {
       parsedApiUrl = new URL(apiUrl);
     } catch {
-      console.warn("[deep-link] apiUrl is not a valid URL:", apiUrl);
+      console.warn(`[hosted-auth:${source}] apiUrl is not a valid URL:`, apiUrl);
       return;
     }
     if (!["http:", "https:"].includes(parsedApiUrl.protocol)) {
-      console.warn("[deep-link] invalid apiUrl protocol:", parsedApiUrl.protocol);
+      console.warn(`[hosted-auth:${source}] invalid apiUrl protocol:`, parsedApiUrl.protocol);
       return;
     }
 
@@ -1591,12 +1723,12 @@ async function handleDeepLink(url: string): Promise<void> {
       const expectedOrigin = new URL(configuredApiUrl).origin;
       if (parsedApiUrl.origin !== expectedOrigin) {
         console.warn(
-          `[deep-link] apiUrl origin mismatch — got ${parsedApiUrl.origin}, expected ${expectedOrigin}`,
+          `[hosted-auth:${source}] apiUrl origin mismatch — got ${parsedApiUrl.origin}, expected ${expectedOrigin}`,
         );
         return;
       }
     } catch {
-      console.warn("[deep-link] could not parse configured API_URL:", configuredApiUrl);
+      console.warn(`[hosted-auth:${source}] could not parse configured API_URL:`, configuredApiUrl);
       return;
     }
 
@@ -1610,7 +1742,7 @@ async function handleDeepLink(url: string): Promise<void> {
     // only bring the window forward after the heavy React mount has finished.
 
     // Exchange the one-time code for the actual signed cookie value
-    console.warn("[deep-link] exchanging auth code…");
+    console.warn(`[hosted-auth:${source}] exchanging auth code…`);
     let cookieName: string;
     let cookieValue: string;
     try {
@@ -1624,7 +1756,9 @@ async function handleDeepLink(url: string): Promise<void> {
       );
       if (!exchangeRes.ok) {
         const errBody = await exchangeRes.text();
-        console.warn(`[deep-link] auth-code exchange failed: ${exchangeRes.status} ${errBody}`);
+        console.warn(
+          `[hosted-auth:${source}] auth-code exchange failed: ${exchangeRes.status} ${errBody}`,
+        );
         return;
       }
       const exchangeData = (await exchangeRes.json()) as {
@@ -1634,12 +1768,12 @@ async function handleDeepLink(url: string): Promise<void> {
       cookieName = exchangeData.cookieName;
       cookieValue = exchangeData.cookieValue;
     } catch (err) {
-      console.warn("[deep-link] auth-code exchange request error:", err);
+      console.warn(`[hosted-auth:${source}] auth-code exchange request error:`, err);
       return;
     }
 
     if (!cookieName || !cookieValue) {
-      console.warn("[deep-link] exchange returned empty cookie data");
+      console.warn(`[hosted-auth:${source}] exchange returned empty cookie data`);
       return;
     }
 
@@ -1678,17 +1812,45 @@ async function handleDeepLink(url: string): Promise<void> {
         }
       }, 200);
 
-      // After the renderer has had time to mount the full dashboard (~3-4s),
-      // gently surface the window without stealing focus from the browser.
-      setTimeout(() => {
+      // Wait for the renderer to paint a lightweight completion screen before
+      // surfacing the window. This keeps the deep-link transition cheap and
+      // avoids overlapping the first full authenticated mount with Windows'
+      // compositor work. Keep a long fallback in case the renderer never acks.
+      clearPendingHostedAuthReveal();
+      pendingHostedAuthRevealTimeout = setTimeout(() => {
         if (!win.isDestroyed()) {
-          if (win.isMinimized()) win.restore();
-          win.showInactive();
+          revealMainWindowAfterHostedAuth();
         }
-      }, 4000);
+      }, 10_000);
     }
   } catch (err) {
-    console.warn("[deep-link] error handling deep link:", err);
+    console.warn(`[hosted-auth:${source}] error handling callback:`, err);
+  }
+}
+
+async function handleDeepLink(url: string): Promise<void> {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "basicsos:") return;
+    if (parsed.hostname !== "auth" || parsed.pathname !== "/callback") return;
+
+    const code = parsed.searchParams.get("code");
+    const apiUrl = parsed.searchParams.get("apiUrl");
+    const state = parsed.searchParams.get("state");
+
+    if (!code || !apiUrl || !state) {
+      console.warn("[hosted-auth:deep-link] missing required params (code/apiUrl/state)");
+      return;
+    }
+
+    await handleHostedAuthCallback({
+      code,
+      apiUrl,
+      state,
+      source: "deep-link",
+    });
+  } catch (err) {
+    console.warn("[hosted-auth:deep-link] failed to parse deep link:", err);
   }
 }
 
@@ -2182,6 +2344,7 @@ app.on("before-quit", () => {
 });
 
 app.on("will-quit", () => {
+  stopHostedAuthLoopbackServer();
   keyboardHook?.stop();
   shortcutMgr?.unregisterAll();
   holdDetector?.stop();

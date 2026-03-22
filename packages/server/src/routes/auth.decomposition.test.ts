@@ -75,7 +75,7 @@ describe("auth route decomposition", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ initialized: true });
+    expect(body).toEqual({ initialized: true, orgName: "Acme" });
   });
 
   it("GET /gateway-token returns token when session exists", async () => {

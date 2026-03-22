@@ -81,6 +81,7 @@ export type OverlayElectronAPI = {
   };
   onDeepLinkAuthError?: (cb: (data: { message: string }) => void) => void;
   onHostedAuthComplete?: (cb: () => void) => void;
+  notifyHostedAuthRenderReady?: () => void;
   openAuthBrowser?: (
     action: "login" | "signup" | "forgot-password",
     apiUrl: string,

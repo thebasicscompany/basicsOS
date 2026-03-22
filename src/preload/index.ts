@@ -227,6 +227,11 @@ const overlayAPI = {
     ipcRenderer.on("hosted-auth-complete", () => cb());
   },
 
+  /** Signal that the lightweight hosted-auth completion screen has painted. */
+  notifyHostedAuthRenderReady: () => {
+    ipcRenderer.send("hosted-auth-render-ready");
+  },
+
   /** Open the basicsos.com hosted auth page in the system browser and begin
    *  the deep-link sign-in / sign-up / password-reset flow. */
   openAuthBrowser: (

@@ -25,6 +25,7 @@ import { ErrorFallback } from "@/components/error-fallback";
 import { ProtectedRoute } from "@/lib/auth";
 import { HelpCenterProvider } from "@/contexts/help-center";
 import { StartPage } from "@/components/auth/start-page";
+import { HostedAuthCompletingPage } from "@/components/auth/hosted-auth-completing-page";
 import { SignupPage } from "@/components/auth/signup-page";
 import { ForgotPasswordPage } from "@/components/auth/forgot-password-page";
 import { SetPasswordPage } from "@/components/auth/set-password-page";
@@ -99,6 +100,7 @@ function AppRoutes() {
     const api = window.electronAPI;
     if (!api?.onHostedAuthComplete) return;
     api.onHostedAuthComplete(() => {
+      navigate("/auth-completing", { replace: true });
       const notify = () =>
         startTransition(() => {
           authClient.$store.notify("$sessionSignal");
@@ -109,7 +111,7 @@ function AppRoutes() {
         setTimeout(notify, 100);
       }
     });
-  }, []);
+  }, [navigate]);
 
   return (
     <ErrorBoundary
@@ -120,6 +122,10 @@ function AppRoutes() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<StartPage />} />
+          <Route
+            path="/auth-completing"
+            element={<HostedAuthCompletingPage />}
+          />
           <Route path="/sign-up" element={<SignupPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/set-password" element={<SetPasswordPage />} />

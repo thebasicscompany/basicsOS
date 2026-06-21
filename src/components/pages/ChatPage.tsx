@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { PlugIcon } from "@phosphor-icons/react";
 import type { Message } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePageTitle } from "@/contexts/page-header";
@@ -95,11 +96,35 @@ function rewriteCrmLinks(text: string): string {
     if (result.includes(`>${label}</crm-link>`)) return _match;
     return `<crm-link path="${path}">${label}</crm-link>`;
   });
+  result = rewriteConnectCards(result);
+  return result;
+}
+
+// Composio connect/authorize URLs are a fixed domain — turn them (whether the
+// agent wrote them as a markdown link or a bare URL) into a styled connect card.
+const CONNECT_URL = "https://backend.composio.dev/";
+const CONNECT_MD_LINK_RE = /\[([^\]]+)\]\((https:\/\/backend\.composio\.dev\/[^)]+)\)/g;
+const CONNECT_BARE_RE = /(?<![("=])(https:\/\/backend\.composio\.dev\/[^\s)]+)/g;
+
+function appFromLabel(label: string): string {
+  const cleaned = label.replace(/\b(connect|authorize|sign\s*in( to)?|link|here|now|to|your|account|the)\b/gi, " ").replace(/\s+/g, " ").trim();
+  return cleaned ? cleaned.replace(/^\w/, (c) => c.toUpperCase()) : "your account";
+}
+
+function rewriteConnectCards(text: string): string {
+  if (!text.includes(CONNECT_URL)) return text;
+  let result = text.replace(CONNECT_MD_LINK_RE, (_m, label: string, url: string) => {
+    return `<connect-card url="${url}" app="${appFromLabel(label)}"></connect-card>`;
+  });
+  result = result.replace(CONNECT_BARE_RE, (_m, url: string) => {
+    return `<connect-card url="${url}" app="your account"></connect-card>`;
+  });
   return result;
 }
 
 const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = {
   "crm-link": ["path"],
+  "connect-card": ["url", "app"],
 };
 
 const OBJECT_RECORD_RE = /^\/objects\/([a-z][a-z0-9-]*)\/(.+)$/;
@@ -142,7 +167,32 @@ function CrmLinkTag(props: Record<string, unknown>) {
   );
 }
 
-const crmComponents = { "crm-link": CrmLinkTag };
+function ConnectCardTag(props: Record<string, unknown>) {
+  const url = props.url as string | undefined;
+  const app = (props.app as string | undefined) || "your account";
+  if (!url) return null;
+  return (
+    <span className="not-prose my-2 flex items-center gap-3 rounded-[--surface-card-radius] border bg-surface-card p-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <PlugIcon className="size-4" weight="bold" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-medium leading-tight">Connect {app}</span>
+        <span className="block text-[11px] text-muted-foreground">Authorize access so the agent can finish this for you.</span>
+      </span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground hover:opacity-90"
+      >
+        Connect
+      </a>
+    </span>
+  );
+}
+
+const crmComponents = { "crm-link": CrmLinkTag, "connect-card": ConnectCardTag };
 
 function EntityAwareMessageResponse({
   children,

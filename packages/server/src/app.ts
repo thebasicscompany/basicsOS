@@ -26,6 +26,7 @@ import { createEmailSyncRoutes } from "@/routes/email-sync.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { createApiTokensRoutes } from "@/routes/api-tokens.js";
+import { createBrokerRoutes } from "@/mcp-broker/route.js";
 import { isTrustedOrigin, isElectronUserAgent } from "@/lib/trusted-origins.js";
 import { sql } from "drizzle-orm";
 
@@ -139,6 +140,11 @@ export function createApp(db: Db, env: Env) {
     );
     await next();
   });
+
+  // MCP Tool Broker (hermes connects here over Streamable HTTP). Mounted BEFORE
+  // the rate limiter so the agent's tool-call bursts aren't throttled; it has its
+  // own bearer auth (BROKER_INSTANCE_TOKEN). See src/mcp-broker/.
+  app.route("/", createBrokerRoutes(db, env));
 
   app.use("/*", rateLimitMiddleware);
 

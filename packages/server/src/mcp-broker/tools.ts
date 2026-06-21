@@ -17,6 +17,7 @@ import { BrokerError } from "@/mcp-broker/protocol.js";
 import { PERMISSIONS } from "@/lib/rbac.js";
 import { buildConnectionTools } from "@/mcp-broker/connections.js";
 import { buildAutomationTools } from "@/mcp-broker/automations.js";
+import { buildWebTools } from "@/mcp-broker/web.js";
 import {
   createCustomField,
   createRecord,
@@ -401,5 +402,6 @@ export function buildTools(db: Db, env: Env): BrokerTool[] {
     ...buildResourceTools(db),
     ...buildConnectionTools(env),
     ...buildAutomationTools(db),
+    ...buildWebTools(env),
   ];
 }

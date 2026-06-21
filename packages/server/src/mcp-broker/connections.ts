@@ -9,7 +9,7 @@ import type { Env } from "@/env.js";
 import type { BrokerTool, ToolCallContext } from "@/mcp-broker/protocol.js";
 import { BrokerError } from "@/mcp-broker/protocol.js";
 
-async function callGateway(
+export async function callGateway(
   env: Env,
   ctx: ToolCallContext,
   method: "GET" | "POST",
@@ -42,8 +42,15 @@ const stringArg = (v: unknown): string => (typeof v === "string" ? v.trim() : ""
 export function buildConnectionTools(env: Env): BrokerTool[] {
   return [
     {
+      name: "connection.catalog",
+      description: "List the apps the user CAN connect (the available connection catalog, e.g. gmail, slack, notion, hubspot, github).",
+      inputSchema: { type: "object", properties: {}, additionalProperties: false },
+      meta: { source: "connection", writes: false },
+      handle: async (_args, ctx) => callGateway(env, ctx, "GET", "/v1/composio/catalog"),
+    },
+    {
       name: "connection.list",
-      description: "List the apps the current user (and the org) has connected (e.g. gmail, slack).",
+      description: "List the apps the current user (and the org) has already connected (e.g. gmail, slack).",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       meta: { source: "connection", writes: false },
       handle: async (_args, ctx) => callGateway(env, ctx, "GET", "/v1/composio/connections"),

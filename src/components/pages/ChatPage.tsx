@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { PlugIcon } from "@phosphor-icons/react";
+import {
+  PlugIcon,
+  CurrencyDollarIcon,
+  LightningIcon,
+  GlobeIcon,
+  EnvelopeSimpleIcon,
+  type Icon,
+} from "@phosphor-icons/react";
 import type { Message } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePageTitle } from "@/contexts/page-header";
@@ -41,7 +48,6 @@ import {
   PromptInputProvider,
 } from "@/components/ai-elements/prompt-input";
 import { usePromptInputAttachments, useOptionalPromptInputController } from "@/components/ai-elements/prompt-input-context";
-import { Suggestion } from "@/components/ai-elements/suggestion";
 import { useGatewayChat } from "@/hooks/useGatewayChat";
 import { useGateway } from "@/hooks/useGateway";
 import { useThreadMessages } from "@/hooks/use-threads";
@@ -68,13 +74,11 @@ function getTextContent(msg: {
   return "";
 }
 
-const SUGGESTIONS = [
-  "What are my latest deals?",
-  "Create a task for following up",
-  "Add a note to my top contact",
-  "Summarize my pipeline",
-  "Who are my hot contacts?",
-  "What's the status of my deals?",
+const SUGGESTIONS: Array<{ icon: Icon; label: string; prompt: string }> = [
+  { icon: CurrencyDollarIcon, label: "Summarize my pipeline", prompt: "Summarize my open deals and their total value" },
+  { icon: LightningIcon, label: "Set up an automation", prompt: "Every Monday at 8am, email me a summary of my open deals" },
+  { icon: GlobeIcon, label: "Research an account", prompt: "Find recent news about my top account and summarize it" },
+  { icon: EnvelopeSimpleIcon, label: "Draft a follow-up", prompt: "Draft a follow-up email to my most recent contact" },
 ];
 
 const WIKI_LINK_RE = /\[\[([a-z][a-z0-9-]*)\/(\d+)(#\w+)?\|([^\]]+)\]\]/g;
@@ -410,13 +414,22 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
             </PromptInput>
           </div>
           {hasKey && (
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {SUGGESTIONS.map((suggestion) => (
-                <Suggestion
-                  key={suggestion}
-                  suggestion={suggestion}
-                  onClick={handleSuggestionClick}
-                />
+            <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+              {SUGGESTIONS.map(({ icon: SuggestionIcon, label, prompt }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handleSuggestionClick(prompt)}
+                  className="flex items-start gap-3 rounded-[--surface-card-radius] border bg-surface-card p-3 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <SuggestionIcon className="size-4" weight="bold" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium leading-tight">{label}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{prompt}</span>
+                  </span>
+                </button>
               ))}
             </div>
           )}

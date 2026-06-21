@@ -365,9 +365,22 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
 
   const handleSuggestionClick = useCallback(
     (suggestion: string) => {
+      if (!hasKey) {
+        toast.error("Add your Basics API key in Settings to use the assistant");
+        return;
+      }
+      // Never discard what the user already typed: if the input has text, drop
+      // the suggestion into the box so they review/edit and send it deliberately
+      // (so the sent message always matches the input). Only quick-send from an
+      // empty input.
+      const typed = controller?.textInput.value?.trim();
+      if (typed) {
+        controller?.textInput.setInput(suggestion);
+        return;
+      }
       append({ role: "user", content: suggestion });
     },
-    [append],
+    [append, hasKey, controller],
   );
 
   const lastMsg = allVisible.at(-1);

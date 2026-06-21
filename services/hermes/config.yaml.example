@@ -59,12 +59,12 @@ platform_toolsets:
     - terminal
     - file
     - vision
-    - image_gen
     - delegation
     - session_search
     - todo
-    # - browser   # ENABLE once chromium/playwright are added to the hermes image
-    #             # (the pinned image has no browser runtime — see task #15).
+    # Disabled until their runtimes exist (see task #15):
+    # - browser     # needs chromium/playwright in the hermes image
+    # - image_gen   # needs an image-generation model routed through the gateway
 
 # code_execution / terminal are gated behind an approval step. In our headless
 # API path there's no human to prompt, so "manual" (the default) halts them. Use

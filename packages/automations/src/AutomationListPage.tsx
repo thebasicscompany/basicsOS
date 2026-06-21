@@ -1,4 +1,10 @@
-import { DotsThreeIcon, PlusIcon } from "@phosphor-icons/react";
+import {
+  DotsThreeIcon,
+  PlusIcon,
+  ClockIcon,
+  LightningIcon,
+  RobotIcon,
+} from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,14 +15,15 @@ import {
 } from "basics-os/src/contexts/page-header";
 import { Button } from "basics-os/src/components/ui/button";
 import { Switch } from "basics-os/src/components/ui/switch";
+import { Badge } from "basics-os/src/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "basics-os/src/components/ui/table";
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+  CardAction,
+} from "basics-os/src/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +65,51 @@ function getTriggerLabel(rule: AutomationRule): string {
     );
   }
   return "—";
+}
+
+const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Best-effort plain-English schedule for the common cron shapes. */
+function cronToEnglish(cron: string): string {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return cron;
+  const [min, hr, dom, mon, dow] = parts;
+  const time = (() => {
+    const h = Number(hr), m = Number(min);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    const ampm = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+  })();
+  if (!time) return cron;
+  if (dom === "*" && mon === "*") {
+    if (dow === "*") return `Every day at ${time}`;
+    if (dow === "1-5") return `Every weekday at ${time}`;
+    const days = dow.split(",").map((d) => DOW[Number(d)]).filter(Boolean);
+    if (days.length) return `Every ${days.join(", ")} at ${time}`;
+  }
+  return cron;
+}
+
+function getTrigger(rule: AutomationRule): { scheduled: boolean; label: string } {
+  const nodes = rule.workflowDefinition?.nodes ?? [];
+  const sched = nodes.find((n) => n.type === "trigger_schedule");
+  if (sched) {
+    const cron = sched.data?.cron as string | undefined;
+    return { scheduled: true, label: cron ? cronToEnglish(cron) : (sched.data?.label as string) || "On a schedule" };
+  }
+  const ev = nodes.find((n) => n.type === "trigger_event");
+  if (ev) return { scheduled: false, label: `When ${(ev.data?.event as string)?.replace(/[._]/g, " ") ?? "an event happens"}` };
+  return { scheduled: true, label: getTriggerLabel(rule) };
+}
+
+/** A one-line "what it does" from the agentic step prompt. */
+function getStepSummary(rule: AutomationRule): string {
+  const nodes = rule.workflowDefinition?.nodes ?? [];
+  const ai = nodes.find((n) => n.type === "action_ai_agent");
+  const prompt = (ai?.data?.prompt as string | undefined)?.trim();
+  if (prompt) return prompt.length > 160 ? `${prompt.slice(0, 160)}…` : prompt;
+  return `${nodes.filter((n) => n.type?.startsWith("action")).length} action(s)`;
 }
 
 function useAutomationRules() {
@@ -119,103 +171,66 @@ export function AutomationListPage() {
 
         {/* Empty state */}
         {!isPending && !isError && rules.length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            No automations yet. Click{" "}
-            <strong className="font-medium text-foreground">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-[--surface-card-radius] border border-dashed py-16 text-center">
+            <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <LightningIcon className="size-5" weight="fill" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">No automations yet</p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                Ask the assistant in chat — e.g. “every Monday, email me a summary of my open deals” — or create one here.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => navigate("/automations/create")}>
+              <PlusIcon className="mr-2 size-4" />
               New Automation
-            </strong>{" "}
-            above to get started.
-          </p>
+            </Button>
+          </div>
         )}
 
-        {/* Table */}
+        {/* Card grid */}
         {(isPending || rules.length > 0) && (
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Trigger</TableHead>
-                  <TableHead>Steps</TableHead>
-                  <TableHead>Last run</TableHead>
-                  <TableHead>Enabled</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isPending
-                  ? Array.from({ length: 3 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: 6 }).map((_, j) => (
-                          <TableCell key={j}>
-                            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  : rules.map((rule) => (
-                      <TableRow
-                        key={rule.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/automations/${rule.id}`)}
-                      >
-                        <TableCell className="font-medium">
-                          {rule.name}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground capitalize">
-                          {getTriggerLabel(rule)}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {rule.workflowDefinition?.nodes?.length ?? 0} nodes
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {rule.lastRunAt
-                            ? new Date(rule.lastRunAt).toLocaleString()
-                            : "Never"}
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {isPending
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-[150px] animate-pulse rounded-[--surface-card-radius] bg-surface-card" />
+                ))
+              : rules.map((rule) => {
+                  const trigger = getTrigger(rule);
+                  return (
+                    <Card
+                      key={rule.id}
+                      className="cursor-pointer gap-0 transition-colors hover:bg-surface-hover"
+                      onClick={() => navigate(`/automations/${rule.id}`)}
+                    >
+                      <CardHeader className="pb-2">
+                        <CardTitle className="truncate text-[14px]">{rule.name}</CardTitle>
+                        <CardAction className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <Switch
                             checked={rule.enabled}
                             onCheckedChange={(checked) =>
-                              updateRule.mutate({
-                                id: rule.id,
-                                data: { enabled: checked },
-                              })
+                              updateRule.mutate({ id: rule.id, data: { enabled: checked } })
                             }
                             disabled={updateRule.isPending}
                           />
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8"
-                              >
+                              <Button variant="ghost" size="icon" className="size-8">
                                 <DotsThreeIcon className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate(`/automations/${rule.id}`)
-                                }
-                              >
+                              <DropdownMenuItem onClick={() => navigate(`/automations/${rule.id}`)}>
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setRunsPanelRuleId(rule.id)}
-                              >
+                              <DropdownMenuItem onClick={() => setRunsPanelRuleId(rule.id)}>
                                 Run history
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => {
-                                  if (confirm("Delete this automation?")) {
-                                    deleteRule.mutate(rule.id);
-                                  }
+                                  if (confirm("Delete this automation?")) deleteRule.mutate(rule.id);
                                 }}
                                 disabled={deleteRule.isPending}
                               >
@@ -223,11 +238,36 @@ export function AutomationListPage() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-              </TableBody>
-            </Table>
+                        </CardAction>
+                      </CardHeader>
+                      <CardContent className="flex-1 pb-3">
+                        <Badge variant="secondary" className="mb-2 gap-1 text-[10px] font-normal">
+                          {trigger.scheduled ? <ClockIcon className="size-3" /> : <LightningIcon className="size-3" />}
+                          {trigger.label}
+                        </Badge>
+                        <p className="flex items-start gap-1.5 text-[12px] leading-snug text-muted-foreground">
+                          <RobotIcon className="mt-0.5 size-3.5 shrink-0" />
+                          <span className="line-clamp-3">{getStepSummary(rule)}</span>
+                        </p>
+                      </CardContent>
+                      <CardFooter className="justify-between border-t pt-3 text-[11px] text-muted-foreground">
+                        <span>
+                          {rule.enabled ? "Active" : "Paused"} · Last run{" "}
+                          {rule.lastRunAt ? new Date(rule.lastRunAt).toLocaleDateString() : "never"}
+                        </span>
+                        <button
+                          className="font-medium text-foreground hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRunsPanelRuleId(rule.id);
+                          }}
+                        >
+                          Runs
+                        </button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
           </div>
         )}
 

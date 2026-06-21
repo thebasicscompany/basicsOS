@@ -107,7 +107,18 @@ function rewriteCrmLinks(text: string): string {
   });
   result = rewriteConnectCards(result);
   result = rewriteDownloadChips(result);
+  result = stripUnsafeLinks(result);
   return result;
+}
+
+// The agent sometimes also hand-writes a markdown link to a generated file using
+// a bare/relative or sandbox: href; Streamdown renders those as "[blocked]". Our
+// real affordances (crm-link, connect-card, download-chip) are already converted
+// to tags above and our routes start with "/", so anything still pointing at a
+// non-http, non-root href is unsafe noise — drop the link, keep the text.
+const UNSAFE_LINK_RE = /\[([^\]]+)\]\((?!https?:\/\/|\/|mailto:)[^)]*\)/g;
+function stripUnsafeLinks(text: string): string {
+  return text.replace(UNSAFE_LINK_RE, (_m, label: string) => label);
 }
 
 // Files the agent generated come through as [file:NAME](/api/files/<thread>/<name>).
@@ -115,7 +126,9 @@ const DOWNLOAD_RE = /\[file:([^\]]+)\]\((\/api\/files\/[^)]+)\)/g;
 function rewriteDownloadChips(text: string): string {
   if (!text.includes("/api/files/")) return text;
   return text.replace(DOWNLOAD_RE, (_m, name: string, path: string) => {
-    return `<download-chip url="${path}" name="${name}"></download-chip>`;
+    // Use `fname` not `name`: Streamdown/rehype namespaces id/name attrs with a
+    // "user-content-" prefix, which would leak into the visible label.
+    return `<download-chip url="${path}" fname="${name}"></download-chip>`;
   });
 }
 
@@ -144,7 +157,7 @@ function rewriteConnectCards(text: string): string {
 const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = {
   "crm-link": ["path"],
   "connect-card": ["url", "app"],
-  "download-chip": ["url", "name"],
+  "download-chip": ["url", "fname"],
 };
 
 const OBJECT_RECORD_RE = /^\/objects\/([a-z][a-z0-9-]*)\/(.+)$/;
@@ -214,7 +227,7 @@ function ConnectCardTag(props: Record<string, unknown>) {
 
 function DownloadChipTag(props: Record<string, unknown>) {
   const url = props.url as string | undefined;
-  const name = (props.name as string | undefined) || "file";
+  const name = (props.fname as string | undefined) || "file";
   if (!url) return null;
   return (
     <a

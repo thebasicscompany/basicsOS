@@ -24,29 +24,33 @@ type BetterAuthInstance = ReturnType<typeof createAuth>;
 /** "slack" -> "Slack" (good enough for a Connect button label). */
 const prettyApp = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/**
- * Files the agent generated for this thread this turn = files in the thread's
- * artifact dir with mtime >= the turn start. Per-thread dirs keep concurrent
- * users isolated (no shared-dir collision). Returns download-chip markdown.
- */
-function artifactChips(env: Env, threadId: string, sinceMs: number): string {
+/** Current files in a thread's artifact dir (names only; [] if none/no dir). */
+function listThreadFiles(env: Env, threadId: string): string[] {
   const root = env.HERMES_ARTIFACTS_DIR;
-  if (!root) return "";
-  const dir = join(root, threadId);
-  let names: string[] = [];
+  if (!root) return [];
   try {
-    names = readdirSync(dir).filter((n) => !n.startsWith("."));
+    const dir = join(root, threadId);
+    return readdirSync(dir).filter((n) => {
+      if (n.startsWith(".")) return false;
+      try {
+        return statSync(join(dir, n)).isFile();
+      } catch {
+        return false;
+      }
+    });
   } catch {
-    return ""; // no dir -> nothing produced
+    return [];
   }
-  const fresh = names.filter((n) => {
-    try {
-      const s = statSync(join(dir, n));
-      return s.isFile() && s.mtimeMs >= sinceMs;
-    } catch {
-      return false;
-    }
-  });
+}
+
+/**
+ * Download chips for files the agent generated THIS turn = files now present in
+ * the thread's artifact dir that weren't there before the turn. A snapshot diff
+ * (not mtime) — robust to container/host clock skew. Per-thread dirs keep
+ * concurrent users isolated.
+ */
+function artifactChips(env: Env, threadId: string, before: Set<string>): string {
+  const fresh = listThreadFiles(env, threadId).filter((n) => !before.has(n));
   if (!fresh.length) return "";
   return (
     "\n\n" +
@@ -104,7 +108,7 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
     const sessionKey = buildSessionKey(crmUser.id, threadId);
     const encoder = new TextEncoder();
     let assistantText = "";
-    const turnStart = Date.now() - 3000; // small clock-skew buffer for mtime compare
+    const filesBefore = new Set(listThreadFiles(env, threadId)); // snapshot for the artifact diff
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -129,7 +133,7 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
             assistantText += cards;
           }
           // Offer any files the agent generated this turn as downloads.
-          const chips = artifactChips(env, threadId, turnStart);
+          const chips = artifactChips(env, threadId, filesBefore);
           if (chips) {
             controller.enqueue(encoder.encode(sdkPart("0", chips)));
             assistantText += chips;

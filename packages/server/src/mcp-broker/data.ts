@@ -9,6 +9,44 @@ import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import * as schema from "@/db/schema/index.js";
 import { embedQuery } from "@/lib/context.js";
+import { insertRecord } from "@/data-access/crm/create.js";
+import { updateRecord } from "@/data-access/crm/update.js";
+import { hardDeleteRecord } from "@/data-access/crm/delete.js";
+
+/** Objects the M4 write tools support (the full generated set is task #8). */
+export type WritableResource = "contacts" | "companies" | "deals";
+
+/** Create a record, stamping the acting user (crmUserId) + org. */
+export function createRecord(
+  db: Db,
+  orgId: string,
+  crmUserId: number,
+  resource: WritableResource,
+  body: Record<string, unknown>,
+) {
+  return insertRecord(db, { resource, body, crmUserId, orgId });
+}
+
+/** Update a record (org-scoped). */
+export function updateRecordById(
+  db: Db,
+  orgId: string,
+  resource: WritableResource,
+  id: number,
+  body: Record<string, unknown>,
+) {
+  return updateRecord(db, { resource, id, body, orgId });
+}
+
+/** Hard-delete a record (org-scoped). */
+export function deleteRecordById(
+  db: Db,
+  orgId: string,
+  resource: WritableResource,
+  id: number,
+) {
+  return hardDeleteRecord(db, { resource, id, orgId });
+}
 
 const SEARCH_LIMIT = 25;
 

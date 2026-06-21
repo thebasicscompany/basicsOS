@@ -33,6 +33,10 @@ services:
     volumes:
       - hermes_state:/opt/data                # state.db (sessions+FTS5) + skills/
       - ./config.yaml.example:/opt/data/config.yaml:ro   # ${VAR} resolved from env_file
+      # Pinned _meta session-key passthrough patch (M4). Dev overlays the patched
+      # file from the vendored checkout (run ./vendor.sh first, which applies
+      # patches/*.patch); a prod image bakes the patch in. The path must exist.
+      - ./vendor/hermes-agent/tools/mcp_tool.py:/opt/hermes/tools/mcp_tool.py:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"   # reach the host's gateway/broker in dev
     restart: unless-stopped

@@ -61,6 +61,8 @@ export interface BrokerTool {
   inputSchema: Record<string, unknown>; // JSON Schema
   /** internal routing/enforcement metadata — never sent to the model */
   meta: { source: "native" | "memory" | "connection" | "app" | "system"; writes: boolean };
+  /** RBAC permission required to call this tool (writes); undefined = open (reads) */
+  requires?: string;
   handle: (args: Record<string, unknown>, ctx: ToolCallContext) => Promise<unknown>;
 }
 
@@ -68,10 +70,14 @@ export interface BrokerTool {
 export interface ToolCallContext {
   /** the company/org this hermes instance serves */
   orgId: string;
-  /** acting user id (M4, from _meta); null for org-scoped reads */
-  userId: string | null;
+  /** acting crm user id (from the trusted _meta session key); null = org-scoped */
+  crmUserId: number | null;
   /** trusted session key from _meta.current_session_key (M4) */
   sessionKey: string | null;
+  /** the acting user's RBAC permission set ("*" = admin) */
+  permissions: Set<string>;
+  /** convenience predicate: permissions.has("*") || permissions.has(p) */
+  can: (permission: string) => boolean;
   /** raw _meta passthrough for future use */
   meta: Record<string, unknown> | null;
 }
@@ -140,6 +146,15 @@ export async function handleRpc(
       }
       try {
         const ctx = await deps.resolveContext(meta);
+        // RBAC gate. Any write tool needs a known acting user (fail closed even if
+        // a tool forgets to declare `requires`); `requires` additionally checks the
+        // specific permission.
+        if (tool.meta.writes && ctx.crmUserId == null) {
+          return ok(id, callError("FORBIDDEN", "This action requires an authenticated user; no identity was provided."));
+        }
+        if (tool.requires && !ctx.can(tool.requires)) {
+          return ok(id, callError("FORBIDDEN", `You don't have permission to perform this action (requires ${tool.requires}).`));
+        }
         const result = await tool.handle(args, ctx);
         return ok(id, {
           content: [{ type: "text", text: jsonText(result) }],

@@ -1,0 +1,33 @@
+diff --git a/tools/mcp_tool.py b/tools/mcp_tool.py
+index 69917ec..515eb84 100644
+--- a/tools/mcp_tool.py
++++ b/tools/mcp_tool.py
+@@ -3157,7 +3157,27 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
+                 # it and detect the gateway platform / session for routing.
+                 server._pending_call_context = contextvars.copy_context()
+                 try:
+-                    result = await server.session.call_tool(tool_name, arguments=args)
++                    # --- BasicsOS patch (pinned): trusted identity passthrough ---
++                    # Forward the per-turn session key (set by the API server from
++                    # X-Hermes-Session-Key) into MCP tools/call _meta, so the Broker
++                    # can resolve (tenant, user, permissions) for writes/connections.
++                    # Identity stays transport metadata — never a model-visible tool
++                    # argument. See basicsAdmin/docs/BUILD_PLAN_HERMES.md M4.
++                    _bos_meta = None
++                    try:
++                        from gateway.session_context import get_session_env as _bos_get
++                        _bos_sk = _bos_get("HERMES_SESSION_KEY")
++                        if _bos_sk:
++                            _bos_meta = {"current_session_key": _bos_sk}
++                    except Exception:
++                        _bos_meta = None
++                    if _bos_meta is not None:
++                        result = await server.session.call_tool(
++                            tool_name, arguments=args, meta=_bos_meta
++                        )
++                    else:
++                        result = await server.session.call_tool(tool_name, arguments=args)
++                    # --- end BasicsOS patch ---
+                 finally:
+                     server._pending_call_context = None
+             # MCP CallToolResult has .content (list of content blocks) and .isError

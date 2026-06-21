@@ -7,9 +7,12 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import { logger } from "@/lib/logger.js";
+import * as schema from "@/db/schema/index.js";
+import { getPermissionSetForUser, hasPermission } from "@/lib/rbac.js";
 import { resolveSingleOrgId } from "@/mcp-broker/data.js";
 import {
   handleRpc,
@@ -20,6 +23,18 @@ import {
 import { buildTools } from "@/mcp-broker/tools.js";
 
 const log = logger.child({ component: "mcp-broker" });
+
+/**
+ * Extract the acting crm user id from a session key of the form
+ * `agent:main:basicsos:dm:{crmUserId}:{threadId}` (built by lib/hermes/client).
+ * Returns null if the shape/id doesn't parse.
+ */
+function parseActingUserId(sessionKey: string): number | null {
+  const parts = sessionKey.split(":");
+  if (parts.length < 6 || parts[3] !== "dm") return null;
+  const id = Number(parts[4]);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
 
 export function createBrokerRoutes(db: Db, env: Env) {
   const app = new Hono();
@@ -33,12 +48,43 @@ export function createBrokerRoutes(db: Db, env: Env) {
     tools,
     resolveContext: async (meta): Promise<ToolCallContext> => {
       const orgId = await getOrgId();
-      // M4 resolves (user, permissions) from the trusted session key in _meta.
+      // The trusted session key arrives in _meta (set by our hermes patch from
+      // X-Hermes-Session-Key — never a model argument). Resolve the acting user
+      // + permissions from it. Reads stay org-scoped even without a user.
       const sessionKey =
         (meta?.current_session_key as string | undefined) ??
         (meta?.["hermes/session_key"] as string | undefined) ??
         null;
-      return { orgId, userId: null, sessionKey, meta: meta ?? null };
+
+      let crmUserId: number | null = null;
+      let permissions = new Set<string>();
+      const acting = sessionKey ? parseActingUserId(sessionKey) : null;
+      if (acting != null) {
+        const [crmUser] = await db
+          .select()
+          .from(schema.crmUsers)
+          .where(
+            and(
+              eq(schema.crmUsers.id, acting),
+              eq(schema.crmUsers.organizationId, orgId),
+              eq(schema.crmUsers.disabled, false), // mirror middleware/auth.ts: a disabled user gets no access
+            ),
+          )
+          .limit(1);
+        if (crmUser) {
+          crmUserId = crmUser.id;
+          permissions = await getPermissionSetForUser(db, crmUser);
+        }
+      }
+
+      return {
+        orgId,
+        crmUserId,
+        sessionKey,
+        permissions,
+        can: (p: string) => hasPermission(permissions, p),
+        meta: meta ?? null,
+      };
     },
     logError: (err, context) => log.error({ err }, context),
   };

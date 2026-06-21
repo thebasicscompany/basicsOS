@@ -19,4 +19,18 @@ fi
 
 echo ">> Cloning hermes-agent ${TAG} into ${DEST}"
 git clone --depth 1 --branch "${TAG}" https://github.com/NousResearch/hermes-agent.git "${DEST}"
+
+# Apply our pinned patches (e.g. the _meta session-key passthrough, M4).
+PATCH_DIR="$(dirname "$0")/patches"
+if [ -d "${PATCH_DIR}" ]; then
+  for p in "${PATCH_DIR}"/*.patch; do
+    [ -e "$p" ] || continue
+    if git -C "${DEST}" apply --reverse --check "$p" 2>/dev/null; then
+      echo ">> patch already applied: $(basename "$p")"
+    else
+      echo ">> applying patch: $(basename "$p")"
+      git -C "${DEST}" apply "$p"
+    fi
+  done
+fi
 echo ">> Done."

@@ -31,15 +31,22 @@ export interface HermesTurnOptions {
  * connection/email conventions (so it acts instead of asking, and the in-chat
  * Connect card mechanism works reliably).
  */
-function buildSystemPrompt(): string {
+function buildSystemPrompt(artifactDir: string): string {
   const today = new Date().toISOString().slice(0, 10);
   return [
     `You are the BasicsOS assistant — an AI agent inside BasicsOS, a company's all-in-one internal operating system (their workspace for CRM, meetings, tasks & notes, automations, and connected apps). Today's date is ${today}.`,
-    `You can read & write the CRM (contacts, companies, deals, tasks, notes), read meeting transcripts & summaries, search the web (web.search), send email from BasicsOS (email.send), act in the user's connected apps (connection.execute — e.g. Gmail, Slack), and create/edit the user's automations (automation.create, automation.update, automation.list).`,
+    `You can read & write the CRM (contacts, companies, deals, tasks, notes), read meeting transcripts & summaries, search the web (web.search), run code, generate files, send email from BasicsOS (email.send), act in the user's connected apps (connection.execute — e.g. Gmail, Slack), and create/edit the user's automations (automation.create, automation.update, automation.list).`,
     `When a task needs an external app, attempt it directly (connection.execute) or set it up (connection.connect) — do NOT ask the user to connect first, and do NOT paste any URLs. If the app isn't connected, briefly name which app(s) you need; the user is shown a Connect button automatically.`,
     `Use email.send to email the user a summary or notification ("email me ..."); use the Gmail/Outlook connection to email other people as the user.`,
+    `When the user wants a downloadable FILE (report, csv, markdown, docx, pptx, image, etc.), generate it (use code if needed) and SAVE it with an absolute path under ${artifactDir}/ (create that directory first). Anything you save there is automatically offered to the user as a download — just tell them what you made; do NOT paste file paths or base64.`,
     `Be concise, accurate, and professional. Use the user's real CRM data — never invent records.`,
   ].join(" ");
+}
+
+/** The agent-visible (container) artifacts dir for a session = /opt/artifacts/<threadId>. */
+function artifactDirFor(sessionKey: string): string {
+  const threadId = sessionKey.split(":").pop() || "default";
+  return `/opt/artifacts/${threadId}`;
 }
 
 function hermesHeaders(env: Env, sessionKey: string): Record<string, string> {
@@ -65,7 +72,7 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
       model: "hermes-agent",
       stream: true,
       messages: [
-        { role: "system", content: buildSystemPrompt() },
+        { role: "system", content: buildSystemPrompt(artifactDirFor(sessionKey)) },
         { role: "user", content: message },
       ],
     }),

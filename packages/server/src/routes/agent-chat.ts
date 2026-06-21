@@ -16,11 +16,45 @@ import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
 import { buildSessionKey, streamHermesText, HermesError } from "@/lib/hermes/client.js";
 import { drainNeedsConnections } from "@/lib/pending-connections.js";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
 /** "slack" -> "Slack" (good enough for a Connect button label). */
 const prettyApp = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * Files the agent generated for this thread this turn = files in the thread's
+ * artifact dir with mtime >= the turn start. Per-thread dirs keep concurrent
+ * users isolated (no shared-dir collision). Returns download-chip markdown.
+ */
+function artifactChips(env: Env, threadId: string, sinceMs: number): string {
+  const root = env.HERMES_ARTIFACTS_DIR;
+  if (!root) return "";
+  const dir = join(root, threadId);
+  let names: string[] = [];
+  try {
+    names = readdirSync(dir).filter((n) => !n.startsWith("."));
+  } catch {
+    return ""; // no dir -> nothing produced
+  }
+  const fresh = names.filter((n) => {
+    try {
+      const s = statSync(join(dir, n));
+      return s.isFile() && s.mtimeMs >= sinceMs;
+    } catch {
+      return false;
+    }
+  });
+  if (!fresh.length) return "";
+  return (
+    "\n\n" +
+    fresh
+      .map((n) => `[file:${n}](/api/files/${encodeURIComponent(threadId)}/${encodeURIComponent(n)})`)
+      .join("\n")
+  );
+}
 
 const log = logger.child({ component: "agent-chat" });
 
@@ -70,6 +104,7 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
     const sessionKey = buildSessionKey(crmUser.id, threadId);
     const encoder = new TextEncoder();
     let assistantText = "";
+    const turnStart = Date.now() - 3000; // small clock-skew buffer for mtime compare
 
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -92,6 +127,12 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
               "\n\n" + pending.map((p) => `[Connect ${prettyApp(p.app)}](${p.authUrl})`).join("\n\n");
             controller.enqueue(encoder.encode(sdkPart("0", cards)));
             assistantText += cards;
+          }
+          // Offer any files the agent generated this turn as downloads.
+          const chips = artifactChips(env, threadId, turnStart);
+          if (chips) {
+            controller.enqueue(encoder.encode(sdkPart("0", chips)));
+            assistantText += chips;
           }
           if (assistantText.trim()) {
             await persistMessage(db, threadId, "assistant", assistantText);

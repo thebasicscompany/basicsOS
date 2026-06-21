@@ -9,8 +9,13 @@ import {
   LightningIcon,
   GlobeIcon,
   EnvelopeSimpleIcon,
+  DownloadSimpleIcon,
+  FileIcon,
   type Icon,
 } from "@phosphor-icons/react";
+import { getRuntimeApiUrl } from "@/lib/runtime-config";
+
+const CHAT_API_URL = getRuntimeApiUrl();
 import type { Message } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePageTitle } from "@/contexts/page-header";
@@ -101,7 +106,17 @@ function rewriteCrmLinks(text: string): string {
     return `<crm-link path="${path}">${label}</crm-link>`;
   });
   result = rewriteConnectCards(result);
+  result = rewriteDownloadChips(result);
   return result;
+}
+
+// Files the agent generated come through as [file:NAME](/api/files/<thread>/<name>).
+const DOWNLOAD_RE = /\[file:([^\]]+)\]\((\/api\/files\/[^)]+)\)/g;
+function rewriteDownloadChips(text: string): string {
+  if (!text.includes("/api/files/")) return text;
+  return text.replace(DOWNLOAD_RE, (_m, name: string, path: string) => {
+    return `<download-chip url="${path}" name="${name}"></download-chip>`;
+  });
 }
 
 // Composio connect/authorize URLs are a fixed domain — turn them (whether the
@@ -129,6 +144,7 @@ function rewriteConnectCards(text: string): string {
 const CRM_LINK_ALLOWED_TAGS: Record<string, string[]> = {
   "crm-link": ["path"],
   "connect-card": ["url", "app"],
+  "download-chip": ["url", "name"],
 };
 
 const OBJECT_RECORD_RE = /^\/objects\/([a-z][a-z0-9-]*)\/(.+)$/;
@@ -196,7 +212,29 @@ function ConnectCardTag(props: Record<string, unknown>) {
   );
 }
 
-const crmComponents = { "crm-link": CrmLinkTag, "connect-card": ConnectCardTag };
+function DownloadChipTag(props: Record<string, unknown>) {
+  const url = props.url as string | undefined;
+  const name = (props.name as string | undefined) || "file";
+  if (!url) return null;
+  return (
+    <a
+      href={`${CHAT_API_URL}${url}`}
+      target="_blank"
+      rel="noreferrer"
+      className="not-prose my-1 inline-flex max-w-full items-center gap-2 rounded-[--surface-card-radius] border bg-surface-card px-3 py-2 align-middle text-[13px] no-underline transition-colors hover:bg-surface-hover"
+    >
+      <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="truncate font-medium">{name}</span>
+      <DownloadSimpleIcon className="size-4 shrink-0 text-muted-foreground" />
+    </a>
+  );
+}
+
+const crmComponents = {
+  "crm-link": CrmLinkTag,
+  "connect-card": ConnectCardTag,
+  "download-chip": DownloadChipTag,
+};
 
 function EntityAwareMessageResponse({
   children,

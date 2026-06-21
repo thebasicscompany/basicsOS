@@ -41,6 +41,9 @@ const envSchema = z.object({
   // This company's hermes sidecar (the agent brain behind in-app chat).
   HERMES_API_URL: z.string().url().default("http://localhost:8642"),
   HERMES_API_SERVER_KEY: z.string().optional(),
+  // Host path of the artifacts dir bind-mounted into hermes (/opt/artifacts).
+  // Files the agent generates land in <dir>/<threadId>/ and the app serves them.
+  HERMES_ARTIFACTS_DIR: z.string().optional(),
   // Comma-separated origins for CORS (e.g. https://app.example.com,https://admin.example.com)
   // If set, used in addition to localhost. If empty, only localhost is allowed.
   ALLOWED_ORIGINS: z.string().optional().default(""),

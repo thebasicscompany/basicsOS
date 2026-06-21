@@ -18,6 +18,7 @@ import { PERMISSIONS } from "@/lib/rbac.js";
 import { buildConnectionTools } from "@/mcp-broker/connections.js";
 import { buildAutomationTools } from "@/mcp-broker/automations.js";
 import { buildWebTools } from "@/mcp-broker/web.js";
+import { buildEmailTools } from "@/mcp-broker/email.js";
 import {
   createCustomField,
   createRecord,
@@ -403,5 +404,6 @@ export function buildTools(db: Db, env: Env): BrokerTool[] {
     ...buildConnectionTools(env),
     ...buildAutomationTools(db),
     ...buildWebTools(env),
+    ...buildEmailTools(env),
   ];
 }

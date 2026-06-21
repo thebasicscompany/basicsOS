@@ -74,7 +74,8 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
     },
     {
       name: "connection.list_actions",
-      description: 'List the available action slugs for a connected app (e.g. app="gmail" -> GMAIL_SEND_EMAIL, …).',
+      description:
+        'List an app\'s actions WITH each action\'s required + accepted argument names (e.g. app="gmail" -> GMAIL_SEND_EMAIL {required: recipient_email, body; props: subject, cc, ...}). Call this BEFORE connection.execute so you pass the exact field names.',
       inputSchema: {
         type: "object",
         properties: { app: { type: "string" } },
@@ -91,7 +92,7 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
     {
       name: "connection.execute",
       description:
-        'Run an action on a connected app as the current user, e.g. app="gmail", action="GMAIL_SEND_EMAIL", arguments={to,subject,body}. Returns NEEDS_CONNECTION {authUrl} if not connected.',
+        'Run an action on a connected app as the current user. Use the EXACT argument names from connection.list_actions — e.g. app="gmail", action="GMAIL_SEND_EMAIL", arguments={recipient_email, subject, body} (NOT "to"). Returns NEEDS_CONNECTION {authUrl} if not connected.',
       inputSchema: {
         type: "object",
         properties: {

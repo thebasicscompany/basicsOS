@@ -9,6 +9,15 @@ model:
   base_url: ${BASICSOS_GATEWAY_URL}/v1   # e.g. https://api.basicsos.com/v1
   api_key: ${BASICSOS_API_KEY}           # this company's bos_live_sk_... key
   default: basics-chat-smart             # gateway model alias (basics-chat-fast also available)
+  # The gateway is an opaque alias endpoint — hermes can't probe the real model's
+  # window, so it falls back to a tiny default and refuses turns ("context length
+  # exceeded"). Pin it to the underlying model's window (basics-chat-* → OpenAI
+  # gpt-4o-mini = 128k). Bump if the alias is repointed at a larger model.
+  context_length: 128000
+  # OUTPUT cap per response. hermes defaults this to 65536, but OpenAI gpt-4o*
+  # accept at most 16384 completion tokens (the gateway returns HTTP 400 above
+  # that, which hermes misreads as a context error). Keep <= the model's cap.
+  max_tokens: 16000
 
 # Outbound MCP: connect hermes to this company's MCP Tool Broker (packages/server).
 # Contract: basicsAdmin/docs/CONTRACTS_MCP_BROKER_AND_APP_SDK.md (A.4 / C.1).

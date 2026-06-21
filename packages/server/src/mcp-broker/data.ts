@@ -4,7 +4,7 @@
 // so the agent reading all of the org's CRM is correct product behavior. Per-user
 // concerns (writes, connections, automations) are layered on later (M4+).
 
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import * as schema from "@/db/schema/index.js";
@@ -12,9 +12,110 @@ import { embedQuery } from "@/lib/context.js";
 import { insertRecord } from "@/data-access/crm/create.js";
 import { updateRecord } from "@/data-access/crm/update.js";
 import { hardDeleteRecord } from "@/data-access/crm/delete.js";
+import { listRecords } from "@/data-access/crm/list.js";
+import { getOneRecord } from "@/data-access/crm/get-one.js";
 
-/** Objects the M4 write tools support (the full generated set is task #8). */
-export type WritableResource = "contacts" | "companies" | "deals";
+/** CRM resources the write tools support (generic data-access handles all of these). */
+export type WritableResource =
+  | "contacts"
+  | "companies"
+  | "deals"
+  | "tasks"
+  | "contact_notes"
+  | "deal_notes"
+  | "company_notes";
+
+/** Generic org-scoped text search over any standard resource (delegates to listRecords). */
+export async function searchResource(db: Db, orgId: string, resource: WritableResource, query: string) {
+  const res = await listRecords(db, {
+    resource,
+    orgId,
+    start: 0,
+    end: 25,
+    sorts: [],
+    filter: query?.trim() ? { q: query.trim() } : {},
+    genericFilters: [],
+  });
+  return res.rows;
+}
+
+/** Generic org-scoped get-by-id over any standard resource. */
+export function getResource(db: Db, orgId: string, resource: WritableResource, id: number) {
+  return getOneRecord(db, { resource, id, orgId });
+}
+
+/** Mark a task done (or not). */
+export function setTaskDone(db: Db, orgId: string, id: number, done: boolean) {
+  return updateRecord(db, { resource: "tasks", id, body: { doneDate: done ? new Date() : null }, orgId });
+}
+
+// ── Meetings (read-only: transcript + summary; the current chat can only LINK) ──
+export async function listMeetings(db: Db, orgId: string, limit = 20) {
+  return db
+    .select({
+      id: schema.meetings.id,
+      title: schema.meetings.title,
+      startedAt: schema.meetings.startedAt,
+      status: schema.meetings.status,
+    })
+    .from(schema.meetings)
+    .where(eq(schema.meetings.organizationId, orgId))
+    .orderBy(desc(schema.meetings.startedAt))
+    .limit(limit);
+}
+
+export async function getMeetingTranscript(db: Db, orgId: string, meetingId: number) {
+  const rows = await db
+    .select({ speaker: schema.meetingTranscripts.speaker, text: schema.meetingTranscripts.text })
+    .from(schema.meetingTranscripts)
+    .where(
+      and(
+        eq(schema.meetingTranscripts.meetingId, meetingId),
+        eq(schema.meetingTranscripts.organizationId, orgId),
+      ),
+    )
+    .orderBy(asc(schema.meetingTranscripts.timestampMs));
+  return rows;
+}
+
+export async function getMeetingSummary(db: Db, orgId: string, meetingId: number) {
+  const [row] = await db
+    .select({ summary: schema.meetingSummaries.summaryJson })
+    .from(schema.meetingSummaries)
+    .where(
+      and(
+        eq(schema.meetingSummaries.meetingId, meetingId),
+        eq(schema.meetingSummaries.organizationId, orgId),
+      ),
+    )
+    .limit(1);
+  return row?.summary ?? null;
+}
+
+// ── Custom field defs (object_config.write) ──
+export async function createCustomField(
+  db: Db,
+  orgId: string,
+  resource: string,
+  name: string,
+  label: string,
+  fieldType: string,
+  options?: unknown[],
+) {
+  const [row] = await db
+    .insert(schema.customFieldDefs)
+    .values({ resource, name, label, fieldType, options: options as never, organizationId: orgId })
+    .returning();
+  return row ?? null;
+}
+
+export async function deleteCustomField(db: Db, orgId: string, id: number) {
+  const [row] = await db
+    .delete(schema.customFieldDefs)
+    .where(and(eq(schema.customFieldDefs.id, id), eq(schema.customFieldDefs.organizationId, orgId)))
+    .returning();
+  return row ?? null;
+}
 
 /** Create a record, stamping the acting user (crmUserId) + org. */
 export function createRecord(

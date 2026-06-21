@@ -8,7 +8,7 @@ model:
   provider: custom                       # "any OpenAI-compatible endpoint"
   base_url: ${BASICSOS_GATEWAY_URL}/v1   # e.g. https://api.basicsos.com/v1
   api_key: ${BASICSOS_API_KEY}           # this company's bos_live_sk_... key
-  default: basics-chat-smart             # gateway model alias (basics-chat-fast also available)
+  default: basics-chat-smart-openai     # -> OpenAI gpt-4o (better tool selection; non-BYOK path keeps provider-specific aliases verbatim)
   # The gateway is an opaque alias endpoint — hermes can't probe the real model's
   # window, so it falls back to a tiny default and refuses turns ("context length
   # exceeded"). Pin it to the underlying model's window (basics-chat-* → OpenAI

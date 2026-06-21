@@ -40,6 +40,16 @@ services:
       - ./vendor/hermes-agent/tools/mcp_tool.py:/opt/hermes/tools/mcp_tool.py:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"   # reach the host's gateway/broker in dev
+    # Resource caps — bound the blast radius of many concurrent users running code
+    # at once (the agent has code_execution/terminal). Prevents one company's
+    # container from OOMing the host or fork-bombing. Tune per deployment.
+    # NOTE: this caps RESOURCES, not isolation. For true per-call sandboxing
+    # (separate FS/network namespace so a prompt-injected agent can't read the
+    # container's secrets or exfiltrate) set TERMINAL_ENV=docker|modal at deploy
+    # time — see docs / task #14. The container boundary already isolates COMPANIES.
+    mem_limit: 4g
+    cpus: 4
+    pids_limit: 512
     restart: unless-stopped
 
 volumes:

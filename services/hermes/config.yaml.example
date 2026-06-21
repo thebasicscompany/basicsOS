@@ -1,0 +1,23 @@
+# hermes config for the BasicsOS per-company sidecar.
+# Rendered to $HERMES_HOME/config.yaml. hermes resolves ${VAR} from the environment at load.
+# Pinned: v0.17.0 (v2026.6.19). Docs: https://hermes-agent.nousresearch.com/docs/
+
+model:
+  # Route ALL LLM calls through the BasicsOS gateway (OpenAI-compatible).
+  # Billing / BYOK / usage stay central — see basicsAdmin GATEWAY_API.md.
+  provider: custom                       # "any OpenAI-compatible endpoint"
+  base_url: ${BASICSOS_GATEWAY_URL}/v1   # e.g. https://api.basicsos.com/v1
+  api_key: ${BASICSOS_API_KEY}           # this company's bos_live_sk_... key
+  default: basics-chat-smart             # gateway model alias (basics-chat-fast also available)
+
+# Outbound MCP: connect hermes to this company's MCP Tool Broker (packages/server).
+# Contract: basicsAdmin/docs/CONTRACTS_MCP_BROKER_AND_APP_SDK.md (A.4 / C.1).
+mcp_servers:
+  broker:
+    url: ${BROKER_MCP_URL}               # e.g. http://host.docker.internal:3001/mcp
+    headers:
+      # Instance/tenant credential (identifies THIS company's hermes to the Broker).
+      # Per-user identity for writes/connections is carried per-call via MCP _meta
+      # (the trusted X-Hermes-Session-Key passthrough) — see BUILD_PLAN_HERMES.md M4.
+      Authorization: "Bearer ${BROKER_INSTANCE_TOKEN}"
+    timeout: 120

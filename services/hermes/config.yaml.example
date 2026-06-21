@@ -66,11 +66,16 @@ platform_toolsets:
     # - browser     # needs chromium/playwright in the hermes image
     # - image_gen   # needs an image-generation model routed through the gateway
 
-# code_execution / terminal are gated behind an approval step. In our headless
-# API path there's no human to prompt, so "manual" (the default) halts them. Use
-# "smart": an auxiliary LLM auto-approves low-risk commands (computation, file
-# generation) and blocks genuinely dangerous ones (which surface as a tool error
-# so the agent routes around them). cron_mode stays "deny" for automation runs.
+# code_execution / terminal are gated behind an approval step meant for a HUMAN
+# in an interactive terminal. We run hermes headless (no human to prompt), so:
+#   - "manual" (default) halts every code run
+#   - "smart" (aux-LLM judge) intermittently BLOCKS even benign file-generation
+#     code ("approval restrictions on executing certain code") -> flaky downloads
+# So use "off": the agent runs its code freely (reliable file generation/analysis).
+# Isolation is NOT from per-command approval but from the per-company container +
+# resource caps + the deploy-time per-call sandbox (TERMINAL_ENV=docker|modal,
+# task #14). cron_mode stays "deny" so scheduled runs never execute risky shell.
+# NOTE: "off" must be quoted — bare off is YAML boolean false.
 approvals:
-  mode: smart
+  mode: "off"
   cron_mode: deny

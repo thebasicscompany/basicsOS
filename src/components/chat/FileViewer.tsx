@@ -65,7 +65,7 @@ export function FileViewer({ file, onClose }: { file: ViewerFile | null; onClose
   return (
     <Sheet open={!!file} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="flex-row items-center justify-between gap-3 border-b px-4 py-3">
+        <SheetHeader className="flex-row items-center justify-between gap-3 border-b py-3 pl-4 pr-12">
           <SheetTitle className="flex min-w-0 items-center gap-2 text-sm">
             <FileIcon className="size-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{file?.name}</span>

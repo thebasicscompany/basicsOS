@@ -1,0 +1,12 @@
+# Adds office-document libraries to the pinned hermes image so the agent's
+# code_execution can generate downloadable docx / pptx / xlsx (md/csv/txt/json
+# work without these). Layered on top of the base image built by build-image.sh.
+# build-image.sh chains this automatically; or build manually:
+#   docker build -f services/hermes/Dockerfile.office -t basicsos-hermes:v2026.6.19 services/hermes
+ARG BASE=basicsos-hermes:v2026.6.19
+FROM ${BASE}
+# uv-managed venv lives at /opt/hermes/.venv (resolved from this WORKDIR).
+WORKDIR /opt/hermes
+RUN /usr/local/bin/uv pip install --no-cache \
+      --python /opt/hermes/.venv/bin/python \
+      python-docx python-pptx openpyxl xlsxwriter

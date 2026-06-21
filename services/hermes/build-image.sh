@@ -16,6 +16,14 @@ TAG="v2026.6.19"
 IMAGE="basicsos-hermes:${TAG}"
 CONTEXT="https://github.com/NousResearch/hermes-agent.git#${TAG}"
 
-echo ">> Building ${IMAGE} from ${CONTEXT}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo ">> Building base ${IMAGE} from ${CONTEXT}"
 DOCKER_BUILDKIT=1 docker build "${CONTEXT}" -t "${IMAGE}"
+
+# Layer office-document libs (docx/pptx/xlsx) on top so the agent can generate
+# downloadable Office files. Retags the same image tag.
+echo ">> Adding office-document libs (docx/pptx/xlsx)"
+DOCKER_BUILDKIT=1 docker build -f "${HERE}/Dockerfile.office" --build-arg "BASE=${IMAGE}" -t "${IMAGE}" "${HERE}"
+
 echo ">> Done. Run: docker compose -f services/hermes/docker-compose.hermes.yml up -d"

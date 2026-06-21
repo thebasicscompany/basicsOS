@@ -16,7 +16,7 @@ import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
 import { buildSessionKey, streamHermesText, HermesError } from "@/lib/hermes/client.js";
 import { drainNeedsConnections } from "@/lib/pending-connections.js";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
@@ -108,6 +108,15 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
     const sessionKey = buildSessionKey(crmUser.id, threadId);
     const encoder = new TextEncoder();
     let assistantText = "";
+    // Pre-create the thread's artifact dir so the agent writes INTO an existing
+    // dir (and won't invent its own named subdir, which our scan would miss).
+    if (env.HERMES_ARTIFACTS_DIR) {
+      try {
+        mkdirSync(join(env.HERMES_ARTIFACTS_DIR, threadId), { recursive: true });
+      } catch {
+        /* best-effort */
+      }
+    }
     const filesBefore = new Set(listThreadFiles(env, threadId)); // snapshot for the artifact diff
 
     const stream = new ReadableStream<Uint8Array>({

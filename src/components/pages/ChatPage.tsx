@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import {
@@ -9,13 +9,11 @@ import {
   LightningIcon,
   GlobeIcon,
   EnvelopeSimpleIcon,
-  DownloadSimpleIcon,
+  ArrowSquareOutIcon,
   FileIcon,
   type Icon,
 } from "@phosphor-icons/react";
-import { getRuntimeApiUrl } from "@/lib/runtime-config";
-
-const CHAT_API_URL = getRuntimeApiUrl();
+import { FileViewer, type ViewerFile } from "@/components/chat/FileViewer";
 import type { Message } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePageTitle } from "@/contexts/page-header";
@@ -229,17 +227,18 @@ function DownloadChipTag(props: Record<string, unknown>) {
   const url = props.url as string | undefined;
   const name = (props.fname as string | undefined) || "file";
   if (!url) return null;
+  // Click opens the in-app viewer (which has a Download button); decoupled from
+  // the deep Streamdown tree via a window event the ChatPage listens for.
   return (
-    <a
-      href={`${CHAT_API_URL}${url}`}
-      target="_blank"
-      rel="noreferrer"
-      className="not-prose my-1 inline-flex max-w-full items-center gap-2 rounded-[--surface-card-radius] border bg-surface-card px-3 py-2 align-middle text-[13px] no-underline transition-colors hover:bg-surface-hover"
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent("bos:open-file", { detail: { url, name } }))}
+      className="not-prose my-1 inline-flex max-w-full items-center gap-2 rounded-[--surface-card-radius] border bg-surface-card px-3 py-2 align-middle text-[13px] transition-colors hover:bg-surface-hover"
     >
       <FileIcon className="size-4 shrink-0 text-muted-foreground" />
       <span className="truncate font-medium">{name}</span>
-      <DownloadSimpleIcon className="size-4 shrink-0 text-muted-foreground" />
-    </a>
+      <ArrowSquareOutIcon className="size-4 shrink-0 text-muted-foreground" />
+    </button>
   );
 }
 
@@ -386,6 +385,17 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
 
   const controller = useOptionalPromptInputController();
 
+  // In-app file viewer: download chips dispatch "bos:open-file"; open the panel.
+  const [viewerFile, setViewerFile] = useState<ViewerFile | null>(null);
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail as ViewerFile | undefined;
+      if (detail?.url) setViewerFile(detail);
+    };
+    window.addEventListener("bos:open-file", onOpen as EventListener);
+    return () => window.removeEventListener("bos:open-file", onOpen as EventListener);
+  }, []);
+
   const handleSubmit = useCallback(
     (
       message: PromptInputMessage,
@@ -504,6 +514,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
+      <FileViewer file={viewerFile} onClose={() => setViewerFile(null)} />
       <Conversation className="min-h-0 flex-1">
           <ConversationContent className="pb-2">
             {displayMessages.map((m) => (

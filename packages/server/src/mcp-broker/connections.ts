@@ -8,6 +8,7 @@
 import type { Env } from "@/env.js";
 import type { BrokerTool, ToolCallContext } from "@/mcp-broker/protocol.js";
 import { BrokerError } from "@/mcp-broker/protocol.js";
+import { recordNeedsConnection } from "@/lib/pending-connections.js";
 
 export async function callGateway(
   env: Env,
@@ -28,8 +29,12 @@ export async function callGateway(
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
     const err = (json.error ?? {}) as { code?: string; message?: string; data?: unknown };
-    // Surface NEEDS_CONNECTION (with authUrl) so the agent can prompt the user.
+    // Surface NEEDS_CONNECTION (with authUrl) so the agent can prompt the user,
+    // AND record it so the chat endpoint renders a Connect card for this app
+    // deterministically (handles multiple missing apps; no reliance on the model).
     if (err.code === "NEEDS_CONNECTION") {
+      const d = (err.data ?? {}) as { app?: string; authUrl?: string };
+      if (d.app && d.authUrl) recordNeedsConnection(ctx.sessionKey, d.app, d.authUrl);
       throw new BrokerError("NEEDS_CONNECTION", err.message ?? "Connect required.", err.data);
     }
     throw new BrokerError("UPSTREAM", err.message ?? `Connection service error (${res.status}).`);
@@ -50,7 +55,8 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
     },
     {
       name: "connection.list",
-      description: "List the apps the current user (and the org) has already connected (e.g. gmail, slack).",
+      description:
+        "Informational only — the apps the current user/org has already connected. Do NOT use this to refuse a task: if a needed app is missing, call connection.connect for it (or just attempt connection.execute).",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       meta: { source: "connection", writes: false },
       handle: async (_args, ctx) => callGateway(env, ctx, "GET", "/v1/composio/connections"),
@@ -58,7 +64,7 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
     {
       name: "connection.connect",
       description:
-        "Start connecting an external app (e.g. \"gmail\", \"slack\") for the current user. Returns an authUrl the user must open to authorize. Use when an action returns NEEDS_CONNECTION.",
+        'Set up an external app (e.g. "gmail", "slack") for the current user when it is not connected yet. Call this whenever a task needs an app the user hasn\'t connected. A Connect button is shown to the user automatically — just tell them you need access to the app; do NOT paste any URL yourself.',
       inputSchema: {
         type: "object",
         properties: { app: { type: "string", description: 'app slug, e.g. "gmail"' } },
@@ -69,7 +75,11 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
       handle: async (args, ctx) => {
         const app = stringArg(args.app);
         if (!app) throw new BrokerError("VALIDATION", "`app` is required.");
-        return callGateway(env, ctx, "POST", "/v1/composio/connect", { app });
+        const res = await callGateway(env, ctx, "POST", "/v1/composio/connect", { app });
+        // Drive the deterministic Connect card from connect() too (not just the
+        // NEEDS_CONNECTION path), since the agent often connects pre-emptively.
+        if (typeof res.authUrl === "string") recordNeedsConnection(ctx.sessionKey, app, res.authUrl);
+        return res;
       },
     },
     {
@@ -92,7 +102,7 @@ export function buildConnectionTools(env: Env): BrokerTool[] {
     {
       name: "connection.execute",
       description:
-        'Run an action on a connected app as the current user. Use the EXACT argument names from connection.list_actions — e.g. app="gmail", action="GMAIL_SEND_EMAIL", arguments={recipient_email, subject, body} (NOT "to"). Returns NEEDS_CONNECTION {authUrl} if not connected.',
+        'Run an action on a connected app as the current user. When a task needs an app, just call this directly (no need to pre-check). Use the EXACT argument names from connection.list_actions — e.g. app="gmail", action="GMAIL_SEND_EMAIL", arguments={recipient_email, subject, body} (NOT "to"). If it returns NEEDS_CONNECTION, briefly tell the user which app you need access to — a Connect button is shown to them automatically, so do NOT paste any URL yourself.',
       inputSchema: {
         type: "object",
         properties: {

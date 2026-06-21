@@ -15,8 +15,12 @@ import { logger } from "@/lib/logger.js";
 import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
 import { buildSessionKey, streamHermesText, HermesError } from "@/lib/hermes/client.js";
+import { drainNeedsConnections } from "@/lib/pending-connections.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
+
+/** "slack" -> "Slack" (good enough for a Connect button label). */
+const prettyApp = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const log = logger.child({ component: "agent-chat" });
 
@@ -78,6 +82,16 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
           })) {
             assistantText += delta;
             controller.enqueue(encoder.encode(sdkPart("0", delta)));
+          }
+          // Render a Connect card for every app that hit NEEDS_CONNECTION this
+          // turn (deterministic; handles multiple) — the client turns each
+          // Composio authUrl link into a Connect button.
+          const pending = drainNeedsConnections(sessionKey);
+          if (pending.length) {
+            const cards =
+              "\n\n" + pending.map((p) => `[Connect ${prettyApp(p.app)}](${p.authUrl})`).join("\n\n");
+            controller.enqueue(encoder.encode(sdkPart("0", cards)));
+            assistantText += cards;
           }
           if (assistantText.trim()) {
             await persistMessage(db, threadId, "assistant", assistantText);

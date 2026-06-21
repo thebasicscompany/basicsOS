@@ -15,6 +15,7 @@ import type { Env } from "@/env.js";
 import type { BrokerTool } from "@/mcp-broker/protocol.js";
 import { BrokerError } from "@/mcp-broker/protocol.js";
 import { PERMISSIONS } from "@/lib/rbac.js";
+import { buildConnectionTools } from "@/mcp-broker/connections.js";
 import {
   createCustomField,
   createRecord,
@@ -384,5 +385,5 @@ function buildBespokeTools(db: Db, env: Env): BrokerTool[] {
 }
 
 export function buildTools(db: Db, env: Env): BrokerTool[] {
-  return [...buildBespokeTools(db, env), ...buildResourceTools(db)];
+  return [...buildBespokeTools(db, env), ...buildResourceTools(db), ...buildConnectionTools(env)];
 }

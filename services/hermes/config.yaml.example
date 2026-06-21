@@ -30,3 +30,46 @@ mcp_servers:
       # (the trusted X-Hermes-Session-Key passthrough) — see BUILD_PLAN_HERMES.md M4.
       Authorization: "Bearer ${BROKER_INSTANCE_TOKEN}"
     timeout: 120
+
+# The agent's tool surface = this company's Broker (curated, RBAC-gated: CRM,
+# meetings, tasks/notes, connections, automations, web.search, email.send) PLUS a
+# deliberate set of hermes-native capabilities. hermes is isolated PER COMPANY
+# (own container + HERMES_HOME volume), so these run with no cross-tenant blast
+# radius; harden the executor (sandbox + egress limits + minimal secrets) before
+# scaling — see the hardening task.
+#   broker          – our 53 curated tools (CRM/connections/automations/web/email)
+#   skills          – self-learning SKILL.md library (per-company; auto-curated)
+#   web             – web_search / web_extract
+#   browser         – headless browser automation (needs chromium in the image)
+#   code_execution  – run code (analysis, transforms) for richer answers/automations
+#   terminal        – shell on this company's container
+#   file            – read/write files (generate md/docx/pptx/csv artifacts)
+#   vision/image_gen– analyze images / generate images
+#   delegation      – spawn sub-agents for big tasks
+#   session_search  – recall the agent's own past sessions
+#   todo            – the agent's working task list
+# OFF on purpose: memory (per-company-global — we do per-USER memory via the
+# Broker), cronjob (we have our own automations engine), computer_use (OS control).
+platform_toolsets:
+  api_server:
+    - broker
+    - skills
+    - web
+    - browser
+    - code_execution
+    - terminal
+    - file
+    - vision
+    - image_gen
+    - delegation
+    - session_search
+    - todo
+
+# code_execution / terminal are gated behind an approval step. In our headless
+# API path there's no human to prompt, so "manual" (the default) halts them. Use
+# "smart": an auxiliary LLM auto-approves low-risk commands (computation, file
+# generation) and blocks genuinely dangerous ones (which surface as a tool error
+# so the agent routes around them). cron_mode stays "deny" for automation runs.
+approvals:
+  mode: smart
+  cron_mode: deny

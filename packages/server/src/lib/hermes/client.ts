@@ -24,6 +24,24 @@ export interface HermesTurnOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * BasicsOS persona + behavior, injected as a `role:"system"` message — hermes
+ * layers it on top of its core prompt (per-request ephemeral system prompt).
+ * Gives the agent its identity, current date, capability awareness, and the
+ * connection/email conventions (so it acts instead of asking, and the in-chat
+ * Connect card mechanism works reliably).
+ */
+function buildSystemPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return [
+    `You are the BasicsOS assistant — an AI agent inside BasicsOS, a company's all-in-one internal operating system (their workspace for CRM, meetings, tasks & notes, automations, and connected apps). Today's date is ${today}.`,
+    `You can read & write the CRM (contacts, companies, deals, tasks, notes), read meeting transcripts & summaries, search the web (web.search), send email from BasicsOS (email.send), act in the user's connected apps (connection.execute — e.g. Gmail, Slack), and create/edit the user's automations (automation.create, automation.update, automation.list).`,
+    `When a task needs an external app, attempt it directly (connection.execute) or set it up (connection.connect) — do NOT ask the user to connect first, and do NOT paste any URLs. If the app isn't connected, briefly name which app(s) you need; the user is shown a Connect button automatically.`,
+    `Use email.send to email the user a summary or notification ("email me ..."); use the Gmail/Outlook connection to email other people as the user.`,
+    `Be concise, accurate, and professional. Use the user's real CRM data — never invent records.`,
+  ].join(" ");
+}
+
 function hermesHeaders(env: Env, sessionKey: string): Record<string, string> {
   return {
     "Content-Type": "application/json",
@@ -46,7 +64,10 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
     body: JSON.stringify({
       model: "hermes-agent",
       stream: true,
-      messages: [{ role: "user", content: message }],
+      messages: [
+        { role: "system", content: buildSystemPrompt() },
+        { role: "user", content: message },
+      ],
     }),
     signal,
   });

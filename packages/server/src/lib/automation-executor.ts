@@ -10,7 +10,7 @@ import { executeCrmAction } from "@/lib/automation-actions/crm-action.js";
 import { executeSlack } from "@/lib/automation-actions/slack.js";
 import { executeGmailRead } from "@/lib/automation-actions/gmail-read.js";
 import { executeGmailSend } from "@/lib/automation-actions/gmail-send.js";
-import { executeAIAgent } from "@/lib/automation-actions/ai-agent.js";
+import { buildSessionKey, hermesComplete } from "@/lib/hermes/client.js";
 import { sendNotification } from "@/routes/notifications.js";
 import { decryptApiKey } from "@/lib/api-key-crypto.js";
 import { writeUsageLogSafe } from "@/lib/usage-log.js";
@@ -45,6 +45,7 @@ export async function executeWorkflow(
   crmUser: CrmUserRow,
   db: Db,
   env: Env,
+  ruleId?: number,
 ): Promise<Record<string, unknown>> {
   const { nodes, edges } = workflowDef;
 
@@ -163,16 +164,28 @@ export async function executeWorkflow(
       }
 
       case "action_ai_agent": {
-        const agentResult = await executeAIAgent(data, context, db, crmUser.id, apiKey, env);
-        context.ai_agent_result = agentResult.ai_agent_result;
+        // M6: the agentic step runs through hermes + the MCP Broker, acting AS the
+        // automation's owner. The session key carries the user identity (forwarded
+        // to the Broker via the _meta passthrough), so the step has the full
+        // per-user tool surface + connections — RBAC enforced at the Broker.
+        // Replaces the old in-process ai-agent.ts (its private CRM tools).
+        const prompt =
+          (typeof data.prompt === "string" && data.prompt) ||
+          (typeof data.instruction === "string" && data.instruction) ||
+          (typeof data.task === "string" && data.task) ||
+          "";
+        if (!prompt.trim()) {
+          context.ai_agent_result = { error: "agentic step has no prompt" };
+          break;
+        }
+        const sessionKey = buildSessionKey(crmUser.id, `automation-${ruleId ?? "adhoc"}`);
+        const text = await hermesComplete({ env, sessionKey, message: prompt });
+        context.ai_agent_result = text;
         if (crmUser.organizationId) {
           writeUsageLogSafe(db, {
             organizationId: crmUser.organizationId,
             crmUserId: crmUser.id,
             feature: "automation_ai_agent",
-            model: agentResult.usage.model,
-            inputTokens: agentResult.usage.inputTokens,
-            outputTokens: agentResult.usage.outputTokens,
           });
         }
         break;

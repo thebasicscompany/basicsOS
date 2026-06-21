@@ -172,10 +172,11 @@ const dealColumns = {
   crmUserId: schema.deals.crmUserId,
 };
 
-/** Search deals by deal name OR associated company name (org-scoped). */
-export async function searchDeals(db: Db, orgId: string, query: string) {
+/** Search deals by deal name OR associated company name, optional status (org-scoped). */
+export async function searchDeals(db: Db, orgId: string, query: string, status?: string) {
   const q = (query ?? "").trim();
   const like = `%${q}%`;
+  const st = (status ?? "").trim();
   return db
     .select(dealColumns)
     .from(schema.deals)
@@ -184,6 +185,7 @@ export async function searchDeals(db: Db, orgId: string, query: string) {
       and(
         eq(schema.deals.organizationId, orgId),
         q ? or(ilike(schema.deals.name, like), ilike(schema.companies.name, like)) : undefined,
+        st ? eq(schema.deals.status, st) : undefined,
       ),
     )
     .orderBy(desc(schema.deals.updatedAt))

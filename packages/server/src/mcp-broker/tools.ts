@@ -16,6 +16,7 @@ import type { BrokerTool } from "@/mcp-broker/protocol.js";
 import { BrokerError } from "@/mcp-broker/protocol.js";
 import { PERMISSIONS } from "@/lib/rbac.js";
 import { buildConnectionTools } from "@/mcp-broker/connections.js";
+import { buildAutomationTools } from "@/mcp-broker/automations.js";
 import {
   createCustomField,
   createRecord,
@@ -275,10 +276,20 @@ function buildBespokeTools(db: Db, env: Env): BrokerTool[] {
     },
     {
       name: "object.deals.search",
-      description: 'Search deals by deal name or associated company name (e.g. "Globex" finds deals at Globex Industries).',
-      inputSchema: searchSchema,
+      description:
+        'Search deals by deal name or associated company name (e.g. "Globex" finds deals at Globex Industries). Optional `status` filters by pipeline stage (opportunity, proposal-made, in-negotiation, won, lost). Omit `query` to list all deals.',
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "free-text; omit/empty to list all" },
+          status: { type: "string", description: "pipeline stage filter, e.g. opportunity" },
+        },
+        additionalProperties: false,
+      },
       meta: { source: "native", writes: false },
-      handle: async (args, ctx) => ({ results: await searchDeals(db, ctx.orgId, String(args.query ?? "")) }),
+      handle: async (args, ctx) => ({
+        results: await searchDeals(db, ctx.orgId, String(args.query ?? ""), args.status ? String(args.status) : undefined),
+      }),
     },
     {
       name: "object.deals.get",
@@ -385,5 +396,10 @@ function buildBespokeTools(db: Db, env: Env): BrokerTool[] {
 }
 
 export function buildTools(db: Db, env: Env): BrokerTool[] {
-  return [...buildBespokeTools(db, env), ...buildResourceTools(db), ...buildConnectionTools(env)];
+  return [
+    ...buildBespokeTools(db, env),
+    ...buildResourceTools(db),
+    ...buildConnectionTools(env),
+    ...buildAutomationTools(db),
+  ];
 }

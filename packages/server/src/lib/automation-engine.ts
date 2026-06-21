@@ -91,13 +91,40 @@ async function loadScheduleRules() {
   }
 }
 
+/** Resolve a user's effective schedule timezone: user override -> org default -> UTC. */
+async function resolveTimezone(crmUserId: number): Promise<string> {
+  if (!_db) return "UTC";
+  const db = _db as any;
+  try {
+    const [u] = await db
+      .select({ tz: schema.crmUsers.timezone, orgId: schema.crmUsers.organizationId })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.id, crmUserId))
+      .limit(1);
+    if (u?.tz) return u.tz;
+    if (u?.orgId) {
+      const [org] = await db
+        .select({ tz: schema.organizations.timezone })
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, u.orgId))
+        .limit(1);
+      if (org?.tz) return org.tz;
+    }
+  } catch {
+    /* fall through to UTC */
+  }
+  return "UTC";
+}
+
 async function registerScheduleRule(ruleId: number, crmUserId: number, cron: string) {
   if (!_boss) return;
   const queueName = `rule-schedule-${ruleId}`;
 
   try {
     await _boss.createQueue(queueName);
-    await _boss.schedule(queueName, cron, { ruleId, crmUserId });
+    // Schedule fires in the OWNER's timezone (per-user override, else org default).
+    const tz = await resolveTimezone(crmUserId);
+    await _boss.schedule(queueName, cron, { ruleId, crmUserId }, { tz });
     await _boss.work(queueName, async (jobs: Array<{ data: unknown }>) => {
       for (const job of jobs) {
         const data = job.data as { ruleId: number; crmUserId: number };
@@ -242,6 +269,7 @@ async function runAutomation(
       { id: crmUserRow.id as number, organizationId: (crmUserRow.organizationId ?? crmUserRow.organization_id ?? null) as string | null },
       _db!,
       _env!,
+      ruleId,
     );
 
     await db

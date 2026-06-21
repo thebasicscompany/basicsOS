@@ -24,6 +24,8 @@ export const crmUsers = pgTable("crm_users", {
   }),
   administrator: boolean("administrator").notNull(),
   avatar: jsonb("avatar"), // { src: string }
+  // IANA timezone override for this user's scheduled automations (else org default -> UTC).
+  timezone: varchar("timezone", { length: 64 }),
   disabled: boolean("disabled").notNull().default(false),
   basicsApiKey: varchar("basics_api_key", { length: 255 }),
   basicsApiKeyEnc: text("basics_api_key_enc"),

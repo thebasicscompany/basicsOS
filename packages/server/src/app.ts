@@ -13,6 +13,7 @@ import { createCrmRoutes } from "@/routes/crm/index.js";
 import { createCustomFieldRoutes } from "@/routes/custom-fields.js";
 import { createConnectionsRoutes } from "@/routes/connections.js";
 import { createGatewayChatRoutes } from "@/routes/gateway-chat.js";
+import { createAgentChatRoutes } from "@/routes/agent-chat.js";
 import { createObjectConfigRoutes } from "@/routes/object-config.js";
 import { createSchemaRoutes } from "@/routes/schema.js";
 import { createViewRoutes } from "@/routes/views.js";
@@ -180,6 +181,10 @@ export function createApp(db: Db, env: Env) {
 
   // Gateway chat — must be before CRM so POST /api/:resource doesn't swallow it
   app.route("/api/gateway-chat", createGatewayChatRoutes(db, auth, env));
+
+  // Hermes-backed chat (replaces the in-process brain). Same wire format + thread
+  // persistence as gateway-chat; the UI hook posts here. See routes/agent-chat.ts.
+  app.route("/api/agent-chat", createAgentChatRoutes(db, auth, env));
 
   // Thread list & message history
   app.route("/api/threads", createThreadsRoutes(db, auth, env));

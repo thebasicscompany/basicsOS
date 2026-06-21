@@ -38,6 +38,9 @@ const envSchema = z.object({
   // Static bearer hermes presents to the MCP Tool Broker (/mcp). Identifies THIS
   // company's hermes instance; per-user identity is carried per-call in _meta.
   BROKER_INSTANCE_TOKEN: z.string().optional(),
+  // This company's hermes sidecar (the agent brain behind in-app chat).
+  HERMES_API_URL: z.string().url().default("http://localhost:8642"),
+  HERMES_API_SERVER_KEY: z.string().optional(),
   // Comma-separated origins for CORS (e.g. https://app.example.com,https://admin.example.com)
   // If set, used in addition to localhost. If empty, only localhost is allowed.
   ALLOWED_ORIGINS: z.string().optional().default(""),

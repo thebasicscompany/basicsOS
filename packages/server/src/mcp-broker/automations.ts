@@ -89,6 +89,56 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
       },
     },
     {
+      name: "automation.update",
+      description:
+        "Edit one of the current user's automations from chat — change its `name`, schedule (`cron`), `event`, the `prompt` (what it does each run), and/or `enabled`. Pass only the fields to change (e.g. cron to reschedule). Giving a cron clears any event and vice-versa.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          cron: { type: "string", description: "new 5-field cron in the user's tz, e.g. 0 17 * * 5" },
+          event: { type: "string", description: "new event name (alternative to cron)" },
+          prompt: { type: "string", description: "new instructions for what it does each run" },
+          enabled: { type: "boolean" },
+        },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      meta: { source: "system", writes: true },
+      handle: async (args, ctx) => {
+        const id = Number(args.id);
+        const rule = await ownRule(db, ctx.orgId, ctx.crmUserId as number, id);
+        if (!rule) throw new BrokerError("NOT_FOUND", `No automation with id ${args.id}.`);
+        const def = (rule.workflowDefinition ?? {}) as {
+          nodes?: Array<{ type?: string; data?: Record<string, unknown> }>;
+        };
+        const nodes = def.nodes ?? [];
+        const curCron = nodes.find((n) => n.type === "trigger_schedule")?.data?.cron as string | undefined;
+        const curEvent = nodes.find((n) => n.type === "trigger_event")?.data?.event as string | undefined;
+        const curPrompt = nodes.find((n) => n.type === "action_ai_agent")?.data?.prompt as string | undefined;
+
+        const name = args.name != null ? String(args.name).trim() : rule.name;
+        const prompt = args.prompt != null ? String(args.prompt).trim() : curPrompt ?? "";
+        // A new cron replaces an event trigger and vice-versa.
+        let cron = args.cron != null ? String(args.cron).trim() : curCron;
+        let event = args.event != null ? String(args.event).trim() : curEvent;
+        if (args.cron != null) event = undefined;
+        if (args.event != null) cron = undefined;
+        if (!cron && !event) throw new BrokerError("VALIDATION", "Automation needs a `cron` schedule or an `event`.");
+        if (!prompt) throw new BrokerError("VALIDATION", "Automation needs a `prompt`.");
+
+        const workflowDefinition = buildWorkflowDefinition({ name, prompt, cron, event });
+        const enabled = typeof args.enabled === "boolean" ? args.enabled : rule.enabled;
+        await db
+          .update(schema.automationRules)
+          .set({ name, workflowDefinition, enabled })
+          .where(eq(schema.automationRules.id, id));
+        await reloadRule(id); // re-register the schedule (handles cron/tz/enable changes)
+        return { updated: { id, name, cron, event, prompt, enabled } };
+      },
+    },
+    {
       name: "automation.list",
       description: "List the current user's automations (id, name, enabled, last run).",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },

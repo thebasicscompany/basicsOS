@@ -55,7 +55,6 @@ platform_toolsets:
     - broker
     - skills
     - web
-    - browser
     - code_execution
     - terminal
     - file
@@ -64,6 +63,8 @@ platform_toolsets:
     - delegation
     - session_search
     - todo
+    # - browser   # ENABLE once chromium/playwright are added to the hermes image
+    #             # (the pinned image has no browser runtime — see task #15).
 
 # code_execution / terminal are gated behind an approval step. In our headless
 # API path there's no human to prompt, so "manual" (the default) halts them. Use

@@ -191,6 +191,13 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
             message: userText,
             attachments,
             signal: c.req.raw.signal,
+            // Surface skills/tools the agent uses as message annotations (8:) so the
+            // chat UI can show "Using <skill>" — kept out of the saved message text.
+            onToolEvent: (e) => {
+              controller.enqueue(
+                encoder.encode(sdkPart("8", [{ type: "tool", tool: e.tool, label: e.label, emoji: e.emoji }])),
+              );
+            },
           })) {
             assistantText += delta;
             controller.enqueue(encoder.encode(sdkPart("0", delta)));

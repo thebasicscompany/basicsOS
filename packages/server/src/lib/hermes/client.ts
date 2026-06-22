@@ -31,6 +31,15 @@ export interface HermesTurnOptions {
   /** files the user uploaded this turn (images -> vision; text -> inlined). */
   attachments?: HermesAttachment[];
   signal?: AbortSignal;
+  /** fired once per tool/skill the agent uses this turn (for live UI surfacing). */
+  onToolEvent?: (e: HermesToolEvent) => void;
+}
+
+/** A tool/skill the agent invoked, parsed from hermes' `hermes.tool.progress` SSE. */
+export interface HermesToolEvent {
+  tool: string; // e.g. "skill_view", "terminal", "code_execution", "web"
+  label?: string; // e.g. the skill name "powerpoint", or the command
+  emoji?: string;
 }
 
 /** OpenAI-style user content: a plain string, or parts (text + image_url). */
@@ -93,7 +102,7 @@ function hermesHeaders(env: Env, sessionKey: string): Record<string, string> {
  * deltas. Throws on a non-2xx / bodyless response.
  */
 export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator<string> {
-  const { env, sessionKey, message, attachments, signal } = opts;
+  const { env, sessionKey, message, attachments, signal, onToolEvent } = opts;
   const res = await fetch(`${env.HERMES_API_URL}/v1/chat/completions`, {
     method: "POST",
     headers: hermesHeaders(env, sessionKey),
@@ -116,6 +125,8 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  let pendingEvent = ""; // the most recent `event:` name, applied to the next `data:`
+  const seenTools = new Set<string>(); // emit each tool/skill once per turn
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -124,9 +135,37 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
     while ((nl = buf.indexOf("\n")) >= 0) {
       const line = buf.slice(0, nl).trim();
       buf = buf.slice(nl + 1);
-      if (!line.startsWith("data:")) continue; // ignore blank lines / event: frames
+      if (line.startsWith("event:")) {
+        pendingEvent = line.slice(6).trim();
+        continue;
+      }
+      if (!line.startsWith("data:")) {
+        if (line === "") pendingEvent = ""; // blank line ends an SSE frame
+        continue;
+      }
       const data = line.slice(5).trim();
+      const ev = pendingEvent;
+      pendingEvent = "";
       if (data === "[DONE]") return;
+
+      // hermes emits `event: hermes.tool.progress` frames as the agent uses tools
+      // & skills — surface each once for the UI (kept out of the chat text).
+      if (ev === "hermes.tool.progress") {
+        if (onToolEvent) {
+          try {
+            const t = JSON.parse(data) as { tool?: string; label?: string; emoji?: string; toolCallId?: string };
+            const key = t.toolCallId ?? `${t.tool}:${t.label ?? ""}`;
+            if (t.tool && t.label && !seenTools.has(key)) {
+              seenTools.add(key);
+              onToolEvent({ tool: t.tool, label: t.label, emoji: t.emoji });
+            }
+          } catch {
+            /* ignore malformed progress frame */
+          }
+        }
+        continue;
+      }
+
       try {
         const json = JSON.parse(data) as {
           choices?: Array<{ delta?: { content?: string } }>;

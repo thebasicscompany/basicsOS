@@ -284,6 +284,64 @@ function iconForAttachment(mediaType?: string, name?: string): Icon {
 
 // Renders uploaded files inside a sent user message bubble (image thumbnails,
 // type chips), from the message's experimental_attachments.
+// Friendly label for a tool the agent used (skills show their own name).
+function friendlyTool(tool?: string, label?: string): string {
+  switch (tool) {
+    case "skill_view":
+    case "skill":
+      return `Skill: ${label ?? ""}`.trim();
+    case "terminal":
+      return "Terminal";
+    case "code_execution":
+    case "execute_code":
+      return "Code";
+    case "web":
+    case "web_search":
+      return "Web search";
+    case "file":
+    case "file_save":
+      return "Files";
+    case "vision":
+      return "Vision";
+    case "session_search":
+      return "History search";
+    case "todo":
+      return "Planning";
+    case "delegation":
+      return "Delegating";
+    default:
+      return label || tool || "Tool";
+  }
+}
+
+/** Small chips showing which skills/tools the agent used this turn (from 8: annotations). */
+function ToolActivity({ message }: { message: { annotations?: unknown[] } }) {
+  const anns = (message.annotations ?? []) as Array<{ type?: string; tool?: string; label?: string; emoji?: string }>;
+  const tools = anns.filter((a) => a?.type === "tool");
+  if (!tools.length) return null;
+  const seen = new Set<string>();
+  const uniq = tools.filter((t) => {
+    const k = `${t.tool}:${t.label ?? ""}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return (
+    <div className="not-prose mb-2 flex flex-wrap gap-1.5">
+      {uniq.map((t, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center gap-1 rounded-full border bg-surface-card px-2 py-0.5 text-[11px] text-muted-foreground"
+          title={t.label}
+        >
+          <span>{t.emoji ?? "🛠"}</span>
+          <span className="max-w-[200px] truncate">{friendlyTool(t.tool, t.label)}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function MessageAttachments({
   message,
 }: {
@@ -730,6 +788,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                 <MessageEl from={m.role as "user" | "assistant"}>
                   <MessageContent>
                     <MessageAttachments message={m} />
+                    {m.role === "assistant" && <ToolActivity message={m} />}
                     <EntityAwareMessageResponse
                       animated={
                         m.role === "assistant"

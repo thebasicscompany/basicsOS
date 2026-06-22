@@ -151,13 +151,11 @@ export function ConnectionsContent({
     [connectedMap, catalogByApp],
   );
 
-  // Full catalog, searchable (used inside the Add-connection picker).
+  // Catalog of apps NOT yet connected, searchable (the Add-connection picker).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? catalog.filter((a) => a.name.toLowerCase().includes(q) || a.app.includes(q))
-      : catalog;
-    return [...list].sort((a, b) => Number(connectedMap.has(b.app)) - Number(connectedMap.has(a.app)));
+    const list = catalog.filter((a) => !connectedMap.has(a.app));
+    return q ? list.filter((a) => a.name.toLowerCase().includes(q) || a.app.includes(q)) : list;
   }, [catalog, query, connectedMap]);
 
   const renderCard = (app: string, name: string, conn?: ConnectedApp) => {

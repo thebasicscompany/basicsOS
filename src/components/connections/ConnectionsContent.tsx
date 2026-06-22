@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useMemo } from "react";
-import { CheckCircleIcon, MagnifyingGlassIcon, PlugIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, MagnifyingGlassIcon, PlugIcon, PlusIcon } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { showError } from "@/lib/show-error";
@@ -32,6 +32,10 @@ interface ConnectedApp {
 }
 
 const logoFor = (slug: string) => `https://logos.composio.dev/api/${slug}`;
+
+/** Fallback display name for a connected app not in the (paginated) catalog. */
+const humanize = (slug: string) =>
+  slug.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function AppLogo({ slug, name }: { slug: string; name: string }) {
   const [failed, setFailed] = useState(false);
@@ -128,101 +132,180 @@ export function ConnectionsContent({
     }
   };
 
+  const [addOpen, setAddOpen] = useState(false);
+
+  const catalogByApp = useMemo(() => {
+    const m = new Map<string, CatalogApp>();
+    for (const c of catalog) m.set(c.app, c);
+    return m;
+  }, [catalog]);
+
+  // The user's connected apps (name from the catalog if known, else humanized slug).
+  const connectedList = useMemo(
+    () =>
+      [...connectedMap.values()].map((c) => ({
+        app: c.app,
+        name: catalogByApp.get(c.app)?.name ?? humanize(c.app),
+        conn: c,
+      })),
+    [connectedMap, catalogByApp],
+  );
+
+  // Full catalog, searchable (used inside the Add-connection picker).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q
       ? catalog.filter((a) => a.name.toLowerCase().includes(q) || a.app.includes(q))
       : catalog;
-    // connected first, then catalog order (featured-first from the API)
     return [...list].sort((a, b) => Number(connectedMap.has(b.app)) - Number(connectedMap.has(a.app)));
   }, [catalog, query, connectedMap]);
 
-  const visible = compact ? filtered.filter((a) => connectedMap.has(a.app)).slice(0, 6) : filtered;
+  const renderCard = (app: string, name: string, conn?: ConnectedApp) => {
+    const isConnecting = connecting === app;
+    return (
+      <div
+        key={app}
+        className="flex items-center gap-3 rounded-[--surface-card-radius] border bg-surface-card p-4 transition-colors hover:bg-surface-hover"
+      >
+        <AppLogo slug={app} name={name} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-medium">{name}</p>
+          {conn ? (
+            <Badge variant="secondary" className="mt-0.5 gap-1 text-[10px]">
+              <span className="size-1.5 rounded-full bg-green-500" />
+              {conn.scope === "org" ? "Shared" : "Connected"}
+            </Badge>
+          ) : (
+            <p className="truncate text-[11px] text-muted-foreground">Not connected</p>
+          )}
+        </div>
+        {!conn && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 shrink-0 text-[12px]"
+            onClick={() => handleConnect(app, name)}
+            disabled={isConnecting}
+          >
+            {isConnecting ? "Connecting…" : "Connect"}
+          </Button>
+        )}
+      </div>
+    );
+  };
 
+  const justConnectedDialog = (
+    <Dialog open={!!justConnected} onOpenChange={(o) => !o && setJustConnected(null)}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+              <CheckCircleIcon weight="fill" className="size-5" />
+            </div>
+            <DialogTitle>{justConnected} connected</DialogTitle>
+          </div>
+          <DialogDescription>
+            Your agent can now use {justConnected} on your behalf — in chat and automations.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button onClick={() => setJustConnected(null)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // Compact (in-chat): just the connected apps, capped.
+  if (compact) {
+    const list = connectedList.slice(0, 6);
+    return (
+      <>
+        {justConnectedDialog}
+        <div className="px-4 py-3">
+          {list.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 rounded-[--surface-card-radius] border border-dashed py-10 text-center">
+              <PlugIcon className="size-6 text-muted-foreground" />
+              <p className="text-sm font-medium">No apps connected yet</p>
+              <p className="max-w-xs text-xs text-muted-foreground">
+                Connect Gmail, Slack, and more in Settings → Connections.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">{list.map((a) => renderCard(a.app, a.name, a.conn))}</div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Settings: connected apps + an "Add connection" picker over the full catalog.
   return (
     <>
-      <Dialog open={!!justConnected} onOpenChange={(o) => !o && setJustConnected(null)}>
-        <DialogContent className="sm:max-w-sm">
+      {justConnectedDialog}
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="flex max-h-[80vh] flex-col gap-4 sm:max-w-2xl">
           <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-500/10 text-green-500">
-                <CheckCircleIcon weight="fill" className="size-5" />
-              </div>
-              <DialogTitle>{justConnected} connected</DialogTitle>
-            </div>
+            <DialogTitle>Add a connection</DialogTitle>
             <DialogDescription>
-              Your agent can now use {justConnected} on your behalf — in chat and automations.
+              Connect an app so your agent can act in it — in chat and automations.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setJustConnected(null)}>Done</Button>
-          </DialogFooter>
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search apps…"
+              className="pl-9"
+              autoComplete="off"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {catalogLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-[68px] animate-pulse rounded-[--surface-card-radius] bg-surface-card" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No apps match “{query}”.</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {filtered.map((a) => renderCard(a.app, a.name, connectedMap.get(a.app)))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
-      <div className={compact ? "px-4 py-3" : "flex h-full flex-col py-4"}>
-        {!compact && (
-          <div className="relative mb-4 max-w-md">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search apps to connect…"
-              className="pl-9"
-            />
-          </div>
-        )}
+      <div className="flex h-full flex-col py-4">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[13px] text-muted-foreground">
+            {connectedList.length} connected {connectedList.length === 1 ? "app" : "apps"}
+          </p>
+          <Button onClick={() => { setQuery(""); setAddOpen(true); }}>
+            <PlusIcon className="mr-1.5 size-4" />
+            Add connection
+          </Button>
+        </div>
 
-        {catalogLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-[68px] animate-pulse rounded-[--surface-card-radius] bg-surface-card" />
-            ))}
-          </div>
-        ) : visible.length === 0 ? (
+        {connectedList.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-[--surface-card-radius] border border-dashed py-12 text-center">
             <PlugIcon className="size-6 text-muted-foreground" />
-            <p className="text-sm font-medium">{compact ? "No apps connected yet" : "No apps found"}</p>
+            <p className="text-sm font-medium">No connections yet</p>
             <p className="max-w-xs text-xs text-muted-foreground">
-              {compact ? "Connect Gmail, Slack, and more in Settings → Connections." : "Try a different search."}
+              Connect Gmail, Slack, Calendar and more so your agent can act in them.
             </p>
+            <Button size="sm" className="mt-1" onClick={() => { setQuery(""); setAddOpen(true); }}>
+              <PlusIcon className="mr-1.5 size-4" />
+              Add connection
+            </Button>
           </div>
         ) : (
-          <div className={compact ? "space-y-2" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
-            {visible.map((appItem) => {
-              const conn = connectedMap.get(appItem.app);
-              const isConnecting = connecting === appItem.app;
-              return (
-                <div
-                  key={appItem.app}
-                  className="flex items-center gap-3 rounded-[--surface-card-radius] border bg-surface-card p-4 transition-colors hover:bg-surface-hover"
-                >
-                  <AppLogo slug={appItem.app} name={appItem.name} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium">{appItem.name}</p>
-                    {conn ? (
-                      <Badge variant="secondary" className="mt-0.5 gap-1 text-[10px]">
-                        <span className="size-1.5 rounded-full bg-green-500" />
-                        {conn.scope === "org" ? "Shared" : "Connected"}
-                      </Badge>
-                    ) : (
-                      <p className="truncate text-[11px] text-muted-foreground">Not connected</p>
-                    )}
-                  </div>
-                  {!conn && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 shrink-0 text-[12px]"
-                      onClick={() => handleConnect(appItem.app, appItem.name)}
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? "Connecting…" : "Connect"}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {connectedList.map((a) => renderCard(a.app, a.name, a.conn))}
           </div>
         )}
       </div>

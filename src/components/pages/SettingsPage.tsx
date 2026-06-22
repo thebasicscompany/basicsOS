@@ -74,6 +74,51 @@ import {
 
 const API_URL = getRuntimeApiUrl();
 
+const TZ_OPTIONS = [
+  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "America/Phoenix", "America/Anchorage", "Pacific/Honolulu", "America/Toronto",
+  "America/Sao_Paulo", "Europe/London", "Europe/Paris", "Europe/Berlin",
+  "Europe/Madrid", "Europe/Moscow", "Asia/Dubai", "Asia/Kolkata",
+  "Asia/Singapore", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney", "UTC",
+];
+
+/** Per-user timezone override for scheduled automations (auto-detected on login). */
+function TimezoneSetting() {
+  const [tz, setTz] = useState<string | undefined>();
+  useEffect(() => {
+    fetch(`${API_URL}/api/me/timezone`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setTz(d?.effective ?? undefined))
+      .catch(() => {});
+  }, []);
+  const onChange = (v: string) => {
+    setTz(v);
+    fetch(`${API_URL}/api/me/timezone`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timezone: v, force: true }),
+    })
+      .then((r) => (r.ok ? toast.success(`Timezone set to ${v}`) : toast.error("Couldn't update timezone")))
+      .catch(() => toast.error("Couldn't update timezone"));
+  };
+  const options = tz && !TZ_OPTIONS.includes(tz) ? [tz, ...TZ_OPTIONS] : TZ_OPTIONS;
+  return (
+    <Select value={tz} onValueChange={onChange}>
+      <SelectTrigger className="h-9 w-full sm:max-w-[220px]">
+        <SelectValue placeholder="Detecting…" />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((z) => (
+          <SelectItem key={z} value={z}>
+            {z}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: SunIcon },
   { value: "dark", label: "Dark", icon: MoonIcon },
@@ -440,6 +485,13 @@ export function SettingsPage() {
                   })}
                 </SelectContent>
               </Select>
+              <Label className="text-[12px] text-muted-foreground">Timezone</Label>
+              <div>
+                <TimezoneSetting />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Scheduled automations run in this timezone (auto-detected; change it here).
+                </p>
+              </div>
             </div>
           </section>
 

@@ -54,7 +54,9 @@ function getStandardColumnsForObject(
     case "deals":
       return DEAL_TARGET_COLUMNS;
     default:
-      return CONTACT_TARGET_COLUMNS;
+      // Custom object: only the built-in primary "name"; everything else maps to
+      // (existing or new) custom fields, listed separately via the registry.
+      return [{ value: "name", label: "Name" }];
   }
 }
 

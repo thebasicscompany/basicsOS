@@ -7,6 +7,14 @@ import { CreateRecordModal } from "@/components/create-record/CreateRecordModal"
 import { CreateAttributeModal } from "@/components/create-attribute/CreateAttributeModal";
 import { EditAttributeDialog } from "@/components/create-attribute/EditAttributeDialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ImportWizard } from "@/components/import/ImportWizard";
+import {
   RecordBulkDeleteDialog,
   RecordDetailDeleteDialog,
 } from "@/components/record-detail";
@@ -35,6 +43,7 @@ import {
   useDeleteRecord,
   useRefreshCrm,
 } from "@/hooks/use-records";
+import { useDeleteColumn } from "@/hooks/use-columns";
 import { useViews, useViewState } from "@/hooks/use-views";
 import { useRenameView, useDeleteView } from "@/hooks/use-view-queries";
 import type { ViewSort, ViewFilter } from "@/types/views";
@@ -56,6 +65,7 @@ export function ObjectListPage() {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editAttrFieldId, setEditAttrFieldId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     recordId: number;
@@ -178,6 +188,7 @@ export function ObjectListPage() {
   const updateRecord = useUpdateRecord(objectSlug);
   const deleteRecord = useDeleteRecord(objectSlug);
   const refreshCrm = useRefreshCrm(objectSlug);
+  const deleteColumn = useDeleteColumn();
 
   const handlePaginationChange = useCallback(
     (newPage: number, newPerPage: number) => {
@@ -345,6 +356,7 @@ export function ObjectListPage() {
           onAddFilter={handleAddFilter}
           onCreateRecord={() => setCreateOpen(true)}
           onAddColumn={() => setAddColumnOpen(true)}
+          onImport={() => setImportOpen(true)}
           onRefresh={refreshCrm}
           isRefreshing={isFetching}
           onFindFromEmail={
@@ -579,6 +591,21 @@ export function ObjectListPage() {
                 if (vc) viewState.updateColumn(vc.id, { title });
               }}
               onEditAttribute={(fieldId) => setEditAttrFieldId(fieldId)}
+              onDeleteColumn={(fieldId) => {
+                if (
+                  window.confirm(
+                    "Delete this field? It's removed from the grid for everyone. Existing record values are kept and reappear if you re-add the field.",
+                  )
+                ) {
+                  deleteColumn.mutate(
+                    { columnId: fieldId, resource: objectSlug },
+                    {
+                      onSuccess: () => toast.success("Field deleted"),
+                      onError: (e) => showError(e),
+                    },
+                  );
+                }
+              }}
               onShowColumn={(fieldId) => {
                 const vc = viewState.columns.find((c) => c.fieldId === fieldId);
                 if (vc) {
@@ -602,6 +629,27 @@ export function ObjectListPage() {
           open={createOpen}
           onOpenChange={setCreateOpen}
         />
+
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Import CSV</DialogTitle>
+              <DialogDescription>
+                Import a CSV into {obj?.pluralName ?? objectSlug}. Columns
+                auto-map by header; new fields are created as needed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] min-w-0 overflow-y-auto pr-1">
+              <ImportWizard
+                initialObjectSlug={objectSlug}
+                onComplete={() => {
+                  setImportOpen(false);
+                  refreshCrm();
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <CreateAttributeModal
           resource={objectSlug}

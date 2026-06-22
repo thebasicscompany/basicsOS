@@ -525,6 +525,7 @@ const detectNotch = () => {
 
 function createMainWindow(): void {
   const iconPath = path.join(process.cwd(), "public", "favicon.png");
+  const isMac = process.platform === "darwin";
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -533,8 +534,25 @@ function createMainWindow(): void {
     show: false,
     autoHideMenuBar: true,
     icon: iconPath,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 20, y: 18 },
+    // Custom title bar on every platform. "hidden" hides the OS title bar on
+    // macOS AND Windows; the previous "hiddenInset" was macOS-only, so Windows
+    // kept its native frame plus an empty band below it.
+    titleBarStyle: "hidden",
+    // macOS: keep the traffic lights, inset to sit inside our 52px LayoutHeader.
+    ...(isMac ? { trafficLightPosition: { x: 16, y: 18 } } : {}),
+    // Windows/Linux: draw native min/max/close into the header band (height =
+    // LayoutHeader's 52px) so the window stays controllable without the OS frame.
+    // color matches --surface-canvas (dark). If light mode is added later, sync
+    // via mainWindow.setTitleBarOverlay({ color, symbolColor }) on theme change.
+    ...(!isMac
+      ? {
+          titleBarOverlay: {
+            color: "#121212",
+            symbolColor: "#e5e5e5",
+            height: 52,
+          },
+        }
+      : {}),
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: true,

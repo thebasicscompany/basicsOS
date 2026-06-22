@@ -53,6 +53,8 @@ export interface DataTableProps {
   onShowColumn?: (fieldId: string) => void;
   onRenameColumn?: (fieldId: string, title: string) => void;
   onEditAttribute?: (fieldId: string) => void;
+  /** delete a custom field (passed `custom_<id>`); only wired for custom fields */
+  onDeleteColumn?: (fieldId: string) => void;
   pagination: { page: number; perPage: number };
   onPaginationChange: (page: number, perPage: number) => void;
   sorts?: ViewSort[];
@@ -739,6 +741,7 @@ export function useDataTable(props: DataTableProps) {
     onHideColumn,
     onRenameColumn,
     onEditAttribute: props.onEditAttribute,
+    onDeleteColumn: props.onDeleteColumn,
     onShowColumn: props.onShowColumn,
     enableRowMultiSelect,
     selectedRecordIds,

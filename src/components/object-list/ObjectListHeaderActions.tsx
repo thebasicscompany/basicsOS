@@ -4,6 +4,7 @@ import {
   PlusIcon,
   ArrowsClockwiseIcon,
   MagnifyingGlassIcon,
+  UploadSimpleIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ export interface ObjectListHeaderActionsProps {
   isRefreshing?: boolean;
   showTableActions?: boolean;
   onFindFromEmail?: () => void;
+  onImport?: () => void;
 }
 
 export function ObjectListHeaderActions({
@@ -65,6 +67,7 @@ export function ObjectListHeaderActions({
   isRefreshing,
   showTableActions = true,
   onFindFromEmail,
+  onImport,
 }: ObjectListHeaderActionsProps) {
   const hasActiveSorts = viewState.sorts.length > 0;
   const hasActiveFilters = viewState.filters.length > 0;
@@ -174,6 +177,17 @@ export function ObjectListHeaderActions({
         >
           <MagnifyingGlassIcon className="size-3.5" />
           Find from Email
+        </Button>
+      )}
+      {onImport && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onImport}
+          className="h-8 gap-1.5 text-xs"
+        >
+          <UploadSimpleIcon className="size-3.5" />
+          Import
         </Button>
       )}
       <Button size="sm" onClick={onCreateRecord} className="h-8 gap-1">

@@ -36,8 +36,17 @@ const INITIAL_STATE: ImportState = {
   conflictBehavior: "update_existing",
 };
 
-export function useImport() {
-  const [state, setState] = useState<ImportState>(INITIAL_STATE);
+export function useImport(initialObjectSlug?: string) {
+  const [state, setState] = useState<ImportState>(() => {
+    if (!initialObjectSlug) return INITIAL_STATE;
+    const mergeKey = DEFAULT_MERGE_KEY[initialObjectSlug] ?? "";
+    return {
+      ...INITIAL_STATE,
+      objectSlug: initialObjectSlug,
+      mergeKey,
+      conflictBehavior: mergeKey === "" ? "create_only" : INITIAL_STATE.conflictBehavior,
+    };
+  });
 
   const setParsed = useCallback((parsed: ParsedCSV | null) => {
     setState((s) => ({ ...s, parsed, step: parsed ? "map" : "file" }));

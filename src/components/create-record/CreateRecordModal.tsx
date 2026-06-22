@@ -27,11 +27,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FileIcon, CopySimpleIcon } from "@phosphor-icons/react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { getFieldType } from "@/field-types";
 import type { Attribute } from "@/field-types/types";
 import { buildRecordWritePayload } from "@/lib/crm/field-utils";
-import { useCreateRecord } from "@/hooks/use-records";
+import { useCreateRecord, useBulkCreateRecords } from "@/hooks/use-records";
 import { RecordForm } from "./RecordForm";
 
 export interface CreateRecordModalProps {
@@ -65,20 +64,31 @@ export function CreateRecordModal({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createMore, setCreateMore] = useState(false);
+  const [queue, setQueue] = useState<Record<string, unknown>[]>([]);
 
   const createRecord = useCreateRecord(objectSlug);
+  const bulkCreate = useBulkCreateRecords(objectSlug);
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
       setValues(buildInitialValues(attributes));
       setErrors({});
+      setQueue([]);
     }
   }, [open, attributes]);
 
   const visibleAttributes = useMemo(
     () => attributes.filter((a) => !a.isSystem && !a.isHiddenByDefault),
     [attributes],
+  );
+
+  const hasFormValues = useMemo(
+    () =>
+      visibleAttributes.some(
+        (a) => !getFieldType(a.uiType).isEmpty(values[a.columnName]),
+      ),
+    [visibleAttributes, values],
   );
 
   const handleChange = useCallback((fieldName: string, value: any) => {
@@ -116,19 +126,20 @@ export function CreateRecordModal({
 
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
+    const payload = buildRecordWritePayload(attributes, values);
+
+    if (createMore) {
+      // Queue this record; the whole batch is sent in one bulk request.
+      setQueue((q) => [...q, payload]);
+      setValues(buildInitialValues(attributes));
+      setErrors({});
+      return;
+    }
 
     try {
-      const payload = buildRecordWritePayload(attributes, values);
       const record = await createRecord.mutateAsync(payload);
       onCreated?.(record);
-
-      if (createMore) {
-        // Clear form for next entry
-        setValues(buildInitialValues(attributes));
-        setErrors({});
-      } else {
-        onOpenChange(false);
-      }
+      onOpenChange(false);
     } catch {
       /* Form submit error handled by createRecord mutation state */
     }
@@ -139,6 +150,36 @@ export function CreateRecordModal({
     onCreated,
     createMore,
     attributes,
+    onOpenChange,
+  ]);
+
+  const handleCreateBatch = useCallback(async () => {
+    // Fold in the current form if it has content (so the last row isn't lost).
+    let batch = queue;
+    const hasFormValues = visibleAttributes.some(
+      (a) => !getFieldType(a.uiType).isEmpty(values[a.columnName]),
+    );
+    if (hasFormValues) {
+      if (!validate()) return;
+      batch = [...queue, buildRecordWritePayload(attributes, values)];
+    }
+    if (batch.length === 0) return;
+    try {
+      await bulkCreate.mutateAsync(batch);
+      setQueue([]);
+      setValues(buildInitialValues(attributes));
+      setErrors({});
+      onOpenChange(false);
+    } catch {
+      /* error surfaced via bulkCreate.error */
+    }
+  }, [
+    queue,
+    visibleAttributes,
+    values,
+    validate,
+    attributes,
+    bulkCreate,
     onOpenChange,
   ]);
 
@@ -168,8 +209,27 @@ export function CreateRecordModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh] pr-3">
-          <div ref={formRef} className="pb-6">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={createMore ? "multiple" : "single"}
+          onValueChange={(v) => {
+            if (v) setCreateMore(v === "multiple");
+          }}
+          className="self-start"
+        >
+          <ToggleGroupItem value="single" className="h-8 gap-1.5 px-3 text-xs">
+            <FileIcon className="size-3.5" />
+            Create one
+          </ToggleGroupItem>
+          <ToggleGroupItem value="multiple" className="h-8 gap-1.5 px-3 text-xs">
+            <CopySimpleIcon className="size-3.5" />
+            Create many
+          </ToggleGroupItem>
+        </ToggleGroup>
+
+        <div className="max-h-[60vh] min-w-0 overflow-y-auto pr-1">
+          <div ref={formRef} className="pb-2">
             <RecordForm
               attributes={attributes}
               values={values}
@@ -177,7 +237,7 @@ export function CreateRecordModal({
               errors={errors}
             />
           </div>
-        </ScrollArea>
+        </div>
 
         {createRecord.error && (
           <p className="text-sm text-destructive">
@@ -186,43 +246,44 @@ export function CreateRecordModal({
           </p>
         )}
 
-        <DialogFooter className="items-center gap-4">
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            value={createMore ? "multiple" : "single"}
-            onValueChange={(v) => {
-              if (v) setCreateMore(v === "multiple");
-            }}
-            className="mr-auto"
-          >
-            <ToggleGroupItem
-              value="single"
-              className="text-xs px-3 h-8 gap-1.5"
-            >
-              <FileIcon className="size-3.5" />
-              Create one
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="multiple"
-              className="text-xs px-3 h-8 gap-1.5"
-            >
-              <CopySimpleIcon className="size-3.5" />
-              Create many
-            </ToggleGroupItem>
-          </ToggleGroup>
-
+        <DialogFooter className="items-center gap-2">
+          {createMore && queue.length > 0 && (
+            <span className="mr-auto text-xs text-muted-foreground">
+              {queue.length} queued
+            </span>
+          )}
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={createRecord.isPending}
+            disabled={createRecord.isPending || bulkCreate.isPending}
           >
             Cancel
           </Button>
-
-          <Button onClick={handleSubmit} disabled={createRecord.isPending}>
-            {createRecord.isPending ? "Creating..." : `Create ${objectName}`}
-          </Button>
+          {createMore ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleSubmit}
+                disabled={bulkCreate.isPending || !hasFormValues}
+              >
+                Add
+              </Button>
+              <Button
+                onClick={handleCreateBatch}
+                disabled={
+                  bulkCreate.isPending || (queue.length === 0 && !hasFormValues)
+                }
+              >
+                {bulkCreate.isPending
+                  ? "Creating…"
+                  : `Create ${queue.length + (hasFormValues ? 1 : 0)}`}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={handleSubmit} disabled={createRecord.isPending}>
+              {createRecord.isPending ? "Creating..." : `Create ${objectName}`}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

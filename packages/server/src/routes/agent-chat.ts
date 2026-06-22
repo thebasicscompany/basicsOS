@@ -191,11 +191,24 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
             message: userText,
             attachments,
             signal: c.req.raw.signal,
-            // Surface skills/tools the agent uses as message annotations (8:) so the
-            // chat UI can show "Using <skill>" — kept out of the saved message text.
+            // Surface skills/tools the agent uses as ordered message annotations (8:)
+            // so the chat UI can render a live activity timeline. kind:"write" marks a
+            // skill being authored (skill_manage) vs "use" for reads/other tools.
             onToolEvent: (e) => {
               controller.enqueue(
-                encoder.encode(sdkPart("8", [{ type: "tool", tool: e.tool, label: e.label, emoji: e.emoji }])),
+                encoder.encode(
+                  sdkPart("8", [
+                    {
+                      type: "tool",
+                      tool: e.tool,
+                      label: e.label,
+                      emoji: e.emoji,
+                      id: e.toolCallId,
+                      status: e.status,
+                      kind: e.tool === "skill_manage" ? "write" : "use",
+                    },
+                  ]),
+                ),
               );
             },
           })) {

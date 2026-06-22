@@ -284,60 +284,143 @@ function iconForAttachment(mediaType?: string, name?: string): Icon {
 
 // Renders uploaded files inside a sent user message bubble (image thumbnails,
 // type chips), from the message's experimental_attachments.
-// Friendly label for a tool the agent used (skills show their own name).
-function friendlyTool(tool?: string, label?: string): string {
-  switch (tool) {
+type ActivityStep = {
+  id: string;
+  tool: string;
+  label?: string;
+  emoji?: string;
+  kind: "use" | "write";
+  status: "running" | "completed";
+};
+
+/** Fold the ordered 8: tool annotations into ordered, deduped-by-id steps. */
+function stepsFromAnnotations(anns: unknown[]): ActivityStep[] {
+  const order: string[] = [];
+  const byId = new Map<string, ActivityStep>();
+  for (const raw of anns) {
+    const a = raw as {
+      type?: string;
+      tool?: string;
+      label?: string;
+      emoji?: string;
+      id?: string;
+      status?: string;
+      kind?: string;
+    };
+    if (a?.type !== "tool" || !a.tool) continue;
+    const id = a.id ?? `${a.tool}:${a.label ?? ""}`;
+    const prev = byId.get(id);
+    if (!prev) order.push(id);
+    byId.set(id, {
+      id,
+      tool: a.tool,
+      kind: (a.kind as "use" | "write") ?? (a.tool === "skill_manage" ? "write" : "use"),
+      label: a.label ?? prev?.label, // label rides only on the running frame
+      emoji: a.emoji ?? prev?.emoji,
+      status: a.status === "completed" || prev?.status === "completed" ? "completed" : "running",
+    });
+  }
+  return order.map((id) => byId.get(id)!);
+}
+
+/** Static (done) label for a step — skills show their name; writes say "Learned". */
+function friendlyTool(tool?: string, label?: string, kind?: string): string {
+  if (kind === "write" || tool === "skill_manage") return `Learned skill: ${label ?? ""}`.trim();
+  const t = tool ?? "";
+  if (t === "skill_view" || t === "skill" || t === "skills_list") return `Skill: ${label ?? ""}`.trim();
+  if (t === "execute_code" || t === "code_execution") return "Code";
+  if (t === "terminal") return "Terminal";
+  if (t === "vision") return "Vision";
+  if (t === "web" || t.includes("web_search")) return "Web search";
+  if (t.includes("object_") || t.includes("crm")) return "CRM";
+  if (t.includes("email")) return "Email";
+  if (t.includes("file")) return "Files";
+  if (t === "session_search") return "History search";
+  if (t === "todo") return "Planning";
+  if (t === "delegation") return "Delegating";
+  if (t.startsWith("mcp_broker_")) return t.slice("mcp_broker_".length).replace(/_/g, " ");
+  return label || t || "Tool";
+}
+
+/** Live (running) phrasing for a step. */
+function verbForStep(s: ActivityStep): string {
+  if (s.kind === "write" || s.tool === "skill_manage") return `Learning skill${s.label ? `: ${s.label}` : ""}`;
+  switch (s.tool) {
     case "skill_view":
     case "skill":
-      return `Skill: ${label ?? ""}`.trim();
-    case "terminal":
-      return "Terminal";
-    case "code_execution":
+      return `Loading ${s.label ?? "a"} skill`;
     case "execute_code":
-      return "Code";
-    case "web":
-    case "web_search":
-      return "Web search";
-    case "file":
-    case "file_save":
-      return "Files";
+    case "code_execution":
+      return "Running code";
+    case "terminal":
+      return "Running command";
     case "vision":
-      return "Vision";
-    case "session_search":
-      return "History search";
-    case "todo":
-      return "Planning";
-    case "delegation":
-      return "Delegating";
+      return "Reading image";
     default:
-      return label || tool || "Tool";
+      if (s.tool === "web" || s.tool.includes("web_search")) return "Searching the web";
+      if (s.tool.includes("object_") || s.tool.includes("crm")) return "Reading the CRM";
+      if (s.tool.includes("email")) return "Sending email";
+      if (s.tool.includes("file")) return "Saving file";
+      return friendlyTool(s.tool, s.label, s.kind);
   }
 }
 
-/** Small chips showing which skills/tools the agent used this turn (from 8: annotations). */
-function ToolActivity({ message }: { message: { annotations?: unknown[] } }) {
-  const anns = (message.annotations ?? []) as Array<{ type?: string; tool?: string; label?: string; emoji?: string }>;
-  const tools = anns.filter((a) => a?.type === "tool");
-  if (!tools.length) return null;
-  const seen = new Set<string>();
-  const uniq = tools.filter((t) => {
-    const k = `${t.tool}:${t.label ?? ""}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+/** Live activity timeline (streaming) → collapsible summary (done), from 8: annotations. */
+function Timeline({ message, isStreaming }: { message: { annotations?: unknown[] }; isStreaming: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const steps = stepsFromAnnotations(message.annotations ?? []);
+  if (!steps.length) return null;
+  const writes = steps.filter((s) => s.kind === "write");
+  const learned = writes.map((w) => w.label).filter(Boolean).join(", ");
+
+  if (isStreaming) {
+    return (
+      <div className="not-prose mb-2 space-y-1">
+        {steps.map((s) => (
+          <div
+            key={s.id}
+            className={`flex items-center gap-2 text-[12px] ${s.kind === "write" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            <span className="w-4 shrink-0 text-center">{s.kind === "write" ? "✨" : (s.emoji ?? "🛠")}</span>
+            {s.status === "running" ? (
+              <Shimmer className="text-[12px]">{verbForStep(s)}…</Shimmer>
+            ) : (
+              <span className="truncate">{friendlyTool(s.tool, s.label, s.kind)}</span>
+            )}
+            {s.status === "completed" && <span className="shrink-0 text-[10px] text-green-500">✓</span>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Done — compact summary; click to expand the full ordered list.
   return (
-    <div className="not-prose mb-2 flex flex-wrap gap-1.5">
-      {uniq.map((t, i) => (
-        <span
-          key={i}
-          className="inline-flex items-center gap-1 rounded-full border bg-surface-card px-2 py-0.5 text-[11px] text-muted-foreground"
-          title={t.label}
+    <div className="not-prose mb-2">
+      {expanded ? (
+        <div className="space-y-1 rounded-[--surface-card-radius] border bg-surface-card p-2">
+          {steps.map((s) => (
+            <div
+              key={s.id}
+              className={`flex items-center gap-2 text-[11px] ${s.kind === "write" ? "text-primary" : "text-muted-foreground"}`}
+            >
+              <span className="w-4 shrink-0 text-center">{s.kind === "write" ? "✨" : (s.emoji ?? "🛠")}</span>
+              <span className="truncate" title={s.label}>{friendlyTool(s.tool, s.label, s.kind)}</span>
+            </div>
+          ))}
+          <button onClick={() => setExpanded(false)} className="pt-0.5 text-[10px] text-muted-foreground hover:underline">
+            Collapse
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border bg-surface-card px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-surface-hover"
         >
-          <span>{t.emoji ?? "🛠"}</span>
-          <span className="max-w-[200px] truncate">{friendlyTool(t.tool, t.label)}</span>
-        </span>
-      ))}
+          <span>{steps.length} step{steps.length > 1 ? "s" : ""}</span>
+          {writes.length > 0 && <span className="text-primary">· ✨ Learned {learned || "a skill"}</span>}
+        </button>
+      )}
     </div>
   );
 }
@@ -696,10 +779,17 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
   );
 
   const lastMsg = allVisible.at(-1);
+  const lastAssistantId = lastMsg?.role === "assistant" ? lastMsg.id : undefined;
   const lastAssistantIsEmpty =
     lastMsg?.role === "assistant" && !getTextContent(lastMsg);
+  // Tool steps can arrive before any text — keep that message visible (so its live
+  // Timeline shows) instead of hiding it behind the generic "Thinking…" placeholder.
+  const lastHasSteps = ((lastMsg?.annotations ?? []) as Array<{ type?: string }>).some(
+    (a) => a?.type === "tool",
+  );
   const isThinking =
-    status === "submitted" || (status === "streaming" && lastAssistantIsEmpty);
+    status === "submitted" ||
+    (status === "streaming" && lastAssistantIsEmpty && !lastHasSteps);
   const displayMessages =
     isThinking && lastAssistantIsEmpty ? allVisible.slice(0, -1) : allVisible;
 
@@ -788,7 +878,9 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                 <MessageEl from={m.role as "user" | "assistant"}>
                   <MessageContent>
                     <MessageAttachments message={m} />
-                    {m.role === "assistant" && <ToolActivity message={m} />}
+                    {m.role === "assistant" && (
+                      <Timeline message={m} isStreaming={status === "streaming" && m.id === lastAssistantId} />
+                    )}
                     <EntityAwareMessageResponse
                       animated={
                         m.role === "assistant"

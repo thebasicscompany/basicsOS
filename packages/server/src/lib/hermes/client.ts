@@ -35,11 +35,15 @@ export interface HermesTurnOptions {
   onToolEvent?: (e: HermesToolEvent) => void;
 }
 
-/** A tool/skill the agent invoked, parsed from hermes' `hermes.tool.progress` SSE. */
+/** A tool/skill the agent invoked, parsed from hermes' `hermes.tool.progress` SSE.
+ *  hermes sends a `running` frame (with emoji+label) then a `completed` frame
+ *  (tool+id only), correlated by toolCallId. skill_manage = a skill being WRITTEN. */
 export interface HermesToolEvent {
-  tool: string; // e.g. "skill_view", "terminal", "code_execution", "web"
-  label?: string; // e.g. the skill name "powerpoint", or the command
+  tool: string; // e.g. "skill_view", "skill_manage", "execute_code", "terminal", "mcp_broker_*"
+  label?: string; // e.g. the skill name "powerpoint", or the command/code
   emoji?: string;
+  toolCallId: string;
+  status: "running" | "completed";
 }
 
 /** OpenAI-style user content: a plain string, or parts (text + image_url). */
@@ -126,7 +130,8 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
   const decoder = new TextDecoder();
   let buf = "";
   let pendingEvent = ""; // the most recent `event:` name, applied to the next `data:`
-  const seenTools = new Set<string>(); // emit each tool/skill once per turn
+  const toolMeta = new Map<string, { label?: string; emoji?: string }>(); // running-frame meta, by id
+  const emittedPairs = new Set<string>(); // suppress duplicate (id,status) frames
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -153,11 +158,31 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
       if (ev === "hermes.tool.progress") {
         if (onToolEvent) {
           try {
-            const t = JSON.parse(data) as { tool?: string; label?: string; emoji?: string; toolCallId?: string };
-            const key = t.toolCallId ?? `${t.tool}:${t.label ?? ""}`;
-            if (t.tool && t.label && !seenTools.has(key)) {
-              seenTools.add(key);
-              onToolEvent({ tool: t.tool, label: t.label, emoji: t.emoji });
+            const t = JSON.parse(data) as {
+              tool?: string;
+              label?: string;
+              emoji?: string;
+              toolCallId?: string;
+              status?: string;
+            };
+            const id = t.toolCallId ?? `${t.tool}:${t.label ?? ""}`;
+            const status: "running" | "completed" = t.status === "completed" ? "completed" : "running";
+            if (t.tool) {
+              // The `running` frame carries emoji+label; the `completed` frame doesn't,
+              // so backfill from what we saw on `running`.
+              if (status === "running") toolMeta.set(id, { label: t.label, emoji: t.emoji });
+              const meta = toolMeta.get(id);
+              const pairKey = `${id}:${status}`;
+              if (!emittedPairs.has(pairKey)) {
+                emittedPairs.add(pairKey);
+                onToolEvent({
+                  tool: t.tool,
+                  label: t.label ?? meta?.label,
+                  emoji: t.emoji ?? meta?.emoji,
+                  toolCallId: id,
+                  status,
+                });
+              }
             }
           } catch {
             /* ignore malformed progress frame */

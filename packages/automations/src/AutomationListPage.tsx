@@ -14,6 +14,7 @@ import {
   SparkleIcon,
   ArrowRightIcon,
   SlackLogoIcon,
+  MagnifyingGlassIcon,
   type Icon,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
@@ -237,6 +238,7 @@ export function AutomationListPage() {
   const seedChat = useChatSeed();
   const [runsPanelRuleId, setRunsPanelRuleId] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
 
   const { data, isPending, isError } = useAutomationRules();
   const { data: tz } = useQuery({
@@ -296,10 +298,16 @@ export function AutomationListPage() {
     seedChat(`Create an automation that does this: ${t}`);
   };
 
+  const q = search.trim().toLowerCase();
+  const filteredRules = q
+    ? rules.filter((r) => r.name.toLowerCase().includes(q) || getStepSummary(r).toLowerCase().includes(q))
+    : rules;
+
   return (
     <>
       {headerActionsPortal}
-      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-6 px-1 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-1 py-5 pb-12">
         {/* Hero — chat-first, capability-forward */}
         <section className="rounded-[--surface-card-radius] border bg-surface-card p-5">
           <div className="flex items-start gap-3">
@@ -356,10 +364,21 @@ export function AutomationListPage() {
 
         {/* Your automations */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-[13px] font-medium text-muted-foreground">
               Your automations{tzLabel ? ` · scheduled in ${tzLabel}` : ""}
             </h3>
+            {rules.length > 4 && (
+              <div className="relative w-full max-w-[240px]">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search automations…"
+                  className="h-8 pl-8 text-[13px]"
+                />
+              </div>
+            )}
           </div>
 
           {isError && <p className="text-sm text-destructive">Failed to load automations.</p>}
@@ -380,7 +399,7 @@ export function AutomationListPage() {
                 ? Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="h-[160px] animate-pulse rounded-[--surface-card-radius] bg-surface-card" />
                   ))
-                : rules.map((rule) => {
+                : filteredRules.map((rule) => {
                     const trigger = getTrigger(rule);
                     const toolBadges = getToolBadges(rule);
                     return (
@@ -475,6 +494,9 @@ export function AutomationListPage() {
                     })}
             </div>
           )}
+          {!isPending && rules.length > 0 && filteredRules.length === 0 && (
+            <p className="text-xs text-muted-foreground">No automations match “{search}”.</p>
+          )}
         </section>
 
         <AutomationRunsPanel
@@ -482,6 +504,7 @@ export function AutomationListPage() {
           open={runsPanelRuleId !== null}
           onOpenChange={(open) => !open && setRunsPanelRuleId(null)}
         />
+        </div>
       </div>
     </>
   );

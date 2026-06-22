@@ -492,6 +492,10 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                 // server extracts the text via unpdf
                 return { name, mediaType, kind: "pdf" as const, content: await toDataUrl() };
               }
+              if (/officedocument/.test(mediaType) || /\.(docx|xlsx|pptx)$/i.test(name)) {
+                // server extracts the text via officeparser
+                return { name, mediaType, kind: "office" as const, content: await toDataUrl() };
+              }
               const texty =
                 mediaType.startsWith("text/") ||
                 /\.(md|markdown|txt|csv|json|tsv|log|ya?ml|html?|xml|js|ts|py|sql)$/i.test(name) ||

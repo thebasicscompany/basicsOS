@@ -16,18 +16,27 @@ import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
 import { buildSessionKey, streamHermesText, HermesError, type HermesAttachment } from "@/lib/hermes/client.js";
 
-/** Extract text from PDF attachments (server-side via unpdf) so the agent reads them. */
-async function resolvePdfs(attachments: HermesAttachment[]): Promise<HermesAttachment[]> {
+/** Extract text from PDF (unpdf) + Office docx/xlsx/pptx (officeparser) uploads,
+ *  server-side, so the agent reads them like any text file. */
+async function resolveDocs(attachments: HermesAttachment[]): Promise<HermesAttachment[]> {
   return Promise.all(
     attachments.map(async (a) => {
-      if (a.kind !== "pdf") return a;
+      if (a.kind !== "pdf" && a.kind !== "office") return a;
       try {
         const b64 = a.content.includes(",") ? a.content.slice(a.content.indexOf(",") + 1) : a.content;
-        const bytes = new Uint8Array(Buffer.from(b64, "base64"));
-        const { extractText, getDocumentProxy } = await import("unpdf");
-        const pdf = await getDocumentProxy(bytes);
-        const { text } = await extractText(pdf, { mergePages: true });
-        const joined = (Array.isArray(text) ? text.join("\n") : text).trim();
+        const buf = Buffer.from(b64, "base64");
+        let text: string;
+        if (a.kind === "pdf") {
+          const { extractText, getDocumentProxy } = await import("unpdf");
+          const pdf = await getDocumentProxy(new Uint8Array(buf));
+          const r = await extractText(pdf, { mergePages: true });
+          text = Array.isArray(r.text) ? r.text.join("\n") : r.text;
+        } else {
+          const { OfficeParser } = await import("officeparser");
+          const ast = await OfficeParser.parseOffice(buf);
+          text = ast.toText();
+        }
+        const joined = (text ?? "").trim();
         return joined
           ? { ...a, content: joined.slice(0, 200_000) }
           : { ...a, kind: "unsupported" as const, content: "" };
@@ -46,7 +55,9 @@ function sanitizeAttachments(raw: unknown): HermesAttachment[] {
     if (!a || typeof a !== "object") continue;
     const o = a as Record<string, unknown>;
     const kind =
-      o.kind === "image" || o.kind === "text" || o.kind === "pdf" || o.kind === "unsupported" ? o.kind : null;
+      o.kind === "image" || o.kind === "text" || o.kind === "pdf" || o.kind === "office" || o.kind === "unsupported"
+        ? o.kind
+        : null;
     if (!kind) continue;
     const content = typeof o.content === "string" ? o.content.slice(0, 8_000_000) : "";
     out.push({
@@ -144,7 +155,7 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
 
     const userText = latestUserText(parsed.data.messages);
     // Uploaded files ride in the request body (not the AI-SDK message schema).
-    const attachments = await resolvePdfs(sanitizeAttachments((body as { attachments?: unknown }).attachments));
+    const attachments = await resolveDocs(sanitizeAttachments((body as { attachments?: unknown }).attachments));
     if (!userText && !attachments.length) return c.json({ error: "No user message" }, 400);
 
     const titleBasis = userText || (attachments.length ? `Uploaded ${attachments.map((a) => a.name).join(", ")}` : "");

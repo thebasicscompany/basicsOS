@@ -19,8 +19,8 @@ export function buildSessionKey(userId: string | number, threadId: string | numb
 export interface HermesAttachment {
   name: string;
   mediaType: string;
-  kind: "image" | "text" | "pdf" | "unsupported";
-  content: string; // image/pdf: data URL; text: file text; unsupported: ""
+  kind: "image" | "text" | "pdf" | "office" | "unsupported";
+  content: string; // image/pdf/office: data URL (extracted server-side); text: file text
 }
 
 export interface HermesTurnOptions {
@@ -41,7 +41,7 @@ function buildUserContent(message: string, attachments?: HermesAttachment[]): Us
   if (!attachments?.length) return message;
   let text = message;
   for (const a of attachments) {
-    if (a.kind === "text" || a.kind === "pdf") text += `\n\n--- Attached file: ${a.name} ---\n${a.content}`;
+    if (a.kind === "text" || a.kind === "pdf" || a.kind === "office") text += `\n\n--- Attached file: ${a.name} ---\n${a.content}`;
     else if (a.kind === "unsupported") text += `\n\n[The user attached "${a.name}" (${a.mediaType}); you can't read this file type yet — tell them so.]`;
   }
   const images = attachments.filter((a) => a.kind === "image" && a.content);

@@ -16,6 +16,28 @@ import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
 import { buildSessionKey, streamHermesText, HermesError, type HermesAttachment } from "@/lib/hermes/client.js";
 
+/** Extract text from PDF attachments (server-side via unpdf) so the agent reads them. */
+async function resolvePdfs(attachments: HermesAttachment[]): Promise<HermesAttachment[]> {
+  return Promise.all(
+    attachments.map(async (a) => {
+      if (a.kind !== "pdf") return a;
+      try {
+        const b64 = a.content.includes(",") ? a.content.slice(a.content.indexOf(",") + 1) : a.content;
+        const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+        const { extractText, getDocumentProxy } = await import("unpdf");
+        const pdf = await getDocumentProxy(bytes);
+        const { text } = await extractText(pdf, { mergePages: true });
+        const joined = (Array.isArray(text) ? text.join("\n") : text).trim();
+        return joined
+          ? { ...a, content: joined.slice(0, 200_000) }
+          : { ...a, kind: "unsupported" as const, content: "" };
+      } catch {
+        return { ...a, kind: "unsupported" as const, content: "" };
+      }
+    }),
+  );
+}
+
 /** Validate/cap attachments from the request body (defensive — client-supplied). */
 function sanitizeAttachments(raw: unknown): HermesAttachment[] {
   if (!Array.isArray(raw)) return [];
@@ -23,7 +45,8 @@ function sanitizeAttachments(raw: unknown): HermesAttachment[] {
   for (const a of raw.slice(0, 6)) {
     if (!a || typeof a !== "object") continue;
     const o = a as Record<string, unknown>;
-    const kind = o.kind === "image" || o.kind === "text" || o.kind === "unsupported" ? o.kind : null;
+    const kind =
+      o.kind === "image" || o.kind === "text" || o.kind === "pdf" || o.kind === "unsupported" ? o.kind : null;
     if (!kind) continue;
     const content = typeof o.content === "string" ? o.content.slice(0, 8_000_000) : "";
     out.push({
@@ -121,10 +144,11 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
 
     const userText = latestUserText(parsed.data.messages);
     // Uploaded files ride in the request body (not the AI-SDK message schema).
-    const attachments = sanitizeAttachments((body as { attachments?: unknown }).attachments);
+    const attachments = await resolvePdfs(sanitizeAttachments((body as { attachments?: unknown }).attachments));
     if (!userText && !attachments.length) return c.json({ error: "No user message" }, 400);
 
-    const threadId = await ensureThread(db, crmUser, parsed.data.threadId, parsed.data.channel);
+    const titleBasis = userText || (attachments.length ? `Uploaded ${attachments.map((a) => a.name).join(", ")}` : "");
+    const threadId = await ensureThread(db, crmUser, parsed.data.threadId, parsed.data.channel, titleBasis);
     await persistMessage(
       db,
       threadId,

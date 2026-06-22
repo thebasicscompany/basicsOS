@@ -278,6 +278,38 @@ function iconForAttachment(mediaType?: string, name?: string): Icon {
   return FileIcon;
 }
 
+// Renders uploaded files inside a sent user message bubble (image thumbnails,
+// type chips), from the message's experimental_attachments.
+function MessageAttachments({
+  message,
+}: {
+  message: { experimental_attachments?: Array<{ name?: string; contentType?: string; url?: string }> };
+}) {
+  const atts = message.experimental_attachments;
+  if (!atts?.length) return null;
+  return (
+    <div className="not-prose mb-2 flex flex-wrap gap-2">
+      {atts.map((a, i) => {
+        const name = a.name || "file";
+        const isImage = (a.contentType || "").startsWith("image/") && !!a.url;
+        const Icon = iconForAttachment(a.contentType, name);
+        return isImage ? (
+          <img key={i} src={a.url} alt={name} className="size-16 rounded-md border object-cover" />
+        ) : (
+          <span
+            key={i}
+            className="inline-flex max-w-[200px] items-center gap-1.5 rounded-md border bg-surface-card px-2 py-1 text-[12px]"
+            title={name}
+          >
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{name}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function PromptInputAttachmentsDisplay() {
   const attachments = usePromptInputAttachments();
   if (attachments.files.length === 0) return null;
@@ -446,14 +478,19 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
               const blob = await (await fetch(f.url)).blob();
               const name = f.filename || "file";
               const mediaType = f.mediaType || blob.type || "application/octet-stream";
-              if (mediaType.startsWith("image/")) {
-                const dataUrl: string = await new Promise((res, rej) => {
+              const toDataUrl = () =>
+                new Promise<string>((res, rej) => {
                   const r = new FileReader();
                   r.onload = () => res(r.result as string);
                   r.onerror = rej;
                   r.readAsDataURL(blob);
                 });
-                return { name, mediaType, kind: "image" as const, content: dataUrl };
+              if (mediaType.startsWith("image/")) {
+                return { name, mediaType, kind: "image" as const, content: await toDataUrl() };
+              }
+              if (mediaType === "application/pdf" || name.toLowerCase().endsWith(".pdf")) {
+                // server extracts the text via unpdf
+                return { name, mediaType, kind: "pdf" as const, content: await toDataUrl() };
               }
               const texty =
                 mediaType.startsWith("text/") ||
@@ -470,7 +507,20 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
           }),
         )
       ).filter(Boolean);
-      append({ role: "user", content: text }, { body: { attachments } });
+      // experimental_attachments puts the files ON the message so they render in
+      // the user's bubble; the body.attachments carry the full content to the server.
+      append(
+        {
+          role: "user",
+          content: text,
+          experimental_attachments: files.map((f) => ({
+            name: f.filename ?? "file",
+            contentType: f.mediaType,
+            url: f.url ?? "",
+          })),
+        },
+        { body: { attachments } },
+      );
     },
     [append],
   );
@@ -610,6 +660,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
               >
                 <MessageEl from={m.role as "user" | "assistant"}>
                   <MessageContent>
+                    <MessageAttachments message={m} />
                     <EntityAwareMessageResponse
                       animated={
                         m.role === "assistant"

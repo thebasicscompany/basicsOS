@@ -10,11 +10,19 @@ import {
 const THREAD_ENTITY_MEMORY_KIND = "entity_state";
 const THREAD_ENTITY_MEMORY_KEY = "thread_entities";
 
+/** A short thread title from the first user message (first line, ~60 chars). */
+function titleFromMessage(text?: string): string | undefined {
+  const t = text?.trim().split("\n")[0].trim();
+  if (!t) return undefined;
+  return t.length > 60 ? `${t.slice(0, 57)}…` : t;
+}
+
 export async function ensureThread(
   db: Db,
   crmUser: typeof schema.crmUsers.$inferSelect,
   threadIdRaw?: string,
   channelRaw?: string,
+  firstMessage?: string,
 ): Promise<string> {
   if (!crmUser.organizationId) throw new Error("Organization not found");
   const channel =
@@ -35,12 +43,14 @@ export async function ensureThread(
     if (existing[0]) return id;
   }
 
+  const title = titleFromMessage(firstMessage);
   const [inserted] = await db
     .insert(schema.aiThreads)
     .values({
       crmUserId: crmUser.id,
       organizationId: crmUser.organizationId,
       channel,
+      ...(title ? { title } : {}),
     })
     .returning({ id: schema.aiThreads.id });
 

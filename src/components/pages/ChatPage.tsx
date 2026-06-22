@@ -11,6 +11,10 @@ import {
   EnvelopeSimpleIcon,
   ArrowSquareOutIcon,
   FileIcon,
+  FileTextIcon,
+  FileCsvIcon,
+  FilePdfIcon,
+  XIcon,
   type Icon,
 } from "@phosphor-icons/react";
 import { FileViewer, type ViewerFile } from "@/components/chat/FileViewer";
@@ -18,12 +22,6 @@ import type { Message } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePageTitle } from "@/contexts/page-header";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import {
-  Attachment,
-  AttachmentPreview,
-  AttachmentRemove,
-  Attachments,
-} from "@/components/ai-elements/attachments";
 import {
   Conversation,
   ConversationContent,
@@ -271,22 +269,51 @@ function EntityAwareMessageResponse({
   );
 }
 
+function iconForAttachment(mediaType?: string, name?: string): Icon {
+  const m = mediaType || "";
+  const n = (name || "").toLowerCase();
+  if (m === "application/pdf" || n.endsWith(".pdf")) return FilePdfIcon;
+  if (m === "text/csv" || n.endsWith(".csv")) return FileCsvIcon;
+  if (m.startsWith("text/") || /\.(md|markdown|txt|json|log|ya?ml|html?|xml|js|ts|py|sql)$/.test(n)) return FileTextIcon;
+  return FileIcon;
+}
+
 function PromptInputAttachmentsDisplay() {
   const attachments = usePromptInputAttachments();
   if (attachments.files.length === 0) return null;
   return (
-    <Attachments variant="inline">
-      {attachments.files.map((attachment) => (
-        <Attachment
-          data={attachment}
-          key={attachment.id}
-          onRemove={() => attachments.remove(attachment.id)}
-        >
-          <AttachmentPreview />
-          <AttachmentRemove />
-        </Attachment>
-      ))}
-    </Attachments>
+    <div className="flex flex-wrap gap-2 px-1 pb-1">
+      {attachments.files.map((a) => {
+        const data = a as { id: string; url?: string; filename?: string; mediaType?: string };
+        const name = data.filename || "file";
+        const isImage = (data.mediaType || "").startsWith("image/") && !!data.url;
+        const Icon = iconForAttachment(data.mediaType, name);
+        return (
+          <div
+            key={data.id}
+            className="group relative flex max-w-[220px] items-center gap-2 rounded-[--surface-card-radius] border bg-surface-card py-1.5 pl-1.5 pr-7"
+            title={name}
+          >
+            {isImage ? (
+              <img src={data.url} alt={name} className="size-9 shrink-0 rounded-md object-cover" />
+            ) : (
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Icon className="size-4 text-muted-foreground" />
+              </span>
+            )}
+            <span className="truncate text-[12px] font-medium">{name}</span>
+            <button
+              type="button"
+              aria-label={`Remove ${name}`}
+              onClick={() => attachments.remove(data.id)}
+              className="absolute right-1 top-1 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-surface-hover group-hover:opacity-100"
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

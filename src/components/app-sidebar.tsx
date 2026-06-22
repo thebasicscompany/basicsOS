@@ -273,14 +273,17 @@ function ChatThreadsNav() {
 
 function AutomationsNav() {
   const { pathname } = useLocation();
+  const { state } = useSidebar();
   const isActive =
     pathname === ROUTES.AUTOMATIONS ||
     pathname.startsWith(ROUTES.AUTOMATIONS + "/");
   const [open, setOpen] = useState(true);
+  // Keep the item visible in the collapsed icon rail regardless of group state.
+  const effectiveOpen = state === "collapsed" ? true : open;
 
   return (
     <Collapsible
-      open={open}
+      open={effectiveOpen}
       onOpenChange={setOpen}
       className="group/collapsible"
     >

@@ -112,7 +112,7 @@ async function deliverRunArtifacts(
   if (!attachments.length) return;
 
   const names = attachments.map((a) => a.filename).join(", ");
-  console.log(`[artifact-delivery] emailing ${attachments.length} file(s) (${names}) to ${to} for automation ${ruleKey}`);
+  console.warn(`[artifact-delivery] emailing ${attachments.length} file(s) (${names}) to ${to} for automation ${ruleKey}`);
   const res = await fetch(`${env.BASICSOS_API_URL}/v1/email/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },

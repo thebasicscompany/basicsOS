@@ -1,6 +1,5 @@
 import {
   DotsThreeIcon,
-  PlusIcon,
   ClockIcon,
   LightningIcon,
   RobotIcon,

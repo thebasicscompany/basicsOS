@@ -22,7 +22,7 @@ const isValidTz = (tz: string): boolean => {
   }
 };
 
-export function createMeRoutes(db: Db, auth: Auth, env: Env) {
+export function createMeRoutes(db: Db, auth: Auth, _env: Env) {
   const app = new Hono();
 
   /** Effective timezone (the user's, the org default, and what actually applies). */

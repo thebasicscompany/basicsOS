@@ -43,10 +43,7 @@ import { useEmailSyncStatus } from "@/hooks/use-email-sync";
 import { SuggestedContactsSheet } from "@/components/email-sync/SuggestedContactsSheet";
 import { FindFromEmailDialog } from "@/components/email-sync/FindFromEmailDialog";
 import { SparkleIcon, XIcon, BuildingsIcon } from "@phosphor-icons/react";
-import {
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from "@/components/ui/context-menu";
+import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
 
 /* ------------------------------------------------------------------ */

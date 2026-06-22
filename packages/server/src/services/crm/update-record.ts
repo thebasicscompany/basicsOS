@@ -143,6 +143,8 @@ export async function updateRecordService(
         dealName: updated.name ?? null,
         oldStatus: oldDealStatus,
         newStatus: updated.status,
+        amount: updated.amount ?? null, // enables automation filters like amount > 50000
+        companyId: updated.companyId ?? null,
       },
       crmUserId,
     ).catch(() => {});

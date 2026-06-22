@@ -13,17 +13,33 @@ import { reloadRule, triggerRunNow } from "@/lib/automation-engine.js";
 import type { BrokerTool } from "@/mcp-broker/protocol.js";
 import { BrokerError } from "@/mcp-broker/protocol.js";
 
+interface TriggerFilter {
+  field: string;
+  op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "contains";
+  value: unknown;
+}
 interface CreateInput {
   name: string;
   prompt: string;
   cron?: string;
   event?: string;
+  recordId?: number; // scope an event automation to a single record (e.g. one deal)
+  filter?: TriggerFilter; // only run when the event payload matches this predicate
 }
 
 function buildWorkflowDefinition(input: CreateInput) {
   const trigger = input.cron
     ? { id: "trigger", type: "trigger_schedule", position: { x: 0, y: 0 }, data: { cron: input.cron } }
-    : { id: "trigger", type: "trigger_event", position: { x: 0, y: 0 }, data: { event: input.event } };
+    : {
+        id: "trigger",
+        type: "trigger_event",
+        position: { x: 0, y: 0 },
+        data: {
+          event: input.event,
+          ...(input.recordId != null ? { recordId: input.recordId } : {}),
+          ...(input.filter ? { filter: input.filter } : {}),
+        },
+      };
   return {
     nodes: [
       trigger,
@@ -48,12 +64,35 @@ async function ownRule(db: Db, orgId: string, crmUserId: number, id: number) {
   return rule ?? null;
 }
 
+// Shared schema for the optional record-scope / filter on event automations.
+const SCOPE_PROPS = {
+  recordId: { type: "integer", description: "scope to a single record id (e.g. one specific deal)" },
+  filter: {
+    type: "object",
+    description: 'only run when the event payload matches, e.g. {field:"newStatus",op:"eq",value:"won"} or {field:"amount",op:"gt",value:50000}',
+    properties: {
+      field: { type: "string" },
+      op: { type: "string", enum: ["eq", "ne", "gt", "gte", "lt", "lte", "in", "contains"] },
+      value: {},
+    },
+    required: ["field", "op", "value"],
+    additionalProperties: false,
+  },
+} as const;
+
+function parseFilter(raw: unknown): TriggerFilter | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.field !== "string" || typeof o.op !== "string") return undefined;
+  return { field: o.field, op: o.op as TriggerFilter["op"], value: o.value };
+}
+
 export function buildAutomationTools(db: Db): BrokerTool[] {
   return [
     {
       name: "automation.create",
       description:
-        "Create a scheduled or event-triggered automation owned by the current user. Provide a name, a `cron` schedule (5-field cron, e.g. \"0 9 * * 1\" = every Monday 9am — fires in the user's timezone) OR an `event`, and a natural-language `prompt` describing what the agent should do each time (it runs with the user's CRM tools + connections).",
+        "Create a scheduled or event-triggered automation owned by the current user. Provide a name, a `cron` schedule (5-field cron, e.g. \"0 9 * * 1\" = every Monday 9am — fires in the user's timezone) OR an `event`, and a natural-language `prompt`. For event automations you can SCOPE it: `recordId` ties it to one record (e.g. a specific deal), and/or `filter` only runs when the payload matches (e.g. only when a deal is won, or its amount > 50000). deal.stage_changed payload fields: dealId, newStatus, oldStatus, amount, companyId.",
       inputSchema: {
         type: "object",
         properties: {
@@ -61,6 +100,7 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
           prompt: { type: "string", description: "what to do each run, e.g. 'summarize my open deals and email me'" },
           cron: { type: "string", description: "5-field cron in the user's timezone, e.g. 0 9 * * 1" },
           event: { type: "string", description: "alternative to cron: an event name to trigger on" },
+          ...SCOPE_PROPS,
         },
         required: ["name", "prompt"],
         additionalProperties: false,
@@ -71,9 +111,11 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
         const prompt = String(args.prompt ?? "").trim();
         const cron = args.cron ? String(args.cron).trim() : undefined;
         const event = args.event ? String(args.event).trim() : undefined;
+        const recordId = args.recordId != null ? Number(args.recordId) : undefined;
+        const filter = parseFilter(args.filter);
         if (!name || !prompt) throw new BrokerError("VALIDATION", "`name` and `prompt` are required.");
         if (!cron && !event) throw new BrokerError("VALIDATION", "Provide a `cron` schedule or an `event`.");
-        const workflowDefinition = buildWorkflowDefinition({ name, prompt, cron, event });
+        const workflowDefinition = buildWorkflowDefinition({ name, prompt, cron, event, recordId, filter });
         const [rule] = await db
           .insert(schema.automationRules)
           .values({
@@ -85,13 +127,13 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
           })
           .returning();
         await reloadRule(rule.id); // register the schedule (in the user's tz)
-        return { created: { id: rule.id, name, cron, event, prompt, enabled: true } };
+        return { created: { id: rule.id, name, cron, event, recordId, filter, prompt, enabled: true } };
       },
     },
     {
       name: "automation.update",
       description:
-        "Edit one of the current user's automations from chat — change its `name`, schedule (`cron`), `event`, the `prompt` (what it does each run), and/or `enabled`. Pass only the fields to change (e.g. cron to reschedule). Giving a cron clears any event and vice-versa.",
+        "Edit one of the current user's automations from chat — change its `name`, schedule (`cron`), `event`, `recordId`/`filter` scope, the `prompt`, and/or `enabled`. Pass only the fields to change. Giving a cron clears any event and vice-versa.",
       inputSchema: {
         type: "object",
         properties: {
@@ -101,6 +143,7 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
           event: { type: "string", description: "new event name (alternative to cron)" },
           prompt: { type: "string", description: "new instructions for what it does each run" },
           enabled: { type: "boolean" },
+          ...SCOPE_PROPS,
         },
         required: ["id"],
         additionalProperties: false,
@@ -114,8 +157,9 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
           nodes?: Array<{ type?: string; data?: Record<string, unknown> }>;
         };
         const nodes = def.nodes ?? [];
+        const evNode = nodes.find((n) => n.type === "trigger_event")?.data ?? {};
         const curCron = nodes.find((n) => n.type === "trigger_schedule")?.data?.cron as string | undefined;
-        const curEvent = nodes.find((n) => n.type === "trigger_event")?.data?.event as string | undefined;
+        const curEvent = evNode.event as string | undefined;
         const curPrompt = nodes.find((n) => n.type === "action_ai_agent")?.data?.prompt as string | undefined;
 
         const name = args.name != null ? String(args.name).trim() : rule.name;
@@ -127,15 +171,19 @@ export function buildAutomationTools(db: Db): BrokerTool[] {
         if (args.event != null) cron = undefined;
         if (!cron && !event) throw new BrokerError("VALIDATION", "Automation needs a `cron` schedule or an `event`.");
         if (!prompt) throw new BrokerError("VALIDATION", "Automation needs a `prompt`.");
+        // Preserve or update record-scope/filter (only meaningful for event triggers).
+        const recordId =
+          "recordId" in args ? (args.recordId != null ? Number(args.recordId) : undefined) : (evNode.recordId as number | undefined);
+        const filter = "filter" in args ? parseFilter(args.filter) : (evNode.filter as TriggerFilter | undefined);
 
-        const workflowDefinition = buildWorkflowDefinition({ name, prompt, cron, event });
+        const workflowDefinition = buildWorkflowDefinition({ name, prompt, cron, event, recordId, filter });
         const enabled = typeof args.enabled === "boolean" ? args.enabled : rule.enabled;
         await db
           .update(schema.automationRules)
           .set({ name, workflowDefinition, enabled })
           .where(eq(schema.automationRules.id, id));
         await reloadRule(id); // re-register the schedule (handles cron/tz/enable changes)
-        return { updated: { id, name, cron, event, prompt, enabled } };
+        return { updated: { id, name, cron, event, recordId, filter, prompt, enabled } };
       },
     },
     {

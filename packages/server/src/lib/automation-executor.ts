@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { readdirSync, statSync, readFileSync } from "node:fs";
+import { readdirSync, statSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
@@ -56,6 +56,16 @@ function listArtifacts(env: Env, ruleKey: string): string[] {
     });
   } catch {
     return [];
+  }
+}
+
+/** Remove a per-run artifact dir after its files have been delivered. */
+function cleanupArtifacts(env: Env, ruleKey: string): void {
+  if (!env.HERMES_ARTIFACTS_DIR) return;
+  try {
+    rmSync(join(env.HERMES_ARTIFACTS_DIR, `automation-${ruleKey}`), { recursive: true, force: true });
+  } catch {
+    /* best-effort */
   }
 }
 
@@ -126,6 +136,7 @@ export async function executeWorkflow(
   db: Db,
   env: Env,
   ruleId?: number,
+  runId?: number,
 ): Promise<Record<string, unknown>> {
   const { nodes, edges } = workflowDef;
 
@@ -258,14 +269,17 @@ export async function executeWorkflow(
           context.ai_agent_result = { error: "agentic step has no prompt" };
           break;
         }
-        const ruleKey = String(ruleId ?? "adhoc");
-        const filesBefore = new Set(listArtifacts(env, ruleKey)); // snapshot for the artifact diff
-        const sessionKey = buildSessionKey(crmUser.id, `automation-${ruleKey}`);
+        // Each run gets a FRESH session (per-run key) so the agent never carries
+        // memory across firings — no "I already did that" skips, no context bloat.
+        const runKey = runId != null ? `${ruleId ?? "adhoc"}-${runId}` : String(ruleId ?? "adhoc");
+        const sessionKey = buildSessionKey(crmUser.id, `automation-${runKey}`);
         const text = await hermesComplete({ env, sessionKey, message: prompt });
         context.ai_agent_result = text;
-        // Deliver any files the run generated to the owner (headless runs have no
-        // download surface). Best-effort — never fail the run on a delivery error.
-        await deliverRunArtifacts(db, env, apiKey, crmUser.id, ruleKey, filesBefore).catch(() => {});
+        // The per-run artifact dir starts empty, so every file is new. Deliver them
+        // to the owner (headless runs have no download surface), then clean up the
+        // dir so disk doesn't grow. Best-effort — never fail the run on these.
+        await deliverRunArtifacts(db, env, apiKey, crmUser.id, runKey, new Set()).catch(() => {});
+        cleanupArtifacts(env, runKey);
         if (crmUser.organizationId) {
           writeUsageLogSafe(db, {
             organizationId: crmUser.organizationId,

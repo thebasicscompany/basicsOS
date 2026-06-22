@@ -306,6 +306,7 @@ async function runAutomation(
       _db!,
       _env!,
       ruleId,
+      run.id as number,
     );
 
     await db

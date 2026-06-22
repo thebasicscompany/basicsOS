@@ -15,6 +15,7 @@ import { createConnectionsRoutes } from "@/routes/connections.js";
 import { createGatewayChatRoutes } from "@/routes/gateway-chat.js";
 import { createAgentChatRoutes } from "@/routes/agent-chat.js";
 import { createFilesRoutes } from "@/routes/files.js";
+import { createMeRoutes } from "@/routes/me.js";
 import { createObjectConfigRoutes } from "@/routes/object-config.js";
 import { createSchemaRoutes } from "@/routes/schema.js";
 import { createViewRoutes } from "@/routes/views.js";
@@ -189,6 +190,9 @@ export function createApp(db: Db, env: Env) {
 
   // Download files the agent generated (per-thread, ownership-scoped).
   app.route("/api/files", createFilesRoutes(db, auth, env));
+
+  // Per-user / org timezone (for scheduled automations).
+  app.route("/api/me", createMeRoutes(db, auth, env));
 
   // Thread list & message history
   app.route("/api/threads", createThreadsRoutes(db, auth, env));

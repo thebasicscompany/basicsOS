@@ -15,6 +15,9 @@ import {
   FileCsvIcon,
   FilePdfIcon,
   XIcon,
+  MagnifyingGlassIcon,
+  ChatCircleIcon,
+  MicrophoneIcon,
   type Icon,
 } from "@phosphor-icons/react";
 import { FileViewer, type ViewerFile } from "@/components/chat/FileViewer";
@@ -52,7 +55,8 @@ import {
 import { usePromptInputAttachments, useOptionalPromptInputController } from "@/components/ai-elements/prompt-input-context";
 import { useGatewayChat } from "@/hooks/useGatewayChat";
 import { useGateway } from "@/hooks/useGateway";
-import { useThreadMessages } from "@/hooks/use-threads";
+import { useThreadMessages, useThreads } from "@/hooks/use-threads";
+import { Input } from "@/components/ui/input";
 import { useRecords } from "@/hooks/use-records";
 
 function getTextContent(msg: {
@@ -379,6 +383,66 @@ function useRecentHint() {
   }, [deals.data, tasks.data]);
 }
 
+function relativeChatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  return d < 7 ? `${d}d` : new Date(iso).toLocaleDateString();
+}
+
+/** Searchable list of the user's chats, shown on the main chat landing. */
+function RecentChatsHub() {
+  const navigate = useNavigate();
+  const { data: threads } = useThreads(100);
+  const [q, setQ] = useState("");
+  const all = (threads ?? []).filter((t) => t.channel === "chat" || t.channel === "voice");
+  if (all.length === 0) return null;
+  const query = q.trim().toLowerCase();
+  const filtered = query ? all.filter((t) => (t.title ?? "Untitled").toLowerCase().includes(query)) : all;
+  return (
+    <div className="w-full max-w-xl space-y-2 text-left">
+      <h2 className="text-[13px] font-medium text-muted-foreground">Your chats</h2>
+      <div className="relative">
+        <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search your chats…"
+          className="h-9 pl-8"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+      <div className="max-h-72 space-y-0.5 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <p className="px-1 py-2 text-xs text-muted-foreground">No chats match “{q}”.</p>
+        ) : (
+          filtered.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => navigate(`/chat/${t.id}`)}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover"
+            >
+              {t.channel === "voice" ? (
+                <MicrophoneIcon className="size-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChatCircleIcon className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">{t.title ?? "Untitled"}</span>
+              <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{relativeChatTime(t.updatedAt)}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChatPageInner({ threadId }: { threadId?: string }) {
   const { hasKey } = useGateway();
   const recentHint = useRecentHint();
@@ -583,8 +647,8 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
 
   if (isEmpty && isIdle) {
     return (
-      <div className="flex h-full flex-col items-center justify-center overflow-hidden">
-        <div className="-mt-24 flex w-full max-w-2xl flex-col items-center gap-5 px-6">
+      <div className="flex h-full flex-col overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-5 px-6 py-10">
           <div className="text-center">
             <h1 className="text-3xl font-semibold text-foreground">
               What can I help with?
@@ -644,6 +708,7 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
               ))}
             </div>
           )}
+          {hasKey && <RecentChatsHub />}
         </div>
       </div>
     );

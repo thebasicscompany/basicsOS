@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NavUser } from "@/components/nav-user";
 import { ObjectRegistryNavSection } from "@/components/ObjectRegistryNavSection";
@@ -59,32 +60,39 @@ const CHAT_PREVIEW_COUNT = 3;
 
 function AllChatsPopover({
   threads,
+  overflowCount,
   open,
   onOpenChange,
 }: {
   threads: Array<{ id: string; title: string | null; channel: string }>;
+  overflowCount: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? threads.filter((t) => (t.title ?? "Untitled").toLowerCase().includes(q))
+    : threads;
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setQuery(""); }}>
       <PopoverTrigger asChild>
         <button
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          title="All chats"
+          title="Search all chats"
         >
           <DotsThreeIcon className="size-3.5" />
-          <span>+{threads.length} more</span>
+          <span>+{overflowCount} more</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
         side="right"
         align="end"
         sideOffset={8}
-        className="w-56 p-0 overflow-hidden"
+        className="w-64 p-0 overflow-hidden"
       >
         <div className="flex items-center justify-between border-b px-3 py-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -103,8 +111,22 @@ function AllChatsPopover({
             <PlusIcon className="size-3.5" />
           </Button>
         </div>
+        <div className="border-b p-2">
+          <Input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search chats…"
+            className="h-8 text-xs"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
         <div className="max-h-64 overflow-y-auto overscroll-contain py-1">
-          {threads.map((thread) => {
+          {filtered.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">No chats match.</p>
+          )}
+          {filtered.map((thread) => {
             const threadPath = `/chat/${thread.id}`;
             const isActive = pathname === threadPath;
             const isVoice = thread.channel === "voice";
@@ -138,6 +160,7 @@ function AllChatsPopover({
 
 function ChatThreadsNav() {
   const { pathname } = useLocation();
+  const { state } = useSidebar();
   const { data: threads } = useThreads(50);
   const allThreads = (threads ?? []).filter(
     (t) => t.channel === "chat" || t.channel === "voice",
@@ -147,6 +170,27 @@ function ChatThreadsNav() {
   const hasMore = overflowThreads.length > 0;
   const isOnChat = pathname === "/chat" || pathname.startsWith("/chat/");
   const [popoverOpen, setPopoverOpen] = useState(false);
+
+  // Collapsed (icon rail): a single Chat entry — never the individual threads or
+  // the "+N more" overflow (which would spill raw text into the rail).
+  if (state === "collapsed") {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isOnChat} tooltip="Chats">
+                <Link to="/chat">
+                  <ChatCircleIcon className="size-4" />
+                  <span>Chats</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
 
   return (
     <SidebarGroup>
@@ -211,7 +255,8 @@ function ChatThreadsNav() {
                 <SidebarMenuItem>
                   <div className="px-2 py-0.5">
                     <AllChatsPopover
-                      threads={overflowThreads}
+                      threads={allThreads}
+                      overflowCount={overflowThreads.length}
                       open={popoverOpen}
                       onOpenChange={setPopoverOpen}
                     />

@@ -255,7 +255,7 @@ export function ColumnsPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
-        <div className="px-3 py-2 border-b">
+        <div className="px-4 py-3 border-b">
           <p className="text-xs font-medium text-muted-foreground">
             {visibleCount} of {totalCount} columns visible
           </p>
@@ -283,7 +283,7 @@ export function ColumnsPopover({
           </DndContext>
         </div>
         {onAddColumn && (
-          <div className="border-t px-3 py-2">
+          <div className="border-t px-4 py-3">
             <Button
               variant="ghost"
               size="sm"

@@ -134,7 +134,7 @@ export function SortPopover({
       }}
     >
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-3">
+      <PopoverContent align="start" className="w-80 p-4">
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-medium text-muted-foreground">Sort by</h4>
 

@@ -160,7 +160,7 @@ export function ConnectionsContent({
         </DialogContent>
       </Dialog>
 
-      <div className={compact ? "px-3 py-2" : "flex h-full flex-col py-4"}>
+      <div className={compact ? "px-4 py-3" : "flex h-full flex-col py-4"}>
         {!compact && (
           <div className="relative mb-4 max-w-md">
             <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -195,7 +195,7 @@ export function ConnectionsContent({
               return (
                 <div
                   key={appItem.app}
-                  className="flex items-center gap-3 rounded-[--surface-card-radius] border bg-surface-card p-3 transition-colors hover:bg-surface-hover"
+                  className="flex items-center gap-3 rounded-[--surface-card-radius] border bg-surface-card p-4 transition-colors hover:bg-surface-hover"
                 >
                   <AppLogo slug={appItem.app} name={appItem.name} />
                   <div className="min-w-0 flex-1">

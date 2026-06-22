@@ -773,7 +773,7 @@ export function SettingsPage() {
                     administrator. No action needed.
                   </p>
                 </div>
-                <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="rounded-lg border bg-muted/20 p-4">
                   <p className="text-[12px] text-muted-foreground">
                     AI chat, voice, and automations are active and managed at
                     the organization level.
@@ -1505,7 +1505,7 @@ export function SettingsPage() {
                 </div>
 
                 {inviteToken && (
-                  <div className="mt-4 rounded-lg border bg-muted/20 p-3">
+                  <div className="mt-6 rounded-lg border bg-muted/20 p-4">
                     <div className="space-y-2">
                       <Label className="text-[12px] text-muted-foreground">
                         Invite code
@@ -1674,7 +1674,7 @@ export function SettingsPage() {
             {isAdmin ? (
               <div className="space-y-4 max-w-lg">
                 {slackBotStatus?.configured && (
-                  <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
+                  <div className="flex items-center gap-3 rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3">
                     <span className="size-1.5 shrink-0 rounded-full bg-green-500" />
                     <span className="text-[12px] text-green-700 dark:text-green-400">
                       Slack bot is configured and active
@@ -1812,7 +1812,7 @@ export function SettingsPage() {
           </section>
 
           {hasPendingChanges && (
-            <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-3 backdrop-blur-sm sm:px-8">
+            <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-4 backdrop-blur-sm sm:px-8">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[12px] text-muted-foreground">
                   You have unsaved changes.

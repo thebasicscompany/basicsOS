@@ -106,7 +106,7 @@ export function ContactSheet({
             </SheetTitle>
           </SheetHeader>
 
-          <div className="space-y-3 py-3">
+          <div className="space-y-3 px-4 py-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-[12px]">First Name</Label>

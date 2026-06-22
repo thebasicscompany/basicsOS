@@ -9,6 +9,7 @@ import { useNavigate } from "react-router";
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getList, update, remove } from "basics-os/src/lib/api/crm";
+import { getRuntimeApiUrl } from "basics-os/src/lib/runtime-config";
 import {
   usePageTitle,
   usePageHeaderActions,
@@ -70,6 +71,17 @@ function getTriggerLabel(rule: AutomationRule): string {
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /** Best-effort plain-English schedule for the common cron shapes. */
+/** A short timezone label (e.g. "CST") for display next to a schedule. */
+function tzShort(tz?: string): string | null {
+  if (!tz) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date());
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? tz;
+  } catch {
+    return tz;
+  }
+}
+
 function cronToEnglish(cron: string): string {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 5) return cron;
@@ -128,6 +140,14 @@ export function AutomationListPage() {
   const [runsPanelRuleId, setRunsPanelRuleId] = useState<number | null>(null);
 
   const { data, isPending, isError } = useAutomationRules();
+  const { data: tz } = useQuery({
+    queryKey: ["me-timezone"],
+    queryFn: () =>
+      fetch(`${getRuntimeApiUrl()}/api/me/timezone`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => (d?.effective as string | undefined) ?? undefined),
+  });
+  const tzLabel = tzShort(tz);
   const updateRule = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<AutomationRule> }) =>
       update<AutomationRule>("automation_rules", id, data),
@@ -189,6 +209,11 @@ export function AutomationListPage() {
         )}
 
         {/* Card grid */}
+        {rules.length > 0 && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            Your automations{tzLabel ? ` — scheduled ones run in your timezone (${tzLabel})` : ""}.
+          </p>
+        )}
         {(isPending || rules.length > 0) && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {isPending
@@ -255,6 +280,7 @@ export function AutomationListPage() {
                         <Badge variant="secondary" className="mb-2 gap-1 text-[10px] font-normal">
                           {trigger.scheduled ? <ClockIcon className="size-3" /> : <LightningIcon className="size-3" />}
                           {trigger.label}
+                          {trigger.scheduled && tzLabel ? ` · ${tzLabel}` : ""}
                         </Badge>
                         <p className="flex items-start gap-1.5 text-[12px] leading-snug text-muted-foreground">
                           <RobotIcon className="mt-0.5 size-3.5 shrink-0" />

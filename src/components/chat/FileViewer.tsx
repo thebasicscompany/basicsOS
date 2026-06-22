@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { MarkdownContent } from "@/components/markdown-content";
+import { Streamdown } from "streamdown";
 import { getRuntimeApiUrl } from "@/lib/runtime-config";
 
 const API_URL = getRuntimeApiUrl();
@@ -114,7 +114,13 @@ function FileBody({
     return <iframe src={blobUrl} title={name} className="h-full min-h-[70vh] w-full rounded-md border" />;
   }
   if (e === "md" || e === "markdown") {
-    return <MarkdownContent>{text ?? ""}</MarkdownContent>;
+    // Streamdown self-styles markdown (headings, bullets, tables) — the project
+    // has no @tailwindcss/typography, so `prose` would be a no-op.
+    return (
+      <div className="text-sm leading-relaxed">
+        <Streamdown>{text ?? ""}</Streamdown>
+      </div>
+    );
   }
   if (e === "csv" && text != null) {
     return <CsvTable text={text} />;

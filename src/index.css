@@ -263,6 +263,14 @@ input[type="time"] {
   -webkit-app-region: no-drag;
 }
 
+/* The blurIn message animation sets pointer-events:none on content; keep
+   interactive elements (code-block copy/download buttons, links) clickable. */
+.chat-message-content button,
+.chat-message-content a,
+.chat-message-content [role="button"] {
+  pointer-events: auto;
+}
+
 /* CRM record links inside chat messages — rendered as <span> to avoid Electron navigation */
 .chat-message-content .crm-link {
   display: inline-flex;

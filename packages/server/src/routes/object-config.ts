@@ -14,6 +14,7 @@ import * as schema from "@/db/schema/index.js";
 import { eq, and, asc, or, isNull, inArray, sql } from "drizzle-orm";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { writeAuditLogSafe } from "@/lib/audit-log.js";
+import { notifyToolsListChanged } from "@/mcp-broker/tool-change-bus.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -218,6 +219,7 @@ export function createObjectConfigRoutes(
         metadata: { slug, tableName },
       });
 
+      notifyToolsListChanged(); // new grid → hermes re-fetches tools/list (no restart)
       return c.json(created, 201);
     } catch (err) {
       console.error("[object-config] create failed:", err);

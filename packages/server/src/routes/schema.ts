@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "@/middleware/auth.js";
 import type { Db } from "@/db/client.js";
 import type { createAuth } from "@/auth.js";
-import { sql, eq, asc, and, or, isNull } from "drizzle-orm";
+import { sql, eq, asc, and, or, isNull, inArray } from "drizzle-orm";
 import * as schema from "@/db/schema/index.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 
@@ -164,6 +164,9 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
     if (!orgId) return c.json({ error: "Organization not found" }, 404);
 
     const tableName = c.req.param("tableName");
+    // Custom-object field defs are stored under either the table name (object-
+    // create flow) or the slug (add-field modal); track the slug to match both.
+    let customSlug: string | null = null;
     if (!ALLOWED_TABLES.has(tableName)) {
       // Check if it's a custom object table registered in object_config
       const [customObj] = await db
@@ -182,6 +185,7 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
       if (!customObj) {
         return c.json({ error: "Table not found" }, 404);
       }
+      customSlug = customObj.slug;
     }
 
     const baseTable = tableName.replace("_summary", "");
@@ -241,13 +245,15 @@ export function createSchemaRoutes(db: Db, auth: BetterAuthInstance) {
       toNocoDBColumnShape(row, tableName, idx + 1),
     );
 
-    const resourceForCustom = baseTable;
+    // Match field defs stored under EITHER the table name or the slug (the two
+    // conventions across the codebase) so later-added custom fields show up.
+    const resourceKeys = customSlug ? [baseTable, customSlug] : [baseTable];
     const customRows = await db
       .select()
       .from(schema.customFieldDefs)
       .where(
         and(
-          eq(schema.customFieldDefs.resource, resourceForCustom),
+          inArray(schema.customFieldDefs.resource, resourceKeys),
           or(
             eq(schema.customFieldDefs.organizationId, orgId),
             isNull(schema.customFieldDefs.organizationId),

@@ -9,6 +9,7 @@ import * as schema from "@/db/schema/index.js";
 import type { Db } from "@/db/client.js";
 import type { createAuth } from "@/auth.js";
 import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
+import { notifyToolsListChanged } from "@/mcp-broker/tool-change-bus.js";
 
 type BetterAuthInstance = ReturnType<typeof createAuth>;
 
@@ -62,18 +63,32 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
     }
     const body = parsed.data;
     const safeName = body.name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    const [row] = await db
-      .insert(schema.customFieldDefs)
-      .values({
-        resource: body.resource,
-        name: safeName,
-        label: body.label,
-        fieldType: body.fieldType,
-        options: body.options ?? null,
-        organizationId: authz.crmUser.organizationId,
-      })
-      .returning();
-    return c.json(row, 201);
+    try {
+      const [row] = await db
+        .insert(schema.customFieldDefs)
+        .values({
+          resource: body.resource,
+          name: safeName,
+          label: body.label,
+          fieldType: body.fieldType,
+          options: body.options ?? null,
+          organizationId: authz.crmUser.organizationId,
+        })
+        .returning();
+      notifyToolsListChanged(); // field added → agent tool schema changed
+      return c.json(row, 201);
+    } catch (err) {
+      // UNIQUE (resource, name): a field with this name already exists on the object.
+      const code = (err as { code?: string })?.code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code === "23505" || /duplicate key|unique constraint/i.test(msg)) {
+        return c.json(
+          { error: `A field named "${safeName}" already exists on this object. Pick a different name.` },
+          409,
+        );
+      }
+      throw err;
+    }
   });
 
   app.patch("/:id", async (c) => {
@@ -175,6 +190,7 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
       }
     }
 
+    notifyToolsListChanged(); // field renamed / options changed → tool schema changed
     return c.json(updated);
   });
 
@@ -199,6 +215,7 @@ export function createCustomFieldRoutes(db: Db, auth: BetterAuthInstance) {
       )
       .returning();
     if (deleted.length === 0) return c.json({ error: "Not found" }, 404);
+    notifyToolsListChanged(); // field deleted → tool schema changed
     return c.json({ ok: true });
   });
 

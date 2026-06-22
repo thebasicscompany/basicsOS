@@ -4,7 +4,7 @@
 // so the agent reading all of the org's CRM is correct product behavior. Per-user
 // concerns (writes, connections, automations) are layered on later (M4+).
 
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import * as schema from "@/db/schema/index.js";
@@ -298,4 +298,107 @@ export async function recallContext(
       score: Number(r.score ?? 0),
     })),
   };
+}
+
+// ── Custom objects (dynamic grids: each has its own custom_<slug> table) ──────
+// These power the Broker's dynamically-generated object.{slug}.* tools, so a
+// company's custom grids are agent-usable with zero code changes (contract A.4.1).
+
+export interface CustomObjectInfo {
+  slug: string;
+  singular: string;
+  plural: string;
+  tableName: string;
+}
+
+/** Enumerate this org's active CUSTOM objects (those backed by their own custom_<slug> table). */
+export async function listCustomObjects(db: Db, orgId: string): Promise<CustomObjectInfo[]> {
+  const rows = await db
+    .select({
+      slug: schema.objectConfig.slug,
+      singular: schema.objectConfig.singularName,
+      plural: schema.objectConfig.pluralName,
+      tableName: schema.objectConfig.tableName,
+      isActive: schema.objectConfig.isActive,
+    })
+    .from(schema.objectConfig)
+    .where(or(eq(schema.objectConfig.organizationId, orgId), isNull(schema.objectConfig.organizationId)));
+  return rows
+    .filter((r) => r.isActive !== false && typeof r.tableName === "string" && r.tableName.startsWith("custom_"))
+    .map((r) => ({
+      slug: r.slug,
+      singular: r.singular ?? r.slug,
+      plural: r.plural ?? r.slug,
+      tableName: r.tableName as string,
+    }));
+}
+
+export interface CustomFieldInfo {
+  name: string;
+  label: string;
+  fieldType: string;
+  options: unknown;
+}
+
+/**
+ * Field defs for a custom object. The codebase stores `custom_field_defs.resource`
+ * inconsistently — the object-create flow uses the table name (`custom_<slug>`)
+ * while the add-field modal uses the slug — so match either.
+ */
+export async function listCustomFieldDefs(
+  db: Db,
+  orgId: string,
+  slug: string,
+  tableName: string,
+): Promise<CustomFieldInfo[]> {
+  const rows = await db
+    .select({
+      name: schema.customFieldDefs.name,
+      label: schema.customFieldDefs.label,
+      fieldType: schema.customFieldDefs.fieldType,
+      options: schema.customFieldDefs.options,
+    })
+    .from(schema.customFieldDefs)
+    .where(
+      and(
+        or(eq(schema.customFieldDefs.resource, slug), eq(schema.customFieldDefs.resource, tableName)),
+        or(eq(schema.customFieldDefs.organizationId, orgId), isNull(schema.customFieldDefs.organizationId)),
+      ),
+    );
+  return rows.map((r) => ({
+    name: r.name,
+    label: r.label ?? r.name,
+    fieldType: r.fieldType ?? "text",
+    options: r.options,
+  }));
+}
+
+function customRowsOf(result: unknown): Record<string, unknown>[] {
+  return (Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])) as Record<
+    string,
+    unknown
+  >[];
+}
+
+/** Free-text search over a custom object's table (matches name + any custom field value). */
+export async function searchCustomRecords(
+  db: Db,
+  orgId: string,
+  tableName: string,
+  query: string,
+  limit = SEARCH_LIMIT,
+): Promise<Record<string, unknown>[]> {
+  const table = sql.identifier(tableName);
+  const q = (query ?? "").trim();
+  if (!q) {
+    const r = await db.execute(
+      sql`SELECT * FROM ${table} WHERE organization_id = ${orgId} ORDER BY created_at DESC LIMIT ${limit}`,
+    );
+    return customRowsOf(r);
+  }
+  const like = `%${q}%`;
+  const r = await db.execute(
+    sql`SELECT * FROM ${table} WHERE organization_id = ${orgId} AND (name ILIKE ${like} OR custom_fields::text ILIKE ${like}) ORDER BY created_at DESC LIMIT ${limit}`,
+  );
+  return customRowsOf(r);
 }

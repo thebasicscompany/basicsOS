@@ -233,8 +233,20 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
           }
           if (assistantText.trim()) {
             await persistMessage(db, threadId, "assistant", assistantText);
+            controller.enqueue(encoder.encode(sdkPart("d", { finishReason: "stop" })));
+          } else {
+            // hermes returned 200 but produced no text/tools/files this turn —
+            // almost always a failed model call (gateway unreachable or missing a
+            // provider/API key). Surface a clear error instead of a silent "stop"
+            // that leaves the UI stuck on an empty "thinking" reply.
+            log.warn({ threadId, sessionKey }, "agent-chat: empty hermes turn — surfacing model-call failure");
+            controller.enqueue(
+              encoder.encode(
+                sdkPart("3", "No response from the model — check the BasicsOS gateway and your Basics API key, then try again."),
+              ),
+            );
+            controller.enqueue(encoder.encode(sdkPart("d", { finishReason: "error" })));
           }
-          controller.enqueue(encoder.encode(sdkPart("d", { finishReason: "stop" })));
         } catch (err) {
           log.error({ err, threadId }, "agent-chat stream failed");
           // Persist any partial reply so the thread isn't left dangling.

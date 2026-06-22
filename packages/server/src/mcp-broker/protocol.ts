@@ -83,11 +83,21 @@ export interface ToolCallContext {
 }
 
 export interface BrokerDeps {
-  tools: BrokerTool[];
+  /** static tool list (legacy/simple callers) */
+  tools?: BrokerTool[];
+  /** dynamic resolver: static tools + this org's custom-object tools (caller-cached).
+   *  Preferred over `tools`; lets newly-created custom grids become agent-usable (A.4.1). */
+  getTools?: () => Promise<BrokerTool[]>;
   /** resolve the acting context from a tools/call params._meta block */
   resolveContext: (meta: Record<string, unknown> | null) => Promise<ToolCallContext>;
   /** server-side error sink; raw errors are never returned to the caller/model */
   logError?: (err: unknown, context: string) => void;
+}
+
+/** The live tool set — dynamic resolver if provided, else the static list. */
+async function resolveTools(deps: BrokerDeps): Promise<BrokerTool[]> {
+  if (deps.getTools) return deps.getTools();
+  return deps.tools ?? [];
 }
 
 const ok = (id: JsonRpcId, result: unknown): JsonRpcResponse => ({ jsonrpc: "2.0", id, result });
@@ -125,7 +135,7 @@ export async function handleRpc(
           : SUPPORTED_PROTOCOL;
       return ok(id, {
         protocolVersion,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: true } },
         serverInfo: { name: BROKER_NAME, version: BROKER_VERSION },
       });
     }
@@ -133,14 +143,16 @@ export async function handleRpc(
     case "ping":
       return ok(id, {});
 
-    case "tools/list":
-      return ok(id, { tools: deps.tools.map(toolToWire) });
+    case "tools/list": {
+      const tools = await resolveTools(deps);
+      return ok(id, { tools: tools.map(toolToWire) });
+    }
 
     case "tools/call": {
       const name = msg.params?.name as string;
       const args = (msg.params?.arguments as Record<string, unknown>) ?? {};
       const meta = (msg.params?._meta as Record<string, unknown>) ?? null;
-      const tool = deps.tools.find((t) => t.name === name);
+      const tool = (await resolveTools(deps)).find((t) => t.name === name);
       if (!tool) {
         return ok(id, callError("NOT_FOUND", `Unknown tool: ${name}`));
       }

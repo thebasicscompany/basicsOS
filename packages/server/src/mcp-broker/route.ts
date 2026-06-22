@@ -17,10 +17,13 @@ import { resolveSingleOrgId } from "@/mcp-broker/data.js";
 import {
   handleRpc,
   type BrokerDeps,
+  type BrokerTool,
   type JsonRpcRequest,
   type ToolCallContext,
 } from "@/mcp-broker/protocol.js";
-import { buildTools } from "@/mcp-broker/tools.js";
+import { buildTools, buildCustomObjectTools } from "@/mcp-broker/tools.js";
+import { streamSSE } from "hono/streaming";
+import { addToolStreamClient, setToolCacheInvalidator } from "@/mcp-broker/tool-change-bus.js";
 
 const log = logger.child({ component: "mcp-broker" });
 
@@ -38,14 +41,40 @@ function parseActingUserId(sessionKey: string): number | null {
 
 export function createBrokerRoutes(db: Db, env: Env) {
   const app = new Hono();
-  const tools = buildTools(db, env);
+  const staticTools = buildTools(db, env);
 
   // One company per hermes instance — resolve the org id once, lazily, and cache.
   let orgIdPromise: Promise<string> | null = null;
   const getOrgId = () => (orgIdPromise ??= resolveSingleOrgId(db));
 
+  // Tool set = static tools + this org's CUSTOM-object tools (generated from
+  // object_config). Cached with a short TTL so a newly-created grid becomes
+  // agent-usable on the next tools/list (next hermes session) without a DB query
+  // per call. The stateless transport can't push notifications/tools/list_changed,
+  // so listChanged stays false and discovery happens at session start.
+  let toolsCache: { at: number; tools: BrokerTool[] } | null = null;
+  const TOOLS_TTL_MS = 60_000;
+  const getTools = async (): Promise<BrokerTool[]> => {
+    const now = Date.now();
+    if (toolsCache && now - toolsCache.at < TOOLS_TTL_MS) return toolsCache.tools;
+    let custom: BrokerTool[] = [];
+    try {
+      custom = await buildCustomObjectTools(db, await getOrgId());
+    } catch (err) {
+      log.error({ err }, "failed to build custom-object tools; serving static set only");
+    }
+    const tools = [...staticTools, ...custom];
+    toolsCache = { at: now, tools };
+    return tools;
+  };
+  // A tool-surface change (grid/field add/remove) drops the cache so the next
+  // tools/list is freshly generated for this org.
+  setToolCacheInvalidator(() => {
+    toolsCache = null;
+  });
+
   const deps: BrokerDeps = {
-    tools,
+    getTools,
     resolveContext: async (meta): Promise<ToolCallContext> => {
       const orgId = await getOrgId();
       // The trusted session key arrives in _meta (set by our hermes patch from
@@ -154,8 +183,35 @@ export function createBrokerRoutes(db: Db, env: Env) {
     return c.json(Array.isArray(body) ? responses : responses[0]);
   });
 
-  // We don't offer the optional standalone GET SSE stream; stateless so no DELETE teardown.
-  app.get("/mcp", (c) => c.text("Method Not Allowed", 405));
+  // Optional MCP server->client SSE stream (Streamable HTTP). hermes'
+  // streamablehttp_client opens this to receive server-initiated messages; we
+  // push `notifications/tools/list_changed` over it when a grid/field changes so
+  // the agent re-fetches tools/list live (no restart). See tool-change-bus.ts.
+  app.get("/mcp", (c) => {
+    if (!isAuthed(c)) {
+      return c.json(
+        { jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized" } },
+        401,
+      );
+    }
+    return streamSSE(c, async (stream) => {
+      const send = (payload: unknown) => {
+        void stream.writeSSE({ data: JSON.stringify(payload) });
+      };
+      const remove = addToolStreamClient(send);
+      stream.onAbort(remove);
+      try {
+        // Hold the stream open; a periodic SSE comment keeps idle proxies from
+        // closing it (clients ignore `:`-prefixed lines).
+        while (!c.req.raw.signal.aborted) {
+          await stream.sleep(20_000);
+          await stream.write(":\n\n");
+        }
+      } finally {
+        remove();
+      }
+    });
+  });
   app.delete("/mcp", (c) => c.body(null, 204));
 
   return app;

@@ -30,15 +30,24 @@ import {
   getMeetingSummary,
   getMeetingTranscript,
   getResource,
+  listCustomFieldDefs,
+  listCustomObjects,
   listMeetings,
   recallContext,
   searchContacts,
+  searchCustomRecords,
   searchDeals,
   searchResource,
   setTaskDone,
   updateRecordById,
   type WritableResource,
 } from "@/mcp-broker/data.js";
+import {
+  deleteCustomRecord,
+  getCustomRecord,
+  insertCustomRecord,
+  updateCustomRecord,
+} from "@/data-access/crm/dynamic-table.js";
 
 function coerceId(args: Record<string, unknown>): number {
   const id = Number(args.id);
@@ -224,6 +233,40 @@ function buildResourceTools(db: Db): BrokerTool[] {
     });
 
     tools.push({
+      name: `object.${resource}.create_many`,
+      description: `Create MULTIPLE ${spec.singular}s in one call. Pass { records: [...] } where each item is a ${spec.singular}. Returns created rows + per-row errors (partial success).`,
+      inputSchema: objSchema(
+        {
+          records: {
+            type: "array",
+            description: `array of ${spec.singular}s to create`,
+            items: objSchema(spec.props, spec.required),
+          },
+        },
+        ["records"],
+      ),
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.recordsWrite,
+      handle: async (args, ctx) => {
+        const records = Array.isArray(args.records) ? (args.records as Record<string, unknown>[]) : [];
+        if (records.length === 0) throw new BrokerError("VALIDATION", "`records` must be a non-empty array.");
+        if (records.length > 1000) throw new BrokerError("VALIDATION", "Too many records (max 1000).");
+        const created: unknown[] = [];
+        const errors: { index: number; error: string }[] = [];
+        for (let i = 0; i < records.length; i++) {
+          try {
+            const body = buildBody(spec, records[i] ?? {});
+            requireFields(spec, body);
+            created.push(await createRecord(db, ctx.orgId, ctx.crmUserId as number, resource, body));
+          } catch (e) {
+            errors.push({ index: i, error: e instanceof Error ? e.message : String(e) });
+          }
+        }
+        return { created, errors };
+      },
+    });
+
+    tools.push({
       name: `object.${resource}.update`,
       description: `Update an existing ${spec.singular} by id.`,
       inputSchema: objSchema({ id: { type: "integer" }, ...spec.props }, ["id"]),
@@ -396,6 +439,151 @@ function buildBespokeTools(db: Db, env: Env): BrokerTool[] {
       handle: async (args, ctx) => recallContext(db, env, ctx.orgId, String(args.query ?? ""), clampK(args.k)),
     },
   ];
+}
+
+/** Map a `custom_field_defs.fieldType` to JSON Schema (contract A.3.2). */
+function fieldTypeToSchema(fieldType: string, options: unknown): Record<string, unknown> {
+  const enumVals = Array.isArray(options)
+    ? (options as unknown[])
+        .map((o) =>
+          typeof o === "string"
+            ? o
+            : ((o as { id?: string; value?: string })?.id ?? (o as { value?: string })?.value),
+        )
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+    : [];
+  switch (fieldType) {
+    case "number":
+    case "currency":
+    case "rating":
+      return { type: "number" };
+    case "checkbox":
+      return { type: "boolean" };
+    case "date":
+      return { type: "string", description: "ISO date (YYYY-MM-DD)" };
+    case "timestamp":
+      return { type: "string", description: "ISO date-time" };
+    case "select":
+    case "status":
+      return enumVals.length ? { type: "string", enum: enumVals } : { type: "string" };
+    case "multi-select":
+      return { type: "array", items: enumVals.length ? { type: "string", enum: enumVals } : { type: "string" } };
+    default:
+      return { type: "string" }; // text | long-text | email | phone | url | location
+  }
+}
+
+/**
+ * Generated CRUD for this org's CUSTOM objects (each its own `custom_<slug>`
+ * table), built from `object_config` + `custom_field_defs`. A grid created in
+ * the UI / by CSV import becomes agent-usable as `object.{slug}.*` with no code
+ * change (contract A.3 / A.4.1). Records are { name, ...fields }; the data layer
+ * folds non-`name` fields into the `custom_fields` jsonb column.
+ */
+export async function buildCustomObjectTools(db: Db, orgId: string): Promise<BrokerTool[]> {
+  const objects = await listCustomObjects(db, orgId);
+  const tools: BrokerTool[] = [];
+  for (const obj of objects) {
+    const defs = await listCustomFieldDefs(db, orgId, obj.slug, obj.tableName);
+    const props: Record<string, unknown> = {
+      name: { type: "string", description: `${obj.singular} name (primary field)` },
+    };
+    for (const f of defs) props[f.name] = { ...fieldTypeToSchema(f.fieldType, f.options), description: f.label };
+    const { slug, singular: sing, plural, tableName: table } = obj;
+    const pickBody = (args: Record<string, unknown>): Record<string, unknown> => {
+      const body: Record<string, unknown> = {};
+      for (const key of Object.keys(props)) if (args[key] !== undefined && args[key] !== null) body[key] = args[key];
+      return body;
+    };
+
+    tools.push(
+      {
+        name: `object.${slug}.search`,
+        description: `Search ${plural} (custom object) by free text over name and fields.`,
+        inputSchema: searchSchema,
+        meta: { source: "native", writes: false },
+        handle: async (args, ctx) => ({
+          results: await searchCustomRecords(db, ctx.orgId, table, String(args.query ?? "")),
+        }),
+      },
+      {
+        name: `object.${slug}.get`,
+        description: `Get a single ${sing} (custom object) by id.`,
+        inputSchema: getSchema,
+        meta: { source: "native", writes: false },
+        handle: async (args, ctx) => {
+          const row = await getCustomRecord(db, table, ctx.orgId, coerceId(args));
+          if (!row) throw new BrokerError("NOT_FOUND", `No ${sing} with id ${args.id}.`);
+          return row;
+        },
+      },
+      {
+        name: `object.${slug}.create`,
+        description: `Create a new ${sing} (custom object).`,
+        inputSchema: objSchema(props, []),
+        meta: { source: "native", writes: true },
+        requires: PERMISSIONS.recordsWrite,
+        handle: async (args, ctx) => ({
+          created: await insertCustomRecord(db, table, pickBody(args), ctx.crmUserId as number, ctx.orgId),
+        }),
+      },
+      {
+        name: `object.${slug}.create_many`,
+        description: `Create MULTIPLE ${plural} (custom object) in one call. Pass { records: [...] }, each item a ${sing}. Returns created rows + per-row errors.`,
+        inputSchema: objSchema(
+          { records: { type: "array", description: `array of ${plural} to create`, items: objSchema(props, []) } },
+          ["records"],
+        ),
+        meta: { source: "native", writes: true },
+        requires: PERMISSIONS.recordsWrite,
+        handle: async (args, ctx) => {
+          const records = Array.isArray(args.records) ? (args.records as Record<string, unknown>[]) : [];
+          if (records.length === 0) throw new BrokerError("VALIDATION", "`records` must be a non-empty array.");
+          if (records.length > 1000) throw new BrokerError("VALIDATION", "Too many records (max 1000).");
+          const created: unknown[] = [];
+          const errors: { index: number; error: string }[] = [];
+          for (let i = 0; i < records.length; i++) {
+            try {
+              created.push(
+                await insertCustomRecord(db, table, pickBody(records[i] ?? {}), ctx.crmUserId as number, ctx.orgId),
+              );
+            } catch (e) {
+              errors.push({ index: i, error: e instanceof Error ? e.message : String(e) });
+            }
+          }
+          return { created, errors };
+        },
+      },
+      {
+        name: `object.${slug}.update`,
+        description: `Update an existing ${sing} (custom object) by id.`,
+        inputSchema: objSchema({ id: { type: "integer" }, ...props }, ["id"]),
+        meta: { source: "native", writes: true },
+        requires: PERMISSIONS.recordsWrite,
+        handle: async (args, ctx) => {
+          const id = coerceId(args);
+          const body = pickBody(args);
+          if (Object.keys(body).length === 0) throw new BrokerError("VALIDATION", "No fields to update.");
+          const row = await updateCustomRecord(db, table, id, ctx.orgId, body);
+          if (!row) throw new BrokerError("NOT_FOUND", `No ${sing} with id ${id}.`);
+          return { updated: row };
+        },
+      },
+      {
+        name: `object.${slug}.delete`,
+        description: `Permanently delete a ${sing} (custom object) by id.`,
+        inputSchema: getSchema,
+        meta: { source: "native", writes: true },
+        requires: PERMISSIONS.recordsDeleteHard,
+        handle: async (args, ctx) => {
+          const id = coerceId(args);
+          await deleteCustomRecord(db, table, id, ctx.orgId);
+          return { deleted: { id } };
+        },
+      },
+    );
+  }
+  return tools;
 }
 
 export function buildTools(db: Db, env: Env): BrokerTool[] {

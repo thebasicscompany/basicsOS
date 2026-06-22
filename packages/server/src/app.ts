@@ -13,6 +13,9 @@ import { createCrmRoutes } from "@/routes/crm/index.js";
 import { createCustomFieldRoutes } from "@/routes/custom-fields.js";
 import { createConnectionsRoutes } from "@/routes/connections.js";
 import { createGatewayChatRoutes } from "@/routes/gateway-chat.js";
+import { createAgentChatRoutes } from "@/routes/agent-chat.js";
+import { createFilesRoutes } from "@/routes/files.js";
+import { createMeRoutes } from "@/routes/me.js";
 import { createObjectConfigRoutes } from "@/routes/object-config.js";
 import { createSchemaRoutes } from "@/routes/schema.js";
 import { createViewRoutes } from "@/routes/views.js";
@@ -26,6 +29,7 @@ import { createEmailSyncRoutes } from "@/routes/email-sync.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { createApiTokensRoutes } from "@/routes/api-tokens.js";
+import { createBrokerRoutes } from "@/mcp-broker/route.js";
 import { isTrustedOrigin, isElectronUserAgent } from "@/lib/trusted-origins.js";
 import { sql } from "drizzle-orm";
 
@@ -140,6 +144,11 @@ export function createApp(db: Db, env: Env) {
     await next();
   });
 
+  // MCP Tool Broker (hermes connects here over Streamable HTTP). Mounted BEFORE
+  // the rate limiter so the agent's tool-call bursts aren't throttled; it has its
+  // own bearer auth (BROKER_INSTANCE_TOKEN). See src/mcp-broker/.
+  app.route("/", createBrokerRoutes(db, env));
+
   app.use("/*", rateLimitMiddleware);
 
   app.get("/", (c) =>
@@ -174,6 +183,16 @@ export function createApp(db: Db, env: Env) {
 
   // Gateway chat — must be before CRM so POST /api/:resource doesn't swallow it
   app.route("/api/gateway-chat", createGatewayChatRoutes(db, auth, env));
+
+  // Hermes-backed chat (replaces the in-process brain). Same wire format + thread
+  // persistence as gateway-chat; the UI hook posts here. See routes/agent-chat.ts.
+  app.route("/api/agent-chat", createAgentChatRoutes(db, auth, env));
+
+  // Download files the agent generated (per-thread, ownership-scoped).
+  app.route("/api/files", createFilesRoutes(db, auth, env));
+
+  // Per-user / org timezone (for scheduled automations).
+  app.route("/api/me", createMeRoutes(db, auth, env));
 
   // Thread list & message history
   app.route("/api/threads", createThreadsRoutes(db, auth, env));

@@ -105,7 +105,8 @@ async function main() {
     await db.execute(sql`
       INSERT INTO "rbac_roles" ("key", "name", "description", "is_system") VALUES
         ('org_admin', 'Organization Admin', 'Full CRM access', true),
-        ('member', 'Member', 'Standard CRM collaborator', true)
+        ('member', 'Member', 'Standard CRM collaborator', true),
+        ('read_only', 'Read Only', 'View-only access to CRM records', true)
       ON CONFLICT ("key") DO NOTHING
     `);
     await db.execute(sql`
@@ -115,6 +116,7 @@ async function main() {
       SELECT r.id, p.id FROM role_map r CROSS JOIN perm_map p
       WHERE (r.key = 'org_admin')
          OR (r.key = 'member' AND p.key IN ('records.read','records.write','records.delete','automation.read'))
+         OR (r.key = 'read_only' AND p.key IN ('records.read'))
       ON CONFLICT DO NOTHING
     `);
     await db.execute(sql`

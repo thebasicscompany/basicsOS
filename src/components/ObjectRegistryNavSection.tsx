@@ -15,6 +15,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useObjects } from "@/hooks/use-object-registry";
 import { getObjectIcon } from "@/lib/object-icon-map";
@@ -25,12 +26,16 @@ export function ObjectRegistryNavSection() {
   const objects = useObjects();
   const [createOpen, setCreateOpen] = useState(false);
   const [open, setOpen] = useState(true);
+  const { state } = useSidebar();
   const { data: syncStatus } = useEmailSyncStatus();
   const pendingSuggestions = syncStatus?.pendingSuggestions ?? 0;
+  // When the sidebar is collapsed to icons, always show the items (ignore the
+  // group's expand/collapse) so they never vanish from the rail.
+  const effectiveOpen = state === "collapsed" ? true : open;
 
   return (
     <Collapsible
-      open={open}
+      open={effectiveOpen}
       onOpenChange={setOpen}
       className="group/collapsible"
     >

@@ -74,6 +74,51 @@ import {
 
 const API_URL = getRuntimeApiUrl();
 
+const TZ_OPTIONS = [
+  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "America/Phoenix", "America/Anchorage", "Pacific/Honolulu", "America/Toronto",
+  "America/Sao_Paulo", "Europe/London", "Europe/Paris", "Europe/Berlin",
+  "Europe/Madrid", "Europe/Moscow", "Asia/Dubai", "Asia/Kolkata",
+  "Asia/Singapore", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney", "UTC",
+];
+
+/** Per-user timezone override for scheduled automations (auto-detected on login). */
+function TimezoneSetting() {
+  const [tz, setTz] = useState<string | undefined>();
+  useEffect(() => {
+    fetch(`${API_URL}/api/me/timezone`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setTz(d?.effective ?? undefined))
+      .catch(() => {});
+  }, []);
+  const onChange = (v: string) => {
+    setTz(v);
+    fetch(`${API_URL}/api/me/timezone`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ timezone: v, force: true }),
+    })
+      .then((r) => (r.ok ? toast.success(`Timezone set to ${v}`) : toast.error("Couldn't update timezone")))
+      .catch(() => toast.error("Couldn't update timezone"));
+  };
+  const options = tz && !TZ_OPTIONS.includes(tz) ? [tz, ...TZ_OPTIONS] : TZ_OPTIONS;
+  return (
+    <Select value={tz} onValueChange={onChange}>
+      <SelectTrigger className="h-9 w-full sm:max-w-[220px]">
+        <SelectValue placeholder="Detecting…" />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((z) => (
+          <SelectItem key={z} value={z}>
+            {z}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: SunIcon },
   { value: "dark", label: "Dark", icon: MoonIcon },
@@ -440,6 +485,13 @@ export function SettingsPage() {
                   })}
                 </SelectContent>
               </Select>
+              <Label className="text-[12px] text-muted-foreground">Timezone</Label>
+              <div>
+                <TimezoneSetting />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Scheduled automations run in this timezone (auto-detected; change it here).
+                </p>
+              </div>
             </div>
           </section>
 
@@ -721,7 +773,7 @@ export function SettingsPage() {
                     administrator. No action needed.
                   </p>
                 </div>
-                <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="rounded-lg border bg-muted/20 p-4">
                   <p className="text-[12px] text-muted-foreground">
                     AI chat, voice, and automations are active and managed at
                     the organization level.
@@ -1453,7 +1505,7 @@ export function SettingsPage() {
                 </div>
 
                 {inviteToken && (
-                  <div className="mt-4 rounded-lg border bg-muted/20 p-3">
+                  <div className="mt-6 rounded-lg border bg-muted/20 p-4">
                     <div className="space-y-2">
                       <Label className="text-[12px] text-muted-foreground">
                         Invite code
@@ -1622,7 +1674,7 @@ export function SettingsPage() {
             {isAdmin ? (
               <div className="space-y-4 max-w-lg">
                 {slackBotStatus?.configured && (
-                  <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
+                  <div className="flex items-center gap-3 rounded-md border border-green-500/30 bg-green-500/10 px-4 py-3">
                     <span className="size-1.5 shrink-0 rounded-full bg-green-500" />
                     <span className="text-[12px] text-green-700 dark:text-green-400">
                       Slack bot is configured and active
@@ -1760,7 +1812,7 @@ export function SettingsPage() {
           </section>
 
           {hasPendingChanges && (
-            <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-3 backdrop-blur-sm sm:px-8">
+            <div className="sticky bottom-0 z-20 border-t bg-background/95 px-6 py-4 backdrop-blur-sm sm:px-8">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[12px] text-muted-foreground">
                   You have unsaved changes.

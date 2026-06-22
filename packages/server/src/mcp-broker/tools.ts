@@ -1,0 +1,411 @@
+// The Broker tool surface. Reaches parity with (and exceeds) the legacy chat:
+//   object.{contacts,companies,deals,tasks,contact_notes,deal_notes,company_notes}
+//     .{search,get,create,update,delete}   (generic data-access; org-scoped)
+//   object.tasks.complete
+//   meetings.list / meetings.get_transcript / meetings.get_summary  (read — beyond legacy)
+//   custom_field.create / custom_field.delete
+//   memory.recall_context
+// contacts/deals keep a company-aware search; everything else uses generic search.
+// Writes are RBAC-gated (BrokerTool.requires) and stamp the acting user (ctx.crmUserId).
+// The full object_config attribute-driven generator for CUSTOM objects is the
+// remaining follow-up (none exist yet; needs custom_fields-jsonb routing).
+
+import type { Db } from "@/db/client.js";
+import type { Env } from "@/env.js";
+import type { BrokerTool } from "@/mcp-broker/protocol.js";
+import { BrokerError } from "@/mcp-broker/protocol.js";
+import { PERMISSIONS } from "@/lib/rbac.js";
+import { buildConnectionTools } from "@/mcp-broker/connections.js";
+import { buildAutomationTools } from "@/mcp-broker/automations.js";
+import { buildWebTools } from "@/mcp-broker/web.js";
+import { buildEmailTools } from "@/mcp-broker/email.js";
+import { buildFileTools } from "@/mcp-broker/files.js";
+import {
+  createCustomField,
+  createRecord,
+  deleteCustomField,
+  deleteRecordById,
+  getContact,
+  getDeal,
+  getMeetingSummary,
+  getMeetingTranscript,
+  getResource,
+  listMeetings,
+  recallContext,
+  searchContacts,
+  searchDeals,
+  searchResource,
+  setTaskDone,
+  updateRecordById,
+  type WritableResource,
+} from "@/mcp-broker/data.js";
+
+function coerceId(args: Record<string, unknown>): number {
+  const id = Number(args.id);
+  if (!Number.isInteger(id) || id <= 0) throw new BrokerError("VALIDATION", "`id` must be a positive integer.");
+  return id;
+}
+
+function clampK(raw: unknown): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 5;
+  return Math.min(20, Math.max(1, Math.trunc(n)));
+}
+
+function objSchema(props: Record<string, unknown>, required: string[]): Record<string, unknown> {
+  return { type: "object", properties: props, required, additionalProperties: false };
+}
+
+// ── Per-resource writable field specs ────────────────────────────────────────
+interface WriteSpec {
+  singular: string;
+  props: Record<string, { type: string; description?: string }>;
+  required: string[];
+  /** extra disambiguation appended to create/update descriptions */
+  hint?: string;
+}
+
+const WRITE_SPECS: Record<WritableResource, WriteSpec> = {
+  contacts: {
+    singular: "contact",
+    props: {
+      firstName: { type: "string" },
+      lastName: { type: "string" },
+      email: { type: "string" },
+      companyId: { type: "integer", description: "associated company id" },
+      linkedinUrl: { type: "string" },
+    },
+    required: [],
+  },
+  companies: {
+    singular: "company",
+    props: {
+      name: { type: "string" },
+      domain: { type: "string" },
+      category: { type: "string" },
+      description: { type: "string" },
+    },
+    required: ["name"],
+  },
+  deals: {
+    singular: "deal",
+    hint: "A deal is a SALES OPPORTUNITY in the pipeline (has a monetary value/stage). Do NOT use this for a to-do or reminder — use object.tasks.create for that.",
+    props: {
+      name: { type: "string" },
+      status: { type: "string", description: "pipeline stage, e.g. opportunity, proposal-made, in-negotiation, won, lost" },
+      amount: { type: "number" },
+      companyId: { type: "integer", description: "associated company id" },
+    },
+    required: ["name"],
+  },
+  tasks: {
+    singular: "task",
+    hint: "A task is a TO-DO / action item / reminder (e.g. 'follow up with X'). Do NOT use this to create a sales deal — use object.deals.create for that.",
+    props: {
+      text: { type: "string", description: "what to do" },
+      description: { type: "string" },
+      type: { type: "string", description: "e.g. call, email, meeting" },
+      dueDate: { type: "string", description: "ISO date-time" },
+      contactId: { type: "integer" },
+      companyId: { type: "integer" },
+      dealId: { type: "integer" },
+      assigneeId: { type: "integer", description: "crm user id to assign to" },
+    },
+    required: ["text"],
+  },
+  contact_notes: {
+    singular: "contact note",
+    props: {
+      contactId: { type: "integer" },
+      title: { type: "string" },
+      text: { type: "string" },
+      status: { type: "string" },
+    },
+    required: ["contactId"],
+  },
+  deal_notes: {
+    singular: "deal note",
+    props: {
+      dealId: { type: "integer" },
+      title: { type: "string" },
+      text: { type: "string" },
+      status: { type: "string" },
+    },
+    required: ["dealId"],
+  },
+  company_notes: {
+    singular: "company note",
+    props: {
+      companyId: { type: "integer" },
+      title: { type: "string" },
+      text: { type: "string" },
+      status: { type: "string" },
+    },
+    required: ["companyId"],
+  },
+};
+
+const NUMERIC_FIELDS = new Set(["companyId", "amount", "contactId", "dealId", "assigneeId"]);
+const DATE_FIELDS = new Set(["dueDate"]);
+/** contacts/deals get a richer company-aware search; the rest use generic search. */
+const CUSTOM_SEARCH = new Set<WritableResource>(["contacts", "deals"]);
+
+/** Pick the spec's known fields from args, coercing numeric/date fields. */
+function buildBody(spec: WriteSpec, args: Record<string, unknown>): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const key of Object.keys(spec.props)) {
+    const v = args[key];
+    if (v === undefined || v === null) continue;
+    if (NUMERIC_FIELDS.has(key)) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) throw new BrokerError("VALIDATION", `\`${key}\` must be a number.`);
+      body[key] = n;
+    } else if (DATE_FIELDS.has(key)) {
+      const d = new Date(String(v));
+      if (Number.isNaN(d.getTime())) throw new BrokerError("VALIDATION", `\`${key}\` must be a valid date.`);
+      body[key] = d;
+    } else {
+      body[key] = v;
+    }
+  }
+  return body;
+}
+
+function requireFields(spec: WriteSpec, body: Record<string, unknown>) {
+  for (const f of spec.required) {
+    if (body[f] === undefined) throw new BrokerError("VALIDATION", `\`${f}\` is required.`);
+  }
+}
+
+const searchSchema = objSchema(
+  { query: { type: "string", description: "free-text search" } },
+  ["query"],
+);
+const getSchema = objSchema({ id: { type: "integer" } }, ["id"]);
+
+/** Generated CRUD for every standard resource (search/get/create/update/delete). */
+function buildResourceTools(db: Db): BrokerTool[] {
+  const tools: BrokerTool[] = [];
+  for (const resource of Object.keys(WRITE_SPECS) as WritableResource[]) {
+    const spec = WRITE_SPECS[resource];
+
+    if (!CUSTOM_SEARCH.has(resource)) {
+      tools.push({
+        name: `object.${resource}.search`,
+        description: `Search ${spec.singular}s by free text.`,
+        inputSchema: searchSchema,
+        meta: { source: "native", writes: false },
+        handle: async (args, ctx) => ({ results: await searchResource(db, ctx.orgId, resource, String(args.query ?? "")) }),
+      });
+      tools.push({
+        name: `object.${resource}.get`,
+        description: `Get a single ${spec.singular} by id.`,
+        inputSchema: getSchema,
+        meta: { source: "native", writes: false },
+        handle: async (args, ctx) => {
+          const row = await getResource(db, ctx.orgId, resource, coerceId(args));
+          if (!row) throw new BrokerError("NOT_FOUND", `No ${spec.singular} with id ${args.id}.`);
+          return row;
+        },
+      });
+    }
+
+    tools.push({
+      name: `object.${resource}.create`,
+      description: `Create a new ${spec.singular}.${spec.hint ? " " + spec.hint : ""}`,
+      inputSchema: objSchema(spec.props, spec.required),
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.recordsWrite,
+      handle: async (args, ctx) => {
+        const body = buildBody(spec, args);
+        requireFields(spec, body);
+        return { created: await createRecord(db, ctx.orgId, ctx.crmUserId as number, resource, body) };
+      },
+    });
+
+    tools.push({
+      name: `object.${resource}.update`,
+      description: `Update an existing ${spec.singular} by id.`,
+      inputSchema: objSchema({ id: { type: "integer" }, ...spec.props }, ["id"]),
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.recordsWrite,
+      handle: async (args, ctx) => {
+        const id = coerceId(args);
+        const body = buildBody(spec, args);
+        if (Object.keys(body).length === 0) throw new BrokerError("VALIDATION", "No fields to update.");
+        const row = await updateRecordById(db, ctx.orgId, resource, id, body);
+        if (!row) throw new BrokerError("NOT_FOUND", `No ${spec.singular} with id ${id}.`);
+        return { updated: row };
+      },
+    });
+
+    tools.push({
+      name: `object.${resource}.delete`,
+      description: `Permanently delete a ${spec.singular} by id.`,
+      inputSchema: getSchema,
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.recordsDeleteHard,
+      handle: async (args, ctx) => {
+        const id = coerceId(args);
+        const row = await deleteRecordById(db, ctx.orgId, resource, id);
+        if (!row) throw new BrokerError("NOT_FOUND", `No ${spec.singular} with id ${id}.`);
+        return { deleted: { id } };
+      },
+    });
+  }
+  return tools;
+}
+
+/** Bespoke tools: company-aware searches, memory, task-complete, meetings, custom fields. */
+function buildBespokeTools(db: Db, env: Env): BrokerTool[] {
+  return [
+    {
+      name: "object.contacts.search",
+      description: "Search contacts by name, email, or associated company.",
+      inputSchema: searchSchema,
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => ({ results: await searchContacts(db, ctx.orgId, String(args.query ?? "")) }),
+    },
+    {
+      name: "object.contacts.get",
+      description: "Get a single contact by id (with company).",
+      inputSchema: getSchema,
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => {
+        const row = await getContact(db, ctx.orgId, coerceId(args));
+        if (!row) throw new BrokerError("NOT_FOUND", `No contact with id ${args.id}.`);
+        return row;
+      },
+    },
+    {
+      name: "object.deals.search",
+      description:
+        'Search deals by deal name or associated company name (e.g. "Globex" finds deals at Globex Industries). Optional `status` filters by pipeline stage (opportunity, proposal-made, in-negotiation, won, lost). Omit `query` to list all deals.',
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "free-text; omit/empty to list all" },
+          status: { type: "string", description: "pipeline stage filter, e.g. opportunity" },
+        },
+        additionalProperties: false,
+      },
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => ({
+        results: await searchDeals(db, ctx.orgId, String(args.query ?? ""), args.status ? String(args.status) : undefined),
+      }),
+    },
+    {
+      name: "object.deals.get",
+      description: "Get a single deal by id (with company).",
+      inputSchema: getSchema,
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => {
+        const row = await getDeal(db, ctx.orgId, coerceId(args));
+        if (!row) throw new BrokerError("NOT_FOUND", `No deal with id ${args.id}.`);
+        return row;
+      },
+    },
+    {
+      name: "object.tasks.complete",
+      description: "Mark a task complete (or set done=false to reopen).",
+      inputSchema: objSchema({ id: { type: "integer" }, done: { type: "boolean", description: "default true" } }, ["id"]),
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.recordsWrite,
+      handle: async (args, ctx) => {
+        const id = coerceId(args);
+        const done = args.done === undefined ? true : Boolean(args.done);
+        const row = await setTaskDone(db, ctx.orgId, id, done);
+        if (!row) throw new BrokerError("NOT_FOUND", `No task with id ${id}.`);
+        return { updated: row };
+      },
+    },
+    {
+      name: "meetings.list",
+      description: "List recent meetings (id, title, date, status).",
+      inputSchema: objSchema({ limit: { type: "integer", description: "max 50, default 20" } }, []),
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => {
+        const limit = Math.min(50, Math.max(1, Number(args.limit) || 20));
+        return { meetings: await listMeetings(db, ctx.orgId, limit) };
+      },
+    },
+    {
+      name: "meetings.get_transcript",
+      description: "Get a meeting's transcript (ordered speaker turns) by meeting id.",
+      inputSchema: objSchema({ id: { type: "integer", description: "meeting id" } }, ["id"]),
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => ({ transcript: await getMeetingTranscript(db, ctx.orgId, coerceId(args)) }),
+    },
+    {
+      name: "meetings.get_summary",
+      description: "Get a meeting's summary (decisions, action items, follow-ups) by meeting id.",
+      inputSchema: objSchema({ id: { type: "integer", description: "meeting id" } }, ["id"]),
+      meta: { source: "native", writes: false },
+      handle: async (args, ctx) => ({ summary: await getMeetingSummary(db, ctx.orgId, coerceId(args)) }),
+    },
+    {
+      name: "custom_field.create",
+      description: "Add a custom field to an object (contacts/companies/deals or a custom object).",
+      inputSchema: objSchema(
+        {
+          resource: { type: "string", description: "object slug, e.g. contacts" },
+          name: { type: "string", description: "snake_case key" },
+          label: { type: "string", description: "human label" },
+          fieldType: { type: "string", description: "text|long-text|number|currency|select|multi-select|status|checkbox|date|timestamp|rating|email|phone|url|location" },
+          options: { type: "array", description: "for select/multi-select/status", items: { type: "string" } },
+        },
+        ["resource", "name", "label", "fieldType"],
+      ),
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.objectConfigWrite,
+      handle: async (args, ctx) => ({
+        created: await createCustomField(
+          db,
+          ctx.orgId,
+          String(args.resource),
+          String(args.name),
+          String(args.label),
+          String(args.fieldType),
+          Array.isArray(args.options) ? args.options : undefined,
+        ),
+      }),
+    },
+    {
+      name: "custom_field.delete",
+      description: "Delete a custom field definition by id.",
+      inputSchema: getSchema,
+      meta: { source: "native", writes: true },
+      requires: PERMISSIONS.objectConfigWrite,
+      handle: async (args, ctx) => {
+        const row = await deleteCustomField(db, ctx.orgId, coerceId(args));
+        if (!row) throw new BrokerError("NOT_FOUND", `No custom field with id ${args.id}.`);
+        return { deleted: { id: coerceId(args) } };
+      },
+    },
+    {
+      name: "memory.recall_context",
+      description: "Retrieve relevant context from the company's knowledge (CRM records + notes) via semantic search.",
+      inputSchema: objSchema(
+        {
+          query: { type: "string", description: "what to recall context about" },
+          k: { type: "integer", description: "max chunks (1-20, default 5)" },
+        },
+        ["query"],
+      ),
+      meta: { source: "memory", writes: false },
+      handle: async (args, ctx) => recallContext(db, env, ctx.orgId, String(args.query ?? ""), clampK(args.k)),
+    },
+  ];
+}
+
+export function buildTools(db: Db, env: Env): BrokerTool[] {
+  return [
+    ...buildBespokeTools(db, env),
+    ...buildResourceTools(db),
+    ...buildConnectionTools(env),
+    ...buildAutomationTools(db),
+    ...buildWebTools(env),
+    ...buildEmailTools(env),
+    ...buildFileTools(env),
+  ];
+}

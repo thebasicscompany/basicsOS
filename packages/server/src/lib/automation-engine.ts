@@ -91,13 +91,40 @@ async function loadScheduleRules() {
   }
 }
 
+/** Resolve a user's effective schedule timezone: user override -> org default -> UTC. */
+async function resolveTimezone(crmUserId: number): Promise<string> {
+  if (!_db) return "UTC";
+  const db = _db as any;
+  try {
+    const [u] = await db
+      .select({ tz: schema.crmUsers.timezone, orgId: schema.crmUsers.organizationId })
+      .from(schema.crmUsers)
+      .where(eq(schema.crmUsers.id, crmUserId))
+      .limit(1);
+    if (u?.tz) return u.tz;
+    if (u?.orgId) {
+      const [org] = await db
+        .select({ tz: schema.organizations.timezone })
+        .from(schema.organizations)
+        .where(eq(schema.organizations.id, u.orgId))
+        .limit(1);
+      if (org?.tz) return org.tz;
+    }
+  } catch {
+    /* fall through to UTC */
+  }
+  return "UTC";
+}
+
 async function registerScheduleRule(ruleId: number, crmUserId: number, cron: string) {
   if (!_boss) return;
   const queueName = `rule-schedule-${ruleId}`;
 
   try {
     await _boss.createQueue(queueName);
-    await _boss.schedule(queueName, cron, { ruleId, crmUserId });
+    // Schedule fires in the OWNER's timezone (per-user override, else org default).
+    const tz = await resolveTimezone(crmUserId);
+    await _boss.schedule(queueName, cron, { ruleId, crmUserId }, { tz });
     await _boss.work(queueName, async (jobs: Array<{ data: unknown }>) => {
       for (const job of jobs) {
         const data = job.data as { ruleId: number; crmUserId: number };
@@ -139,6 +166,42 @@ export async function reloadRule(ruleId: number) {
   }
 }
 
+interface TriggerFilter { field: string; op: string; value: unknown }
+interface TriggerEventData { event?: string; recordId?: number; filter?: TriggerFilter; filters?: TriggerFilter[] }
+
+/** The record id carried by an event payload, across the various event shapes. */
+function recordIdOf(payload: Record<string, unknown>): unknown {
+  return payload.dealId ?? payload.contactId ?? payload.taskId ?? payload.companyId ?? payload.id;
+}
+
+function applyOp(actual: unknown, op: string, value: unknown): boolean {
+  switch (op) {
+    case "eq": return actual === value;
+    case "ne": return actual !== value;
+    case "gt": return Number(actual) > Number(value);
+    case "gte": return Number(actual) >= Number(value);
+    case "lt": return Number(actual) < Number(value);
+    case "lte": return Number(actual) <= Number(value);
+    case "in": return Array.isArray(value) && (value as unknown[]).includes(actual);
+    case "contains": return String(actual ?? "").toLowerCase().includes(String(value ?? "").toLowerCase());
+    default: return false;
+  }
+}
+
+/** Record-scoping/filter gate: a trigger only fires when its recordId + filter(s) match the payload. */
+function matchesScope(data: TriggerEventData, payload: Record<string, unknown>): boolean {
+  if (data.recordId != null) {
+    const id = recordIdOf(payload);
+    if (id == null || Number(id) !== Number(data.recordId)) return false;
+  }
+  const filters = data.filters ?? (data.filter ? [data.filter] : []);
+  for (const f of filters) {
+    if (!f?.field) return false; // fail-closed on a malformed filter
+    if (!applyOp(payload[f.field], f.op, f.value)) return false;
+  }
+  return true;
+}
+
 export async function fireEvent(
   event: string,
   payload: Record<string, unknown>,
@@ -157,8 +220,8 @@ export async function fireEvent(
       const def = rule.workflowDefinition as WorkflowDefinition;
       const triggerNode = def?.nodes?.find((n: { type: string }) => n.type === "trigger_event");
       if (triggerNode) {
-        const triggerEvent = (triggerNode.data as { event?: string }).event;
-        if (triggerEvent === event) {
+        const data = triggerNode.data as TriggerEventData;
+        if (data.event === event && matchesScope(data, payload)) {
           await _boss.send("run-automation", {
             ruleId: rule.id as number,
             crmUserId,
@@ -242,6 +305,8 @@ async function runAutomation(
       { id: crmUserRow.id as number, organizationId: (crmUserRow.organizationId ?? crmUserRow.organization_id ?? null) as string | null },
       _db!,
       _env!,
+      ruleId,
+      run.id as number,
     );
 
     await db

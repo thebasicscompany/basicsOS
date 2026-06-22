@@ -1,0 +1,56 @@
+# Local dev for the BasicsOS hermes sidecar.
+#
+# Two equivalent ways to get the image (both build from the PINNED upstream
+# Dockerfile at tag v2026.6.19 — s6-overlay /init entrypoint, system deps, uv
+# extras, console scripts). Pick one:
+#
+#   (A) recommended / portable:
+#         ./services/hermes/build-image.sh        # docker build from the pinned git URL
+#         docker compose -f services/hermes/docker-compose.hermes.yml up -d
+#
+#   (B) `up --build` (needs the pinned source vendored locally first):
+#         ./services/hermes/vendor.sh              # clone tag -> ./vendor/hermes-agent
+#         docker compose -f services/hermes/docker-compose.hermes.yml up --build -d
+#
+# Why not build the remote git URL straight from compose? `docker compose build`
+# goes through docker-bake, which mis-resolves a REMOTE git-URL context as a local
+# path on Docker Desktop / Windows. So we either pre-build with the `docker build`
+# CLI (A) or build from a LOCAL vendored context (B). Our only layer either way is:
+# command + config.yaml + .env + the durable hermes_state volume.
+services:
+  hermes:
+    image: basicsos-hermes:v2026.6.19         # built by build-image.sh (path A)
+    build:
+      context: ./vendor/hermes-agent          # pinned checkout via vendor.sh (path B, `up --build`)
+    command: ["gateway", "run"]               # upstream /init + main-wrapper.sh -> `hermes gateway run`
+    env_file: .env
+    environment:
+      HERMES_HOME: /opt/data
+      HERMES_UID: "1000"
+      HERMES_GID: "1000"
+    ports:
+      - "8642:8642"                           # hermes HTTP API server
+    volumes:
+      - hermes_state:/opt/data                # state.db (sessions+FTS5) + skills/
+      - ./artifacts:/opt/artifacts            # downloadable files the agent generates (per-thread subdirs); the app serves these
+      - ./config.yaml.example:/opt/data/config.yaml:ro   # ${VAR} resolved from env_file
+      # Pinned _meta session-key passthrough patch (M4). Dev overlays the patched
+      # file from the vendored checkout (run ./vendor.sh first, which applies
+      # patches/*.patch); a prod image bakes the patch in. The path must exist.
+      - ./vendor/hermes-agent/tools/mcp_tool.py:/opt/hermes/tools/mcp_tool.py:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach the host's gateway/broker in dev
+    # Resource caps — bound the blast radius of many concurrent users running code
+    # at once (the agent has code_execution/terminal). Prevents one company's
+    # container from OOMing the host or fork-bombing. Tune per deployment.
+    # NOTE: this caps RESOURCES, not isolation. For true per-call sandboxing
+    # (separate FS/network namespace so a prompt-injected agent can't read the
+    # container's secrets or exfiltrate) set TERMINAL_ENV=docker|modal at deploy
+    # time — see docs / task #14. The container boundary already isolates COMPANIES.
+    mem_limit: 4g
+    cpus: 4
+    pids_limit: 512
+    restart: unless-stopped
+
+volumes:
+  hermes_state:

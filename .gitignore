@@ -97,3 +97,5 @@ packages/*/.package-lock.json
 
 # Screen recordings
 recordings/
+services/hermes/artifacts/*
+!services/hermes/artifacts/.gitkeep

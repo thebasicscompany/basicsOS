@@ -19,6 +19,7 @@ import {
 } from "@/contexts/page-header";
 import { useRecentPages } from "@/hooks/use-recent-pages";
 import { useObjects } from "@/hooks/use-object-registry";
+import { useTimezoneSync } from "@/hooks/use-timezone-sync";
 
 function PageErrorFallback({
   error,
@@ -261,6 +262,7 @@ function useMeetingSync() {
 export function AppLayout() {
   useTrackPageVisits();
   useMeetingSync();
+  useTimezoneSync();
 
   return (
     <SidebarProvider>

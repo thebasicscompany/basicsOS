@@ -1,0 +1,7 @@
+# Local env (holds API_SERVER_KEY, BROKER_INSTANCE_TOKEN, the minted Basics key)
+.env
+
+# Vendored upstream hermes-agent checkout (pinned tag v2026.6.19).
+# Cloned by ./vendor.sh for the `docker compose up --build` (local-context) path
+# and for the M4 _meta patch reference. Never committed — it's ~5k upstream files.
+vendor/

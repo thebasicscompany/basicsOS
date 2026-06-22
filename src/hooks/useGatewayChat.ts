@@ -112,7 +112,9 @@ export function useGatewayChat(opts?: UseGatewayChatOptions) {
   }, [queryClient]);
 
   const chat = useChat({
-    api: `${API_URL}/api/gateway-chat`,
+    // Hermes-backed agent (replaces the in-process gateway-chat brain). Same wire
+    // format + thread persistence, so the rest of this hook is unchanged.
+    api: `${API_URL}/api/agent-chat`,
     body: { threadId, channel: "chat" },
     initialMessages: opts?.initialMessages,
     fetch: fetchWithErrorHandling,

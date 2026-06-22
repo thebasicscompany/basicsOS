@@ -1,0 +1,83 @@
+# hermes config for the BasicsOS per-company sidecar.
+# Rendered to $HERMES_HOME/config.yaml. hermes resolves ${VAR} from the environment at load.
+# Pinned: v0.17.0 (v2026.6.19). Docs: https://hermes-agent.nousresearch.com/docs/
+
+model:
+  # Route ALL LLM calls through the BasicsOS gateway (OpenAI-compatible).
+  # Billing / BYOK / usage stay central — see basicsAdmin GATEWAY_API.md.
+  provider: custom                       # "any OpenAI-compatible endpoint"
+  base_url: ${BASICSOS_GATEWAY_URL}/v1   # e.g. https://api.basicsos.com/v1
+  api_key: ${BASICSOS_API_KEY}           # this company's bos_live_sk_... key
+  default: basics-chat-smart-openai     # -> OpenAI gpt-4o (better tool selection; non-BYOK path keeps provider-specific aliases verbatim)
+  # The gateway is an opaque alias endpoint — hermes can't probe the real model's
+  # window, so it falls back to a tiny default and refuses turns ("context length
+  # exceeded"). Pin it to the underlying model's window (basics-chat-* → OpenAI
+  # gpt-4o-mini = 128k). Bump if the alias is repointed at a larger model.
+  context_length: 128000
+  # OUTPUT cap per response. hermes defaults this to 65536, but OpenAI gpt-4o*
+  # accept at most 16384 completion tokens (the gateway returns HTTP 400 above
+  # that, which hermes misreads as a context error). Keep <= the model's cap.
+  max_tokens: 16000
+
+# Outbound MCP: connect hermes to this company's MCP Tool Broker (packages/server).
+# Contract: basicsAdmin/docs/CONTRACTS_MCP_BROKER_AND_APP_SDK.md (A.4 / C.1).
+mcp_servers:
+  broker:
+    url: ${BROKER_MCP_URL}               # e.g. http://host.docker.internal:3001/mcp
+    headers:
+      # Instance/tenant credential (identifies THIS company's hermes to the Broker).
+      # Per-user identity for writes/connections is carried per-call via MCP _meta
+      # (the trusted X-Hermes-Session-Key passthrough) — see BUILD_PLAN_HERMES.md M4.
+      Authorization: "Bearer ${BROKER_INSTANCE_TOKEN}"
+    timeout: 120
+
+# The agent's tool surface = this company's Broker (curated, RBAC-gated: CRM,
+# meetings, tasks/notes, connections, automations, web.search, email.send) PLUS a
+# deliberate set of hermes-native capabilities. hermes is isolated PER COMPANY
+# (own container + HERMES_HOME volume), so these run with no cross-tenant blast
+# radius; harden the executor (sandbox + egress limits + minimal secrets) before
+# scaling — see the hardening task.
+#   broker          – our 53 curated tools (CRM/connections/automations/web/email)
+#   skills          – self-learning SKILL.md library (per-company; auto-curated)
+#   web             – web_search / web_extract
+#   browser         – headless browser automation (needs chromium in the image)
+#   code_execution  – run code (analysis, transforms) for richer answers/automations
+#   terminal        – shell on this company's container
+#   file            – read/write files (generate md/docx/pptx/csv artifacts)
+#   vision/image_gen– analyze images / generate images
+#   delegation      – spawn sub-agents for big tasks
+#   session_search  – recall the agent's own past sessions
+#   todo            – the agent's working task list
+# OFF on purpose: memory (per-company-global — we do per-USER memory via the
+# Broker), cronjob (we have our own automations engine), computer_use (OS control).
+platform_toolsets:
+  api_server:
+    - broker
+    - skills
+    # - web      # hermes-native web_search is unconfigured (no provider key) and
+    #            # errors if picked. All web search goes through the Broker's
+    #            # web.search (Exa via the gateway) for central billing/control.
+    - code_execution
+    - terminal
+    - file
+    - vision
+    - delegation
+    - session_search
+    - todo
+    # Disabled until their runtimes exist (see task #15):
+    # - browser     # needs chromium/playwright in the hermes image
+    # - image_gen   # needs an image-generation model routed through the gateway
+
+# code_execution / terminal are gated behind an approval step meant for a HUMAN
+# in an interactive terminal. We run hermes headless (no human to prompt), so:
+#   - "manual" (default) halts every code run
+#   - "smart" (aux-LLM judge) intermittently BLOCKS even benign file-generation
+#     code ("approval restrictions on executing certain code") -> flaky downloads
+# So use "off": the agent runs its code freely (reliable file generation/analysis).
+# Isolation is NOT from per-command approval but from the per-company container +
+# resource caps + the deploy-time per-call sandbox (TERMINAL_ENV=docker|modal,
+# task #14). cron_mode stays "deny" so scheduled runs never execute risky shell.
+# NOTE: "off" must be quoted — bare off is YAML boolean false.
+approvals:
+  mode: "off"
+  cron_mode: deny

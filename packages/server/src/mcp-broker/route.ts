@@ -1,8 +1,9 @@
 // Hono mount for the MCP Broker. hermes connects here over Streamable HTTP
 // (POST /mcp). The instance is authenticated with a static bearer
 // (BROKER_INSTANCE_TOKEN); per-user identity arrives per-call in tools/call
-// params._meta (M4). Stateless: every method is request/response, so each POST
-// is self-contained and we never open a server->client SSE stream.
+// params._meta (M4). POST is request/response; we ALSO expose the optional
+// server->client SSE stream (GET /mcp) to push notifications/tools/list_changed
+// when the tool surface changes (auto-reload — see tool-change-bus.ts).
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
@@ -48,10 +49,10 @@ export function createBrokerRoutes(db: Db, env: Env) {
   const getOrgId = () => (orgIdPromise ??= resolveSingleOrgId(db));
 
   // Tool set = static tools + this org's CUSTOM-object tools (generated from
-  // object_config). Cached with a short TTL so a newly-created grid becomes
-  // agent-usable on the next tools/list (next hermes session) without a DB query
-  // per call. The stateless transport can't push notifications/tools/list_changed,
-  // so listChanged stays false and discovery happens at session start.
+  // object_config). Cached with a short TTL to avoid a DB query per call; a
+  // tool-surface change invalidates the cache (below) and we push
+  // notifications/tools/list_changed over the GET /mcp SSE stream so hermes
+  // re-fetches live (listChanged:true in initialize).
   let toolsCache: { at: number; tools: BrokerTool[] } | null = null;
   const TOOLS_TTL_MS = 60_000;
   const getTools = async (): Promise<BrokerTool[]> => {

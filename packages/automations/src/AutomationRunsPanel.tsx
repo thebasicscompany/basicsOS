@@ -77,8 +77,8 @@ export function AutomationRunsPanel({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="w-full overflow-y-auto p-6 sm:max-w-lg">
+        <SheetHeader className="p-0">
           <SheetTitle>Run History</SheetTitle>
         </SheetHeader>
         <Tabs

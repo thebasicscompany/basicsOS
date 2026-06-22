@@ -220,8 +220,19 @@ export function AutomationListPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate("/chat", {
+                                    state: {
+                                      initialText: `Help me edit my automation "${rule.name}" (automation id ${rule.id}).`,
+                                    },
+                                  })
+                                }
+                              >
+                                Edit with chat
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate(`/automations/${rule.id}`)}>
-                                Edit
+                                Open builder
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setRunsPanelRuleId(rule.id)}>
                                 Run history

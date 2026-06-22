@@ -14,7 +14,27 @@ import { PERMISSIONS, requirePermission } from "@/lib/rbac.js";
 import { logger } from "@/lib/logger.js";
 import { ensureThread, persistMessage } from "@/routes/gateway-chat/storage.js";
 import { sdkPart, requestSchema } from "@/routes/gateway-chat/protocol.js";
-import { buildSessionKey, streamHermesText, HermesError } from "@/lib/hermes/client.js";
+import { buildSessionKey, streamHermesText, HermesError, type HermesAttachment } from "@/lib/hermes/client.js";
+
+/** Validate/cap attachments from the request body (defensive — client-supplied). */
+function sanitizeAttachments(raw: unknown): HermesAttachment[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HermesAttachment[] = [];
+  for (const a of raw.slice(0, 6)) {
+    if (!a || typeof a !== "object") continue;
+    const o = a as Record<string, unknown>;
+    const kind = o.kind === "image" || o.kind === "text" || o.kind === "unsupported" ? o.kind : null;
+    if (!kind) continue;
+    const content = typeof o.content === "string" ? o.content.slice(0, 8_000_000) : "";
+    out.push({
+      name: typeof o.name === "string" ? o.name.slice(0, 200) : "file",
+      mediaType: typeof o.mediaType === "string" ? o.mediaType.slice(0, 100) : "application/octet-stream",
+      kind,
+      content,
+    });
+  }
+  return out;
+}
 import { drainNeedsConnections } from "@/lib/pending-connections.js";
 import { readdirSync, statSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -100,10 +120,17 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
     }
 
     const userText = latestUserText(parsed.data.messages);
-    if (!userText) return c.json({ error: "No user message" }, 400);
+    // Uploaded files ride in the request body (not the AI-SDK message schema).
+    const attachments = sanitizeAttachments((body as { attachments?: unknown }).attachments);
+    if (!userText && !attachments.length) return c.json({ error: "No user message" }, 400);
 
     const threadId = await ensureThread(db, crmUser, parsed.data.threadId, parsed.data.channel);
-    await persistMessage(db, threadId, "user", userText);
+    await persistMessage(
+      db,
+      threadId,
+      "user",
+      attachments.length ? `${userText}${userText ? "\n\n" : ""}[attached: ${attachments.map((a) => a.name).join(", ")}]` : userText,
+    );
 
     const sessionKey = buildSessionKey(crmUser.id, threadId);
     const encoder = new TextEncoder();
@@ -127,6 +154,7 @@ export function createAgentChatRoutes(db: Db, auth: BetterAuthInstance, env: Env
             env,
             sessionKey,
             message: userText,
+            attachments,
             signal: c.req.raw.signal,
           })) {
             assistantText += delta;

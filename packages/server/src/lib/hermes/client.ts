@@ -16,12 +16,40 @@ export function buildSessionKey(userId: string | number, threadId: string | numb
   return `agent:main:basicsos:dm:${userId}:${threadId}`;
 }
 
+export interface HermesAttachment {
+  name: string;
+  mediaType: string;
+  kind: "image" | "text" | "unsupported";
+  content: string; // image: data URL; text: file text; unsupported: ""
+}
+
 export interface HermesTurnOptions {
   env: Env;
   sessionKey: string;
   /** the new user message; prior turns are recalled by hermes via the session key */
   message: string;
+  /** files the user uploaded this turn (images -> vision; text -> inlined). */
+  attachments?: HermesAttachment[];
   signal?: AbortSignal;
+}
+
+/** OpenAI-style user content: a plain string, or parts (text + image_url). */
+type UserContent = string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
+
+/** Fold uploaded attachments into the user turn: inline text files, attach images. */
+function buildUserContent(message: string, attachments?: HermesAttachment[]): UserContent {
+  if (!attachments?.length) return message;
+  let text = message;
+  for (const a of attachments) {
+    if (a.kind === "text") text += `\n\n--- Attached file: ${a.name} ---\n${a.content}`;
+    else if (a.kind === "unsupported") text += `\n\n[The user attached "${a.name}" (${a.mediaType}); you can't read this file type yet — tell them so.]`;
+  }
+  const images = attachments.filter((a) => a.kind === "image" && a.content);
+  if (!images.length) return text;
+  return [
+    { type: "text", text },
+    ...images.map((a) => ({ type: "image_url" as const, image_url: { url: a.content } })),
+  ];
 }
 
 /**
@@ -65,7 +93,7 @@ function hermesHeaders(env: Env, sessionKey: string): Record<string, string> {
  * deltas. Throws on a non-2xx / bodyless response.
  */
 export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator<string> {
-  const { env, sessionKey, message, signal } = opts;
+  const { env, sessionKey, message, attachments, signal } = opts;
   const res = await fetch(`${env.HERMES_API_URL}/v1/chat/completions`, {
     method: "POST",
     headers: hermesHeaders(env, sessionKey),
@@ -74,7 +102,7 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
       stream: true,
       messages: [
         { role: "system", content: buildSystemPrompt(artifactDirFor(sessionKey)) },
-        { role: "user", content: message },
+        { role: "user", content: buildUserContent(message, attachments) },
       ],
     }),
     signal,

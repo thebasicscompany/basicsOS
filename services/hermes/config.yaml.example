@@ -54,7 +54,9 @@ platform_toolsets:
   api_server:
     - broker
     - skills
-    - web
+    # - web      # hermes-native web_search is unconfigured (no provider key) and
+    #            # errors if picked. All web search goes through the Broker's
+    #            # web.search (Exa via the gateway) for central billing/control.
     - code_execution
     - terminal
     - file

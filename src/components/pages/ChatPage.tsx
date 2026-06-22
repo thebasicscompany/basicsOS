@@ -46,6 +46,7 @@ import {
   PromptInputHeader,
   type PromptInputMessage,
   PromptInputSubmit,
+  PromptInputButton,
   PromptInputTextarea,
   PromptInputTools,
   PromptInputProvider,
@@ -385,6 +386,11 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
 
   const controller = useOptionalPromptInputController();
 
+  // Web-search toggle (chat bar): when on, the message is prefixed to force the
+  // agent to use web.search. Lightweight, client-only — the agent can search
+  // anyway, this just makes the intent explicit.
+  const [webSearch, setWebSearch] = useState(false);
+
   // In-app file viewer: download chips dispatch "bos:open-file"; open the panel.
   const [viewerFile, setViewerFile] = useState<ViewerFile | null>(null);
   useEffect(() => {
@@ -395,6 +401,52 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
     window.addEventListener("bos:open-file", onOpen as EventListener);
     return () => window.removeEventListener("bos:open-file", onOpen as EventListener);
   }, []);
+
+  // Send a turn, reading any uploaded files so the AGENT actually receives them:
+  // images go to gpt-4o vision; text files (md/csv/txt/json/code) are inlined.
+  // Attachments ride in the request body and the server builds hermes content.
+  const sendMessage = useCallback(
+    async (text: string, files?: Array<{ url?: string; filename?: string; mediaType?: string }>) => {
+      if (!files?.length) {
+        append({ role: "user", content: text });
+        return;
+      }
+      const attachments = (
+        await Promise.all(
+          files.map(async (f) => {
+            try {
+              if (!f.url) return null;
+              const blob = await (await fetch(f.url)).blob();
+              const name = f.filename || "file";
+              const mediaType = f.mediaType || blob.type || "application/octet-stream";
+              if (mediaType.startsWith("image/")) {
+                const dataUrl: string = await new Promise((res, rej) => {
+                  const r = new FileReader();
+                  r.onload = () => res(r.result as string);
+                  r.onerror = rej;
+                  r.readAsDataURL(blob);
+                });
+                return { name, mediaType, kind: "image" as const, content: dataUrl };
+              }
+              const texty =
+                mediaType.startsWith("text/") ||
+                /\.(md|markdown|txt|csv|json|tsv|log|ya?ml|html?|xml|js|ts|py|sql)$/i.test(name) ||
+                mediaType === "application/json";
+              if (texty) {
+                const t = await blob.text();
+                return { name, mediaType, kind: "text" as const, content: t.slice(0, 200_000) };
+              }
+              return { name, mediaType, kind: "unsupported" as const, content: "" };
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter(Boolean);
+      append({ role: "user", content: text }, { body: { attachments } });
+    },
+    [append],
+  );
 
   const handleSubmit = useCallback(
     (
@@ -409,19 +461,15 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
       const hasAttachments = Boolean(message.files?.length);
       if (!(hasText || hasAttachments)) return;
 
-      const text = message.text?.trim() || "Sent with attachments";
-      if (hasAttachments) {
-        toast.success("Files attached", {
-          description: `${message.files!.length} file(s) attached. Note: The assistant currently supports text only.`,
-        });
-      }
+      const base = message.text?.trim() || "Sent with attachments";
+      const text = webSearch ? `Use web search to answer this. ${base}` : base;
       // Clear the input immediately so the textarea empties before the response arrives.
       controller?.textInput.clear();
       // Fire-and-forget: returning void (not a Promise) causes PromptInput
       // to clear the textarea immediately instead of waiting for the response.
-      void append({ role: "user", content: text });
+      void sendMessage(text, message.files);
     },
-    [append, hasKey, controller],
+    [sendMessage, hasKey, controller, webSearch],
   );
 
   const handleSuggestionClick = useCallback(
@@ -482,6 +530,14 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                       <PromptInputActionAddAttachments />
                     </PromptInputActionMenuContent>
                   </PromptInputActionMenu>
+                  <PromptInputButton
+                    tooltip="Search the web"
+                    variant={webSearch ? "default" : "ghost"}
+                    aria-pressed={webSearch}
+                    onClick={() => setWebSearch((v) => !v)}
+                  >
+                    <GlobeIcon className="size-4" />
+                  </PromptInputButton>
                 </PromptInputTools>
                 <PromptInputSubmit status={status} onStop={stop} />
               </PromptInputFooter>
@@ -579,6 +635,14 @@ function ChatPageInner({ threadId }: { threadId?: string }) {
                     <PromptInputActionAddAttachments />
                   </PromptInputActionMenuContent>
                 </PromptInputActionMenu>
+                <PromptInputButton
+                  tooltip="Search the web"
+                  variant={webSearch ? "default" : "ghost"}
+                  aria-pressed={webSearch}
+                  onClick={() => setWebSearch((v) => !v)}
+                >
+                  <GlobeIcon className="size-4" />
+                </PromptInputButton>
               </PromptInputTools>
               <PromptInputSubmit
                 status={status}

@@ -12,6 +12,7 @@ import {
   CalendarIcon,
   PlayIcon,
   ClockCounterClockwiseIcon,
+  MicrophoneIcon,
   SparkleIcon,
   ArrowRightIcon,
   SlackLogoIcon,
@@ -19,7 +20,7 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getList, update, remove } from "basics-os/src/lib/api/crm";
 import { getRuntimeApiUrl } from "basics-os/src/lib/runtime-config";
@@ -299,6 +300,42 @@ export function AutomationListPage() {
     seedChat(`Create an automation that does this: ${t}`);
   };
 
+  // Voice-to-text dictation into the prompt box (Web Speech API).
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const baseTextRef = useRef("");
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SR = (window as unknown as { SpeechRecognition?: new () => unknown; webkitSpeechRecognition?: new () => unknown });
+    const Ctor = SR.SpeechRecognition ?? SR.webkitSpeechRecognition;
+    if (!Ctor) {
+      toast.error("Voice input isn’t supported in this browser.");
+      return;
+    }
+    const rec = new Ctor() as {
+      lang: string; interimResults: boolean; continuous: boolean;
+      onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+      onend: () => void; onerror: () => void; start: () => void; stop: () => void;
+    };
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    baseTextRef.current = draft ? `${draft.trim()} ` : "";
+    rec.onresult = (e) => {
+      let txt = "";
+      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      setDraft(baseTextRef.current + txt);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
+
   const q = search.trim().toLowerCase();
   const filteredRules = q
     ? rules.filter((r) => r.name.toLowerCase().includes(q) || getStepSummary(r).toLowerCase().includes(q))
@@ -324,13 +361,32 @@ export function AutomationListPage() {
             </div>
           </div>
           <div className="mt-4 flex gap-2">
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitDraft()}
-              placeholder="e.g. Every Friday, email me the deals closing next week…"
-              className="flex-1"
-            />
+            <div className="relative flex-1">
+              <Input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitDraft()}
+                placeholder="Describe an automation in plain English…"
+                className="pr-10"
+                name="bos-automation-prompt"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
+              />
+              <button
+                type="button"
+                onClick={toggleVoice}
+                aria-label={listening ? "Stop dictation" : "Dictate"}
+                className={`absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 transition-colors hover:bg-surface-hover ${
+                  listening ? "text-red-500" : "text-muted-foreground"
+                }`}
+              >
+                <MicrophoneIcon className="size-4" weight={listening ? "fill" : "regular"} />
+              </button>
+            </div>
             <Button onClick={submitDraft} disabled={!draft.trim()}>
               Create <ArrowRightIcon className="ml-1.5 size-4" />
             </Button>

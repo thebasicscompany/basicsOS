@@ -11,6 +11,7 @@ import {
   CodeIcon,
   CalendarIcon,
   PlayIcon,
+  ClockCounterClockwiseIcon,
   SparkleIcon,
   ArrowRightIcon,
   SlackLogoIcon,
@@ -476,16 +477,19 @@ export function AutomationListPage() {
                               <span className={rule.enabled ? "text-green-500" : ""}>{rule.enabled ? "Active" : "Paused"}</span>
                               · last run {relativeTime(rule.lastRunAt)}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                               <button
                                 className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
                                 onClick={() => runNow.mutate(rule.id)}
                                 disabled={runNow.isPending}
                               >
-                                <PlayIcon className="size-3" weight="fill" /> Run
+                                <PlayIcon className="size-3" weight="fill" /> Run now
                               </button>
-                              <button className="font-medium text-foreground hover:underline" onClick={() => setRunsPanelRuleId(rule.id)}>
-                                Runs
+                              <button
+                                className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                                onClick={() => setRunsPanelRuleId(rule.id)}
+                              >
+                                <ClockCounterClockwiseIcon className="size-3" /> History
                               </button>
                             </div>
                           </CardFooter>

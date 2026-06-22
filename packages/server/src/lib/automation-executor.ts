@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { readdirSync, statSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Db } from "@/db/client.js";
 import type { Env } from "@/env.js";
 import type { WorkflowDefinition } from "@/lib/automation-engine.js";
@@ -37,6 +39,84 @@ async function resolveApiKeyForOrg(
   if (env.SERVER_BASICS_API_KEY) return env.SERVER_BASICS_API_KEY;
   if (env.SERVER_BYOK_API_KEY) return env.SERVER_BYOK_API_KEY;
   return "";
+}
+
+/** Files currently in an automation's artifact dir (names only). */
+function listArtifacts(env: Env, ruleKey: string): string[] {
+  if (!env.HERMES_ARTIFACTS_DIR) return [];
+  try {
+    const dir = join(env.HERMES_ARTIFACTS_DIR, `automation-${ruleKey}`);
+    return readdirSync(dir).filter((n) => {
+      if (n.startsWith(".")) return false;
+      try {
+        return statSync(join(dir, n)).isFile();
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Run-artifact delivery: an automation runs headless, so any file its agent
+ * generates (file.save / code) has no in-app download surface like chat does.
+ * After the agentic step, email the OWNER the files the run just produced
+ * (snapshot diff), as attachments, so reports/exports actually reach them.
+ */
+async function deliverRunArtifacts(
+  db: Db,
+  env: Env,
+  apiKey: string,
+  crmUserId: number,
+  ruleKey: string,
+  before: Set<string>,
+): Promise<void> {
+  if (!env.HERMES_ARTIFACTS_DIR || !apiKey) return;
+  const fresh = listArtifacts(env, ruleKey).filter((n) => !before.has(n));
+  if (!fresh.length) return;
+
+  const [owner] = await db
+    .select({ email: schema.crmUsers.email })
+    .from(schema.crmUsers)
+    .where(eq(schema.crmUsers.id, crmUserId))
+    .limit(1);
+  const to = owner?.email;
+  if (!to) return;
+
+  const dir = join(env.HERMES_ARTIFACTS_DIR, `automation-${ruleKey}`);
+  const attachments: Array<{ filename: string; content: string }> = [];
+  let total = 0;
+  for (const filename of fresh.slice(0, 10)) {
+    try {
+      const buf = readFileSync(join(dir, filename));
+      if (buf.length > 8_000_000) continue; // skip oversized single file
+      total += buf.length;
+      if (total > 20_000_000) break; // cap total payload
+      attachments.push({ filename, content: buf.toString("base64") });
+    } catch {
+      /* skip unreadable */
+    }
+  }
+  if (!attachments.length) return;
+
+  const names = attachments.map((a) => a.filename).join(", ");
+  console.log(`[artifact-delivery] emailing ${attachments.length} file(s) (${names}) to ${to} for automation ${ruleKey}`);
+  const res = await fetch(`${env.BASICSOS_API_URL}/v1/email/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      to,
+      subject: `Your automation generated ${attachments.length} file${attachments.length > 1 ? "s" : ""}`,
+      content: `Your scheduled automation produced ${names}. The file${attachments.length > 1 ? "s are" : " is"} attached.`,
+      attachments,
+    }),
+  }).catch((e) => {
+    console.warn(`[artifact-delivery] send failed: ${e}`);
+    return null;
+  });
+  if (res && !res.ok) console.warn(`[artifact-delivery] send returned ${res.status}`);
 }
 
 export async function executeWorkflow(
@@ -178,9 +258,14 @@ export async function executeWorkflow(
           context.ai_agent_result = { error: "agentic step has no prompt" };
           break;
         }
-        const sessionKey = buildSessionKey(crmUser.id, `automation-${ruleId ?? "adhoc"}`);
+        const ruleKey = String(ruleId ?? "adhoc");
+        const filesBefore = new Set(listArtifacts(env, ruleKey)); // snapshot for the artifact diff
+        const sessionKey = buildSessionKey(crmUser.id, `automation-${ruleKey}`);
         const text = await hermesComplete({ env, sessionKey, message: prompt });
         context.ai_agent_result = text;
+        // Deliver any files the run generated to the owner (headless runs have no
+        // download surface). Best-effort — never fail the run on a delivery error.
+        await deliverRunArtifacts(db, env, apiKey, crmUser.id, ruleKey, filesBefore).catch(() => {});
         if (crmUser.organizationId) {
           writeUsageLogSafe(db, {
             organizationId: crmUser.organizationId,

@@ -487,7 +487,7 @@ export function AutomationListPage() {
                                   Edit with chat
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => navigate(`/automations/${rule.id}`)}>
-                                  Open builder
+                                  Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setRunsPanelRuleId(rule.id)}>Run history</DropdownMenuItem>
                                 <DropdownMenuSeparator />

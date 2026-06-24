@@ -179,8 +179,13 @@ export async function deleteCustomRecord(
   orgId: string,
 ): Promise<boolean> {
   const table = sql.identifier(tableName);
-  await db.execute(
-    sql`DELETE FROM ${table} WHERE id = ${id} AND organization_id = ${orgId}`,
+  const result = await db.execute(
+    sql`DELETE FROM ${table} WHERE id = ${id} AND organization_id = ${orgId} RETURNING id`,
   );
-  return true;
+  const rows = (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as unknown[];
+  // true only if a row was actually deleted — so callers can report NOT_FOUND for
+  // a missing/wrong-org id instead of a false success.
+  return rows.length > 0;
 }

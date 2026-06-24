@@ -14,22 +14,29 @@ import { relations } from "drizzle-orm";
 import { crmUsers } from "@/db/schema/crm_users.js";
 import { organizations } from "@/db/schema/organizations.js";
 
-export const objectConfig = pgTable("object_config", {
-  id: bigserial("id", { mode: "number" }).primaryKey(),
-  slug: varchar("slug", { length: 64 }).notNull().unique(),
-  singularName: varchar("singular_name", { length: 128 }).notNull(),
-  pluralName: varchar("plural_name", { length: 128 }).notNull(),
-  icon: varchar("icon", { length: 64 }).notNull().default("building"),
-  iconColor: varchar("icon_color", { length: 32 }).notNull().default("blue"),
-  tableName: varchar("table_name", { length: 128 }).notNull(),
-  type: varchar("type", { length: 32 }).notNull().default("standard"),
-  isActive: boolean("is_active").notNull().default(true),
-  position: smallint("position").notNull().default(0),
-  settings: jsonb("settings").notNull().default({}),
-  organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-});
+export const objectConfig = pgTable(
+  "object_config",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    // Slug is unique PER ORG (not globally): two orgs can both have e.g. `statuses`.
+    // Built-in/system objects use organizationId = NULL; NULLS NOT DISTINCT keeps
+    // those globally unique by slug (one system `companies`, etc.).
+    slug: varchar("slug", { length: 64 }).notNull(),
+    singularName: varchar("singular_name", { length: 128 }).notNull(),
+    pluralName: varchar("plural_name", { length: 128 }).notNull(),
+    icon: varchar("icon", { length: 64 }).notNull().default("building"),
+    iconColor: varchar("icon_color", { length: 32 }).notNull().default("blue"),
+    tableName: varchar("table_name", { length: 128 }).notNull(),
+    type: varchar("type", { length: 32 }).notNull().default("standard"),
+    isActive: boolean("is_active").notNull().default(true),
+    position: smallint("position").notNull().default(0),
+    settings: jsonb("settings").notNull().default({}),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+  },
+  (t) => [unique("object_config_org_slug_key").on(t.organizationId, t.slug).nullsNotDistinct()],
+);
 
 export const objectAttributeOverrides = pgTable(
   "object_attribute_overrides",

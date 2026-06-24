@@ -17,6 +17,9 @@ import { createAgentChatRoutes } from "@/routes/agent-chat.js";
 import { createFilesRoutes } from "@/routes/files.js";
 import { createMeRoutes } from "@/routes/me.js";
 import { createObjectConfigRoutes } from "@/routes/object-config.js";
+import { createConnectorsRoutes } from "@/routes/connectors.js";
+import { createBuildMcpRoutes } from "@/routes/build-mcp.js";
+import { createAppConfigRoutes } from "@/routes/app-config.js";
 import { createSchemaRoutes } from "@/routes/schema.js";
 import { createViewRoutes } from "@/routes/views.js";
 import { createVoiceProxyRoutes } from "@/routes/voice-proxy.js";
@@ -29,7 +32,11 @@ import { createEmailSyncRoutes } from "@/routes/email-sync.js";
 import { createRbacRoutes } from "@/routes/rbac.js";
 import { createAdminRoutes } from "@/routes/admin.js";
 import { createApiTokensRoutes } from "@/routes/api-tokens.js";
-import { createBrokerRoutes } from "@/mcp-broker/route.js";
+import { createBrokerCore, createBrokerRoutes } from "@/mcp-broker/route.js";
+import { createAppBrokerRoutes } from "@/mcp-broker/app-route.js";
+import { buildAppModuleHost } from "@/apps/host.js";
+import { createHostedAppsRoutes } from "@/routes/hosted-apps.js";
+import type { RawSql } from "@/db/client.js";
 import { isTrustedOrigin, isElectronUserAgent } from "@/lib/trusted-origins.js";
 import { sql } from "drizzle-orm";
 
@@ -91,7 +98,7 @@ const rateLimitMiddleware = async (
   await next();
 };
 
-export function createApp(db: Db, env: Env) {
+export function createApp(db: Db, env: Env, rawSql?: RawSql) {
   const allowedOrigins = env.ALLOWED_ORIGINS
     ? env.ALLOWED_ORIGINS.split(",")
         .map((o) => o.trim())
@@ -132,22 +139,36 @@ export function createApp(db: Db, env: Env) {
 
   app.use("/*", async (c, next) => {
     c.header("X-Content-Type-Options", "nosniff");
-    c.header("X-Frame-Options", "DENY");
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
     c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-    c.header("Cross-Origin-Opener-Policy", "same-origin");
     c.header("Cross-Origin-Resource-Policy", "same-site");
-    c.header(
-      "Content-Security-Policy",
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://localhost:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-    );
+    // Hosted-app bundles (/hosted/*) are embedded by the shell in a sandboxed
+    // iframe, so they must be framable. They set their own framing headers
+    // (routes/hosted-apps.ts); everything else stays frame-DENY + COOP-isolated.
+    if (!c.req.path.startsWith("/hosted/")) {
+      c.header("X-Frame-Options", "DENY");
+      c.header("Cross-Origin-Opener-Policy", "same-origin");
+      c.header(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://localhost:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      );
+    }
     await next();
   });
 
-  // MCP Tool Broker (hermes connects here over Streamable HTTP). Mounted BEFORE
-  // the rate limiter so the agent's tool-call bursts aren't throttled; it has its
-  // own bearer auth (BROKER_INSTANCE_TOKEN). See src/mcp-broker/.
-  app.route("/", createBrokerRoutes(db, env));
+  // MCP Tool Broker. The hermes `/mcp` path and the Better-Auth app-facing path
+  // (/api/apps, mounted below) share ONE engine (tool registry + cache + the
+  // single live-reload invalidator). Mounted BEFORE the rate limiter so the
+  // agent's tool-call bursts aren't throttled; it has its own bearer auth
+  // (BROKER_INSTANCE_TOKEN). See src/mcp-broker/.
+  // Backend app modules (APP-4c) contribute broker tools (app.{slug}.{tool}) and
+  // namespaced HTTP routes. Built only when the raw sql client is available (the
+  // ScopedDb needs it). Empty unless a module is installed (LOAD_SAMPLE_APP_MODULE
+  // in dev / a deployed hosted-app module in prod).
+  const moduleHost = rawSql ? buildAppModuleHost(db, rawSql, env) : null;
+  const brokerCore = createBrokerCore(db, env, moduleHost?.appTools ?? []);
+  moduleHost?.bindBroker(brokerCore.getTools);
+  app.route("/", createBrokerRoutes(brokerCore, env));
 
   app.use("/*", rateLimitMiddleware);
 
@@ -217,6 +238,17 @@ export function createApp(db: Db, env: Env) {
 
   // Object configuration + favorites
   app.route("/api/object-config", createObjectConfigRoutes(db, auth, env));
+  app.route("/api/connectors", createConnectorsRoutes(db, auth, env));
+  app.route("/api/build-mcp", createBuildMcpRoutes(db, auth, env));
+
+  // Custom-app registry (CRUD over app_config). Before generic CRM so it isn't
+  // captured by /api/:resource.
+  app.route("/api/app-config", createAppConfigRoutes(db, auth, env));
+
+  // App-facing MCP Broker path (custom apps call broker tools as the logged-in
+  // user, gated to the app's grants). Before generic CRM so /api/apps/:slug/* is
+  // not captured by /api/:resource. Shares brokerCore with the hermes /mcp path.
+  app.route("/api/apps", createAppBrokerRoutes(brokerCore, db, auth, env));
 
   // Schema introspection (before CRM so /api/schema/:tableName is not captured)
   app.route("/api/schema", createSchemaRoutes(db, auth));
@@ -239,6 +271,16 @@ export function createApp(db: Db, env: Env) {
   // Voice pill BFF — /v1/audio/* and /stream/assistant
   app.route("/v1/audio", createVoiceProxyRoutes(db, auth, env));
   app.route("/stream", createStreamAssistantRoutes(db, auth, env));
+
+  // Backend app-module HTTP routes, mounted at /apps/{slug}/api/* (before the SPA
+  // static catch-all so they aren't swallowed). The client route /apps/:slug is
+  // served by the SPA; only the /api sub-paths are handled here.
+  if (moduleHost && moduleHost.loadedModules.length) {
+    app.route("/apps", moduleHost.routes(auth));
+  }
+
+  // Local hosted-app bundles (APP-4d). Served framing-permissively for the sandbox.
+  app.route("/hosted", createHostedAppsRoutes(env));
 
   // Serve static frontend when STATIC_DIR is set (combined web + API deployment)
   const staticDir = env.STATIC_DIR;

@@ -20,6 +20,25 @@ export function getVisibleAttributes(
     })
     .filter(Boolean) as Array<{ attribute: Attribute; viewColumn: ViewColumn }>;
 
+  // Auto-append attributes that aren't in the saved view yet (e.g. a column the
+  // agent or a CSV import just created) so new columns appear in the grid
+  // immediately instead of staying hidden until manually toggled on. A column the
+  // user explicitly hid is in viewColumns with show:false, so it stays out.
+  const configuredIds = new Set(viewColumns.map((vc) => vc.fieldId));
+  for (const attr of attributes) {
+    if (configuredIds.has(attr.id) || attr.isSystem || attr.isHiddenByDefault) continue;
+    allCols.push({
+      attribute: attr,
+      viewColumn: {
+        id: `virtual-${attr.id}`,
+        fieldId: attr.id,
+        title: attr.name,
+        show: true,
+        order: allCols.length,
+      } as ViewColumn,
+    });
+  }
+
   // Never show organization_id in grids — it's internal tenant scope, not user-relevant
   const colsWithoutOrgId = allCols.filter(
     (item) => item.attribute.columnName !== "organization_id",

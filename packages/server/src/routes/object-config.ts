@@ -434,6 +434,68 @@ export function createObjectConfigRoutes(
     }
   });
 
+  // DELETE /:slug — Delete a CUSTOM object/grid (drops its table + config + tools).
+  // Guarded to custom_* tables so the built-in objects (companies/contacts/deals/
+  // leads) can't be removed. Fires notifyToolsListChanged so hermes drops the
+  // object.{slug}.* tools live (no restart).
+  app.delete("/:slug", async (c) => {
+    const slug = c.req.param("slug");
+    const adminError = await requireObjectConfigWrite(c);
+    if (adminError) return adminError;
+
+    try {
+      const [existing] = await db
+        .select()
+        .from(schema.objectConfig)
+        .where(eq(schema.objectConfig.slug, slug))
+        .limit(1);
+      if (!existing) return c.json({ error: "Object not found" }, 404);
+
+      // Only custom grids are deletable; built-in objects have non-custom_ tables.
+      if (!existing.tableName.startsWith("custom_")) {
+        return c.json(
+          { error: "Built-in objects cannot be deleted." },
+          400,
+        );
+      }
+
+      // children first (FKs/orphans), then config row, then the backing table.
+      await db
+        .delete(schema.customFieldDefs)
+        .where(eq(schema.customFieldDefs.resource, existing.tableName));
+      await db
+        .delete(schema.recordFavorites)
+        .where(eq(schema.recordFavorites.objectSlug, slug));
+      await db
+        .delete(schema.objectAttributeOverrides)
+        .where(eq(schema.objectAttributeOverrides.objectConfigId, existing.id));
+      await db
+        .delete(schema.objectConfig)
+        .where(eq(schema.objectConfig.id, existing.id));
+      await db.execute(
+        sql`DROP TABLE IF EXISTS ${sql.identifier(existing.tableName)} CASCADE`,
+      );
+
+      const authz = await requirePermission(c, db, PERMISSIONS.objectConfigWrite);
+      if (authz.ok) {
+        await writeAuditLogSafe(db, {
+          crmUserId: authz.crmUser.id,
+          organizationId: authz.crmUser.organizationId,
+          action: "object_config.deleted",
+          entityType: "object_config",
+          entityId: existing.id,
+          metadata: { slug, tableName: existing.tableName },
+        });
+      }
+
+      notifyToolsListChanged(); // grid removed → hermes drops its tools live
+      return c.json({ ok: true, slug });
+    } catch (err) {
+      console.error("[object-config] delete failed:", err);
+      return c.json({ error: "Failed to delete object" }, 500);
+    }
+  });
+
   // POST /:slug/overrides — Create/update attribute override (upsert by column_name)
   app.post("/:slug/overrides", async (c) => {
     const slug = c.req.param("slug");

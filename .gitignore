@@ -1,6 +1,12 @@
 # See https://help.github.com/ignore-files/ for more about ignoring files.
 
 # =============================================================================
+# Runtime artifacts
+# =============================================================================
+# Hosted-app bundles written to disk at build/deploy time (regenerated, env-specific)
+hosted-apps/
+
+# =============================================================================
 # Dependencies
 # =============================================================================
 node_modules/

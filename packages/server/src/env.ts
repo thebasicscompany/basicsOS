@@ -38,6 +38,20 @@ const envSchema = z.object({
   // Static bearer hermes presents to the MCP Tool Broker (/mcp). Identifies THIS
   // company's hermes instance; per-user identity is carried per-call in _meta.
   BROKER_INSTANCE_TOKEN: z.string().optional(),
+  // Dev/E2E: "1" loads the sample backend app module (APP-4c). Empty in prod.
+  LOAD_SAMPLE_APP_MODULE: z.string().optional(),
+  // Local hosted-app bundle dir (APP-4d, no Railway/GitHub). Hosted apps are
+  // served framing-permissively from <dir>/{slug}/ at /hosted/{slug}/*. Default
+  // ./hosted-apps. Maps cleanly to S3/static hosting later.
+  HOSTED_APPS_DIR: z.string().optional(),
+  // Public origin hosted bundles are served from (the entryUrl/origin in their
+  // HostedSpec). Default http://localhost:3001 for local; an S3/CDN origin later.
+  HOSTED_PUBLIC_ORIGIN: z.string().optional(),
+  // The app bridge `agent.invoke` is DISABLED unless this is "1". It runs a hermes
+  // turn with native tools (terminal/code) whose cwd holds the secrets .env, so an
+  // app could exfiltrate the broker token. Keep off until app-originated turns run
+  // a restricted broker-only toolset / sandbox (hermes hardening). Fail-closed.
+  APP_AGENT_INVOKE_ENABLED: z.string().optional(),
   // This company's hermes sidecar (the agent brain behind in-app chat).
   HERMES_API_URL: z.string().url().default("http://localhost:8642"),
   HERMES_API_SERVER_KEY: z.string().optional(),

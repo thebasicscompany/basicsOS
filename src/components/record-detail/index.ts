@@ -7,6 +7,7 @@ export { CallsTabContent } from "./CallsTabContent";
 export { CallViewDialog } from "./CallViewDialog";
 export { TasksTabContent } from "./TasksTabContent";
 export { ActivityTabContent } from "./ActivityTabContent";
+export { RecordChatTab } from "./RecordChatTab";
 export { DetailSkeleton } from "./DetailSkeleton";
 export { EditableRecordName } from "./EditableRecordName";
 export { RecordDetailHeaderActions } from "./RecordDetailHeaderActions";

@@ -12,6 +12,8 @@
 // per-call in `tools/call` `params._meta` (M4) — never as a model-visible tool
 // argument. See docs/CONTRACTS_MCP_BROKER_AND_APP_SDK.md A.2/A.5.
 
+import { isAppToolAllowed } from "@/mcp-broker/app-grants.js";
+
 export const BROKER_NAME = "basicsos-broker";
 export const BROKER_VERSION = "0.1.0";
 // Protocol versions we understand; we echo the client's if we support it.
@@ -80,6 +82,14 @@ export interface ToolCallContext {
   can: (permission: string) => boolean;
   /** raw _meta passthrough for future use */
   meta: Record<string, unknown> | null;
+  /**
+   * App grant allowlist. When non-null, every tools/call is ADDITIONALLY gated to
+   * these grants (minus the app denylist) — the per-app trust boundary. Set on the
+   * app-facing path AND on app-originated agent turns (a hermes session whose
+   * thread is `app-{slug}`), so the agent an app invokes can't exceed the app's
+   * grants. null/undefined = no app gating (the user's own chat agent).
+   */
+  appGrants?: readonly string[] | null;
 }
 
 export interface BrokerDeps {
@@ -92,6 +102,15 @@ export interface BrokerDeps {
   resolveContext: (meta: Record<string, unknown> | null) => Promise<ToolCallContext>;
   /** server-side error sink; raw errors are never returned to the caller/model */
   logError?: (err: unknown, context: string) => void;
+
+  // ── App-facing path hook (APP-0). UNDEFINED on the hermes/_meta path. The
+  // app-facing route sets it to restrict the advertised tool surface to the app's
+  // grants. Per-call gating is enforced via ToolCallContext.appGrants (below), so
+  // it applies to BOTH the app path and app-originated agent turns. ─────────────
+  /** Restrict the `tools/list` result to the granted subset. The FULL tool set is
+   *  still used for `tools/call` lookup, so an ungranted-but-existing tool yields
+   *  FORBIDDEN (via ctx.appGrants) rather than NOT_FOUND. */
+  filterTools?: (tools: BrokerTool[]) => BrokerTool[];
 }
 
 /** The live tool set — dynamic resolver if provided, else the static list. */
@@ -144,7 +163,9 @@ export async function handleRpc(
       return ok(id, {});
 
     case "tools/list": {
-      const tools = await resolveTools(deps);
+      let tools = await resolveTools(deps);
+      // App-facing path restricts the advertised surface to the app's grants.
+      if (deps.filterTools) tools = deps.filterTools(tools);
       return ok(id, { tools: tools.map(toolToWire) });
     }
 
@@ -158,6 +179,13 @@ export async function handleRpc(
       }
       try {
         const ctx = await deps.resolveContext(meta);
+        // App grant gate: when the caller is an app (or an app-originated agent
+        // turn), every call is restricted to the app's grants minus the app
+        // denylist. Checked after existence + before RBAC so an app can't probe
+        // which tools it lacks (an ungranted call reads as FORBIDDEN, not NOT_FOUND).
+        if (ctx.appGrants != null && !isAppToolAllowed(name, ctx.appGrants)) {
+          return ok(id, callError("FORBIDDEN", `This app is not permitted to call ${name}.`));
+        }
         // RBAC gate. Any write tool needs a known acting user (fail closed even if
         // a tool forgets to declare `requires`); `requires` additionally checks the
         // specific permission.

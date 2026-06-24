@@ -316,6 +316,7 @@ export function RecordDetailPage() {
                 recordId={numericRecordId}
               />
             </TabsContent>
+
           </Tabs>
 
           <div className="min-h-0 overflow-y-auto">

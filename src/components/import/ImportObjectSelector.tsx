@@ -1,8 +1,4 @@
-import {
-  BuildingsIcon,
-  CurrencyDollarIcon,
-  UsersIcon,
-} from "@phosphor-icons/react";
+import { PlusCircleIcon, TableIcon } from "@phosphor-icons/react";
 import {
   Select,
   SelectContent,
@@ -11,12 +7,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useObjects } from "@/hooks/use-object-registry";
 
-const IMPORTABLE_OBJECTS = [
-  { slug: "contacts", label: "Contacts", icon: UsersIcon },
-  { slug: "companies", label: "Companies", icon: BuildingsIcon },
-  { slug: "deals", label: "Deals", icon: CurrencyDollarIcon },
-] as const;
+/** Sentinel objectSlug for the "create a brand-new grid from this CSV" path. */
+export const NEW_GRID_VALUE = "__new__";
 
 export interface ImportObjectSelectorProps {
   value: string;
@@ -29,19 +23,27 @@ export function ImportObjectSelector({
   onChange,
   disabled,
 }: ImportObjectSelectorProps) {
+  const objects = useObjects();
+
   return (
     <div className="space-y-2">
       <Label>Import into</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger className="w-full max-w-xs">
-          <SelectValue />
+          <SelectValue placeholder="Choose a grid…" />
         </SelectTrigger>
         <SelectContent>
-          {IMPORTABLE_OBJECTS.map(({ slug, label, icon: Icon }) => (
-            <SelectItem key={slug} value={slug}>
+          <SelectItem value={NEW_GRID_VALUE}>
+            <span className="flex items-center gap-2">
+              <PlusCircleIcon className="size-4" />
+              Create a new grid from this CSV
+            </span>
+          </SelectItem>
+          {objects.map((o) => (
+            <SelectItem key={o.slug} value={o.slug}>
               <span className="flex items-center gap-2">
-                <Icon className="size-4" />
-                {label}
+                <TableIcon className="size-4" />
+                {o.pluralName || o.slug}
               </span>
             </SelectItem>
           ))}

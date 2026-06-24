@@ -3,14 +3,25 @@ import { Button } from "@/components/ui/button";
 import { ImportColumnMapper } from "@/components/import/ImportColumnMapper";
 import { ImportFileDropzone } from "@/components/import/ImportFileDropzone";
 import { ImportMergeOptions } from "@/components/import/ImportMergeOptions";
-import { ImportObjectSelector } from "@/components/import/ImportObjectSelector";
+import {
+  ImportObjectSelector,
+  NEW_GRID_VALUE,
+} from "@/components/import/ImportObjectSelector";
+import { ImportNewGrid } from "@/components/import/ImportNewGrid";
 import { ImportPreviewTable } from "@/components/import/ImportPreviewTable";
 import { ImportProgress } from "@/components/import/ImportProgress";
 import type { ParsedCSV } from "@/components/import/import-utils";
 import { useImport } from "@/hooks/use-import";
 import { toast } from "sonner";
 
-export function ImportWizard() {
+export function ImportWizard({
+  initialObjectSlug,
+  onComplete,
+}: {
+  initialObjectSlug?: string;
+  /** fired when the user finishes the import (lets a host dialog close itself) */
+  onComplete?: () => void;
+} = {}) {
   const {
     state,
     setParsed,
@@ -23,7 +34,7 @@ export function ImportWizard() {
     setMergeOptions,
     goToExecute,
     reset,
-  } = useImport();
+  } = useImport(initialObjectSlug);
 
   const handleParsed = (data: ParsedCSV) => {
     if (data.headers.length === 0) {
@@ -41,7 +52,14 @@ export function ImportWizard() {
 
   if (state.step === "execute") {
     return (
-      <ImportProgress state={state} onBack={() => reset()} onDone={reset} />
+      <ImportProgress
+        state={state}
+        onBack={() => reset()}
+        onDone={() => {
+          reset();
+          onComplete?.();
+        }}
+      />
     );
   }
 
@@ -54,6 +72,18 @@ export function ImportWizard() {
         />
         <ImportFileDropzone onParsed={handleParsed} onError={handleError} />
       </div>
+    );
+  }
+
+  // "Create a new grid from this CSV" — self-contained (creates the object +
+  // bulk-imports), so it bypasses the map/merge/preview/execute steps.
+  if (state.objectSlug === NEW_GRID_VALUE && state.parsed) {
+    return (
+      <ImportNewGrid
+        parsed={state.parsed}
+        onBack={() => setParsed(null)}
+        onDone={reset}
+      />
     );
   }
 

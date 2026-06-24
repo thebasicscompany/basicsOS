@@ -203,10 +203,10 @@ export function CreateObjectModal({
             <div className="space-y-1.5">
               <Label>Icon</Label>
               <Select value={icon} onValueChange={setIcon}>
-                <SelectTrigger className="w-[52px] h-9">
+                <SelectTrigger className="w-[68px] h-9" aria-label="Object icon">
                   <SelectedIcon className="size-4" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" align="start" className="min-w-[10rem]">
                   {ICON_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       <div className="flex items-center gap-2">

@@ -31,8 +31,18 @@ export interface HermesTurnOptions {
   /** files the user uploaded this turn (images -> vision; text -> inlined). */
   attachments?: HermesAttachment[];
   signal?: AbortSignal;
+  /** Abort the upstream call after this many ms (default 150s) so a throttled/
+   *  stuck gateway fails fast instead of hanging the turn. */
+  timeoutMs?: number;
   /** fired once per tool/skill the agent uses this turn (for live UI surfacing). */
   onToolEvent?: (e: HermesToolEvent) => void;
+  /** Override the default BasicsOS system prompt (e.g. the app-builder codegen
+   *  surface, APP-3). When set, this replaces buildSystemPrompt for the turn. */
+  systemPrompt?: string;
+  /** Extra context APPENDED to the system prompt (default or overridden) — e.g.
+   *  the live list of this org's CRM objects so the agent routes record ops to
+   *  the right object instead of guessing a built-in. */
+  extraSystemContext?: string;
 }
 
 /** A tool/skill the agent invoked, parsed from hermes' `hermes.tool.progress` SSE.
@@ -106,7 +116,15 @@ function hermesHeaders(env: Env, sessionKey: string): Record<string, string> {
  * deltas. Throws on a non-2xx / bodyless response.
  */
 export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator<string> {
-  const { env, sessionKey, message, attachments, signal, onToolEvent } = opts;
+  const { env, sessionKey, message, attachments, signal, onToolEvent, systemPrompt, extraSystemContext } = opts;
+  const basePrompt = systemPrompt ?? buildSystemPrompt(artifactDirFor(sessionKey));
+  const finalPrompt = extraSystemContext ? `${basePrompt}\n\n${extraSystemContext}` : basePrompt;
+  // A time budget so a throttled/stuck upstream (e.g. the gateway under heavy
+  // concurrent load) fails fast with an error instead of hanging the turn — the
+  // builder/chat then surfaces it cleanly rather than spinning forever. Combined
+  // with the caller's abort (client disconnect) if present.
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? 150_000);
+  const reqSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const res = await fetch(`${env.HERMES_API_URL}/v1/chat/completions`, {
     method: "POST",
     headers: hermesHeaders(env, sessionKey),
@@ -114,11 +132,11 @@ export async function* streamHermesText(opts: HermesTurnOptions): AsyncGenerator
       model: "hermes-agent",
       stream: true,
       messages: [
-        { role: "system", content: buildSystemPrompt(artifactDirFor(sessionKey)) },
+        { role: "system", content: finalPrompt },
         { role: "user", content: buildUserContent(message, attachments) },
       ],
     }),
-    signal,
+    signal: reqSignal,
   });
 
   if (!res.ok || !res.body) {

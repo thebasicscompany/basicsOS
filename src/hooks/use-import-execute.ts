@@ -43,6 +43,32 @@ export async function executeImport(
   const resource = objectSlug;
   const shouldMerge = mergeKey && conflictBehavior !== "create_only";
 
+  // Fast path: no merge/dedup → one bulk insert per chunk (not N requests).
+  if (!shouldMerge) {
+    const BULK_CHUNK = 250;
+    const payloads = parsed.rows.map((row) =>
+      buildImportPayload(objectSlug, row, mapping, customFieldNames),
+    );
+    for (let i = 0; i < payloads.length; i += BULK_CHUNK) {
+      const chunk = payloads.slice(i, i + BULK_CHUNK);
+      try {
+        const res = await crmApi.bulkCreate(resource, chunk);
+        result.created += res.created.length;
+        for (const e of res.errors) {
+          result.errors.push({ row: i + e.index + 1, message: e.message });
+        }
+      } catch (err) {
+        for (let j = 0; j < chunk.length; j++) {
+          result.errors.push({
+            row: i + j + 1,
+            message: err instanceof Error ? err.message : "Bulk insert failed",
+          });
+        }
+      }
+    }
+    return result;
+  }
+
   for (let i = 0; i < parsed.rows.length; i += BATCH_SIZE) {
     const batch = parsed.rows.slice(i, i + BATCH_SIZE);
     await Promise.allSettled(

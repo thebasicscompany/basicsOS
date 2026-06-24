@@ -29,6 +29,7 @@ interface DataTableHeaderProps<T> {
   onRenameColumn?: (fieldId: string, title: string) => void;
   onMoveColumn?: (fieldId: string, direction: "left" | "right") => void;
   onEditAttribute?: (fieldId: string) => void;
+  onDeleteColumn?: (fieldId: string) => void;
 }
 
 export function DataTableHeader<T extends Record<string, unknown>>({
@@ -43,6 +44,7 @@ export function DataTableHeader<T extends Record<string, unknown>>({
   onRenameColumn,
   onMoveColumn,
   onEditAttribute,
+  onDeleteColumn,
 }: DataTableHeaderProps<T>) {
   const { firstNameAttr, usesSplitName } = React.useMemo(
     () => getNameAttributes(visibleCols.map((col) => col.attribute)),
@@ -131,6 +133,11 @@ export function DataTableHeader<T extends Record<string, unknown>>({
                     onEditAttribute={
                       onEditAttribute
                         ? () => onEditAttribute(header.id)
+                        : undefined
+                    }
+                    onDelete={
+                      onDeleteColumn && header.id.startsWith("custom_")
+                        ? () => onDeleteColumn(header.id)
                         : undefined
                     }
                   >

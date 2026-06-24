@@ -107,12 +107,18 @@ export async function insertCustomRecord(
 ): Promise<Record<string, unknown> | null> {
   const table = sql.identifier(tableName);
 
-  // Separate "name" from custom fields
+  // Separate "name" from custom fields. The grid/REST client wraps custom values
+  // under a `customFields`/`custom_fields` key; the broker passes fields flat.
+  // Support both, and never store the wrapper key itself (which double-nests).
   const name = (body.name ?? body.Name ?? null) as string | null;
   const customFields: Record<string, unknown> = {};
+  const wrapped = (body.customFields ?? body.custom_fields) as
+    | Record<string, unknown>
+    | undefined;
+  if (wrapped && typeof wrapped === "object") Object.assign(customFields, wrapped);
   for (const [k, v] of Object.entries(body)) {
-    if (k === "name" || k === "Name") continue;
-    if (k === "id" || k === "Id") continue;
+    if (k === "name" || k === "Name" || k === "id" || k === "Id") continue;
+    if (k === "customFields" || k === "custom_fields") continue;
     customFields[k] = v;
   }
 
@@ -138,11 +144,18 @@ export async function updateCustomRecord(
 ): Promise<Record<string, unknown> | null> {
   const table = sql.identifier(tableName);
 
-  // Separate "name" from custom fields
+  // Separate "name" from custom fields. Support both the grid/REST wrapper
+  // (`customFields`/`custom_fields`) and the broker's flat fields; never store
+  // the wrapper key itself (which double-nests under custom_fields).
   const name = body.name ?? body.Name;
   const customFields: Record<string, unknown> = {};
+  const wrapped = (body.customFields ?? body.custom_fields) as
+    | Record<string, unknown>
+    | undefined;
+  if (wrapped && typeof wrapped === "object") Object.assign(customFields, wrapped);
   for (const [k, v] of Object.entries(body)) {
     if (k === "name" || k === "Name" || k === "id" || k === "Id") continue;
+    if (k === "customFields" || k === "custom_fields") continue;
     customFields[k] = v;
   }
 
@@ -166,8 +179,13 @@ export async function deleteCustomRecord(
   orgId: string,
 ): Promise<boolean> {
   const table = sql.identifier(tableName);
-  await db.execute(
-    sql`DELETE FROM ${table} WHERE id = ${id} AND organization_id = ${orgId}`,
+  const result = await db.execute(
+    sql`DELETE FROM ${table} WHERE id = ${id} AND organization_id = ${orgId} RETURNING id`,
   );
-  return true;
+  const rows = (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as unknown[];
+  // true only if a row was actually deleted — so callers can report NOT_FOUND for
+  // a missing/wrong-org id instead of a false success.
+  return rows.length > 0;
 }

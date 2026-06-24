@@ -96,6 +96,10 @@ export default defineConfig({
       "@radix-ui/react-context",
       "@radix-ui/react-dismissable-layer",
       "@radix-ui/react-roving-focus",
+      // parse5 (excluded below) lazily pulls in these CJS subpaths; pre-bundle them
+      // so vite doesn't re-optimize + full-reload mid-session.
+      "entities/decode",
+      "entities/escape",
     ],
     exclude: ["@basics-os/hub", "parse5"],
     esbuildOptions: {

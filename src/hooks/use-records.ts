@@ -94,6 +94,25 @@ export function useCreateRecord<T = Record<string, unknown>>(
 }
 
 /**
+ * Create many records in one request (bulk endpoint). Invalidates the list on success.
+ * Returns { created, errors } — partial success (some rows may fail).
+ */
+export function useBulkCreateRecords(objectSlug: string) {
+  const qc = useQueryClient();
+
+  return useMutation<
+    crmApi.BulkCreateResult,
+    Error,
+    Record<string, unknown>[]
+  >({
+    mutationFn: (records) => crmApi.bulkCreate(objectSlug, records),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["records", objectSlug] });
+    },
+  });
+}
+
+/**
  * Update an existing record by ID.
  * Invalidates both the list query and the specific record detail query.
  */

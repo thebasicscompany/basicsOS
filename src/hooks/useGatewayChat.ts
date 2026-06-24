@@ -36,6 +36,9 @@ const TOOL_TO_QUERY_KEYS: Record<string, string[][]> = {
 interface UseGatewayChatOptions {
   initialThreadId?: string;
   initialMessages?: Message[];
+  /** Scope the chat to one object/record (a per-record chat tab). The agent is
+   *  restricted to that object's tools and told which record it's on. */
+  scope?: { object: string; recordId?: number };
 }
 
 /**
@@ -95,11 +98,13 @@ export function useGatewayChat(opts?: UseGatewayChatOptions) {
 
   const handleFinish = useCallback(() => {
     const names = pendingToolsRef.current;
-    if (names.size === 0) {
-      queryClient.invalidateQueries({ queryKey: ["records"] });
-      queryClient.invalidateQueries({ queryKey: ["columns"] });
-      return;
-    }
+    // The agent can create/edit records, columns, AND objects via broker tools
+    // whose names aren't in TOOL_TO_QUERY_KEYS (e.g. mcp_broker_object_*_create,
+    // mcp_broker_custom_field_create). Always refresh the core CRM queries so a
+    // chat-created column/record/object shows up live in the grid + sidebar.
+    queryClient.invalidateQueries({ queryKey: ["records"] });
+    queryClient.invalidateQueries({ queryKey: ["columns"] });
+    queryClient.invalidateQueries({ queryKey: ["object-config"] });
     for (const name of names) {
       const keys = TOOL_TO_QUERY_KEYS[name];
       if (keys) {
@@ -115,7 +120,7 @@ export function useGatewayChat(opts?: UseGatewayChatOptions) {
     // Hermes-backed agent (replaces the in-process gateway-chat brain). Same wire
     // format + thread persistence, so the rest of this hook is unchanged.
     api: `${API_URL}/api/agent-chat`,
-    body: { threadId, channel: "chat" },
+    body: { threadId, channel: "chat", scope: opts?.scope },
     initialMessages: opts?.initialMessages,
     fetch: fetchWithErrorHandling,
     maxSteps: 5,

@@ -19,8 +19,8 @@ const log = logger.child({ component: "server" });
 
 async function main() {
   const env = getEnv();
-  const { db, close } = createDb(env.DATABASE_URL);
-  const app = createApp(db, env);
+  const { db, sql, close } = createDb(env.DATABASE_URL);
+  const app = createApp(db, env, sql);
 
   const allowedOrigins = env.ALLOWED_ORIGINS
     ? env.ALLOWED_ORIGINS.split(",")

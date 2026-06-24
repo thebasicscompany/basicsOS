@@ -70,6 +70,26 @@ export function useUpdateObjectConfig(slug: string) {
   });
 }
 
+/**
+ * Delete a CUSTOM object (grid) and its backing table + all records.
+ * DELETE /api/object-config/:slug — admin-gated; built-in objects are rejected
+ * server-side. Refreshes the registry, columns, and records.
+ */
+export function useDeleteObject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) =>
+      fetchApi<{ ok: true; slug: string }>(`/api/object-config/${slug}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["object-config"] });
+      qc.invalidateQueries({ queryKey: ["columns"] });
+      qc.invalidateQueries({ queryKey: ["records"] });
+    },
+  });
+}
+
 export interface UpsertAttributeOverridePayload {
   columnName: string;
   displayName?: string;

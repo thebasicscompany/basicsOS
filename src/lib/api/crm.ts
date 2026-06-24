@@ -104,6 +104,22 @@ export async function create<T>(
   });
 }
 
+export interface BulkCreateResult<T = Record<string, unknown>> {
+  created: T[];
+  errors: { index: number; message: string }[];
+}
+
+/** Create many records in one request (partial success). POST /api/:resource/bulk */
+export async function bulkCreate<T = Record<string, unknown>>(
+  resource: string,
+  records: Record<string, unknown>[],
+): Promise<BulkCreateResult<T>> {
+  return fetchApi<BulkCreateResult<T>>(`/api/${resource}/bulk`, {
+    method: "POST",
+    body: JSON.stringify({ records }),
+  });
+}
+
 export async function update<T>(
   resource: string,
   id: number | string,

@@ -21,6 +21,7 @@ import { MCPViewerApp } from "@basics-os/mcp-viewer";
 
 import { GatewayProvider } from "@/providers/GatewayProvider";
 import { ObjectRegistryProvider } from "@/providers/ObjectRegistryProvider";
+import { AppRegistryProvider } from "@/providers/AppRegistryProvider";
 import { ErrorFallback } from "@/components/error-fallback";
 import { ProtectedRoute } from "@/lib/auth";
 import { HelpCenterProvider } from "@/contexts/help-center";
@@ -41,6 +42,8 @@ import { MeetingsPage } from "@/components/pages/MeetingsPage";
 import { CommandPalette } from "@/components/command-palette";
 import { ObjectListPage } from "@/components/pages/ObjectListPage";
 import { RecordDetailPage } from "@/components/pages/RecordDetailPage";
+import { AppDetailPage } from "@/components/pages/AppDetailPage";
+import { AppBuilderPage } from "@/components/pages/AppBuilderPage";
 import { AppLayout } from "@/layouts/AppLayout";
 import { installDictationTargetBridge } from "@/lib/dictation-target";
 import { AppUpdateBanner } from "@/components/app-update-banner";
@@ -135,12 +138,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <ObjectRegistryProvider>
-                  <HelpCenterProvider>
-                    <>
-                      <AppLayout />
-                      <CommandPalette />
-                    </>
-                  </HelpCenterProvider>
+                  <AppRegistryProvider>
+                    <HelpCenterProvider>
+                      <>
+                        <AppLayout />
+                        <CommandPalette />
+                      </>
+                    </HelpCenterProvider>
+                  </AppRegistryProvider>
                 </ObjectRegistryProvider>
               </ProtectedRoute>
             }
@@ -172,6 +177,11 @@ function AppRoutes() {
               path="/objects/:objectSlug/:recordId"
               element={<RecordDetailPage />}
             />
+
+            {/* Custom apps (app-registry backed). /apps/new is the builder and must
+                precede the :appSlug runtime host so "new" isn't read as a slug. */}
+            <Route path="/apps/new" element={<AppBuilderPage />} />
+            <Route path="/apps/:appSlug" element={<AppDetailPage />} />
 
             {/* Legacy dashboard redirect */}
             <Route

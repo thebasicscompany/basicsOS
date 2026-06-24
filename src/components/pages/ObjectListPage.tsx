@@ -7,6 +7,14 @@ import { CreateRecordModal } from "@/components/create-record/CreateRecordModal"
 import { CreateAttributeModal } from "@/components/create-attribute/CreateAttributeModal";
 import { EditAttributeDialog } from "@/components/create-attribute/EditAttributeDialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ImportWizard } from "@/components/import/ImportWizard";
+import {
   RecordBulkDeleteDialog,
   RecordDetailDeleteDialog,
 } from "@/components/record-detail";
@@ -16,6 +24,7 @@ import {
   ObjectListSortFilterPills,
   ObjectListViewTabs,
 } from "@/components/object-list";
+import { GridChatBubble } from "@/components/object-list/GridChatBubble";
 import { DealsKanbanBoard } from "@/components/deals/DealsKanbanBoard";
 import {
   getNameAttributes,
@@ -28,13 +37,14 @@ import {
   normalizeFilterOperator,
   normalizeFilterValue,
 } from "@/lib/crm/field-utils";
-import { useObject, useAttributes } from "@/hooks/use-object-registry";
+import { useObject, useAttributes, useDeleteObject } from "@/hooks/use-object-registry";
 import {
   useRecords,
   useUpdateRecord,
   useDeleteRecord,
   useRefreshCrm,
 } from "@/hooks/use-records";
+import { useDeleteColumn } from "@/hooks/use-columns";
 import { useViews, useViewState } from "@/hooks/use-views";
 import { useRenameView, useDeleteView } from "@/hooks/use-view-queries";
 import type { ViewSort, ViewFilter } from "@/types/views";
@@ -42,7 +52,21 @@ import { usePageTitle, usePageHeaderActions } from "@/contexts/page-header";
 import { useEmailSyncStatus } from "@/hooks/use-email-sync";
 import { SuggestedContactsSheet } from "@/components/email-sync/SuggestedContactsSheet";
 import { FindFromEmailDialog } from "@/components/email-sync/FindFromEmailDialog";
-import { SparkleIcon, XIcon, BuildingsIcon } from "@phosphor-icons/react";
+import {
+  SparkleIcon,
+  XIcon,
+  BuildingsIcon,
+  DotsThreeIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useMe } from "@/hooks/use-me";
+import { TypeToConfirmDeleteDialog } from "@/components/TypeToConfirmDeleteDialog";
 import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
 
@@ -56,6 +80,7 @@ export function ObjectListPage() {
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editAttrFieldId, setEditAttrFieldId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     recordId: number;
@@ -73,6 +98,23 @@ export function ObjectListPage() {
 
   const obj = useObject(objectSlug);
   const attributes = useAttributes(objectSlug);
+  // Only CUSTOM objects (custom_* tables) can be deleted, and only by admins —
+  // built-in CRM objects are structural and the server rejects deleting them.
+  const me = useMe();
+  const isAdmin = Boolean(me.data?.administrator);
+  const isCustomObject = Boolean(obj?.tableName?.startsWith("custom_"));
+  const deleteObject = useDeleteObject();
+  const [deleteObjectOpen, setDeleteObjectOpen] = useState(false);
+  const onDeleteObject = async () => {
+    if (!obj) return;
+    try {
+      await deleteObject.mutateAsync(objectSlug);
+      toast.success(`Deleted "${obj.pluralName}"`);
+      navigate("/home");
+    } catch (e) {
+      showError(e);
+    }
+  };
   const isContacts = objectSlug === "contacts";
   const isDealsObj = objectSlug === "deals";
   const enableRowMultiSelect =
@@ -178,6 +220,7 @@ export function ObjectListPage() {
   const updateRecord = useUpdateRecord(objectSlug);
   const deleteRecord = useDeleteRecord(objectSlug);
   const refreshCrm = useRefreshCrm(objectSlug);
+  const deleteColumn = useDeleteColumn();
 
   const handlePaginationChange = useCallback(
     (newPage: number, newPerPage: number) => {
@@ -345,12 +388,36 @@ export function ObjectListPage() {
           onAddFilter={handleAddFilter}
           onCreateRecord={() => setCreateOpen(true)}
           onAddColumn={() => setAddColumnOpen(true)}
+          onImport={() => setImportOpen(true)}
           onRefresh={refreshCrm}
           isRefreshing={isFetching}
           onFindFromEmail={
             isContacts ? () => setFindFromEmailOpen(true) : undefined
           }
         />
+        {isAdmin && isCustomObject && obj ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title={`${obj.pluralName} settings`}
+              >
+                <DotsThreeIcon className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeleteObjectOpen(true)}
+              >
+                <TrashIcon className="mr-2 size-4" />
+                Delete {obj.pluralName}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </>
     );
   }, [
@@ -366,6 +433,8 @@ export function ObjectListPage() {
     isFetching,
     refreshCrm,
     isContacts,
+    isAdmin,
+    isCustomObject,
   ]);
 
   const headerActionsPortal = usePageHeaderActions(headerActionsNode);
@@ -579,6 +648,21 @@ export function ObjectListPage() {
                 if (vc) viewState.updateColumn(vc.id, { title });
               }}
               onEditAttribute={(fieldId) => setEditAttrFieldId(fieldId)}
+              onDeleteColumn={(fieldId) => {
+                if (
+                  window.confirm(
+                    "Delete this field? It's removed from the grid for everyone. Existing record values are kept and reappear if you re-add the field.",
+                  )
+                ) {
+                  deleteColumn.mutate(
+                    { columnId: fieldId, resource: objectSlug },
+                    {
+                      onSuccess: () => toast.success("Field deleted"),
+                      onError: (e) => showError(e),
+                    },
+                  );
+                }
+              }}
               onShowColumn={(fieldId) => {
                 const vc = viewState.columns.find((c) => c.fieldId === fieldId);
                 if (vc) {
@@ -602,6 +686,27 @@ export function ObjectListPage() {
           open={createOpen}
           onOpenChange={setCreateOpen}
         />
+
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Import CSV</DialogTitle>
+              <DialogDescription>
+                Import a CSV into {obj?.pluralName ?? objectSlug}. Columns
+                auto-map by header; new fields are created as needed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] min-w-0 overflow-y-auto pr-1">
+              <ImportWizard
+                initialObjectSlug={objectSlug}
+                onComplete={() => {
+                  setImportOpen(false);
+                  refreshCrm();
+                }}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <CreateAttributeModal
           resource={objectSlug}
@@ -657,6 +762,33 @@ export function ObjectListPage() {
           </>
         )}
       </div>
+      {obj ? (
+        <GridChatBubble
+          objectSlug={objectSlug}
+          singular={obj.singularName}
+          plural={obj.pluralName}
+        />
+      ) : null}
+
+      {obj ? (
+        <TypeToConfirmDeleteDialog
+          open={deleteObjectOpen}
+          onOpenChange={setDeleteObjectOpen}
+          name={obj.pluralName}
+          title={`Delete the ${obj.pluralName} object?`}
+          description={
+            <>
+              This permanently deletes the{" "}
+              <span className="font-medium text-foreground">{obj.pluralName}</span> grid and{" "}
+              <span className="font-medium text-foreground">ALL its records</span> for everyone in
+              the organization. This cannot be undone.
+            </>
+          }
+          confirmLabel={`Delete ${obj.pluralName}`}
+          onConfirm={onDeleteObject}
+          pending={deleteObject.isPending}
+        />
+      ) : null}
     </>
   );
 }

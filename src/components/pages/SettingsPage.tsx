@@ -33,6 +33,7 @@ import {
   useSaveAdminSlackBot,
 } from "@/hooks/use-admin";
 import { ConnectionsContent } from "@/components/connections";
+import { ConnectorsSettings } from "@/components/settings/ConnectorsSettings";
 import {
   useEmailSyncStatus,
   useStartEmailSync,
@@ -584,6 +585,16 @@ export function SettingsPage() {
                     </a>
                     .
                   </p>
+                </div>
+                <div className="mb-3 rounded-md border border-border bg-muted/40 p-3 text-[12px] text-muted-foreground">
+                  <span className="font-medium text-foreground">App-building access:</span> a token acts
+                  as you with your role, so an <span className="font-medium text-foreground">admin</span>{" "}
+                  token also lets an external AI coding agent (Cursor, Claude Code, Codex) build apps into
+                  your org via the build MCP server (
+                  <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">/api/build-mcp</code>).
+                  The agent can only create <span className="font-medium text-foreground">drafts</span> — a
+                  human still reviews and publishes. Only hand admin tokens to tools you trust; revoke a
+                  token to cut its access.
                 </div>
                 <p className="mb-3 font-mono text-[12px] text-muted-foreground">
                   Base URL: {API_URL || "(same origin)"}
@@ -1661,6 +1672,21 @@ export function SettingsPage() {
             <ConnectionsContent embeddedInSettings />
             <EmailSyncSection isAdmin={isAdmin} />
           </section>
+
+          {isAdmin && (
+            <>
+              <Separator />
+              <section id="connectors" className={sectionClass}>
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold">Custom API connectors</h2>
+                  <p className="text-[12px] text-muted-foreground">
+                    Add any external API by URL + key so apps and the assistant can call it.
+                  </p>
+                </div>
+                <ConnectorsSettings />
+              </section>
+            </>
+          )}
 
           <Separator />
 

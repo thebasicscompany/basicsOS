@@ -35,6 +35,7 @@ export function DataTable(props: DataTableProps) {
     onHideColumn,
     onRenameColumn,
     onEditAttribute,
+    onDeleteColumn,
     enableRowMultiSelect,
     selectedRecordIds,
     clearRowSelection,
@@ -85,6 +86,7 @@ export function DataTable(props: DataTableProps) {
               onRenameColumn={onRenameColumn}
               onMoveColumn={handleMoveColumn}
               onEditAttribute={onEditAttribute}
+              onDeleteColumn={onDeleteColumn}
             />
             <DataTableBody
               table={table}

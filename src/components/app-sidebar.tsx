@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NavUser } from "@/components/nav-user";
 import { ObjectRegistryNavSection } from "@/components/ObjectRegistryNavSection";
+import { AppsNavSection } from "@/components/AppsNavSection";
 import { useOrganization } from "@/hooks/use-organization";
 import { useThreads } from "@/hooks/use-threads";
 import { ROUTES } from "@basics-os/hub";
@@ -455,6 +456,9 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         <ChatThreadsNav />
         <div>
           <ObjectRegistryNavSection />
+        </div>
+        <div>
+          <AppsNavSection />
         </div>
         <div>
           <AutomationsNav />

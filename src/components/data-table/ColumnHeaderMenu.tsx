@@ -7,6 +7,7 @@ import {
   PencilSimpleIcon,
   EyeSlashIcon,
   GearIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import {
   DropdownMenu,
@@ -30,6 +31,8 @@ interface ColumnHeaderMenuProps {
   onRename: (title: string) => void;
   onHide: () => void;
   onEditAttribute?: () => void;
+  /** present only for deletable (custom) fields */
+  onDelete?: () => void;
   children: React.ReactNode;
 }
 
@@ -45,6 +48,7 @@ export function ColumnHeaderMenu({
   onRename,
   onHide,
   onEditAttribute,
+  onDelete,
   children,
 }: ColumnHeaderMenuProps) {
   const [isEditing, setIsEditing] = React.useState(false);
@@ -139,6 +143,18 @@ export function ColumnHeaderMenu({
                 <EyeSlashIcon className="size-4 mr-2" />
                 Hide from view
               </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={onDelete}
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <TrashIcon className="size-4 mr-2" />
+                  Delete field
+                </DropdownMenuItem>
+              </>
             )}
           </>
         )}
